@@ -16,7 +16,13 @@ data "http" "myip" {
 }
 
 locals {
-  caller_ip = try(trim(data.http.myip.response_body), null)
+  # api.ipify.org returns a bare IPv4 address. trimspace() takes one argument;
+  # trim() needs a cutset, and wrapping it in try() silently yielded null instead.
+  caller_ip_raw = trimspace(data.http.myip.response_body)
+
+  # Only trust the lookup when it really parses as an IPv4 address, so an error page
+  # or captive-portal response can never reach the Key Vault firewall rules.
+  caller_ip = can(cidrnetmask("${local.caller_ip_raw}/32")) ? local.caller_ip_raw : null
 }
 
 module "vnet" {
