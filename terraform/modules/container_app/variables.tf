@@ -37,6 +37,11 @@ variable "github_repository_owner" {
 variable "app_image_tag" {
   description = "Container image tag for the app."
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$", var.app_image_tag))
+    error_message = "The app_image_tag must be a valid OCI image tag: 1-128 characters of A-Za-z0-9._- starting with a letter, digit, or underscore. An empty tag renders an unpullable image reference such as \"ghcr.io/<owner>/kanbanproject-app:\"."
+  }
 }
 
 variable "jwt_secret_key" {

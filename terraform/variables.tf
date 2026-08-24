@@ -29,6 +29,11 @@ variable "app_image_tag" {
   type        = string
   description = "Tag for the application container image. Use an immutable value like a git SHA for reproducible deploys."
   default     = "latest"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$", var.app_image_tag))
+    error_message = "The app_image_tag must be a valid OCI image tag: 1-128 characters of A-Za-z0-9._- starting with a letter, digit, or underscore. An empty tag renders an unpullable image reference such as \"ghcr.io/<owner>/kanbanproject-app:\"."
+  }
 }
 
 variable "key_vault_allowed_ips" {
