@@ -12,5 +12,5 @@ jwt_secret_key =""
 captcha_enabled = true
 captcha_secret  = ""
 vite_recaptcha_site_key = ""
-app_image_tag = ""
+# app_image_tag = "latest"  # optional; defaults to "latest". Pin to a git SHA for reproducible deploys.
 alert_email = "email@email.com"
