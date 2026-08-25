@@ -64,7 +64,6 @@ module "container_app" {
   key_vault_uri           = module.key_vault.uri
   key_vault_id            = module.key_vault.id
   github_repository_owner = var.github_repository_owner
-  jwt_secret_key          = var.jwt_secret_key
   spring_mail_username    = var.spring_mail_username
   spring_mail_password    = var.spring_mail_password
   captcha_enabled         = var.captcha_enabled

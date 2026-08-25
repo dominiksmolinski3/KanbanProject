@@ -137,10 +137,28 @@ resource "time_sleep" "wait_for_secrets_user" {
   create_duration = "60s"
 }
 
+# outside the app needs to know it, so no one should have to type it. Same pattern the
+# postgres module uses for its admin password.
+#
+# Stored base64-encoded because JwtService.getSignInKey runs Decoders.BASE64.decode()
+# and then Keys.hmacShaKeyFor(), which throws on anything under 32 decoded bytes.
+# 64 random characters clear that comfortably.
+resource "random_password" "jwt_secret_key" {
+  length  = 64
+  special = false
+}
+
 resource "azurerm_key_vault_secret" "jwt_secret" {
   name         = "JWT-SECRET-KEY"
-  value        = var.jwt_secret_key
+  value        = base64encode(random_password.jwt_secret_key.result)
   key_vault_id = var.key_vault_id
+
+  # Rotating the JWT key signs out every user, so it is done deliberately and
+  # out-of-band (`az keyvault secret set`). Without this, the next apply would
+  # silently revert it and sign everyone out a second time.
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "azurerm_key_vault_secret" "spring_mail_username" {
