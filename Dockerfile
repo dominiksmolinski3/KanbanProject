@@ -28,8 +28,13 @@ RUN ./mvnw package -Dmaven.test.skip=true
 FROM eclipse-temurin:23-jre
 WORKDIR /app
 
+RUN groupadd --system --gid 10001 appuser \
+ && useradd --system --uid 10001 --gid 10001 --no-create-home appuser
+
 # The jar is matched by pattern so a version bump does not break the build
-COPY --from=backend-build /build/target/*.jar app.jar
+COPY --from=backend-build --chown=10001:10001 /build/target/*.jar app.jar
+
+USER 10001:10001
 
 EXPOSE 8080
 CMD ["java", "-jar", "app.jar"]
