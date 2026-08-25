@@ -10,29 +10,25 @@ resource "azurerm_key_vault" "main" {
   enabled_for_disk_encryption     = true
   enabled_for_template_deployment = true
 
+  enable_rbac_authorization = true
+
   network_acls {
     default_action             = var.network_default_action
     bypass                     = var.allow_azure_services_bypass ? "AzureServices" : "None"
     virtual_network_subnet_ids = [var.subnet_id]
     ip_rules                   = var.ip_rules
   }
+}
 
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
+resource "azurerm_role_assignment" "terraform_caller_secrets_officer" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
 
-    key_permissions = [
-      "Get",
-    ]
-
-    secret_permissions = [
-      "Get", "List", "Set", "Delete", "Purge", "Recover"
-    ]
-
-    storage_permissions = [
-      "Get",
-    ]
-  }
+resource "time_sleep" "wait_for_secrets_officer" {
+  depends_on      = [azurerm_role_assignment.terraform_caller_secrets_officer]
+  create_duration = "60s"
 }
 
 resource "azurerm_private_dns_zone" "kv" {
