@@ -22,3 +22,48 @@ variable "vnet_id" {
   description = "The ID of the virtual network to link the private DNS zone to."
   type        = string
 }
+
+variable "sku_name" {
+  description = "Compute SKU for the flexible server. Burstable (B_) tiers throttle to their CPU baseline once credits run out, and Azure does not offer high availability on them."
+  type        = string
+  default     = "B_Standard_B1ms"
+
+  validation {
+    condition     = can(regex("^(B|GP|MO)_", var.sku_name))
+    error_message = "The sku_name must be a PostgreSQL Flexible Server SKU: B_ (burstable), GP_ (general purpose) or MO_ (memory optimized), e.g. B_Standard_B1ms or GP_Standard_D2ds_v4."
+  }
+}
+
+variable "storage_mb" {
+  description = "Storage allocated to the server. Azure can only grow this, never shrink it, and the server's IOPS ceiling scales with the size."
+  type        = number
+  default     = 32768
+
+  validation {
+    condition     = contains([32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33553408], var.storage_mb)
+    error_message = "The storage_mb must be one of the sizes Azure offers: 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33553408."
+  }
+}
+
+variable "zone" {
+  description = "Availability zone hosting the primary. Set to null in regions that have no availability zones."
+  type        = string
+  default     = "1"
+}
+
+variable "high_availability_mode" {
+  description = "Run a hot standby: ZoneRedundant (standby in another zone), SameZone, or null for no standby. Requires a GP_ or MO_ sku_name and doubles the compute bill."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.high_availability_mode == null || can(regex("^(ZoneRedundant|SameZone)$", var.high_availability_mode))
+    error_message = "The high_availability_mode must be \"ZoneRedundant\", \"SameZone\", or null."
+  }
+}
+
+variable "standby_availability_zone" {
+  description = "Availability zone for the high availability standby. Must differ from zone under ZoneRedundant; leave null to let Azure pick."
+  type        = string
+  default     = null
+}

@@ -102,6 +102,10 @@ Optional (recommended):
 Optional (monitoring):
 - `alert_email` - if set, Terraform creates an Azure Monitor action group and basic Container Apps metric alerts (CPU + memory).
 
+Optional (database sizing) - see [Postgres sizing and availability](#postgres-sizing-and-availability):
+- `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`
+- `postgres_high_availability_mode`, `postgres_standby_availability_zone`
+
 Recommended: copy `dev.local.auto.tfvars.example` to `dev.local.auto.tfvars` and fill in values for local development (auto-loaded and usually gitignored). Alternatively, use the provided `*.tfvars` files and pass with `-var-file`.
 
 Note: the `azurerm` provider uses the active Azure CLI context by default (`use_cli = true`). If Terraform cannot determine your subscription for any reason, set `subscription_id` in `dev.local.auto.tfvars` or export `ARM_SUBSCRIPTION_ID`.
@@ -170,6 +174,42 @@ What follows from that: **the state blob is as sensitive as the vault**, and the
 control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
 the state container as equivalent to full production credential access, and grant it
 accordingly. The account's own hardening is applied in [Setup](#setup) step 2.
+
+### Postgres sizing and availability
+
+The database SKU, storage and availability zone are per-environment variables, set
+in the `*.tfvars` files. The defaults are the dev values, so an environment that
+says nothing gets the cheap shape.
+
+| | dev / uat | prod |
+|---|---|---|
+| `postgres_sku_name` | `B_Standard_B1ms` | `GP_Standard_D2ds_v4` |
+| `postgres_storage_mb` | 32768 (32 GiB) | 131072 (128 GiB) |
+| `postgres_high_availability_mode` | null | `ZoneRedundant` |
+
+Three things about that table are worth knowing before changing it.
+
+**Burstable is a throttle, not just a small server.** A `B_` SKU runs at a fraction
+of a vCore and spends credits to exceed it. Once the credits are gone the server is
+held at its baseline for as long as the load lasts, which shows up as query latency
+that gets worse the longer the pressure continues rather than levelling off.
+
+**High availability is a property of the tier.** Azure does not offer it on Burstable
+at all, so `postgres_high_availability_mode` and a `B_` SKU are a combination the API
+rejects - and it rejects it at create time, after the vnet, the vault and the secrets
+already exist. A `precondition` in the module fails the plan instead. The standby is a
+second full server, so `ZoneRedundant` roughly doubles compute cost on top of the tier
+change; setting the mode to `null` keeps a single-zone prod that still is not
+throttled.
+
+**Storage only grows.** Azure cannot shrink `storage_mb`, so raising it is a one-way
+door. The size also sets the IOPS ceiling - 32 GiB is the smallest tier and caps out
+correspondingly, which makes it a throughput decision as much as a capacity one.
+
+Changing the SKU or storage on a live server is an in-place scale with a restart, so
+expect a short outage. `postgres_zone` is different: Azure cannot move a running
+server between zones, and after an HA failover the primary is in the standby's zone,
+which the next `terraform plan` will try to undo. Treat the zone as set at creation.
 
 ### Key Vault authorization
 
