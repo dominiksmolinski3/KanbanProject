@@ -90,3 +90,32 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+variable "postgres_sku_name" {
+  description = "Compute SKU for the Postgres flexible server. Burstable (B_) tiers throttle once CPU credits run out and cannot run high availability."
+  type        = string
+  default     = "B_Standard_B1ms"
+}
+
+variable "postgres_storage_mb" {
+  description = "Storage allocated to the Postgres flexible server. Azure can only grow this, never shrink it."
+  type        = number
+  default     = 32768
+}
+
+variable "postgres_zone" {
+  description = "Availability zone hosting the Postgres primary. Set to null in regions without availability zones."
+  type        = string
+  default     = "1"
+}
+
+variable "postgres_high_availability_mode" {
+  description = "Postgres high availability: ZoneRedundant, SameZone, or null for no standby. Requires a GP_ or MO_ postgres_sku_name."
+  type        = string
+  default     = null
+}
+
+variable "postgres_standby_availability_zone" {
+  description = "Availability zone for the Postgres high availability standby. Must differ from postgres_zone under ZoneRedundant; null lets Azure pick."
+  type        = string
+  default     = null
+}
