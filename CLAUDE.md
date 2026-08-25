@@ -6,6 +6,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Do **not** add `Co-Authored-By: Claude ...` trailers to commit messages, and do not add the `🤖 Generated with Claude Code` footer to commits or PR bodies.
 
+### Commit messages
+
+Follow [qoomon's Conventional Commit Messages cheatsheet](https://gist.github.com/qoomon/5dfcdf8eec66a051ecd85625518cfd13). Every commit written here must match it.
+
+```
+<type>(<optional scope>)<optional !>: <description>
+
+<optional body>
+
+<optional footer>
+```
+
+Special cases:
+
+- initial commit: `chore: init`
+- merge commit: `Merge branch '<branch name>'` (the default git merge message)
+- revert commit: `Revert "<reverted commit subject line>"` (the default git revert message)
+
+**Types**
+
+- `feat` — adds, adjusts, or removes a feature of the API or UI
+- `fix` — fixes an API or UI bug of a preceding `feat` commit
+- `refactor` — rewrites or restructures code without altering API or UI behavior
+- `perf` — a `refactor` that specifically improves performance
+- `style` — code style only (white-space, formatting, semicolons); no behavior change
+- `test` — adds missing tests or corrects existing ones
+- `docs` — documentation only
+- `build` — build tooling, dependencies, project version
+- `ops` — infrastructure (IaC), deployment scripts, CI/CD pipelines, backups, monitoring, recovery
+- `chore` — everything else (init, `.gitignore`, ...)
+
+In this repo that maps to: `terraform/**` and `.github/workflows/**` → `ops`; `Dockerfile`/`docker-compose.yml`/`pom.xml`/`package.json` → `build`; `README.md`/`CLAUDE.md` → `docs`.
+
+**Scope** — optional, and project-defined (e.g. `api`, `board`, `auth`, `chat`, `i18n`, `terraform`, `ci`). Never use an issue identifier as a scope.
+
+**Breaking changes** — mark with `!` before the colon (`feat(api)!: remove status endpoint`) and describe them in the footer starting with `BREAKING CHANGE: ` when the description alone isn't enough.
+
+**Description** — mandatory; imperative present tense ("change", not "changed"/"changes"); do not capitalize the first letter; no trailing period.
+
+**Body** — optional; imperative present tense; explains motivation and contrasts with previous behavior.
+
+**Footer** — optional unless the commit is breaking; may reference issues (`Closes #123`), and any `BREAKING CHANGE:` note goes here.
+
+Examples:
+
+```
+feat: add email notifications on new direct messages
+fix(shopping-cart): prevent order an empty shopping cart
+perf: decrease memory footprint for determine unique visitors by using HyperLogLog
+build(release): bump version to 1.0.0
+```
+
+```
+feat!: remove ticket list endpoint
+
+refers to JIRA-1337
+
+BREAKING CHANGE: ticket endpoints no longer supports list all entities.
+```
+
 ## Commands
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and the Dockerfile runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
