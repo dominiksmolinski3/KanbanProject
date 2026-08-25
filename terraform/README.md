@@ -24,6 +24,7 @@ az account set --subscription "<subscription-id-or-name>"
 ```powershell
 az group create --name tfstate-rg --location "West Europe"
 az storage account create --name tfstatekanban --resource-group tfstate-rg --location "West Europe" --sku Standard_LRS --min-tls-version TLS1_2 --https-only true --allow-blob-public-access false --allow-shared-key-access false
+az storage account blob-service-properties update --account-name tfstatekanban --resource-group tfstate-rg --enable-versioning true --enable-delete-retention true --delete-retention-days 30 --enable-container-delete-retention true --container-delete-retention-days 30
 ```
 
 Run these against an existing account too -- `create` is the only command above that
