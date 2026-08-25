@@ -43,6 +43,20 @@ az role assignment create --assignee-object-id $userObjectId --assignee-principa
 
 If you get an authorization error creating the role assignment, ask a subscription Owner/User Access Administrator to run it.
 
+2c) Permission to create role assignments
+
+Terraform creates two Azure RBAC role assignments on the Key Vault (see
+[Key Vault authorization](#key-vault-authorization) below), so the identity running
+`terraform apply` needs `Microsoft.Authorization/roleAssignments/write` -- i.e.
+**Owner** or **User Access Administrator** on the subscription or on the target
+resource group. `Contributor` alone is not enough and fails at apply time with
+`AuthorizationFailed` on the role assignment.
+
+```powershell
+# Check whether you already have it
+az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv) --query "[].roleDefinitionName" -o tsv
+```
+
 3) Provide required secrets/variables
 
 The app stores secrets in Azure Key Vault; values are provided to Terraform via variables:
@@ -94,9 +108,37 @@ terraform apply -var-file "prod.tfvars"
 Note: if you see `subscription ID could not be determined`, set `subscription_id` in `dev.local.auto.tfvars` (preferred) or export `ARM_SUBSCRIPTION_ID` in your shell.
 
 ## CI/CD
-The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds and pushes the Docker image to GitHub Container Registry (public). The Container App pulls the public image without authentication. The Container App's managed identity is granted `Key Vault Secrets User` role to read application secrets from Key Vault.
+The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds and pushes the Docker image to GitHub Container Registry (public). The Container App pulls the public image without authentication. The Container App's managed identity is granted the `Key Vault Secrets User` role to read application secrets from Key Vault -- see [Key Vault authorization](#key-vault-authorization) for the full access model.
 
 ## Notes
 
 - **Postgres password generation**: the Postgres Terraform module generates the administrator password internally and stores it in Key Vault. (A previously-declared but unused `admin_password` input was removed to avoid confusion.)
 - **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
+
+### Key Vault authorization
+
+The vault is created with `enable_rbac_authorization = true`, so **Azure RBAC is the
+only thing that grants data-plane access** -- Key Vault access policies are ignored
+entirely. Two role assignments carry the whole model:
+
+| Principal | Role | Why |
+|---|---|---|
+| The identity running `terraform apply` | `Key Vault Secrets Officer` | Terraform writes the Postgres and application secrets into the vault |
+| The Container App's user-assigned identity | `Key Vault Secrets User` | The app resolves its `secret { key_vault_secret_id = ... }` references at revision start |
+
+Two consequences worth knowing:
+
+- **Control-plane roles do not imply data-plane access.** Being Owner or Contributor
+  on the resource group lets you manage the vault but not read or write its secrets.
+  To inspect secrets by hand (`az keyvault secret show`), assign yourself
+  `Key Vault Secrets User` or `Key Vault Secrets Officer` at the vault scope.
+- **Role assignments propagate asynchronously.** Each assignment is followed by a
+  60-second `time_sleep` before anything touches a secret, because Key Vault's data
+  plane can still answer `403` on a grant Azure has already accepted. If an apply
+  fails with `Forbidden` on `azurerm_key_vault_secret` or the first Container App
+  revision fails to start, re-running `terraform apply` is usually enough.
+
+Migrating a vault created before this change: `terraform apply` flips it from
+access-policy mode to RBAC in place. The pre-existing access policies stay recorded
+on the vault but stop being consulted; they can be cleared afterwards with
+`az keyvault delete-policy` if you want a clean resource.

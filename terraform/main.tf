@@ -48,6 +48,8 @@ module "postgres" {
   vnet_id             = module.vnet.id
   subnet_id           = module.vnet.db_subnet_id
   key_vault_id        = module.key_vault.id
+
+  depends_on = [module.key_vault]
 }
 
 module "container_app" {
