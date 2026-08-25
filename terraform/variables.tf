@@ -54,12 +54,6 @@ variable "key_vault_network_default_action" {
   default     = "Deny"
 }
 
-variable "jwt_secret_key" {
-  description = "JWT secret used by the backend."
-  type        = string
-  sensitive   = true
-}
-
 variable "spring_mail_username" {
   description = "SMTP username for Spring Mail."
   type        = string

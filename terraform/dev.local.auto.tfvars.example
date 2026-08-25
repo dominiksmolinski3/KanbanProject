@@ -6,11 +6,11 @@
 
 key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
 # key_vault_allow_azure_services_bypass = true  # optional override
-spring_mail_username ="asddasdas@gmail.com"
-spring_mail_password ="123123123"
-jwt_secret_key =""
+
+spring_mail_username = "you@example.com"
+spring_mail_password = ""   # Gmail app password
 captcha_enabled = true
-captcha_secret  = ""
+captcha_secret  = ""        # reCAPTCHA server-side secret
 vite_recaptcha_site_key = ""
 # app_image_tag = "latest"  # optional; defaults to "latest". Pin to a git SHA for reproducible deploys.
-alert_email = "email@email.com"
+alert_email = "you@example.com"
