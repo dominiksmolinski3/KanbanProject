@@ -49,8 +49,6 @@ module "postgres" {
   subnet_id           = module.vnet.db_subnet_id
   key_vault_id        = module.key_vault.id
 
-  # Not just for the vault itself: this module writes secrets into it, so it has to
-  # wait for the Key Vault Secrets Officer grant to propagate as well.
   depends_on = [module.key_vault]
 }
 
