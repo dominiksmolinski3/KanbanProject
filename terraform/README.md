@@ -23,9 +23,19 @@ az account set --subscription "<subscription-id-or-name>"
 
 ```powershell
 az group create --name tfstate-rg --location "West Europe"
-az storage account create --name tfstatekanban --resource-group tfstate-rg --location "West Europe" --sku Standard_LRS
-az storage container create --name tfstate --account-name tfstatekanban
+az storage account create --name tfstatekanban --resource-group tfstate-rg --location "West Europe" --sku Standard_LRS --min-tls-version TLS1_2 --https-only true --allow-blob-public-access false --allow-shared-key-access false
+az storage account blob-service-properties update --account-name tfstatekanban --resource-group tfstate-rg --enable-versioning true --enable-delete-retention true --delete-retention-days 30 --enable-container-delete-retention true --container-delete-retention-days 30
 ```
+
+Run these against an existing account too -- `create` is the only command above that
+fails if the account already exists; swap it for `az storage account update` with the
+same flags.
+
+This account holds the generated Postgres administrator password and JWT signing key in
+plaintext, which is why it is worth hardening -- see [Secrets](#secrets).
+
+Create the container **after** step 2b, not here: with shared key access disabled it has
+to be created over Entra ID auth, which needs the role assignment to exist first.
 
 2b) Grant yourself access to the Terraform state container
 
@@ -42,6 +52,24 @@ az role assignment create --assignee-object-id $userObjectId --assignee-principa
 ```
 
 If you get an authorization error creating the role assignment, ask a subscription Owner/User Access Administrator to run it.
+
+Then create the state container. `--auth-mode login` is required because the account has
+no shared key access; if this returns `403`, give the role assignment a minute to
+propagate and retry.
+
+```powershell
+az storage container create --name tfstate --account-name tfstatekanban --auth-mode login
+```
+
+To check an existing account against the settings above:
+
+```powershell
+az storage account show -n tfstatekanban -g tfstate-rg --query "{tls:minimumTlsVersion,sharedKey:allowSharedKeyAccess,publicBlob:allowBlobPublicAccess,https:enableHttpsTrafficOnly}" -o json
+```
+
+`"sharedKey": null` means shared key access has never been set, which Azure treats as
+**enabled** -- re-run the `update` above to disable it. (Use `-o json`, not `-o table`:
+table output silently drops a column whose value is null.)
 
 2c) Permission to create role assignments
 
@@ -141,7 +169,7 @@ seconds with no downtime and no data loss, so the cost of exposure is a rotation
 What follows from that: **the state blob is as sensitive as the vault**, and the
 control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
 the state container as equivalent to full production credential access, and grant it
-accordingly -- see SEC-02 in the infrastructure review.
+accordingly. The account's own hardening is applied in [Setup](#setup) step 2.
 
 ### Key Vault authorization
 
