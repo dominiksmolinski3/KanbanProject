@@ -4,7 +4,7 @@ resource "azurerm_container_app" "main" {
   container_app_environment_id = var.container_app_env_id
   revision_mode                = "Single"
   depends_on = [
-    azurerm_key_vault_access_policy.containerapp_identity,
+    time_sleep.wait_for_secrets_user,
     azurerm_key_vault_secret.jwt_secret,
     azurerm_key_vault_secret.spring_mail_username,
     azurerm_key_vault_secret.spring_mail_password,
@@ -126,24 +126,21 @@ resource "azurerm_user_assigned_identity" "main" {
   resource_group_name = var.resource_group_name
 }
 
-data "azurerm_client_config" "current" {}
-
-# Grant the Container App user-assigned identity access to read secrets from Key Vault
-resource "azurerm_key_vault_access_policy" "containerapp_identity" {
-  key_vault_id = var.key_vault_id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_user_assigned_identity.main.principal_id
-
-  secret_permissions = [
-    "Get",
-    "List",
-  ]
-}
-
+# Grant the Container App user-assigned identity read access to Key Vault secrets.
+# The vault runs in RBAC mode, so this role assignment -- not an access policy -- is
+# what actually resolves the key_vault_secret_id references declared above.
 resource "azurerm_role_assignment" "key_vault_secrets_user" {
   scope                = var.key_vault_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.main.principal_id
+}
+
+# Container Apps resolves every Key Vault secret reference while provisioning the
+# first revision. Data-plane RBAC propagates asynchronously, so without this wait
+# that revision can fail to start with a 403 on an assignment Azure has accepted.
+resource "time_sleep" "wait_for_secrets_user" {
+  depends_on      = [azurerm_role_assignment.key_vault_secrets_user]
+  create_duration = "60s"
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
