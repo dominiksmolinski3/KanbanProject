@@ -59,13 +59,14 @@ az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv
 
 3) Provide required secrets/variables
 
-The app stores secrets in Azure Key Vault; values are provided to Terraform via variables:
-- `jwt_secret_key`
+Values supplied through variables:
 - `spring_mail_username`
 - `spring_mail_password`
- - `captcha_enabled`
- - `captcha_secret`
- - `vite_recaptcha_site_key`
+- `captcha_enabled`
+- `captcha_secret`
+- `vite_recaptcha_site_key`
+
+`jwt_secret_key` is **not** an input -- Terraform generates it. See [Secrets](#secrets).
 
 Optional (recommended):
 - `app_image_tag` - container image tag deployed to Azure Container Apps. For reproducible deployments, set this to an immutable value like the git SHA pushed by the CI pipeline.
@@ -112,8 +113,35 @@ The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds
 
 ## Notes
 
-- **Postgres password generation**: the Postgres Terraform module generates the administrator password internally and stores it in Key Vault. (A previously-declared but unused `admin_password` input was removed to avoid confusion.)
+- **Password generation**: the Postgres module generates the administrator password internally, and the `container_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
 - **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
+
+### Secrets
+
+All application secrets live in Key Vault and are read by the Container App's managed
+identity at revision start. They get into the vault two ways.
+
+**Generated.** The Postgres admin password and the JWT signing key have no external
+issuer, so Terraform generates them with `random_password` and nobody ever types or
+sees them. The JWT key is stored base64-encoded, because `JwtService.getSignInKey`
+runs `Decoders.BASE64.decode(...)` then `Keys.hmacShaKeyFor(...)` and throws on
+anything under 32 decoded bytes.
+
+**Supplied.** `spring_mail_password` and `captcha_secret` are issued by Gmail and
+Google, so they cannot be generated. They come in as variables, which means they sit
+in your tfvars file and in Terraform state in plaintext.
+
+That is a deliberate acceptance, not an oversight. The identity running
+`terraform apply` is granted `Key Vault Secrets Officer` on the vault (it has to be --
+Terraform writes the Postgres secrets), so an applier can already read every secret in
+the vault with one `az keyvault secret show`. Keeping these two out of tfvars would not
+deny them anything they don't already hold. Both are also revocable from a console in
+seconds with no downtime and no data loss, so the cost of exposure is a rotation.
+
+What follows from that: **the state blob is as sensitive as the vault**, and the
+control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
+the state container as equivalent to full production credential access, and grant it
+accordingly -- see SEC-02 in the infrastructure review.
 
 ### Key Vault authorization
 
