@@ -9,72 +9,91 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
+      SPRING_MAIL_USERNAME: ${{ secrets.SPRING_MAIL_USERNAME || 'ci@example.com' }}
+      SPRING_MAIL_PASSWORD: ${{ secrets.SPRING_MAIL_PASSWORD || 'ci' }}
+
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:17
         env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
+
     - name: Set up JDK 23
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '23'
-        distribution: 'oracle'
+        distribution: 'temurin'
         cache: maven
 
     - name: Set executable permissions for mvnw
       run: chmod +x backend/mvnw
 
     - name: Create .env file
+      working-directory: backend
       run: |
-        cd backend
-        echo "SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/${{ secrets.POSTGRES_DB }}" >> .env
-        echo "SPRING_DATASOURCE_USERNAME=${{ secrets.POSTGRES_USER }}" >> .env
-        echo "SPRING_DATASOURCE_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-        
+        cat > .env <<EOF
+        SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+        SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+        SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+        JWT_SECRET_KEY=${JWT_SECRET_KEY}
+        SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME}
+        SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
+        EOF
+
     - name: Build and test backend
-      run: |
-        cd backend
-        ./mvnw clean test jacoco:report
-        
+      working-directory: backend
+      run: ./mvnw --batch-mode clean test jacoco:report
+
     - name: Upload test coverage
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: test-coverage
         path: backend/target/site/jacoco
+        # The backend currently ships no test sources, so JaCoCo writes no report.
+        if-no-files-found: ignore
 
   frontend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       with:
         node-version: 20
         cache: npm
         cache-dependency-path: frontend/package-lock.json
-    
+
     - name: Install dependencies
-      run: cd frontend && npm ci --legacy-peer-deps
-      
+      working-directory: frontend
+      run: npm ci --legacy-peer-deps
+
     - name: Build frontend
-      run: cd frontend && npm run build
-      
+      working-directory: frontend
+      run: npm run build
+
     - name: Run linting
-      run: cd frontend && npm run lint
+      working-directory: frontend
+      run: npm run lint
       continue-on-error: true
 
     - name: Run tests with coverage
-      run: cd frontend && npm run test:coverage
-      
+      working-directory: frontend
+      run: npm run test:coverage
+
     - name: Upload test coverage
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: frontend-test-coverage
         path: frontend/coverage
