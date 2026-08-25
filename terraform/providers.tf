@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/http"
       version = ">= 3.4.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.9.0"
+    }
   }
   backend "azurerm" {
     resource_group_name  = "tfstate-rg"
