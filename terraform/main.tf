@@ -49,6 +49,12 @@ module "postgres" {
   subnet_id           = module.vnet.db_subnet_id
   key_vault_id        = module.key_vault.id
 
+  sku_name                  = var.postgres_sku_name
+  storage_mb                = var.postgres_storage_mb
+  zone                      = var.postgres_zone
+  high_availability_mode    = var.postgres_high_availability_mode
+  standby_availability_zone = var.postgres_standby_availability_zone
+
   depends_on = [module.key_vault]
 }
 

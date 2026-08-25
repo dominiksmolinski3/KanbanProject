@@ -22,14 +22,37 @@ resource "azurerm_postgresql_flexible_server" "main" {
   private_dns_zone_id           = azurerm_private_dns_zone.main.id
   administrator_login           = "psqladmin"
   administrator_password        = random_password.password.result
-  zone                          = "1"
-  storage_mb                    = 32768
-  sku_name                      = "B_Standard_B1ms"
+  zone                          = var.zone
+  storage_mb                    = var.storage_mb
+  sku_name                      = var.sku_name
 
   maintenance_window {
     day_of_week  = 0
     start_hour   = 1
     start_minute = 0
+  }
+
+  dynamic "high_availability" {
+    for_each = var.high_availability_mode == null ? [] : [var.high_availability_mode]
+
+    content {
+      mode                      = high_availability.value
+      standby_availability_zone = var.standby_availability_zone
+    }
+  }
+
+  # Azure only rejects these two combinations once it has the create request, by
+  # which point the vnet, the vault and its secrets already exist. Fail the plan.
+  lifecycle {
+    precondition {
+      condition     = var.high_availability_mode == null || !can(regex("^B_", var.sku_name))
+      error_message = "High availability is not available on Burstable SKUs. Set sku_name to a GP_ or MO_ SKU, or leave high_availability_mode null."
+    }
+
+    precondition {
+      condition     = var.high_availability_mode != "ZoneRedundant" || var.standby_availability_zone == null || var.standby_availability_zone != var.zone
+      error_message = "A ZoneRedundant standby must sit in a different zone than the primary. Set standby_availability_zone to something other than zone, or leave it null to let Azure pick."
+    }
   }
 }
 
