@@ -44,11 +44,6 @@ variable "app_image_tag" {
   }
 }
 
-variable "jwt_secret_key" {
-  type      = string
-  sensitive = true
-}
-
 variable "spring_mail_username" {
   type      = string
   sensitive = true
