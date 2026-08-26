@@ -2,6 +2,11 @@ output "backend_subnet_id" {
   value = azurerm_subnet.backend.id
 }
 
+output "private_endpoint_subnet_id" {
+  description = "Subnet dedicated to private endpoint NICs."
+  value       = azurerm_subnet.private_endpoints.id
+}
+
 output "db_subnet_id" {
   value = azurerm_subnet.db.id
 }
