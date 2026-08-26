@@ -148,6 +148,37 @@ The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds
 - **Password generation**: the Postgres module generates the administrator password internally, and the `container_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
 - **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
 
+### Network layout
+
+The VNet is `10.0.0.0/16` and is carved into three subnets, each with one job.
+
+| Subnet | Prefix | Holds |
+|---|---|---|
+| `snet-backend-<env>` | `10.0.0.0/23` | the Container Apps environment (`infrastructure_subnet_id`) |
+| `snet-db-<env>` | `10.0.2.0/24` | Postgres Flexible Server, delegated to `Microsoft.DBforPostgreSQL/flexibleServers` |
+| `snet-pe-<env>` | `10.0.3.0/28` | private endpoint NICs -- today just the Key Vault one |
+
+**The backend subnet is dedicated to the Container Apps environment.** Azure treats an
+infrastructure subnet as platform-managed and requires that nothing else live in it,
+so the Key Vault private endpoint gets its own subnet rather than sharing that one.
+Keeping the two apart also means a future NSG or route table on the private endpoint
+subnet does not have to be written around whatever the Container Apps platform needs.
+
+The backend subnet keeps its `Microsoft.KeyVault` service endpoint, and that subnet --
+not the private endpoint subnet -- is what the vault's `network_acls` allow. Those are
+two different paths to the same vault: the service endpoint covers the app's own
+egress if it ever resolves the vault's public name, while the private endpoint is what
+the `privatelink.vaultcore.azure.net` zone actually resolves to for every client in
+the VNet. Adding a private endpoint's own subnet to a resource's ACL does nothing --
+private endpoint traffic bypasses the firewall entirely -- which is why the two
+variables (`allowed_subnet_id`, `private_endpoint_subnet_id`) are separate.
+
+Migrating an environment created before the split: `terraform apply` destroys and
+recreates the private endpoint in the new subnet, so its private IP changes. The DNS
+A record is managed by the endpoint's `private_dns_zone_group` and follows
+automatically; expect the vault to be briefly unresolvable inside the VNet while the
+replacement lands.
+
 ### Secrets
 
 All application secrets live in Key Vault and are read by the Container App's managed

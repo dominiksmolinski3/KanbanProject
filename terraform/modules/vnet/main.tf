@@ -13,6 +13,15 @@ resource "azurerm_subnet" "backend" {
   service_endpoints    = ["Microsoft.KeyVault"]
 }
 
+resource "azurerm_subnet" "private_endpoints" {
+  name                 = "snet-pe-${var.env}"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.3.0/28"]
+
+  private_endpoint_network_policies = "Disabled"
+}
+
 resource "azurerm_subnet" "db" {
   name                 = "snet-db-${var.env}"
   resource_group_name  = var.resource_group_name
