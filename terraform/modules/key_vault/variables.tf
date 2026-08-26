@@ -40,3 +40,19 @@ variable "network_default_action" {
     error_message = "network_default_action must be either 'Allow' or 'Deny'."
   }
 }
+
+variable "purge_protection_enabled" {
+  description = "Block permanent deletion of the vault. Azure does not allow turning this back off once an apply has enabled it."
+  type        = bool
+  default     = true
+}
+
+variable "soft_delete_retention_days" {
+  description = "Days a deleted vault stays recoverable, and for which its name stays reserved. Changing this replaces the vault."
+  type        = number
+  default     = 90
+  validation {
+    condition     = var.soft_delete_retention_days >= 7 && var.soft_delete_retention_days <= 90
+    error_message = "soft_delete_retention_days must be between 7 and 90."
+  }
+}

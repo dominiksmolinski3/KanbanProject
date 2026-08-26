@@ -48,6 +48,24 @@ variable "key_vault_allow_azure_services_bypass" {
   default     = true
 }
 
+variable "key_vault_purge_protection_enabled" {
+  description = "Block permanent deletion of the Key Vault. Once an apply enables this, Azure will not let any later apply turn it off."
+  type        = bool
+  default     = true
+}
+
+variable "key_vault_soft_delete_retention_days" {
+  description = "Days a deleted Key Vault stays recoverable and its name stays reserved. Azure treats this as immutable, so changing it replaces the vault."
+  type        = number
+  default     = 90
+}
+
+variable "key_vault_purge_soft_delete_on_destroy" {
+  description = "Whether terraform destroy permanently purges the Key Vault instead of leaving it soft-deleted. Only meaningful when key_vault_purge_protection_enabled is false."
+  type        = bool
+  default     = false
+}
+
 variable "key_vault_network_default_action" {
   description = "Key Vault network ACL default action: Allow or Deny. For dev you may set Allow."
   type        = string
