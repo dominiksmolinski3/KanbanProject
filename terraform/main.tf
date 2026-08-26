@@ -65,6 +65,7 @@ module "container_app" {
   env                     = var.env
   container_app_env_id    = module.vnet.container_app_env_id
   app_image_tag           = var.app_image_tag
+  allowed_ingress_cidrs   = var.allowed_ingress_cidrs
   postgres_server_name    = module.postgres.postgres_server_name
   postgres_db_name        = module.postgres.postgres_db_name
   key_vault_uri           = module.key_vault.uri
