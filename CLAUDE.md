@@ -70,7 +70,7 @@ BREAKING CHANGE: ticket endpoints no longer supports list all entities.
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and the Dockerfile runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
 
-### Backend (Java 23 / Spring Boot 3.4.3 / Maven wrapper)
+### Backend (Java 21 / Spring Boot 3.5.16 / Maven wrapper)
 
 ```bash
 ./mvnw clean package                    # build the jar (target/KanbanProject2-0.0.1-SNAPSHOT.jar)
