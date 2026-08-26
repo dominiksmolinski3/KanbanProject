@@ -21,11 +21,12 @@ locals {
 }
 
 module "vnet" {
-  source                     = "./modules/vnet"
-  resource_group_name        = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  env                        = var.env
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  source                          = "./modules/vnet"
+  resource_group_name             = azurerm_resource_group.main.name
+  location                        = azurerm_resource_group.main.location
+  env                             = var.env
+  log_analytics_workspace_id      = azurerm_log_analytics_workspace.main.id
+  ingress_source_address_prefixes = var.ingress_source_address_prefixes
 }
 
 module "key_vault" {
