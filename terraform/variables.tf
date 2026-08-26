@@ -36,6 +36,12 @@ variable "app_image_tag" {
   }
 }
 
+variable "ingress_source_address_prefixes" {
+  description = "Source ranges the backend subnet NSG allows to reach the container app on 80/443. Leave at Internet for a publicly reachable environment; narrow to office/CI CIDRs otherwise."
+  type        = list(string)
+  default     = ["Internet"]
+}
+
 variable "key_vault_allowed_ips" {
   description = "Optional list of IPv4 addresses allowed to access Key Vault (dev convenience)."
   type        = list(string)
