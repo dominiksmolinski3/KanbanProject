@@ -1,6 +1,13 @@
+locals {
+  vnet_address_space  = "10.0.0.0/16"
+  backend_subnet_cidr = "10.0.0.0/23"
+  db_subnet_cidr      = "10.0.2.0/24"
+  pe_subnet_cidr      = "10.0.3.0/28"
+}
+
 resource "azurerm_virtual_network" "main" {
   name                = "vnet-${var.env}"
-  address_space       = ["10.0.0.0/16"]
+  address_space       = [local.vnet_address_space]
   location            = var.location
   resource_group_name = var.resource_group_name
 }
@@ -9,7 +16,7 @@ resource "azurerm_subnet" "backend" {
   name                 = "snet-backend-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.0.0/23"]
+  address_prefixes     = [local.backend_subnet_cidr]
   service_endpoints    = ["Microsoft.KeyVault"]
 }
 
@@ -17,16 +24,16 @@ resource "azurerm_subnet" "private_endpoints" {
   name                 = "snet-pe-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.3.0/28"]
+  address_prefixes     = [local.pe_subnet_cidr]
 
-  private_endpoint_network_policies = "Disabled"
+  private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
 }
 
 resource "azurerm_subnet" "db" {
   name                 = "snet-db-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.2.0/24"]
+  address_prefixes     = [local.db_subnet_cidr]
   service_endpoints    = ["Microsoft.Storage"]
   delegation {
     name = "fs"
