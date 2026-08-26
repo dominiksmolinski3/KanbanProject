@@ -17,7 +17,7 @@ data "http" "myip" {
 
 locals {
   caller_ip_raw = trimspace(data.http.myip.response_body)
-  caller_ip = can(cidrnetmask("${local.caller_ip_raw}/32")) ? local.caller_ip_raw : null
+  caller_ip     = can(cidrnetmask("${local.caller_ip_raw}/32")) ? local.caller_ip_raw : null
 }
 
 module "vnet" {
