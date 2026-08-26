@@ -148,6 +148,38 @@ The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds
 - **Password generation**: the Postgres module generates the administrator password internally, and the `container_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
 - **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
 
+### Network layout
+
+The VNet is `10.0.0.0/16` and is carved into three subnets, each with one job.
+
+| Subnet | Prefix | Holds |
+|---|---|---|
+| `snet-backend-<env>` | `10.0.0.0/23` | the Container Apps environment (`infrastructure_subnet_id`) |
+| `snet-db-<env>` | `10.0.2.0/24` | Postgres Flexible Server, delegated to `Microsoft.DBforPostgreSQL/flexibleServers` |
+| `snet-pe-<env>` | `10.0.3.0/28` | private endpoint NICs -- today just the Key Vault one |
+
+**The backend subnet is dedicated to the Container Apps environment.** Azure treats an
+infrastructure subnet as platform-managed and requires that nothing else live in it,
+so the Key Vault private endpoint gets its own subnet rather than sharing that one.
+Keeping the two apart also means `nsg-pe-${env}` (see
+[Network security groups](#network-security-groups)) does not have to be written
+around whatever the Container Apps platform needs.
+
+The backend subnet keeps its `Microsoft.KeyVault` service endpoint, and that subnet --
+not the private endpoint subnet -- is what the vault's `network_acls` allow. Those are
+two different paths to the same vault: the service endpoint covers the app's own
+egress if it ever resolves the vault's public name, while the private endpoint is what
+the `privatelink.vaultcore.azure.net` zone actually resolves to for every client in
+the VNet. Adding a private endpoint's own subnet to a resource's ACL does nothing --
+private endpoint traffic bypasses the firewall entirely -- which is why the two
+variables (`allowed_subnet_id`, `private_endpoint_subnet_id`) are separate.
+
+Migrating an environment created before the split: `terraform apply` destroys and
+recreates the private endpoint in the new subnet, so its private IP changes. The DNS
+A record is managed by the endpoint's `private_dns_zone_group` and follows
+automatically; expect the vault to be briefly unresolvable inside the VNet while the
+replacement lands.
+
 ### Secrets
 
 All application secrets live in Key Vault and are read by the Container App's managed
@@ -210,6 +242,54 @@ Changing the SKU or storage on a live server is an in-place scale with a restart
 expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
+
+### Network security groups
+
+All three subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
+`nsg-pe-${env}`), defined in [modules/vnet/nsg.tf](modules/vnet/nsg.tf) alongside the
+subnets whose CIDRs they reference.
+
+The reason they exist is the last of Azure's built-in rules: `AllowVnetInBound` at
+priority 65000 permits any address in the vnet to reach any port in any other subnet.
+Without an NSG, a foothold anywhere in `snet-backend` reaches Postgres on 5432
+directly. Each NSG therefore re-denies inbound `VirtualNetwork` traffic at priority
+4096 and re-allows only the documented flows:
+
+| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) |
+|---|---|---|---|
+| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` |
+| 110 | anything within the subnet | anything within the subnet | -- |
+| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- |
+| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
+
+The deny is sourced on `VirtualNetwork` rather than `*` so the platform's
+`AllowAzureLoadBalancerInBound` at 65001 still applies. Rule 110 is not optional in
+either subnet: the Container Apps consumption environment's own components talk
+across the infrastructure subnet on unpublished ports, and flexible server replicates
+to its standby inside the delegated subnet. `snet-pe` needs no such rule -- it holds
+private endpoint NICs and nothing that talks to a neighbour.
+
+**`snet-pe` only gets an NSG because its network policies are switched on for it.**
+Azure does not apply NSGs to private endpoint NICs by default, which is why
+`private_endpoint_network_policies` on that subnet is `NetworkSecurityGroupEnabled`
+rather than the `Disabled` that private endpoints ship with. Set it back to
+`Disabled` and `nsg-pe-${env}` stays associated and stops being enforced, silently.
+The one allow rule is 443 from `snet-backend`, because reaching the vault over the
+private endpoint is the only reason anything in the vnet talks to that subnet; a
+second private endpoint landing there later needs its own rule and its own port.
+
+`ingress_source_address_prefixes` defaults to `["Internet"]`, which is what the
+container app's `external_enabled = true` needs. Narrow it in a `*.tfvars` file for
+an environment that should not be publicly reachable -- note that this only filters
+at the subnet edge, so it is a blunt instrument rather than a substitute for a WAF.
+
+**Outbound is deliberately left on the Azure defaults.** The app's egress does not
+reduce to service tags: it pulls its image from `ghcr.io`, sends mail over SMTP to an
+external provider and verifies captchas against `google.com`, on top of what the
+consumption environment itself needs (MCR, Entra ID, Azure Monitor, Azure Files on
+445, NTP on UDP 123). A default-deny egress rule that misses one of those surfaces as
+a revision that never becomes healthy rather than as a clear error, so egress
+filtering belongs behind a NAT gateway or firewall, not here.
 
 ### Key Vault authorization
 

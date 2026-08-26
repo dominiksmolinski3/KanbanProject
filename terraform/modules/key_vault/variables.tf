@@ -10,8 +10,14 @@ variable "env" {
   type = string
 }
 
-variable "subnet_id" {
-  type = string
+variable "allowed_subnet_id" {
+  description = "Subnet allowed through the Key Vault firewall via its Microsoft.KeyVault service endpoint."
+  type        = string
+}
+
+variable "private_endpoint_subnet_id" {
+  description = "Subnet hosting the Key Vault private endpoint NIC. Must not be the Container Apps infrastructure subnet, which Azure requires to be dedicated to the environment."
+  type        = string
 }
 
 variable "vnet_id" {
