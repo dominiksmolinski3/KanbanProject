@@ -54,6 +54,12 @@ variable "key_vault_network_default_action" {
   default     = "Deny"
 }
 
+variable "allowed_ingress_cidrs" {
+  description = "IPv4 CIDR ranges allowed to reach the Container App ingress, e.g. an office address as \"203.0.113.42/32\". Intended for locking non-prod environments to the team; unusable on an environment with real users. Empty (the default) leaves ingress open to the internet; any entry turns it into an allow-list and denies everything else."
+  type        = list(string)
+  default     = []
+}
+
 variable "spring_mail_username" {
   description = "SMTP username for Spring Mail."
   type        = string
