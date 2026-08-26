@@ -12,6 +12,9 @@ resource "azurerm_key_vault" "main" {
 
   enable_rbac_authorization = true
 
+  purge_protection_enabled   = var.purge_protection_enabled
+  soft_delete_retention_days = var.soft_delete_retention_days
+
   network_acls {
     default_action             = var.network_default_action
     bypass                     = var.allow_azure_services_bypass ? "AzureServices" : "None"

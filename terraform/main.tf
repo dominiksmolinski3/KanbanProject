@@ -40,6 +40,8 @@ module "key_vault" {
   ip_rules                    = length(var.key_vault_allowed_ips) > 0 ? var.key_vault_allowed_ips : (local.caller_ip != null ? [local.caller_ip] : [])
   allow_azure_services_bypass = var.key_vault_allow_azure_services_bypass
   network_default_action      = var.key_vault_network_default_action
+  purge_protection_enabled    = var.key_vault_purge_protection_enabled
+  soft_delete_retention_days  = var.key_vault_soft_delete_retention_days
 }
 
 module "postgres" {
