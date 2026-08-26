@@ -36,6 +36,12 @@ variable "app_image_tag" {
   }
 }
 
+variable "ingress_source_address_prefixes" {
+  description = "Source ranges the backend subnet NSG allows to reach the container app on 80/443. Leave at Internet for a publicly reachable environment; narrow to office/CI CIDRs otherwise."
+  type        = list(string)
+  default     = ["Internet"]
+}
+
 variable "key_vault_allowed_ips" {
   description = <<-EOT
     Public IPv4 addresses or CIDR ranges allowed through the Key Vault firewall, in addition
@@ -62,10 +68,34 @@ variable "key_vault_allow_azure_services_bypass" {
   default     = true
 }
 
+variable "key_vault_purge_protection_enabled" {
+  description = "Block permanent deletion of the Key Vault. Once an apply enables this, Azure will not let any later apply turn it off."
+  type        = bool
+  default     = true
+}
+
+variable "key_vault_soft_delete_retention_days" {
+  description = "Days a deleted Key Vault stays recoverable and its name stays reserved. Azure treats this as immutable, so changing it replaces the vault."
+  type        = number
+  default     = 90
+}
+
+variable "key_vault_purge_soft_delete_on_destroy" {
+  description = "Whether terraform destroy permanently purges the Key Vault instead of leaving it soft-deleted. Only meaningful when key_vault_purge_protection_enabled is false."
+  type        = bool
+  default     = false
+}
+
 variable "key_vault_network_default_action" {
   description = "Key Vault network ACL default action: Allow or Deny. For dev you may set Allow."
   type        = string
   default     = "Deny"
+}
+
+variable "allowed_ingress_cidrs" {
+  description = "IPv4 CIDR ranges allowed to reach the Container App ingress, e.g. an office address as \"203.0.113.42/32\". Intended for locking non-prod environments to the team; unusable on an environment with real users. Empty (the default) leaves ingress open to the internet; any entry turns it into an allow-list and denies everything else."
+  type        = list(string)
+  default     = []
 }
 
 variable "spring_mail_username" {

@@ -9,6 +9,7 @@
 # nothing looks it up for you, on purpose -- see terraform/README.md#key-vault-network-access.
 # Find it with: (Invoke-RestMethod https://api.ipify.org)
 key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
+# allowed_ingress_cidrs = ["203.0.113.42/32"]  # optional; locks Container App ingress to these IPv4 CIDRs. Empty = open to the internet.
 # key_vault_allow_azure_services_bypass = true  # optional override
 
 spring_mail_username = "you@example.com"

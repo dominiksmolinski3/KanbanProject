@@ -1,3 +1,7 @@
+locals {
+  app_port = 8080
+}
+
 resource "azurerm_container_app" "main" {
   name                         = "kanban-app-${var.env}"
   resource_group_name          = var.resource_group_name
@@ -91,6 +95,34 @@ resource "azurerm_container_app" "main" {
         name  = "VITE_RECAPTCHA_SITE_KEY"
         value = var.vite_recaptcha_site_key
       }
+
+      startup_probe {
+        transport               = "HTTP"
+        port                    = local.app_port
+        path                    = "/actuator/health/readiness"
+        interval_seconds        = 10
+        timeout                 = 5
+        failure_count_threshold = 30
+      }
+
+      readiness_probe {
+        transport               = "HTTP"
+        port                    = local.app_port
+        path                    = "/actuator/health/readiness"
+        interval_seconds        = 10
+        timeout                 = 5
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
+
+      liveness_probe {
+        transport               = "HTTP"
+        port                    = local.app_port
+        path                    = "/actuator/health/liveness"
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 3
+      }
     }
 
     min_replicas = 1
@@ -106,8 +138,19 @@ resource "azurerm_container_app" "main" {
 
   ingress {
     external_enabled = true
-    target_port      = 8080
+    target_port      = local.app_port
     transport        = "http"
+
+    dynamic "ip_security_restriction" {
+      for_each = toset(var.allowed_ingress_cidrs)
+      content {
+        name             = "allow-${replace(ip_security_restriction.value, "/[^a-zA-Z0-9]/", "-")}"
+        description      = "Allow ${ip_security_restriction.value}"
+        ip_address_range = ip_security_restriction.value
+        action           = "Allow"
+      }
+    }
+
     traffic_weight {
       percentage      = 100
       latest_revision = true
