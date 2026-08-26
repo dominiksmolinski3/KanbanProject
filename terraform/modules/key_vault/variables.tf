@@ -26,7 +26,7 @@ variable "vnet_id" {
 }
 
 variable "ip_rules" {
-  description = "Optional list of public IPv4 addresses allowed to access the Key Vault (for dev)."
+  description = "Public IPv4 addresses or CIDR ranges allowed through the Key Vault firewall, in addition to subnet_id. Callers writing secrets from outside the VNet must be listed here."
   type        = list(string)
   default     = []
 }

@@ -98,6 +98,7 @@ Values supplied through variables:
 
 Optional (recommended):
 - `app_image_tag` - container image tag deployed to Azure Container Apps. For reproducible deployments, set this to an immutable value like the git SHA pushed by the CI pipeline.
+- `key_vault_allowed_ips` - public addresses allowed through the Key Vault firewall. Required when you apply from outside the VNet, which includes every workstation - see [Key Vault network access](#key-vault-network-access).
 
 Optional (network) - see [Container App ingress restrictions](#container-app-ingress-restrictions):
 - `allowed_ingress_cidrs` - CIDR ranges allowed to reach the app. Empty (the default) leaves ingress open to the internet.
@@ -250,6 +251,31 @@ expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
 
+### Key Vault network access
+
+The vault denies public traffic by default (`key_vault_network_default_action = "Deny"`)
+and admits two things: the backend subnet, via a service endpoint and the private
+endpoint, and whatever is listed in `key_vault_allowed_ips`. Nothing discovers an
+address for you -- the config used to look the caller's public IP up over the internet
+on every plan, which meant the committed allow-list silently became "whoever ran
+Terraform last", left that address on the vault until the next apply, and could never
+describe a CI runner with rotating egress.
+
+That matters because Terraform writes secrets over the vault's **data plane**. An apply
+from outside the VNet with no matching entry fails on `azurerm_key_vault_secret` with
+`Forbidden` / `Client address is not authorized`, which reads like the RBAC propagation
+delay below but is not -- re-running will not fix it.
+
+Pick one durable path per environment:
+
+| Where `terraform apply` runs | What to configure |
+|---|---|
+| A self-hosted runner inside the VNet | Nothing. The subnet is already allowed; leave `key_vault_allowed_ips` empty. |
+| A runner or office with a stable egress IP | Commit that address or range to the environment's `*.tfvars`. |
+| A developer workstation | Set `key_vault_allowed_ips` in the gitignored `dev.local.auto.tfvars`; find your address with `(Invoke-RestMethod https://api.ipify.org)`. Refresh it when your ISP rotates it. |
+
+Keep the committed list to addresses that do not move. A workstation address belongs in
+the local override, so it never lands in the repository or in another environment's plan.
 ### Container App ingress restrictions
 
 **What this is for: keeping non-prod environments off the public internet. It is not
