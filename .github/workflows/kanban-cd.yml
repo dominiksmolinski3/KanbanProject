@@ -29,6 +29,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and Push Docker Image
+      id: build
       uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
       with:
         context: .
@@ -54,7 +55,7 @@ jobs:
         exit-code: '1'
 
     - name: Upload scan results to the Security tab
-      if: always() && steps.scan.outcome != 'skipped'
+      if: always() && hashFiles('trivy-results.sarif') != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: trivy-results.sarif
