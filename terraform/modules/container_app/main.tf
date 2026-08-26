@@ -140,6 +140,17 @@ resource "azurerm_container_app" "main" {
     external_enabled = true
     target_port      = local.app_port
     transport        = "http"
+
+    dynamic "ip_security_restriction" {
+      for_each = toset(var.allowed_ingress_cidrs)
+      content {
+        name             = "allow-${replace(ip_security_restriction.value, "/[^a-zA-Z0-9]/", "-")}"
+        description      = "Allow ${ip_security_restriction.value}"
+        ip_address_range = ip_security_restriction.value
+        action           = "Allow"
+      }
+    }
+
     traffic_weight {
       percentage      = 100
       latest_revision = true

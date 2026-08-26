@@ -99,6 +99,9 @@ Values supplied through variables:
 Optional (recommended):
 - `app_image_tag` - container image tag deployed to Azure Container Apps. For reproducible deployments, set this to an immutable value like the git SHA pushed by the CI pipeline.
 
+Optional (network) - see [Container App ingress restrictions](#container-app-ingress-restrictions):
+- `allowed_ingress_cidrs` - CIDR ranges allowed to reach the app. Empty (the default) leaves ingress open to the internet.
+
 Optional (monitoring):
 - `alert_email` - if set, Terraform creates an Azure Monitor action group and basic Container Apps metric alerts (CPU + memory).
 
@@ -247,6 +250,19 @@ expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
 
+### Container App ingress restrictions
+
+**What this is for: keeping non-prod environments off the public internet. It is not
+a defence for prod.**.
+
+The Container App is internet-facing (`external_enabled = true`) and serves
+`/auth/**` -- login, signup, verification-code resend -- without authentication, with
+no rate limiting anywhere in the backend. `allowed_ingress_cidrs` renders one
+`ip_security_restriction` block per entry:
+
+```hcl
+allowed_ingress_cidrs = ["203.0.113.42/32", "198.51.100.0/24"]
+```
 ### Key Vault durability
 
 The vault holds the only copy of two secrets nobody can reissue: the Postgres admin

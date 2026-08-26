@@ -66,3 +66,17 @@ variable "captcha_secret" {
 variable "vite_recaptcha_site_key" {
   type = string
 }
+
+variable "allowed_ingress_cidrs" {
+  description = "IPv4 CIDR ranges allowed to reach the Container App ingress. Empty leaves ingress open to the internet."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.allowed_ingress_cidrs :
+      can(cidrhost(cidr, 0)) && !strcontains(cidr, ":")
+    ])
+    error_message = "Each allowed_ingress_cidrs entry must be an IPv4 range in CIDR notation (e.g. \"203.0.113.42/32\"). Container Apps ingress restrictions reject bare addresses and do not support IPv6."
+  }
+}
