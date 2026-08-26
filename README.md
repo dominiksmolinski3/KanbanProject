@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version 1.0.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT"/>
-  <img src="https://img.shields.io/badge/java-23-orange" alt="Java 23"/>
+  <img src="https://img.shields.io/badge/java-21-orange" alt="Java 21"/>
   <img src="https://img.shields.io/badge/react-latest-61DAFB" alt="React"/>
   <img src="https://img.shields.io/github/actions/workflow/status/danielrudzinski/KanbanProject/kanban-ci.yml?branch=main" alt="Build Status"/>
 </p>
@@ -55,7 +55,7 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 
 ## 🛠️ Technologies
 
-- **Backend**: Java 23 with Spring Boot
+- **Backend**: Java 21 with Spring Boot 3.5
 - **Frontend**: React.js
 - **Database**: PostgreSQL
 - **Containerization**: Docker
@@ -63,7 +63,7 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 
 ## 📦 Prerequisites
 
-- [Java 23](https://www.oracle.com/java/technologies/downloads/)
+- [Java 21](https://www.oracle.com/java/technologies/downloads/)
 - [Node.js 18](https://nodejs.org/) or higher
 - [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
 - [PostgreSQL](https://www.postgresql.org/) (if running locally)
