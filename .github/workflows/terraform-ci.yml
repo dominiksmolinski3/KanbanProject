@@ -1,0 +1,54 @@
+name: Terraform CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.12.2
+        terraform_wrapper: false
+
+    - name: Check formatting
+      run: terraform fmt -check -recursive -diff
+
+    - name: Initialize without backend
+      run: terraform init -backend=false -input=false -no-color
+
+    - name: Validate configuration
+      run: terraform validate -no-color
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Scan with Checkov
+      continue-on-error: true
+      working-directory: .
+      run: |
+        pip install checkov
+        checkov --directory terraform --framework terraform \
+          --skip-path '\.terraform' --compact --quiet --soft-fail
