@@ -15,7 +15,7 @@ resource "azurerm_key_vault" "main" {
   network_acls {
     default_action             = var.network_default_action
     bypass                     = var.allow_azure_services_bypass ? "AzureServices" : "None"
-    virtual_network_subnet_ids = [var.subnet_id]
+    virtual_network_subnet_ids = [var.allowed_subnet_id]
     ip_rules                   = var.ip_rules
   }
 }
@@ -47,7 +47,7 @@ resource "azurerm_private_endpoint" "kv" {
   name                = "pe-kv-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = var.subnet_id
+  subnet_id           = var.private_endpoint_subnet_id
 
   private_service_connection {
     name                           = "psc-kv-${var.env}"
