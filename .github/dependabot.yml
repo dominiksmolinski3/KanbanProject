@@ -1,0 +1,17 @@
+version: 2
+
+updates:
+  # Workflow `uses:` refs are pinned to commit SHAs (supply-chain hardening), which
+  # means they no longer follow the moving major tags. Dependabot rewrites the SHA
+  # and the trailing `# vX.Y.Z` comment so the pins keep receiving upstream fixes.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ops
+      include: scope
+    groups:
+      actions:
+        patterns:
+          - "*"
