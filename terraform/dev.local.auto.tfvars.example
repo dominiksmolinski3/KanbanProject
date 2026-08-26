@@ -5,6 +5,7 @@
 # subscription_id = "00000000-0000-0000-0000-000000000000"
 
 key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
+# allowed_ingress_cidrs = ["203.0.113.42/32"]  # optional; locks Container App ingress to these IPv4 CIDRs. Empty = open to the internet.
 # key_vault_allow_azure_services_bypass = true  # optional override
 
 spring_mail_username = "you@example.com"
