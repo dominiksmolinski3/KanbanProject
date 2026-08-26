@@ -4,6 +4,10 @@
 # Optional: set this if Terraform cannot determine the subscription from Azure CLI.
 # subscription_id = "00000000-0000-0000-0000-000000000000"
 
+# Terraform writes secrets to Key Vault over its data plane, and the vault denies public
+# traffic by default. Applying from a workstation therefore needs your own public IP here;
+# nothing looks it up for you, on purpose -- see terraform/README.md#key-vault-network-access.
+# Find it with: (Invoke-RestMethod https://api.ipify.org)
 key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
 # key_vault_allow_azure_services_bypass = true  # optional override
 

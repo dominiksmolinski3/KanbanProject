@@ -37,9 +37,23 @@ variable "app_image_tag" {
 }
 
 variable "key_vault_allowed_ips" {
-  description = "Optional list of IPv4 addresses allowed to access Key Vault (dev convenience)."
+  description = <<-EOT
+    Public IPv4 addresses or CIDR ranges allowed through the Key Vault firewall, in addition
+    to the backend subnet. Terraform writes secrets over the data plane, so whoever runs
+    `terraform apply` from outside the VNet has to appear in this list. Record stable egress
+    addresses here (a self-hosted runner, an office range); for local development set your own
+    address in the gitignored dev.local.auto.tfvars rather than committing it.
+  EOT
   type        = list(string)
   default     = []
+
+  validation {
+    condition = alltrue([
+      for ip in var.key_vault_allowed_ips :
+      can(cidrnetmask(strcontains(ip, "/") ? ip : "${ip}/32"))
+    ])
+    error_message = "Every key_vault_allowed_ips entry must be an IPv4 address (203.0.113.42) or CIDR range (203.0.113.0/24). Azure rejects the whole ACL if one entry is malformed."
+  }
 }
 
 variable "key_vault_allow_azure_services_bypass" {

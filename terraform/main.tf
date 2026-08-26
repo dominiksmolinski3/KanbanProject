@@ -11,15 +11,6 @@ resource "azurerm_log_analytics_workspace" "main" {
   retention_in_days   = 30
 }
 
-data "http" "myip" {
-  url = "https://api.ipify.org"
-}
-
-locals {
-  caller_ip_raw = trimspace(data.http.myip.response_body)
-  caller_ip = can(cidrnetmask("${local.caller_ip_raw}/32")) ? local.caller_ip_raw : null
-}
-
 module "vnet" {
   source                     = "./modules/vnet"
   resource_group_name        = azurerm_resource_group.main.name
@@ -35,7 +26,7 @@ module "key_vault" {
   env                         = var.env
   subnet_id                   = module.vnet.backend_subnet_id
   vnet_id                     = module.vnet.id
-  ip_rules                    = length(var.key_vault_allowed_ips) > 0 ? var.key_vault_allowed_ips : (local.caller_ip != null ? [local.caller_ip] : [])
+  ip_rules                    = var.key_vault_allowed_ips
   allow_azure_services_bypass = var.key_vault_allow_azure_services_bypass
   network_default_action      = var.key_vault_network_default_action
 }
