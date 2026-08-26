@@ -21,5 +21,10 @@ terraform {
 provider "azurerm" {
   use_cli         = true
   subscription_id = var.subscription_id
-  features {}
+
+  features {
+    key_vault {
+      purge_soft_delete_on_destroy = var.key_vault_purge_soft_delete_on_destroy
+    }
+  }
 }

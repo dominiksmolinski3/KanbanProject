@@ -41,3 +41,4 @@ secrets.yaml
 terraform/dev.local.auto.tfvars
 terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
+/.claude

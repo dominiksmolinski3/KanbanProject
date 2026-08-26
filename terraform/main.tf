@@ -12,11 +12,12 @@ resource "azurerm_log_analytics_workspace" "main" {
 }
 
 module "vnet" {
-  source                     = "./modules/vnet"
-  resource_group_name        = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  env                        = var.env
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  source                          = "./modules/vnet"
+  resource_group_name             = azurerm_resource_group.main.name
+  location                        = azurerm_resource_group.main.location
+  env                             = var.env
+  log_analytics_workspace_id      = azurerm_log_analytics_workspace.main.id
+  ingress_source_address_prefixes = var.ingress_source_address_prefixes
 }
 
 module "key_vault" {
@@ -24,11 +25,14 @@ module "key_vault" {
   resource_group_name         = azurerm_resource_group.main.name
   location                    = azurerm_resource_group.main.location
   env                         = var.env
-  subnet_id                   = module.vnet.backend_subnet_id
+  allowed_subnet_id           = module.vnet.backend_subnet_id
+  private_endpoint_subnet_id  = module.vnet.private_endpoint_subnet_id
   vnet_id                     = module.vnet.id
   ip_rules                    = var.key_vault_allowed_ips
   allow_azure_services_bypass = var.key_vault_allow_azure_services_bypass
   network_default_action      = var.key_vault_network_default_action
+  purge_protection_enabled    = var.key_vault_purge_protection_enabled
+  soft_delete_retention_days  = var.key_vault_soft_delete_retention_days
 }
 
 module "postgres" {
@@ -56,6 +60,7 @@ module "container_app" {
   env                     = var.env
   container_app_env_id    = module.vnet.container_app_env_id
   app_image_tag           = var.app_image_tag
+  allowed_ingress_cidrs   = var.allowed_ingress_cidrs
   postgres_server_name    = module.postgres.postgres_server_name
   postgres_db_name        = module.postgres.postgres_db_name
   key_vault_uri           = module.key_vault.uri
