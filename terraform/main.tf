@@ -61,8 +61,6 @@ module "container_app" {
   container_app_env_id    = module.vnet.container_app_env_id
   app_image_tag           = var.app_image_tag
   allowed_ingress_cidrs   = var.allowed_ingress_cidrs
-  postgres_server_name    = module.postgres.postgres_server_name
-  postgres_db_name        = module.postgres.postgres_db_name
   key_vault_uri           = module.key_vault.uri
   key_vault_id            = module.key_vault.id
   github_repository_owner = var.github_repository_owner
@@ -70,7 +68,6 @@ module "container_app" {
   spring_mail_password    = var.spring_mail_password
   captcha_enabled         = var.captcha_enabled
   captcha_secret          = var.captcha_secret
-  vite_recaptcha_site_key = var.vite_recaptcha_site_key
 
   depends_on = [module.key_vault, module.postgres]
 }

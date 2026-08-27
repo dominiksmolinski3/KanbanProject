@@ -123,12 +123,6 @@ variable "captcha_secret" {
   default     = ""
 }
 
-variable "vite_recaptcha_site_key" {
-  description = "Frontend reCAPTCHA site key (Vite env)."
-  type        = string
-  default     = ""
-}
-
 variable "alert_email" {
   description = "Optional email address to receive Azure Monitor alerts. If empty, alerts are not created."
   type        = string
