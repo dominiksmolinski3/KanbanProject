@@ -14,14 +14,6 @@ variable "container_app_env_id" {
   type = string
 }
 
-variable "postgres_server_name" {
-  type = string
-}
-
-variable "postgres_db_name" {
-  type = string
-}
-
 variable "key_vault_uri" {
   type = string
 }
@@ -61,10 +53,6 @@ variable "captcha_enabled" {
 variable "captcha_secret" {
   type      = string
   sensitive = true
-}
-
-variable "vite_recaptcha_site_key" {
-  type = string
 }
 
 variable "allowed_ingress_cidrs" {

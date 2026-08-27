@@ -91,10 +91,6 @@ resource "azurerm_container_app" "main" {
         secret_name = "captcha-secret"
       }
 
-      env {
-        name  = "VITE_RECAPTCHA_SITE_KEY"
-        value = var.vite_recaptcha_site_key
-      }
 
       startup_probe {
         transport               = "HTTP"
