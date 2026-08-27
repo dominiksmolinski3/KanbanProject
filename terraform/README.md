@@ -92,7 +92,6 @@ Values supplied through variables:
 - `spring_mail_password`
 - `captcha_enabled`
 - `captcha_secret`
-- `vite_recaptcha_site_key`
 
 `jwt_secret_key` is **not** an input -- Terraform generates it. See [Secrets](#secrets).
 
