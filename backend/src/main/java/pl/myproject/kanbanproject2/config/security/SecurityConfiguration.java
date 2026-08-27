@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.config.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,11 +15,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
+import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(AuthRateLimitProperties.class)
 public class SecurityConfiguration {
 
     private static final String[] PUBLIC_AUTH_ENDPOINTS = {
@@ -43,13 +51,25 @@ public class SecurityConfiguration {
 
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthRateLimitProperties authRateLimitProperties;
+    private final AuthRateLimiter authRateLimiter;
+    private final ClientIpResolver clientIpResolver;
+    private final ObjectMapper objectMapper;
 
     public SecurityConfiguration(
             JwtAuthenticationFilter jwtAuthenticationFilter,
-            AuthenticationProvider authenticationProvider
+            AuthenticationProvider authenticationProvider,
+            AuthRateLimitProperties authRateLimitProperties,
+            AuthRateLimiter authRateLimiter,
+            ClientIpResolver clientIpResolver,
+            ObjectMapper objectMapper
     ) {
         this.authenticationProvider = authenticationProvider;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authRateLimitProperties = authRateLimitProperties;
+        this.authRateLimiter = authRateLimiter;
+        this.clientIpResolver = clientIpResolver;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -70,6 +90,15 @@ public class SecurityConfiguration {
                 )
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        if (authRateLimitProperties.enabled()) {
+            // Built here rather than declared as a bean on purpose: Spring Boot auto-registers any
+            // Filter bean against the servlet container as well, which would run it ahead of the
+            // CORS filter and strip the CORS headers off a 429.
+            http.addFilterAfter(
+                    new AuthRateLimitFilter(authRateLimiter, clientIpResolver, objectMapper),
+                    CorsFilter.class);
+        }
 
         return http.build();
     }

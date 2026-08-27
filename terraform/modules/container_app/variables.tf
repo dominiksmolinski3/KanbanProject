@@ -68,3 +68,14 @@ variable "allowed_ingress_cidrs" {
     error_message = "Each allowed_ingress_cidrs entry must be an IPv4 range in CIDR notation (e.g. \"203.0.113.42/32\"). Container Apps ingress restrictions reject bare addresses and do not support IPv6."
   }
 }
+
+variable "ingress_trusted_proxy_count" {
+  description = "How many reverse proxies sit in front of the app, counted from the app outwards. Container Apps ingress is one hop; putting Front Door in front of it would make this 2. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count
+    error_message = "ingress_trusted_proxy_count must be a non-negative whole number."
+  }
+}
