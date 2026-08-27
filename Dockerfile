@@ -1,5 +1,5 @@
 # Stage 1: Build frontend
-FROM node:24.6.0-alpine3.22 AS frontend-build
+FROM node:24.6.0-alpine3.22@sha256:51dbfc749ec3018c7d4bf8b9ee65299ff9a908e38918ce163b0acfcd5dd931d9 AS frontend-build
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
@@ -9,7 +9,7 @@ ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
 # Stage 2: Build the backend jar with the frontend bundled in
-FROM eclipse-temurin:21-jdk-noble AS backend-build
+FROM eclipse-temurin:21-jdk-noble@sha256:75ce56643243c3db632be2ef259625fb42ee3be1334389659f7a1a61acb78783 AS backend-build
 WORKDIR /build
 
 # Copy the build files first so the wrapper layer survives source-only changes
@@ -25,7 +25,7 @@ COPY --from=frontend-build /frontend/dist/ ./src/main/resources/static/
 RUN ./mvnw package -Dmaven.test.skip=true
 
 # Stage 3: Run the application on a JRE, with only the jar
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:21-jre-noble@sha256:96975602e131485862eb8cd32927face8a06d7591a5e865944b634a701d9df72
 WORKDIR /app
 
 RUN groupadd --system --gid 10001 appuser \
