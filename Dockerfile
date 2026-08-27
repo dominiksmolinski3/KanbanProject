@@ -37,4 +37,6 @@ COPY --from=backend-build --chown=10001:10001 /build/target/*.jar app.jar
 USER 10001:10001
 
 EXPOSE 8080
-CMD ["java", "-jar", "app.jar"]
+
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=60.0"
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
