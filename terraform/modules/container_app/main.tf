@@ -90,6 +90,10 @@ resource "azurerm_container_app" "main" {
         name        = "CAPTCHA_SECRET"
         secret_name = "captcha-secret"
       }
+      env {
+        name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
+        value = tostring(var.ingress_trusted_proxy_count)
+      }
 
 
       startup_probe {

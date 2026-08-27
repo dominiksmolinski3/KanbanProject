@@ -23,6 +23,7 @@ public enum ExceptionIdentifier {
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),
     EMAIL_SEND_FAILED(INTERNAL_SERVER_ERROR, "Failed to send the email message"),
+    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Too many requests, please try again later"),
 
     TASK_NOT_FOUND(NOT_FOUND, "Task not found"),
     SUBTASK_NOT_FOUND(NOT_FOUND, "Subtask not found"),
