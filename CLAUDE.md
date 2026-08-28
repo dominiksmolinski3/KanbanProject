@@ -118,6 +118,8 @@ Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_D
 
 This is a monolith, not two services. The Dockerfile builds `frontend/` with Vite, copies `dist/` into `backend/src/main/resources/static/`, then builds the Spring Boot jar — so in production React is served by Spring Boot from the same origin on port 8080, and `api.js` calling bare paths like `/columns` just works.
 
+Because the jar serves the bundle, Spring Security has to let the bundle through: `/assets/**` (Vite's hashed JS/CSS) and `/locales/**` (the runtime i18n files) are in `PUBLIC_STATIC_ASSETS` alongside root-level files. Single-segment patterns like `/*.js` do **not** match `/assets/index-<hash>.js` — `*` never crosses a `/` — and getting this wrong serves `index.html` and then 403s the script that boots it. `PublicBundlePathsTest` locks the whole set down; nothing else does, since Jest stubs `fetch` and Cypress runs against the Vite dev server.
+
 In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](frontend/vite.config.js) proxies each top-level API prefix (`/api`, `/columns`, `/tasks`, `/users`, `/rows`, `/subtasks`, `/files`, `/auth`) to the backend. **Adding a new top-level backend route means adding a matching proxy entry**, or it will 404 in dev while working in Docker.
 
 ### Backend layering

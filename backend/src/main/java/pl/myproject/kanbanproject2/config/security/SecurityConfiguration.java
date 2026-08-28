@@ -43,7 +43,17 @@ public class SecurityConfiguration {
             "/error"
     };
 
+    /*
+     * Everything a browser fetches before it holds a token.
+     *
+     * The single-segment patterns cover the files Vite copies to the bundle root (favicon, logo);
+     * the two directory patterns are the ones that actually matter, because `*` does not cross a
+     * `/` and the app's own code does not sit at the root. Vite emits the bundle to
+     * `/assets/index-<hash>.js`, and i18next fetches `/locales/<lang>/translation.json` at runtime.
+     * Without both, the container serves index.html and then 403s the script that would boot it.
+     */
     private static final String[] PUBLIC_STATIC_ASSETS = {
+            "/assets/**", "/locales/**",
             "/*.html", "/*.js", "/*.css", "/*.ico", "/*.json",
             "/*.png", "/*.svg", "/*.jpg", "/*.jpeg", "/*.gif",
             "/*.webp", "/*.woff", "/*.woff2", "/*.ttf"
