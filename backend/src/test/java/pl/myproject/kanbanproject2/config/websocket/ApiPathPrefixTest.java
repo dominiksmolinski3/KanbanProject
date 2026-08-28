@@ -13,8 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.servlet.mvc.ParameterizableViewController;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import pl.myproject.kanbanproject2.config.SpaRoutes;
 
 import java.util.Set;
 import java.util.TreeSet;
@@ -80,6 +83,20 @@ class ApiPathPrefixTest {
                 .withFailMessage("These declare /api themselves and would be served at /api/api/...: %s",
                         offenders)
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("every client route forwards to the shell, so a refresh does not 404")
+    void forwardsClientRoutesToTheShell() {
+        contextRunner.run(context -> {
+            SimpleUrlHandlerMapping viewControllers =
+                    context.getBean("viewControllerHandlerMapping", SimpleUrlHandlerMapping.class);
+
+            assertThat(viewControllers.getUrlMap()).containsOnlyKeys(SpaRoutes.ALL);
+            assertThat(viewControllers.getUrlMap().values())
+                    .allSatisfy(handler -> assertThat(((ParameterizableViewController) handler).getViewName())
+                            .isEqualTo("forward:/index.html"));
+        });
     }
 
     private static Set<String> mappedPatterns(RequestMappingHandlerMapping mapping) {

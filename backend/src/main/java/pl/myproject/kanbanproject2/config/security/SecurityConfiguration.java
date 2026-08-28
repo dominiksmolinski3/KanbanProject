@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import pl.myproject.kanbanproject2.config.SpaRoutes;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
@@ -93,6 +94,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/").permitAll()
+                        // The shell only; every route behind it reads its data from /api/**.
+                        .requestMatchers(SpaRoutes.ALL).permitAll()
                         .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(PUBLIC_INFRA_ENDPOINTS).permitAll()
                         .requestMatchers(PUBLIC_STATIC_ASSETS).permitAll()
