@@ -116,11 +116,13 @@ Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_D
 
 ### One deployable, two source trees
 
-This is a monolith, not two services. The Dockerfile builds `frontend/` with Vite, copies `dist/` into `backend/src/main/resources/static/`, then builds the Spring Boot jar — so in production React is served by Spring Boot from the same origin on port 8080, and `api.js` calling bare paths like `/columns` just works.
+This is a monolith, not two services. The Dockerfile builds `frontend/` with Vite, copies `dist/` into `backend/src/main/resources/static/`, then builds the Spring Boot jar — so in production React is served by Spring Boot from the same origin on port 8080, and `api.js` calling relative paths like `/api/columns` just works.
 
 Because the jar serves the bundle, Spring Security has to let the bundle through: `/assets/**` (Vite's hashed JS/CSS) and `/locales/**` (the runtime i18n files) are in `PUBLIC_STATIC_ASSETS` alongside root-level files. Single-segment patterns like `/*.js` do **not** match `/assets/index-<hash>.js` — `*` never crosses a `/` — and getting this wrong serves `index.html` and then 403s the script that boots it. `PublicBundlePathsTest` locks the whole set down; nothing else does, since Jest stubs `fetch` and Cypress runs against the Vite dev server.
 
-In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](frontend/vite.config.js) proxies each top-level API prefix (`/api`, `/columns`, `/tasks`, `/users`, `/rows`, `/subtasks`, `/files`, `/auth`) to the backend. **Adding a new top-level backend route means adding a matching proxy entry**, or it will 404 in dev while working in Docker.
+In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (SockJS) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
+
+**Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch` + `HandlerTypePredicate.forAnnotation(RestController.class)`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
 ### Backend layering
 
@@ -153,9 +155,9 @@ Drag payloads are typed through `dataTransfer` MIME types — `application/task`
 
 ### Auth
 
-JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration-time`). `/auth/**` (signup, login, verify, resend), `/actuator/**`, `/ws/**`, and static assets are public; everything else requires authentication. Signup goes through an emailed verification code before login works, and login can require a Google reCAPTCHA check.
+JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend), the health/info actuator endpoints, `/ws/**`, the SPA shell and the static bundle are public; everything else — the whole of `/api/**` — requires authentication. Signup goes through an emailed verification code before login works, and login can require a Google reCAPTCHA check.
 
-On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches `window.fetch` at module load to attach `Authorization` from `localStorage`, skipping `/auth/` URLs and redirecting to `/` on expiry. Because it wraps the global, tests and any code path using `fetch` inherit it.
+On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches `window.fetch` at module load to attach `Authorization` from `localStorage`, skipping any URL containing `/auth/` (which still matches the prefixed `/api/auth/...`) and redirecting to `/` on expiry. Because it wraps the global, tests and any code path using `fetch` inherit it.
 
 CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/WebSocketConfig.java).
 

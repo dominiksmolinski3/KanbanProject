@@ -29,10 +29,10 @@ import java.util.List;
 public class SecurityConfiguration {
 
     private static final String[] PUBLIC_AUTH_ENDPOINTS = {
-            "/auth/signup",
-            "/auth/login",
-            "/auth/verify",
-            "/auth/resend"
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/verify",
+            "/api/auth/resend"
     };
 
     private static final String[] PUBLIC_INFRA_ENDPOINTS = {

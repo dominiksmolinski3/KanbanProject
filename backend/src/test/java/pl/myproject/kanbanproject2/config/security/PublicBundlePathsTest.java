@@ -63,10 +63,30 @@ class PublicBundlePathsTest {
                 "/locales/ja/translation.json");
     }
 
+    @Test
+    @DisplayName("opening the bundle up did not open up the API behind it")
+    void stillGuardsTheApi() {
+        assertDenied(
+                "/api/users",
+                "/api/users/me",
+                "/api/tasks",
+                "/api/tasks/1/column-history",
+                "/api/columns",
+                "/api/rows",
+                "/api/subtasks",
+                "/api/files/1");
+    }
+
     private void assertPermitted(String... uris) {
         forEach(uris, (uri, status) -> assertThat(status)
                 .withFailMessage("%s should be public for an anonymous browser, got %d", uri, status)
                 .isEqualTo(SC_OK));
+    }
+
+    private void assertDenied(String... uris) {
+        forEach(uris, (uri, status) -> assertThat(status)
+                .withFailMessage("%s should require authentication, got %d", uri, status)
+                .isNotEqualTo(SC_OK));
     }
 
     private void forEach(String[] uris, StatusAssertion assertion) {
