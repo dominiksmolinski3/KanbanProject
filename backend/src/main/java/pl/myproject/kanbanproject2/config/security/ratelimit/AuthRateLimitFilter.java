@@ -23,7 +23,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * Throttles the four unauthenticated {@code /auth/**} endpoints.
+ * Throttles the four unauthenticated {@code /api/auth/**} endpoints.
  *
  * <p>Every request is charged twice, once against the caller's address and once against the email
  * it targets, and either bucket running dry ends the request with {@code 429} and a

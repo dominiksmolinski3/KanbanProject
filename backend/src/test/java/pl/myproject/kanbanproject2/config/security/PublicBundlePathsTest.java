@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import pl.myproject.kanbanproject2.config.SpaRoutes;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
@@ -63,10 +64,49 @@ class PublicBundlePathsTest {
                 "/locales/ja/translation.json");
     }
 
+    @Test
+    @DisplayName("a deep link to a client route reaches the app shell rather than a 403")
+    void servesTheShellOnClientRoutes() {
+        assertPermitted(SpaRoutes.ALL);
+    }
+
+    @Test
+    @DisplayName("opening the bundle up did not open up the API behind it")
+    void stillGuardsTheApi() {
+        assertDenied(
+                "/api/users",
+                "/api/users/me",
+                "/api/tasks",
+                "/api/tasks/1/column-history",
+                "/api/columns",
+                "/api/rows",
+                "/api/subtasks",
+                "/api/files/1");
+    }
+
+    @Test
+    @DisplayName("the shell being public did not make the data behind it public")
+    void separatesTheShellFromItsData() {
+        // /users is the one path that is both: the page is public, because the browser has to load
+        // it before it has a token to load anything else with. The list of users it renders is not.
+        assertPermitted("/users");
+        assertDenied("/api/users");
+
+        // Nothing is served on the other unprefixed API paths now, and nothing opened them up
+        // either — a matcher drifting back to them would be silent otherwise.
+        assertDenied("/tasks", "/columns", "/rows", "/subtasks", "/files");
+    }
+
     private void assertPermitted(String... uris) {
         forEach(uris, (uri, status) -> assertThat(status)
                 .withFailMessage("%s should be public for an anonymous browser, got %d", uri, status)
                 .isEqualTo(SC_OK));
+    }
+
+    private void assertDenied(String... uris) {
+        forEach(uris, (uri, status) -> assertThat(status)
+                .withFailMessage("%s should require authentication, got %d", uri, status)
+                .isNotEqualTo(SC_OK));
     }
 
     private void forEach(String[] uris, StatusAssertion assertion) {

@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The two kinds of abuse the public {@code /auth/**} endpoints are open to. They need different
+ * The two kinds of abuse the public {@code /api/auth/**} endpoints are open to. They need different
  * limits because they cost different things: a wrong password costs a database round trip, while
  * a signup costs an outbound email against a shared Gmail quota.
  */
@@ -16,10 +16,10 @@ public enum AuthRateLimitRule {
     /** Making the app send mail on demand, which burns quota and sender reputation. */
     EMAIL;
 
-    static final String LOGIN_PATH = "/auth/login";
-    static final String VERIFY_PATH = "/auth/verify";
-    static final String SIGNUP_PATH = "/auth/signup";
-    static final String RESEND_PATH = "/auth/resend";
+    static final String LOGIN_PATH = "/api/auth/login";
+    static final String VERIFY_PATH = "/api/auth/verify";
+    static final String SIGNUP_PATH = "/api/auth/signup";
+    static final String RESEND_PATH = "/api/auth/resend";
 
     private static final Map<String, AuthRateLimitRule> BY_PATH = Map.of(
             LOGIN_PATH, CREDENTIALS,

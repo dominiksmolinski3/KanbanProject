@@ -156,15 +156,20 @@ class AuthRateLimiterTest {
     @Test
     @DisplayName("every limited path maps to a rule, and nothing else does")
     void mapsOnlyTheLimitedPaths() {
-        assertThat(AuthRateLimitRule.forPath("/auth/login")).contains(CREDENTIALS);
-        assertThat(AuthRateLimitRule.forPath("/auth/verify")).contains(CREDENTIALS);
-        assertThat(AuthRateLimitRule.forPath("/auth/signup")).contains(EMAIL);
-        assertThat(AuthRateLimitRule.forPath("/auth/resend")).contains(EMAIL);
+        assertThat(AuthRateLimitRule.forPath("/api/auth/login")).contains(CREDENTIALS);
+        assertThat(AuthRateLimitRule.forPath("/api/auth/verify")).contains(CREDENTIALS);
+        assertThat(AuthRateLimitRule.forPath("/api/auth/signup")).contains(EMAIL);
+        assertThat(AuthRateLimitRule.forPath("/api/auth/resend")).contains(EMAIL);
 
-        assertThat(AuthRateLimitRule.forPath("/auth/login/")).isEmpty();
-        assertThat(AuthRateLimitRule.forPath("/AUTH/LOGIN")).isEmpty();
-        assertThat(AuthRateLimitRule.forPath("/tasks")).isEmpty();
+        assertThat(AuthRateLimitRule.forPath("/api/auth/login/")).isEmpty();
+        assertThat(AuthRateLimitRule.forPath("/API/AUTH/LOGIN")).isEmpty();
+        assertThat(AuthRateLimitRule.forPath("/api/tasks")).isEmpty();
         assertThat(AuthRateLimitRule.forPath(null)).isEmpty();
+
+        // The endpoints moved under /api with the global path prefix. Matching the old paths would
+        // mean the limiter is guarding URLs nothing serves any more, while the live ones run free.
+        assertThat(AuthRateLimitRule.forPath("/auth/login")).isEmpty();
+        assertThat(AuthRateLimitRule.forPath("/auth/signup")).isEmpty();
     }
 
     private int allowedInARow(AuthRateLimitRule rule, AuthRateLimitDimension dimension, String key) {
