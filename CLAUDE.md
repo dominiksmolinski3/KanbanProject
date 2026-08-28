@@ -101,7 +101,7 @@ npm run cypress:run          # Cypress headless (alias: npm run test:e2e)
 
 Cypress `baseUrl` is `http://localhost:5173`, so the Vite dev server **and** the backend must both be running before E2E tests.
 
-The README lists `./mvn test`, `npm run cypress`, and `npm run cypress:headless` — none of those exist. Use the commands above.
+The README documents these same commands; keep the two in sync when a script is renamed.
 
 ### Full stack via Docker
 
@@ -110,7 +110,7 @@ docker-compose up -d      # app on :8080, postgres on :5432
 docker-compose down
 ```
 
-Requires a root `.env` supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`.
+Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`.
 
 ## Architecture
 
@@ -163,11 +163,11 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 
 ### Configuration and secrets
 
-`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values. `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
+`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
 
 `spring.jpa.hibernate.ddl-auto=update` means Hibernate owns the schema at runtime. `backend/db.sql` is only mounted as a Postgres init script by docker-compose and covers a small subset of the tables — it is not a migration system, so schema changes come from entity edits, and there is no Flyway/Liquibase here.
 
-Captcha is split across the build boundary: the frontend renders the widget only if `VITE_RECAPTCHA_SITE_KEY` was baked in at Vite build time (it is a Docker `ARG`), while the backend verifies against `CAPTCHA_SECRET` and can be switched off with `CAPTCHA_ENABLED=false`.
+Captcha is currently frontend-only: the widget renders if `VITE_RECAPTCHA_SITE_KEY` was baked in at Vite build time (it is a Docker `ARG`), and `authService.js` sends the token as `captcha: { token }`, but no backend code reads it — `CAPTCHA_SECRET` / `CAPTCHA_ENABLED` are plumbed through docker-compose and Terraform to a server-side check that does not exist yet, so the token is silently ignored.
 
 ### CI/CD and infrastructure
 

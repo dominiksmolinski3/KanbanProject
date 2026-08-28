@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/danielrudzinski/KanbanProject/main/frontend/public/kanban-logo.png" alt="KanbanProject Logo" width="200"/>
+  <img src="frontend/public/kanban-logo.png" alt="KanbanProject Logo" width="200"/>
 </p>
 
 <h1 align="center">KanbanProject</h1>
@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT"/>
   <img src="https://img.shields.io/badge/java-21-orange" alt="Java 21"/>
   <img src="https://img.shields.io/badge/react-latest-61DAFB" alt="React"/>
-  <img src="https://img.shields.io/github/actions/workflow/status/danielrudzinski/KanbanProject/kanban-ci.yml?branch=main" alt="Build Status"/>
+  <img src="https://img.shields.io/github/actions/workflow/status/dominiksmolinski3/KanbanProject/kanban-ci.yml?branch=main" alt="Build Status"/>
 </p>
 
 <p align="center">
@@ -32,8 +32,8 @@
   - [Running Locally](#running-locally)
 - [📝 Usage](#-usage)
 - [🏗️ Project Structure](#️-project-structure)
+- [☁️ Deployment & Infrastructure](#️-deployment--infrastructure)
 - [🧪 Testing](#-testing)
-- [❓ Troubleshooting & FAQ](#-troubleshooting--faq)
 - [👥 Contributing](#-contributing)
 - [👨‍💻 Authors](#-authors)
 - [📄 License](#-license)
@@ -74,7 +74,7 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/danielrudzinski/KanbanProject.git
+git clone https://github.com/dominiksmolinski3/KanbanProject.git
 cd KanbanProject
 ```
 
@@ -85,14 +85,20 @@ cd KanbanProject
 The easiest way to run the application is using Docker, which handles all dependencies:
 
 1. Make sure Docker and Docker Compose are installed on your system
-2. From the project root directory, run:
+2. From the project root directory, create your environment file and fill in the values:
+
+```bash
+cp .env.example .env
+```
+
+3. Start the stack:
 
 ```bash
 docker-compose up -d
 ```
 
-3. The application will be available at [http://localhost:8080](http://localhost:8080)
-4. To stop the application:
+4. The application will be available at [http://localhost:8080](http://localhost:8080)
+5. To stop the application:
 
 ```bash
 docker-compose down
@@ -109,19 +115,26 @@ cd backend
 ```
 
 2. Configure the database and secrets:
-   - Update `src/main/resources/application.properties` with your PostgreSQL connection settings
-   Mainly these lines:
-      - spring.datasource.url= (leave this as it is, except SPRING_DATASOURCE_DB:kanban <- edit this with your db's name)
-      - server.port= (leave as is)
-      - spring.datasource.username= (your login username for postgresql)
-      - spring.datasource.password= (your passowrd for postgresql)
-      - SPRING_MAIL_USERNAME = (your smtp mail login)
-      - SPRING_MAIL_PASSWORD = (your mail's password or more likely auth token)
-      - security.jwt.secret-key = (random jwt key, generate it online)
 
-  OR
+   `application.properties` resolves every secret from the environment and imports an optional
+   `.env` file from the working directory, so **no credentials belong in `application.properties`** --
+   leave that file as it is. Copy the template instead and fill it in:
 
-  Create .env file with these values in root folder AND /backend folder and leave application.properties as is.
+```bash
+cp .env.example .env
+```
+
+   | Variable | Description |
+   | --- | --- |
+   | `SPRING_DATASOURCE_URL` | JDBC URL, e.g. `jdbc:postgresql://localhost:5432/kanban` |
+   | `SPRING_DATASOURCE_USERNAME` | PostgreSQL user |
+   | `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password |
+   | `JWT_SECRET_KEY` | JWT signing key -- generate one, e.g. `openssl rand -base64 32` |
+   | `SPRING_MAIL_USERNAME` | SMTP account that sends the signup verification codes |
+   | `SPRING_MAIL_PASSWORD` | SMTP password or app token |
+
+   `.env` is gitignored. Docker Compose uses its own `.env` in the repository root -- see
+   [Using Docker](#-using-docker).
 
 3. Build and run the backend:
 
@@ -140,10 +153,10 @@ The backend will start on [http://localhost:8080](http://localhost:8080)
 cd frontend
 ```
 
-2. Install dependencies:
+2. Install dependencies (the legacy flag is required -- the dependency tree has peer conflicts):
 
 ```bash
-npm install
+npm ci --legacy-peer-deps
 ```
 
 3. Start the frontend application:
@@ -165,7 +178,7 @@ The frontend will be available at [http://localhost:5173](http://localhost:5173)
 
 ## 🏗️ Project Structure
 
-The project is organized into two main directories:
+The project is organized as follows:
 
 - `/backend` - Java Spring Boot application
    - /src/main/java - Java source code
@@ -175,6 +188,31 @@ The project is organized into two main directories:
    - /src/components - React components
    - /src/services - API services
    - /src/styles - CSS and styling
+- `/terraform` - Azure infrastructure as code
+- `/.github/workflows` - CI/CD pipelines
+
+## ☁️ Deployment & Infrastructure
+
+Every push to `main` builds the root [Dockerfile](Dockerfile) -- the Vite bundle is baked into the
+Spring Boot jar, so a single container serves both -- scans the result with Trivy and publishes it to
+the GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/dominiksmolinski3/kanbanproject-app:latest
+```
+
+Images are tagged with the commit SHA as well, and `:latest` is only promoted after the vulnerability
+scan passes.
+
+The Azure environment behind it -- Container Apps running under a user-assigned managed identity, a
+PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, a Key
+Vault reached over a private endpoint, plus the VNet/NSGs and Log Analytics -- is defined as Terraform
+in [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the
+Azure RBAC prerequisites and the per-environment state layout.
+
+Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
+Postgres service container, frontend build/lint/Jest), `kanban-cd.yml` (build, scan, push, promote) and
+`codeql.yml` (CodeQL analysis of the Java backend).
 
 ## 🧪 Testing
 The project uses JUnit, Mockito, Jest, Eslint and Cypress for linting checks, unit, integration and e2e testing. Test coverage is monitored with JaCoCo.
@@ -187,15 +225,16 @@ To run backend tests (from root folder):
 
 ``` bash
 cd backend
-./mvn test
+./mvnw test              # on Windows: mvnw.cmd test
 ```
 
 To generate a test coverage report:
-```bash
-./mvn clean test jacoco:report
 
+```bash
+./mvnw clean test jacoco:report
 ```
-The coverage report will be available at site>jacoco>index.html
+
+The coverage report will be available at `backend/target/site/jacoco/index.html`.
 
 ### Running Frontend Tests
 
@@ -206,10 +245,12 @@ cd frontend
 npm test                  # Run Jest unit tests
 npm run test:coverage     # Generate Jest test coverage report
 npm run lint              # Run ESLint code quality checks
-npm run cypress           # Open Cypress test runner for E2E tests
-npm run cypress:headless  # Run Cypress tests in headless mode
+npm run cypress:open      # Open Cypress test runner for E2E tests
+npm run cypress:run       # Run Cypress tests in headless mode
 ```
-The Jest coverage report will be available in the coverage directory.
+
+The Jest coverage report will be available in the coverage directory. The Cypress suite drives the
+app over HTTP, so start both the backend (`:8080`) and the Vite dev server (`:5173`) before running it.
 
 ## 👥 Contributing
 
