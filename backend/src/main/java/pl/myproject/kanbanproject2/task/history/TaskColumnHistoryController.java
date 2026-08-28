@@ -12,7 +12,7 @@ import pl.myproject.kanbanproject2.task.TaskService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/tasks")
 @RequiredArgsConstructor
 public class TaskColumnHistoryController {
 

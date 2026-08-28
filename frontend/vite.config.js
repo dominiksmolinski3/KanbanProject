@@ -14,42 +14,19 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // proxy for development
+      // The backend serves every REST route under /api (Spring adds the prefix centrally), so one
+      // entry covers the whole API. Before that, each top-level route needed its own entry here and
+      // a new one silently 404'd in dev until someone remembered to add it.
       '/api': {
         target: 'http://localhost:8080', // Spring Boot server port
         changeOrigin: true,
-      },
-      '/columns': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/tasks': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/users': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/rows': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/subtasks': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/files': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/auth': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
         secure: false,
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        }
+      },
+      // STOMP over SockJS. Not under /api: the destinations are resolved by the broker, not MVC.
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
       },
     }
   }
