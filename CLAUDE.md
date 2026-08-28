@@ -77,14 +77,19 @@ All backend commands run from `backend/`, all frontend commands from `frontend/`
 ./mvnw spring-boot:run                  # run on :8080
 ./mvnw test                             # unit tests
 ./mvnw clean test jacoco:report         # tests + coverage -> target/site/jacoco/index.html
-./mvnw test -Dtest=TaskServiceTest                        # one test class
-./mvnw test -Dtest=TaskServiceTest#shouldAddTask          # one test method
-./mvnw verify                           # runs the jacoco `check` gate (90% line coverage per PACKAGE)
+./mvnw test -Dtest=PublicBundlePathsTest                  # one test class
+./mvnw test -Dtest=PublicBundlePathsTest#stillGuardsTheApi  # one test method
+./mvnw verify                           # runs the jacoco `check` gate
 ```
 
-The 90% per-package JaCoCo minimum is bound to the `check` goal, which runs at `verify` — `package` and `test` skip it, so a build can pass locally and still fail a gate that runs `verify`.
+The JaCoCo `check` goal is bound to `verify`, so `package` and `test` skip it. Its per-package LINE
+minimum is currently **`0.0`** ([pom.xml](backend/pom.xml)) — the rule is wired up but passes anything,
+so treat `verify` as a no-op gate rather than a coverage guarantee until that number is raised.
 
-### Frontend (React 19 / Vite 6 / Jest / Cypress)
+Test sources live under `backend/src/test/java/.../config/` and cover the security filter chain, the
+URL space and the auth rate limiter. There is no service-layer test suite yet.
+
+### Frontend (React 19 / Vite 8 / Jest / Cypress)
 
 ```bash
 npm ci --legacy-peer-deps    # install — the legacy flag is required, plain `npm ci` fails on peer deps
@@ -128,11 +133,13 @@ The prefix exists to keep the API off the paths React Router owns. `App.jsx` ser
 
 ### Backend layering
 
-`controller` → `service` → `repository`, with `mapper` classes converting entities to DTOs. Conventions worth matching:
+Packages are organised **by feature, not by layer**: `task/`, `task/subtask/`, `task/history/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/` and `exception/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
+
+Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
 - Mappers are `@Component` classes implementing `Function<Entity, EntityDTO>`; services call `mapper::apply`. Entities never leave the service layer except where controllers still accept raw entities as request bodies (e.g. `TaskController.createTask`/`patchTask` take a `Task`).
-- DTOs are Java `record`s in `dto/`.
-- Services throw `EntityNotFoundException`, catch it, and rethrow as `ResponseStatusException`; [GlobalExceptionHandler](backend/src/main/java/pl/myproject/kanbanproject2/Exceptions/GlobalExceptionHandler.java) (note the capitalized `Exceptions` package) maps validation failures to 400 bodies.
+- DTOs are Java `record`s living beside the feature they describe (`task/TaskDto.java`, `layout/column/ColumnDto.java`) — there is no shared `dto/` package.
+- Services throw `EntityNotFoundException`, catch it, and rethrow as `ResponseStatusException`; [GlobalExceptionHandler](backend/src/main/java/pl/myproject/kanbanproject2/exception/GlobalExceptionHandler.java) maps validation failures to 400 bodies.
 - Error messages in services are written in Polish; UI strings are translated separately through i18n.
 
 ### The board model
@@ -161,7 +168,7 @@ JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration
 
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches `window.fetch` at module load to attach `Authorization` from `localStorage`, skipping any URL containing `/auth/` (which still matches the prefixed `/api/auth/...`) and redirecting to `/` on expiry. Because it wraps the global, tests and any code path using `fetch` inherit it.
 
-CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/WebSocketConfig.java).
+CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java). They have already drifted — the WebSocket list additionally allows `http://kanbanproject.pl` and `http://www.kanbanproject.pl`.
 
 ### Chat
 
