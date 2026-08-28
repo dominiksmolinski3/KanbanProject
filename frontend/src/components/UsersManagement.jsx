@@ -18,7 +18,7 @@ function UsersManagement() {
 
   const fetchUserAvatar = useCallback(async (userId) => {
     try {
-      const response = await fetch(`/users/${userId}/avatar`, {
+      const response = await fetch(`/api/users/${userId}/avatar`, {
         headers: {
           'Accept': 'image/*, application/json',
           'Cache-Control': 'no-cache'
@@ -39,7 +39,7 @@ function UsersManagement() {
 
   const loadUsers = useCallback(async () => {
     try {
-      const response = await fetch('/users');
+      const response = await fetch('/api/users');
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
@@ -92,7 +92,7 @@ function UsersManagement() {
       const formData = new FormData();
       formData.append('file', file);
   
-      const response = await fetch(`/users/${userId}/avatar`, {
+      const response = await fetch(`/api/users/${userId}/avatar`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -110,7 +110,7 @@ function UsersManagement() {
       let retries = 3;
       while (retries > 0) {
         try {
-          const avatarResponse = await fetch(`/users/${userId}/avatar`, {
+          const avatarResponse = await fetch(`/api/users/${userId}/avatar`, {
             headers: {
               'Cache-Control': 'no-cache',
               'Accept': 'image/*, application/json'
@@ -197,7 +197,7 @@ function UsersManagement() {
       password: password
     };
 
-    fetch('/users', {
+    fetch('/api/users', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -224,7 +224,7 @@ function UsersManagement() {
 
   const deleteUser = (userId) => {
     if (window.confirm(t('usersManagement.messages.deleteConfirm'))) {
-      fetch(`/users/${userId}`, {
+      fetch(`/api/users/${userId}`, {
         method: 'DELETE'
       })
         .then(response => {

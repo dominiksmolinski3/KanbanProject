@@ -23,7 +23,7 @@ describe('API Services', () => {
       });
 
       const result = await api.fetchColumns();
-      expect(fetch).toHaveBeenCalledWith('/columns');
+      expect(fetch).toHaveBeenCalledWith('/api/columns');
       expect(result).toEqual(mockColumns);
     });
 
@@ -78,7 +78,7 @@ describe('API Services', () => {
 
       const result = await api.updateColumnName('col1', 'Updated Name');
 
-      expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ describe('API Services', () => {
 
       const result = await api.addColumn('New Column', 5);
 
-      expect(fetch).toHaveBeenCalledWith('/columns', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ describe('API Services', () => {
       
         const result = await api.fetchColumnById('col1');
       
-        expect(fetch).toHaveBeenCalledWith('/columns/col1');
+        expect(fetch).toHaveBeenCalledWith('/api/columns/col1');
         expect(result).toEqual(mockColumn);
       });
       
@@ -133,7 +133,7 @@ describe('API Services', () => {
         
         const result = await api.updateColumnWipLimit('col1', wipLimit);
         
-        expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+        expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ describe('API Services', () => {
         
       const result = await api.updateColumnWipLimit(columnId, wipLimit);
         
-      expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ describe('API Services', () => {
       
         const result = await api.updateColumnPosition('col1', 2);
       
-        expect(fetch).toHaveBeenCalledWith('/columns/col1/position/2', {
+        expect(fetch).toHaveBeenCalledWith('/api/columns/col1/position/2', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ describe('API Services', () => {
       
       const result = await api.deleteColumn('col1');
       
-      expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -212,7 +212,7 @@ describe('API Services', () => {
       
       const result = await api.deleteColumn('col1');
       
-      expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -226,7 +226,7 @@ describe('API Services', () => {
       
       await expect(api.deleteColumn('col1')).rejects.toThrow('Error deleting column: 500');
       
-      expect(fetch).toHaveBeenCalledWith('/columns/col1', {
+      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'DELETE'
       });
     });
@@ -283,7 +283,7 @@ describe('API Services', () => {
 
       const result = await api.fetchTasks();
 
-      expect(fetch).toHaveBeenCalledWith('/tasks');
+      expect(fetch).toHaveBeenCalledWith('/api/tasks');
       expect(result).toEqual(mockTasks);
     });
 
@@ -297,7 +297,7 @@ describe('API Services', () => {
     
       const result = await api.addTask('New Task', 'col1');
     
-      expect(fetch).toHaveBeenCalledWith('/tasks', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -323,7 +323,7 @@ describe('API Services', () => {
 
       const result = await api.updateTaskName('1', 'Updated Task');
 
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -347,7 +347,7 @@ describe('API Services', () => {
         'WIP limit exceeded: Test User has reached their maximum of 3 tasks.'
       );
 
-      expect(fetch).toHaveBeenCalledWith('/users/123/wip-status');
+      expect(fetch).toHaveBeenCalledWith('/api/users/123/wip-status');
       expect(fetch).toHaveBeenCalledTimes(1); 
     });
 
@@ -367,8 +367,8 @@ describe('API Services', () => {
       const result = await api.assignUserToTask('1', '123');
 
       expect(fetch).toHaveBeenCalledTimes(2);
-      expect(fetch).toHaveBeenNthCalledWith(1, '/users/123/wip-status');
-      expect(fetch).toHaveBeenNthCalledWith(2, '/tasks/1/user/123', {
+      expect(fetch).toHaveBeenNthCalledWith(1, '/api/users/123/wip-status');
+      expect(fetch).toHaveBeenNthCalledWith(2, '/api/tasks/1/user/123', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -387,7 +387,7 @@ describe('API Services', () => {
       
       const result = await api.fetchTask('1');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1');
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1');
       expect(result).toEqual(mockTask);
     });
       
@@ -402,7 +402,7 @@ describe('API Services', () => {
       
       const result = await api.updateTask('1', taskData);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -422,7 +422,7 @@ describe('API Services', () => {
       
       const result = await api.updateTaskColumn('1', 'col2');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -449,7 +449,7 @@ describe('API Services', () => {
         'Error updating task column: 400 - Column WIP limit exceeded'
       );
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', expect.any(Object));
     });
       
     test('updateTaskPosition should update task position', async () => {
@@ -462,7 +462,7 @@ describe('API Services', () => {
       
       const result = await api.updateTaskPosition('1', 3);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1/position/3', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/position/3', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -481,7 +481,7 @@ describe('API Services', () => {
       
       const result = await api.removeUserFromTask('1', '123');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1/user/123', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/user/123', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -509,7 +509,7 @@ describe('API Services', () => {
       
       const result = await api.addLabelToTask('1', label);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1/label/feature', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/label/feature', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -538,7 +538,7 @@ describe('API Services', () => {
       
       const result = await api.removeLabelFromTask('1', label);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1/label/feature', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/label/feature', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -567,7 +567,7 @@ describe('API Services', () => {
       
       const result = await api.updateTaskLabels('1', labels);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1/labels', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/labels', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -598,7 +598,7 @@ describe('API Services', () => {
       
       const result = await api.getAllLabels();
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/get/all/labels');
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/get/all/labels');
       expect(result).toEqual(mockLabels);
     });
 
@@ -617,7 +617,7 @@ describe('API Services', () => {
       
       const result = await api.deleteTask('1');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -631,7 +631,7 @@ describe('API Services', () => {
       
       const result = await api.deleteTask('1');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -647,7 +647,7 @@ describe('API Services', () => {
       
       const result = await api.updateTaskRow('1', 'row2');
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -671,7 +671,7 @@ describe('API Services', () => {
       
       const result = await api.updateTaskRow('1', null);
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -696,7 +696,7 @@ describe('API Services', () => {
         'Error updating task row: 404 - Row not found'
       );
       
-      expect(fetch).toHaveBeenCalledWith('/tasks/1', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/1', expect.any(Object));
     });
 
     test('updateTask should handle error responses', async () => {
@@ -809,7 +809,7 @@ describe('API Services', () => {
 
       const result = await api.updateRowName('row1', 'Updated Row');
 
-      expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+      expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
@@ -830,7 +830,7 @@ describe('API Services', () => {
             
         const result = await api.updateRowWipLimit('row1', wipLimit);
             
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -871,7 +871,7 @@ describe('API Services', () => {
 
         const result = await api.addRow('New Row', 5);
 
-        expect(fetch).toHaveBeenCalledWith('/rows', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -891,7 +891,7 @@ describe('API Services', () => {
 
         const result = await api.updateRowPosition('row1', 2);
 
-        expect(fetch).toHaveBeenCalledWith('/rows/row1/position/2', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1/position/2', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -907,7 +907,7 @@ describe('API Services', () => {
 
         const result = await api.deleteRow('row1');
 
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
             method: 'DELETE'
         });
         expect(result).toBe(true);
@@ -920,7 +920,7 @@ describe('API Services', () => {
 
         const result = await api.deleteRow('row1', true);
 
-        expect(fetch).toHaveBeenCalledWith('/rows/row1?cascade=true', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1?cascade=true', {
             method: 'DELETE'
         });
         expect(result).toBe(true);
@@ -938,7 +938,7 @@ describe('API Services', () => {
         });
       
         const result = await api.fetchRows();
-        expect(fetch).toHaveBeenCalledWith('/rows');
+        expect(fetch).toHaveBeenCalledWith('/api/rows');
         expect(result).toEqual(mockRows);
     });
       
@@ -985,7 +985,7 @@ describe('API Services', () => {
       
         const result = await api.fetchRow('row1');
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1');
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1');
         expect(result).toEqual(mockRow);
     });
       
@@ -999,7 +999,7 @@ describe('API Services', () => {
       
         const result = await api.addRow('Team C', 4);
       
-        expect(fetch).toHaveBeenCalledWith('/rows', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1020,7 +1020,7 @@ describe('API Services', () => {
         
         const result = await api.updateRowWipLimit('row1', wipLimit);
         
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1043,7 +1043,7 @@ describe('API Services', () => {
         
         const result = await api.updateRowWipLimit(rowId, wipLimit);
         
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1069,7 +1069,7 @@ describe('API Services', () => {
       
         const result = await api.updateRowPosition('row1', 3);
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1/position/3', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1/position/3', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1085,7 +1085,7 @@ describe('API Services', () => {
       
         const result = await api.deleteRow('row1');
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
           method: 'DELETE'
         });
         expect(result).toBe(true);
@@ -1098,7 +1098,7 @@ describe('API Services', () => {
       
         const result = await api.deleteRow('row1', true);
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1?cascade=true', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1?cascade=true', {
           method: 'DELETE'
         });
         expect(result).toBe(true);
@@ -1112,7 +1112,7 @@ describe('API Services', () => {
       
         const result = await api.deleteRow('row1');
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
           method: 'DELETE'
         });
         expect(result).toBe(true);
@@ -1128,7 +1128,7 @@ describe('API Services', () => {
       
         const result = await api.updateRowName('row1', 'Updated Team Name');
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', {
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -1148,7 +1148,7 @@ describe('API Services', () => {
           'Failed to update row: 500'
         );
       
-        expect(fetch).toHaveBeenCalledWith('/rows/row1', expect.any(Object));
+        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', expect.any(Object));
     });
 
     test('fetchRow should handle error responses', async () => {
@@ -1200,7 +1200,7 @@ describe('API Services', () => {
 
       const result = await api.updateUserWipLimit('123', 5);
 
-      expect(fetch).toHaveBeenCalledWith('/users/123/wip-limit', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/123/wip-limit', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1220,7 +1220,7 @@ describe('API Services', () => {
 
       const result = await api.getUserAvatar('123');
 
-      expect(fetch).toHaveBeenCalledWith('/users/123/avatar', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/123/avatar', {
         headers: {
           'Accept': 'image/*, application/json',
           'Cache-Control': 'no-cache'
@@ -1252,7 +1252,7 @@ describe('API Services', () => {
 
       const result = await api.uploadUserAvatar('123', mockFile);
 
-      expect(fetch).toHaveBeenCalledWith('/users/123/avatar', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/123/avatar', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1272,7 +1272,7 @@ describe('API Services', () => {
       
       const result = await api.fetchUsers();
       
-      expect(fetch).toHaveBeenCalledWith('/users');
+      expect(fetch).toHaveBeenCalledWith('/api/users');
       expect(result).toEqual(mockUsers);
     });
       
@@ -1286,7 +1286,7 @@ describe('API Services', () => {
       
       const result = await api.fetchUser('user1');
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1');
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1');
       expect(result).toEqual(mockUser);
     });
       
@@ -1301,7 +1301,7 @@ describe('API Services', () => {
       
       const result = await api.addUser(userData);
       
-      expect(fetch).toHaveBeenCalledWith('/users', {
+      expect(fetch).toHaveBeenCalledWith('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1323,7 +1323,7 @@ describe('API Services', () => {
       
       const result = await api.updateUser(userId, userData);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1345,7 +1345,7 @@ describe('API Services', () => {
       
       const result = await api.patchUser(userId, userData);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1362,7 +1362,7 @@ describe('API Services', () => {
       
       const result = await api.deleteUser('user1');
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -1376,7 +1376,7 @@ describe('API Services', () => {
       
       const result = await api.deleteUser('user1');
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -1394,7 +1394,7 @@ describe('API Services', () => {
       
       const result = await api.uploadUserAvatar(userId, file);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/avatar', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1412,7 +1412,7 @@ describe('API Services', () => {
       
       const result = await api.getUserAvatar(userId);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/avatar', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', {
         headers: {
           'Accept': 'image/*, application/json',
           'Cache-Control': 'no-cache'
@@ -1432,7 +1432,7 @@ describe('API Services', () => {
       
       const result = await api.getUserAvatar(userId);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/avatar', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', expect.any(Object));
       expect(result).toBeNull();
     });
       
@@ -1447,7 +1447,7 @@ describe('API Services', () => {
       
       const result = await api.deleteUserAvatar(userId);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/avatar', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', {
         method: 'DELETE'
       });
       expect(result).toBe(mockResponse);
@@ -1474,7 +1474,7 @@ describe('API Services', () => {
       
       const result = await api.updateUserWipLimit(userId, wipLimit);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/wip-limit', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/wip-limit', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1494,7 +1494,7 @@ describe('API Services', () => {
         
       const result = await api.updateUserWipLimit('user1', '5');
         
-      expect(fetch).toHaveBeenCalledWith('/users/user1/wip-limit', {
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/wip-limit', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1520,7 +1520,7 @@ describe('API Services', () => {
       
       const result = await api.getUserWipLimit(userId);
       
-      expect(fetch).toHaveBeenCalledWith('/users/user1/wip-status');
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/wip-status');
       expect(result).toEqual(mockStatus);
     });
 
@@ -1572,7 +1572,7 @@ describe('API Services', () => {
 
       const result = await api.fetchSubTasksByTaskId('1');
 
-      expect(fetch).toHaveBeenCalledWith('/subtasks/task/1');
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/task/1');
       expect(result).toEqual(mockSubTasks);
     });
 
@@ -1586,7 +1586,7 @@ describe('API Services', () => {
 
       const result = await api.toggleSubTaskCompletion(1);
 
-      expect(fetch).toHaveBeenCalledWith('/subtasks/1/change', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/1/change', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -1608,7 +1608,7 @@ describe('API Services', () => {
       
       const result = await api.fetchSubTasks();
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks');
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks');
       expect(result).toEqual(mockSubTasks);
     });
       
@@ -1622,7 +1622,7 @@ describe('API Services', () => {
       
       const result = await api.fetchSubTask('sub1');
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1');
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1');
       expect(result).toEqual(mockSubTask);
     });
       
@@ -1640,7 +1640,7 @@ describe('API Services', () => {
       
       const result = await api.fetchSubTasksByTaskId(taskId);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/task/task1');
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/task/task1');
       expect(result).toEqual(mockSubTasks);
     });
 
@@ -1664,7 +1664,7 @@ describe('API Services', () => {
       
       const result = await api.addSubTask(taskId, title);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1692,7 +1692,7 @@ describe('API Services', () => {
       
       const result = await api.updateSubTask(subTaskId, subTaskData);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1713,7 +1713,7 @@ describe('API Services', () => {
       
       const result = await api.toggleSubTaskCompletion(subTaskId);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1/change', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/change', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1734,7 +1734,7 @@ describe('API Services', () => {
       
       const result = await api.updateSubTaskPosition(subTaskId, position);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1/position/2', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/position/2', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1764,7 +1764,7 @@ describe('API Services', () => {
     
       const result = await api.assignTaskToSubTask(subTaskId, taskId);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1/task/task2', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/task/task2', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1791,7 +1791,7 @@ describe('API Services', () => {
       
       const result = await api.deleteSubTask(subTaskId);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -1807,7 +1807,7 @@ describe('API Services', () => {
       
       const result = await api.deleteSubTask(subTaskId);
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1', {
         method: 'DELETE'
       });
       expect(result).toBe(true);
@@ -1823,7 +1823,7 @@ describe('API Services', () => {
       
       await expect(api.deleteSubTask(subTaskId)).rejects.toThrow('Error deleting subtask: 500');
       
-      expect(fetch).toHaveBeenCalledWith('/subtasks/sub1', {
+      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1', {
         method: 'DELETE'
       });
     });
@@ -1842,7 +1842,7 @@ describe('API Services', () => {
 
       const result = await api.uploadFile(mockFile);
 
-      expect(fetch).toHaveBeenCalledWith('/files/upload', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1860,7 +1860,7 @@ describe('API Services', () => {
       
       const result = await api.uploadFile(file);
       
-      expect(fetch).toHaveBeenCalledWith('/files/upload', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1878,7 +1878,7 @@ describe('API Services', () => {
       
       await expect(api.uploadFile(file)).rejects.toThrow('Error uploading file: 413');
       
-      expect(fetch).toHaveBeenCalledWith('/files/upload', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1896,7 +1896,7 @@ describe('API Services', () => {
       fetch.mockResolvedValueOnce(mockResponse);
       const result = await api.getFile(fileId);
       
-      expect(fetch).toHaveBeenCalledWith('/files/file-123');
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
       expect(result).toBe(mockResponse);
     });
       
@@ -1910,7 +1910,7 @@ describe('API Services', () => {
       
       await expect(api.getFile(fileId)).rejects.toThrow('Error fetching file: 404');
       
-      expect(fetch).toHaveBeenCalledWith('/files/file-123');
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
     });
       
     test('deleteFile should delete a file successfully', async () => {
@@ -1924,7 +1924,7 @@ describe('API Services', () => {
       
       const result = await api.deleteFile(fileId);
       
-      expect(fetch).toHaveBeenCalledWith('/files/file-123', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123', {
         method: 'DELETE'
       });
         
@@ -1941,7 +1941,7 @@ describe('API Services', () => {
       
       await expect(api.deleteFile(fileId)).rejects.toThrow('Error deleting file: 404');
       
-      expect(fetch).toHaveBeenCalledWith('/files/file-123', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123', {
         method: 'DELETE'
       });
     });
@@ -1967,7 +1967,7 @@ describe('API Services', () => {
       
       await api.uploadFile(file);
         
-      expect(fetch).toHaveBeenCalledWith('/files/upload', {
+      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
         method: 'POST',
         body: expect.any(FormData)
       });
@@ -1986,7 +1986,7 @@ describe('API Services', () => {
       const response = await api.getFile(fileId);
       const blob = await response.blob();
         
-      expect(fetch).toHaveBeenCalledWith('/files/file-123');
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
       expect(mockResponse.blob).toHaveBeenCalled();
       expect(blob).toBe(mockBlob);
     });
@@ -2006,7 +2006,7 @@ describe('API Services', () => {
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
         
-      expect(fetch).toHaveBeenCalledWith('/files/file-123');
+      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
       expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
       expect(objectUrl).toBe('mock-blob-url');
     });
@@ -2028,7 +2028,7 @@ describe('API Services', () => {
         });
         
         await api.uploadFile(file);
-        expect(fetch).toHaveBeenCalledWith('/files/upload', expect.any(Object));
+        expect(fetch).toHaveBeenCalledWith('/api/files/upload', expect.any(Object));
     });
       
     test('uploadUserAvatar should use proper FormData with file contents', async () => {
@@ -2048,7 +2048,7 @@ describe('API Services', () => {
       });
         
       await api.uploadUserAvatar('user1', file);
-      expect(fetch).toHaveBeenCalledWith('/users/user1/avatar', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', expect.any(Object));
     });
     
   });

@@ -1,11 +1,14 @@
 // API endpoints
+// Every backend route is served under /api: Spring applies the prefix centrally, which is what
+// keeps the API off /board and /users, the paths React Router owns. In dev, one Vite proxy entry
+// covers all of it.
 const API_ENDPOINTS = {
-  COLUMNS: '/columns',
-  TASKS: '/tasks',
-  USERS: '/users',
-  ROWS: '/rows',
-  SUBTASKS: '/subtasks',
-  FILES: '/files'
+  COLUMNS: '/api/columns',
+  TASKS: '/api/tasks',
+  USERS: '/api/users',
+  ROWS: '/api/rows',
+  SUBTASKS: '/api/subtasks',
+  FILES: '/api/files'
 };
 
 // ====== COLUMN OPERATIONS ======
@@ -133,7 +136,7 @@ export const deleteColumn = async (columnId) => {
 
 export const updateColumnName = async (id, name) => {
   try {
-    const response = await fetch(`/columns/${id}`, {
+    const response = await fetch(`${API_ENDPOINTS.COLUMNS}/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -509,7 +512,7 @@ export const updateTaskRow = async (taskId, rowId) => {
 
 export const updateTaskName = async (id, name) => {
   try {
-    const response = await fetch(`/tasks/${id}`, {
+    const response = await fetch(`${API_ENDPOINTS.TASKS}/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -744,7 +747,7 @@ export const deleteRow = async (rowId, cascade = false) => {
 
 export const updateRowName = async (id, name) => {
   try {
-    const response = await fetch(`/rows/${id}`, {
+    const response = await fetch(`${API_ENDPOINTS.ROWS}/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -893,7 +896,7 @@ export const uploadUserAvatar = async (userId, file) => {
 
 export const getUserAvatar = async (userId) => {
   try {
-    const response = await fetch(`/users/${userId}/avatar`, {
+    const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {
       headers: {
         'Accept': 'image/*, application/json',
         'Cache-Control': 'no-cache'
@@ -1064,7 +1067,7 @@ export const fetchSubTasksByTaskId = async (taskId) => {
 
 export const addSubTask = async (taskId, title) => {
   try {
-    const response = await fetch('/subtasks', {
+    const response = await fetch(API_ENDPOINTS.SUBTASKS, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
