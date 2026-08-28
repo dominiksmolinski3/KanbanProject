@@ -124,6 +124,8 @@ In local development the two run separately (`:5173` and `:8080`) and [vite.conf
 
 **Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch` + `HandlerTypePredicate.forAnnotation(RestController.class)`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
+The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board` and `/users`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh. Client routes are listed once in [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java), which both `WebConfig` (forwards them to `index.html`) and `SecurityConfiguration` (permits them) read. **Adding a `<Route>` to `App.jsx` means adding it to `SpaRoutes.ALL`**, or the deep link 403s.
+
 ### Backend layering
 
 `controller` → `service` → `repository`, with `mapper` classes converting entities to DTOs. Conventions worth matching:
@@ -155,7 +157,7 @@ Drag payloads are typed through `dataTransfer` MIME types — `application/task`
 
 ### Auth
 
-JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend), the health/info actuator endpoints, `/ws/**`, the SPA shell and the static bundle are public; everything else — the whole of `/api/**` — requires authentication. Signup goes through an emailed verification code before login works, and login can require a Google reCAPTCHA check.
+JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend), the health/info actuator endpoints, `/ws/**`, the SPA shell (`/` plus `SpaRoutes.ALL`) and the static bundle are public; everything else — the whole of `/api/**` — requires authentication. Signup goes through an emailed verification code before login works, and login can require a Google reCAPTCHA check.
 
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches `window.fetch` at module load to attach `Authorization` from `localStorage`, skipping any URL containing `/auth/` (which still matches the prefixed `/api/auth/...`) and redirecting to `/` on expiry. Because it wraps the global, tests and any code path using `fetch` inherit it.
 

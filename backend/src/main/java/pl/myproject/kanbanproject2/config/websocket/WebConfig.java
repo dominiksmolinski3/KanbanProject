@@ -7,8 +7,10 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.method.HandlerTypePredicate;
+import pl.myproject.kanbanproject2.config.SpaRoutes;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +33,21 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix("/api", HandlerTypePredicate.forAnnotation(RestController.class));
+    }
+
+    /**
+     * Answers a direct hit on a client-side route with the app shell instead of a 404.
+     *
+     * <p>The bundle is served by Spring from {@code classpath:/static/} in the packaged image, so
+     * a browser that asks for {@code /board} — by refreshing, bookmarking or following a shared
+     * link — reaches Spring, not React Router. Forwarding to {@code /index.html} hands the request
+     * back to the app, which then reads the URL and renders the right screen.
+     */
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        for (String route : SpaRoutes.ALL) {
+            registry.addViewController(route).setViewName("forward:/index.html");
+        }
     }
 
     @Override
