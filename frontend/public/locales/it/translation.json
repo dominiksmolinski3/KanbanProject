@@ -68,7 +68,20 @@
       "taskMovedToColumnAndRow": "Attività \"{{title}}\" è stata spostata nella colonna \"{{column}}\" e riga \"{{row}}\"",
       "taskMovedToRow": "Attività \"{{title}}\" è stata spostata nella riga \"{{row}}\"",
       "columnMoved": "Colonna \"{{name}}\" è stata spostata",
-      "rowMoved": "Riga \"{{name}}\" è stata spostata"
+      "rowMoved": "Riga \"{{name}}\" è stata spostata",
+      "labelsUpdateError": "Si è verificato un errore durante l'aggiornamento delle etichette",
+      "subtaskAddError": "Si è verificato un errore durante l'aggiunta della sottoattività",
+      "subtaskToggleError": "Si è verificato un errore durante la modifica dello stato della sottoattività",
+      "subtaskDeleteError": "Si è verificato un errore durante l'eliminazione della sottoattività",
+      "subtaskDescriptionError": "Si è verificato un errore durante il salvataggio della descrizione della sottoattività",
+      "userRemoveError": "Si è verificato un errore durante la rimozione dell'utente",
+      "userAssignError": "Si è verificato un errore durante l'assegnazione dell'utente",
+      "parentTasksLoadError": "Impossibile caricare le attività principali disponibili",
+      "parentTaskAssignError": "Si è verificato un errore durante l'assegnazione dell'attività principale",
+      "parentTaskRemoveError": "Si è verificato un errore durante la rimozione dell'attività principale",
+      "userAssignedToTask": "L'utente {{user}} è stato assegnato all'attività \"{{title}}\"",
+      "usersLoadError": "Errore durante il caricamento degli utenti: {{message}}",
+      "wipLimitUpdateError": "Errore durante l'aggiornamento del limite WIP: {{message}}"
     },
     "column": {
       "deleteConfirm": "Sei sicuro di voler eliminare questa colonna?",
@@ -171,7 +184,9 @@
       "tasks": "Attività",
       "editWipLimit": "Modifica limite WIP",
       "saveWipLimit": "Salva limite WIP",
-      "cancel": "Annulla"
+      "cancel": "Annulla",
+      "loadError": "Si è verificato un errore durante il caricamento degli utenti",
+      "thisUser": "questo utente"
     },
     "auth": {
       "login": "Accedi",
@@ -196,7 +211,12 @@
       "registerFailed": "Registrazione fallita:",
       "verifySuccess": "Account verificato con successo! Effettua l'accesso.",
       "verifyFailed": "Verifica fallita:",
-      "codeSent": "Codice di verifica inviato alla tua email."
+      "codeSent": "Codice di verifica inviato alla tua email.",
+      "captchaBlocked": "reCAPTCHA non è stato caricato (script bloccato?). Verifica che non sia attivo un blocco come uBlock o AdBlock.",
+      "captchaLoadError": "Errore di caricamento dello script.",
+      "retry": "Ricarica",
+      "recentlyVerified": "Account verificato! CAPTCHA ignorato per questo accesso.",
+      "verifyAndLoginSuccess": "Account verificato e accesso eseguito correttamente!"
     },
     "taskLabels": {
       "addLabel": "+ Etichetta",

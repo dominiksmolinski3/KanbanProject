@@ -68,7 +68,20 @@
     "taskMovedToColumnAndRow": "Zadanie \"{{title}}\" zostało przeniesione do kolumny \"{{column}}\" i wiersza \"{{row}}\"",
     "taskMovedToRow": "Zadanie \"{{title}}\" zostało przeniesione do wiersza \"{{row}}\"",
     "columnMoved": "Kolumna \"{{name}}\" została przesunięta",
-    "rowMoved": "Wiersz \"{{name}}\" został przesunięty"
+    "rowMoved": "Wiersz \"{{name}}\" został przesunięty",
+    "labelsUpdateError": "Wystąpił błąd podczas aktualizacji etykiet",
+    "subtaskAddError": "Wystąpił błąd podczas dodawania podzadania",
+    "subtaskToggleError": "Wystąpił błąd podczas zmiany statusu podzadania",
+    "subtaskDeleteError": "Wystąpił błąd podczas usuwania podzadania",
+    "subtaskDescriptionError": "Wystąpił błąd podczas zapisywania opisu podzadania",
+    "userRemoveError": "Wystąpił błąd podczas usuwania użytkownika",
+    "userAssignError": "Wystąpił błąd podczas przypisywania użytkownika",
+    "parentTasksLoadError": "Nie można pobrać dostępnych zadań nadrzędnych",
+    "parentTaskAssignError": "Wystąpił błąd podczas przypisywania zadania nadrzędnego",
+    "parentTaskRemoveError": "Wystąpił błąd podczas usuwania zadania nadrzędnego",
+    "userAssignedToTask": "Użytkownik {{user}} został przypisany do zadania \"{{title}}\"",
+    "usersLoadError": "Błąd podczas ładowania użytkowników: {{message}}",
+    "wipLimitUpdateError": "Błąd podczas aktualizacji limitu WIP: {{message}}"
   },
   "column": {
     "deleteConfirm": "Czy na pewno chcesz usunąć tę kolumnę?",
@@ -171,7 +184,9 @@
     "tasks": "Zadania",
     "editWipLimit": "Edytuj limit WIP",
     "saveWipLimit": "Zapisz limit WIP",
-    "cancel": "Anuluj"
+    "cancel": "Anuluj",
+    "loadError": "Wystąpił błąd podczas ładowania użytkowników",
+    "thisUser": "użytkownika"
   },
   "auth": {
     "login": "Logowanie",
@@ -196,7 +211,12 @@
     "registerFailed": "Błąd rejestracji:",
     "verifySuccess": "Konto zweryfikowane pomyślnie! Możesz się zalogować.",
     "verifyFailed": "Błąd weryfikacji:",
-    "codeSent": "Kod weryfikacyjny został wysłany na Twój email."
+    "codeSent": "Kod weryfikacyjny został wysłany na Twój email.",
+    "captchaBlocked": "reCAPTCHA nie załadowała się (skrypt zablokowany?). Sprawdź, czy nie blokuje jej wtyczka typu uBlock lub AdBlock.",
+    "captchaLoadError": "Błąd ładowania skryptu.",
+    "retry": "Odśwież",
+    "recentlyVerified": "Konto zweryfikowane! CAPTCHA pominięta przy tym logowaniu.",
+    "verifyAndLoginSuccess": "Konto zweryfikowane i zalogowano pomyślnie!"
   },
   "taskLabels": {
     "addLabel": "+ Etykieta",
