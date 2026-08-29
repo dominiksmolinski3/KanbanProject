@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import pl.myproject.kanbanproject2.task.Task;
+import pl.myproject.kanbanproject2.task.TaskRepository;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ public class RowService {
 
     private final RowRepository rowRepository;
     private final RowMapper rowMapper;
+    private final TaskRepository taskRepository;
 
     public List<RowDto> getAllRows() {
         return rowRepository.findAll().stream().map(rowMapper).toList();
@@ -45,11 +48,25 @@ public class RowService {
         return rowMapper.apply(rowRepository.save(existingRow));
     }
 
+    /**
+     * Takes every task out of the swimlane before removing it.
+     *
+     * <p>{@code Row.tasks} cascades PERSIST and MERGE only, so nothing in the mapping clears
+     * {@code row_id} — the delete used to fail on the foreign key whenever the swimlane still held a
+     * task. A task outlives its swimlane: the column is what puts it on the board.
+     */
     public void deleteRow(Integer id) {
-        if (!rowRepository.existsById(id)) {
-            throw rowNotFound(id);
+        var row = findRow(id);
+
+        if (row.getTasks() != null) {
+            for (Task task : List.copyOf(row.getTasks())) {
+                task.setRow(null);
+                taskRepository.save(task);
+            }
+            row.getTasks().clear();
         }
-        rowRepository.deleteById(id);
+
+        rowRepository.delete(row);
     }
 
     public RowDto getRowById(Integer id) {
