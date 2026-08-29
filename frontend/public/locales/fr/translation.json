@@ -68,7 +68,20 @@
       "taskMovedToColumnAndRow": "La tâche \"{{title}}\" a été déplacée vers la colonne \"{{column}}\" et la ligne \"{{row}}\"",
       "taskMovedToRow": "La tâche \"{{title}}\" a été déplacée vers la ligne \"{{row}}\"",
       "columnMoved": "La colonne \"{{name}}\" a été déplacée",
-      "rowMoved": "La ligne \"{{name}}\" a été déplacée"
+      "rowMoved": "La ligne \"{{name}}\" a été déplacée",
+      "labelsUpdateError": "Une erreur s'est produite lors de la mise à jour des étiquettes",
+      "subtaskAddError": "Une erreur s'est produite lors de l'ajout de la sous-tâche",
+      "subtaskToggleError": "Une erreur s'est produite lors du changement de statut de la sous-tâche",
+      "subtaskDeleteError": "Une erreur s'est produite lors de la suppression de la sous-tâche",
+      "subtaskDescriptionError": "Une erreur s'est produite lors de l'enregistrement de la description de la sous-tâche",
+      "userRemoveError": "Une erreur s'est produite lors de la suppression de l'utilisateur",
+      "userAssignError": "Une erreur s'est produite lors de l'affectation de l'utilisateur",
+      "parentTasksLoadError": "Impossible de charger les tâches parentes disponibles",
+      "parentTaskAssignError": "Une erreur s'est produite lors de l'affectation de la tâche parente",
+      "parentTaskRemoveError": "Une erreur s'est produite lors de la suppression de la tâche parente",
+      "userAssignedToTask": "L'utilisateur {{user}} a été affecté à la tâche \"{{title}}\"",
+      "usersLoadError": "Erreur lors du chargement des utilisateurs : {{message}}",
+      "wipLimitUpdateError": "Erreur lors de la mise à jour de la limite WIP : {{message}}"
     },
     "column": {
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette colonne ?",
@@ -171,7 +184,9 @@
       "tasks": "Tâches",
       "editWipLimit": "Modifier la limite WIP",
       "saveWipLimit": "Enregistrer la limite WIP",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "loadError": "Une erreur s'est produite lors du chargement des utilisateurs",
+      "thisUser": "cet utilisateur"
     },
     "auth": {
       "login": "Connexion",
@@ -196,7 +211,12 @@
       "registerFailed": "Échec de l'inscription :",
       "verifySuccess": "Compte vérifié avec succès ! Veuillez vous connecter.",
       "verifyFailed": "Échec de la vérification :",
-      "codeSent": "Code de vérification envoyé à votre email."
+      "codeSent": "Code de vérification envoyé à votre email.",
+      "captchaBlocked": "reCAPTCHA ne s'est pas chargé (script bloqué ?). Vérifiez qu'un bloqueur comme uBlock ou AdBlock n'est pas actif.",
+      "captchaLoadError": "Erreur de chargement du script.",
+      "retry": "Recharger",
+      "recentlyVerified": "Compte vérifié ! CAPTCHA ignoré pour cette connexion.",
+      "verifyAndLoginSuccess": "Compte vérifié et connexion réussie !"
     },
     "taskLabels": {
       "addLabel": "+ Étiquette",

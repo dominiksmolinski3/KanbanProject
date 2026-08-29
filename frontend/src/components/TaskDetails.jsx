@@ -302,7 +302,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setTaskLabels(uniqueLabels);
       updateTask(task.id, { labels: uniqueLabels }).catch(error => {
         console.error('Error updating task labels:', error);
-        toast.error('Wystąpił błąd podczas aktualizacji etykiet');
+        toast.error(t('notifications.labelsUpdateError'));
       });
     }
   };
@@ -331,7 +331,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error adding subtask:', error);
-      toast.error('Wystąpił błąd podczas dodawania podzadania');
+      toast.error(t('notifications.subtaskAddError'));
     }
   };
 
@@ -357,7 +357,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       
     } catch (error) {
       console.error('Error toggling subtask completion:', error);
-      toast.error('Wystąpił błąd podczas zmiany statusu podzadania');
+      toast.error(t('notifications.subtaskToggleError'));
     }
   };
 
@@ -390,7 +390,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setSubtaskToDelete(null);
     } catch (error) {
       console.error('Error deleting subtask:', error);
-      toast.error('Wystąpił błąd podczas usuwania podzadania');
+      toast.error(t('notifications.subtaskDeleteError'));
       setShowDeleteConfirmation(false);
       setSubtaskToDelete(null);
     }
@@ -442,7 +442,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error saving subtask description:', error);
-      toast.error('Wystąpił błąd podczas zapisywania opisu podzadania');
+      toast.error(t('notifications.subtaskDescriptionError'));
     }
   };
 
@@ -507,7 +507,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setUserToDelete(null);
     } catch (error) {
       console.error('Error removing user:', error);
-      toast.error('Wystąpił błąd podczas usuwania użytkownika');
+      toast.error(t('notifications.userRemoveError'));
       setShowUserDeleteConfirmation(false);
       setUserToDelete(null);
     }
@@ -543,7 +543,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error assigning user:', error);
-      toast.error('Wystąpił błąd podczas przypisywania użytkownika');
+      toast.error(t('notifications.userAssignError'));
     }
   };
 
@@ -557,7 +557,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setShowParentSelector(true);
     } catch (error) {
       console.error('Error fetching available parent tasks:', error);
-      toast.warning('Nie można pobrać dostępnych zadań nadrzędnych');
+      toast.warning(t('notifications.parentTasksLoadError'));
     }
   };
 
@@ -579,7 +579,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error assigning parent task:', error);
-      toast.error('Wystąpił błąd podczas przypisywania zadania nadrzędnego');
+      toast.error(t('notifications.parentTaskAssignError'));
     }
   };
 
@@ -595,7 +595,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error removing parent task:', error);
-      toast.error('Wystąpił błąd podczas usuwania zadania nadrzędnego');
+      toast.error(t('notifications.parentTaskRemoveError'));
     }
   };
 
