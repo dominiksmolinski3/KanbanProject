@@ -97,7 +97,7 @@ const HomePage = () => {
   const payload = { username, email, password };
   if (isCaptchaRequired && captchaToken) payload.captcha = { token: captchaToken };
   await authService.register(payload);
-      toast.success(t('auth.registerSuccess', 'Account created! Please verify your email.'));
+      toast.success(t('auth.registerSuccess', 'If that address is new here, a verification code is on its way to it.'));
       setShowVerification(true);
       setVerificationEmail(email);
     } catch (error) {
@@ -136,7 +136,7 @@ const HomePage = () => {
   const handleResendCode = async () => {
     try {
       await authService.resendVerificationCode(verificationEmail);
-      toast.info(t('auth.codeSent', 'Verification code sent to your email.'));
+      toast.info(t('auth.codeSent', 'If that address has an account waiting to be verified, a new code is on its way.'));
     } catch (error) {
       setError(error.message);
     }
