@@ -41,7 +41,6 @@ const TestComponent = () => {
       <div>Columns: {context.columns.map(c => c.name).join(', ')}</div>
       <div>Rows: {context.rows.map(r => r.name).join(', ')}</div>
       <div>Tasks: {context.tasks.map(t => t.title).join(', ')}</div>
-      <div>Users: {context.users.map(u => u.name).join(', ')}</div>
       
       <button onClick={() => context.addTask('New Task')}>Add Task</button>
       <button onClick={() => context.addColumn('New Column', 5)}>Add Column</button>
@@ -1189,7 +1188,7 @@ describe('KanbanContext Provider', () => {
     });
     
     expect(api.updateTaskRow).toHaveBeenCalledWith(expect.any(String), null);
-    expect(api.deleteRow).toHaveBeenCalledWith('row1', true);
+    expect(api.deleteRow).toHaveBeenCalledWith('row1');
   });
   
   test('handles task drop fallback method', async () => {
