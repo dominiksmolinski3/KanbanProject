@@ -84,7 +84,7 @@ describe('Bench Component', () => {
     renderBench();
     
     await waitFor(() => {
-      expect(screen.getByText('Wystąpił błąd podczas ładowania użytkowników')).toBeInTheDocument();
+      expect(screen.getByText('bench.loadError')).toBeInTheDocument();
     });
   });
   

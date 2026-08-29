@@ -68,7 +68,20 @@
     "taskMovedToColumnAndRow": "Aufgabe \"{{title}}\" wurde in Spalte \"{{column}}\" und Zeile \"{{row}}\" verschoben",
     "taskMovedToRow": "Aufgabe \"{{title}}\" wurde in Zeile \"{{row}}\" verschoben",
     "columnMoved": "Spalte \"{{name}}\" wurde verschoben",
-    "rowMoved": "Zeile \"{{name}}\" wurde verschoben"
+    "rowMoved": "Zeile \"{{name}}\" wurde verschoben",
+    "labelsUpdateError": "Beim Aktualisieren der Etiketten ist ein Fehler aufgetreten",
+    "subtaskAddError": "Beim Hinzufügen der Teilaufgabe ist ein Fehler aufgetreten",
+    "subtaskToggleError": "Beim Ändern des Status der Teilaufgabe ist ein Fehler aufgetreten",
+    "subtaskDeleteError": "Beim Löschen der Teilaufgabe ist ein Fehler aufgetreten",
+    "subtaskDescriptionError": "Beim Speichern der Beschreibung der Teilaufgabe ist ein Fehler aufgetreten",
+    "userRemoveError": "Beim Entfernen des Benutzers ist ein Fehler aufgetreten",
+    "userAssignError": "Beim Zuweisen des Benutzers ist ein Fehler aufgetreten",
+    "parentTasksLoadError": "Die verfügbaren übergeordneten Aufgaben konnten nicht geladen werden",
+    "parentTaskAssignError": "Beim Zuweisen der übergeordneten Aufgabe ist ein Fehler aufgetreten",
+    "parentTaskRemoveError": "Beim Entfernen der übergeordneten Aufgabe ist ein Fehler aufgetreten",
+    "userAssignedToTask": "Benutzer {{user}} wurde der Aufgabe \"{{title}}\" zugewiesen",
+    "usersLoadError": "Fehler beim Laden der Benutzer: {{message}}",
+    "wipLimitUpdateError": "Fehler beim Aktualisieren des WIP-Limits: {{message}}"
   },
   "column": {
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Spalte löschen möchten?",
@@ -171,7 +184,9 @@
     "tasks": "Aufgaben",
     "editWipLimit": "WIP-Limit bearbeiten",
     "saveWipLimit": "WIP-Limit speichern",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "loadError": "Beim Laden der Benutzer ist ein Fehler aufgetreten",
+    "thisUser": "diesen Benutzer"
   },
   "auth": {
     "login": "Anmelden",
@@ -196,7 +211,12 @@
     "registerFailed": "Registrierung fehlgeschlagen:",
     "verifySuccess": "Konto erfolgreich verifiziert! Bitte melden Sie sich an.",
     "verifyFailed": "Überprüfung fehlgeschlagen:",
-    "codeSent": "Verifizierungscode wurde an Ihre E-Mail gesendet."
+    "codeSent": "Verifizierungscode wurde an Ihre E-Mail gesendet.",
+    "captchaBlocked": "reCAPTCHA wurde nicht geladen (Skript blockiert?). Prüfen Sie, ob ein Blocker wie uBlock oder AdBlock aktiv ist.",
+    "captchaLoadError": "Fehler beim Laden des Skripts.",
+    "retry": "Neu laden",
+    "recentlyVerified": "Konto verifiziert! CAPTCHA für diese Anmeldung übersprungen.",
+    "verifyAndLoginSuccess": "Konto verifiziert und erfolgreich angemeldet!"
   },
   "taskLabels": {
     "addLabel": "+ Label",

@@ -68,7 +68,20 @@
     "taskMovedToColumnAndRow": "Task \"{{title}}\" has been moved to column \"{{column}}\" and row \"{{row}}\"",
     "taskMovedToRow": "Task \"{{title}}\" has been moved to row \"{{row}}\"",
     "columnMoved": "Column \"{{name}}\" has been moved",
-    "rowMoved": "Row \"{{name}}\" has been moved"
+    "rowMoved": "Row \"{{name}}\" has been moved",
+    "labelsUpdateError": "An error occurred while updating the labels",
+    "subtaskAddError": "An error occurred while adding the subtask",
+    "subtaskToggleError": "An error occurred while changing the subtask status",
+    "subtaskDeleteError": "An error occurred while deleting the subtask",
+    "subtaskDescriptionError": "An error occurred while saving the subtask description",
+    "userRemoveError": "An error occurred while removing the user",
+    "userAssignError": "An error occurred while assigning the user",
+    "parentTasksLoadError": "Could not load the available parent tasks",
+    "parentTaskAssignError": "An error occurred while assigning the parent task",
+    "parentTaskRemoveError": "An error occurred while removing the parent task",
+    "userAssignedToTask": "User {{user}} has been assigned to task \"{{title}}\"",
+    "usersLoadError": "Error loading users: {{message}}",
+    "wipLimitUpdateError": "Error updating the WIP limit: {{message}}"
   },
   "column": {
     "deleteConfirm": "Are you sure you want to delete this column?",
@@ -171,7 +184,9 @@
     "tasks": "Tasks",
     "editWipLimit": "Edit WIP limit",
     "saveWipLimit": "Save WIP limit",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "loadError": "An error occurred while loading users",
+    "thisUser": "this user"
   },
   "auth": {
     "login": "Login",
@@ -198,7 +213,10 @@
     "verifyAndLoginSuccess": "Account verified and signed in successfully!",
     "verifyFailed": "Verification failed:",
     "codeSent": "Verification code sent to your email.",
-    "recentlyVerified": "Account verified! CAPTCHA skipped for this login."
+    "recentlyVerified": "Account verified! CAPTCHA skipped for this login.",
+    "captchaBlocked": "reCAPTCHA failed to load (script blocked?). Check for a blocker such as uBlock or AdBlock.",
+    "captchaLoadError": "Script load error.",
+    "retry": "Reload"
   },
   "taskLabels": {
     "addLabel": "+ Label",
