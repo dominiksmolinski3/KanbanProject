@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import pl.myproject.kanbanproject2.task.Task;
+import pl.myproject.kanbanproject2.task.TaskService;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ public class ColumnService {
 
     private final ColumnRepository columnRepository;
     private final ColumnMapper columnMapper;
+    private final TaskService taskService;
 
     public List<ColumnDto> getAllColumns() {
         return columnRepository.findAll().stream().map(columnMapper).toList();
@@ -45,11 +48,27 @@ public class ColumnService {
         return columnMapper.apply(columnRepository.save(existingColumn));
     }
 
+    /**
+     * Removes the column and, with it, the tasks that were still in it.
+     *
+     * <p>That is what {@code Column.tasks} has always declared with {@code cascade = ALL} — but the
+     * cascade alone could not do it, because each of those tasks owns {@code task_column_history}
+     * rows whose {@code task_id} is {@code nullable = false}. Deleting a column that still held a
+     * task failed on that foreign key. {@link TaskService#deleteTask} already unwinds a task
+     * properly — history, then parent and child links — so the deletion goes through it, and the
+     * cascade is left with nothing to do.
+     */
     public void deleteColumn(Integer id) {
-        if (!columnRepository.existsById(id)) {
-            throw columnNotFound(id);
+        var column = findColumn(id);
+
+        if (column.getTasks() != null) {
+            for (Task task : List.copyOf(column.getTasks())) {
+                taskService.deleteTask(task.getId());
+            }
+            column.getTasks().clear();
         }
-        columnRepository.deleteById(id);
+
+        columnRepository.delete(column);
     }
 
     public ColumnDto getColumnById(Integer id) {
