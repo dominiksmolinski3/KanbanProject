@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.layout.row;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +34,8 @@ public class RowController {
     }
 
     @PostMapping
-    public ResponseEntity<RowResponseDto> createRow(@RequestBody Row row) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(rowService.createRow(row));
+    public ResponseEntity<RowResponseDto> createRow(@Valid @RequestBody CreateRowRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(rowService.createRow(request));
     }
 
     @PatchMapping("/{id}")
