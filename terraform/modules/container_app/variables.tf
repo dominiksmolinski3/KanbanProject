@@ -23,7 +23,36 @@ variable "key_vault_id" {
 }
 
 variable "github_repository_owner" {
-  type = string
+  description = "GHCR namespace the app image lives in. Must match the account the CD workflow pushes to."
+  type        = string
+}
+
+variable "ghcr_username" {
+  description = "GitHub account used for the image pull. Required when ghcr_token is set."
+  type        = string
+  default     = ""
+}
+
+variable "ghcr_token" {
+  description = <<-EOT
+    Personal access token with read:packages, used to pull the app image.
+
+    GHCR authenticates with a username and token only — unlike ACR it does not accept an Azure
+    managed identity, so the app's user-assigned identity cannot be used for the pull. The token
+    is stored in Key Vault and read back through that identity, so it never lands in the
+    Container App template in clear text.
+
+    Empty means no registry credentials are configured at all, which only works if the package
+    is public. A private package with no credentials fails with ImagePullBackOff.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.ghcr_token == "" || var.ghcr_username != ""
+    error_message = "Set ghcr_username alongside ghcr_token: GHCR rejects a token presented without an account name."
+  }
 }
 
 variable "app_image_tag" {

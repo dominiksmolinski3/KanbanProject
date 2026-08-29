@@ -67,3 +67,20 @@ variable "standby_availability_zone" {
   type        = string
   default     = null
 }
+
+variable "backup_retention_days" {
+  description = "Days of point-in-time restore Azure keeps. Left unset the server runs on Azure's 7-day default, which is the whole recovery window for the only copy of the data."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.backup_retention_days >= 7 && var.backup_retention_days <= 35
+    error_message = "The backup_retention_days must be between 7 and 35, the range Azure offers for a flexible server."
+  }
+}
+
+variable "geo_redundant_backup_enabled" {
+  description = "Replicate backups to the paired region, so a regional outage is recoverable. Azure fixes this at create time: changing it replaces the server."
+  type        = bool
+  default     = false
+}

@@ -22,7 +22,20 @@ variable "env" {
 
 variable "github_repository_owner" {
   type        = string
-  description = "The owner of the GitHub repository."
+  description = "Owner of the GHCR namespace the app image is pulled from. This has to be the account kanban-cd.yml pushes to, and the workflow publishes under the repository owner — so on a fork it is the fork's owner, not the upstream's. Pointing it elsewhere plans cleanly and then fails at pull time."
+}
+
+variable "ghcr_username" {
+  type        = string
+  description = "GitHub account used to authenticate the image pull from GHCR. Required when ghcr_token is set. Leave empty only if the package is public — GHCR does not accept an Azure managed identity, so a private package needs a token here."
+  default     = ""
+}
+
+variable "ghcr_token" {
+  type        = string
+  sensitive   = true
+  description = "Personal access token with read:packages, stored in Key Vault and read by the Container App. Empty means the package must be public, or the pull fails with ImagePullBackOff and no way to authenticate."
+  default     = ""
 }
 
 variable "app_image_tag" {
@@ -167,4 +180,16 @@ variable "postgres_standby_availability_zone" {
   description = "Availability zone for the Postgres high availability standby. Must differ from postgres_zone under ZoneRedundant; null lets Azure pick."
   type        = string
   default     = null
+}
+
+variable "postgres_backup_retention_days" {
+  description = "Days of point-in-time restore kept for the database. 7 (Azure's default) is a week to notice a bad migration; prod should buy more."
+  type        = number
+  default     = 7
+}
+
+variable "postgres_geo_redundant_backup_enabled" {
+  description = "Replicate Postgres backups to the paired region. Azure fixes this at create time, so turning it on later replaces the server — decide it before an environment carries real data."
+  type        = bool
+  default     = false
 }
