@@ -597,3 +597,82 @@
     color: #ffab40;
   }
 }
+/* ====== COMPLETION AND DAILY FOCUS ====== */
+/* The header now carries three things: the completion checkbox, the title block, and the
+   actions. The delete button used to be the only action and positioned itself; it is laid out
+   by the actions row now, so its own absolute placement is reset below rather than duplicated. */
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.task-header-actions {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  z-index: 5;
+}
+
+.task .task-header-actions .delete-btn {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.task-complete-checkbox {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent-dark);
+}
+
+.task .daily-focus-btn {
+  background: none;
+  border: none;
+  color: var(--gray-500);
+  font-size: var(--text-base);
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-full);
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.task .daily-focus-btn:hover {
+  color: var(--primary);
+  background-color: var(--primary-transparent);
+}
+
+.task .daily-focus-btn.active {
+  color: var(--accent-dark);
+}
+
+/* Two buttons sit in the corner now, not one. */
+.task .task-info-container {
+  margin-right: 40px;
+}
+
+.task.task-completed {
+  opacity: 0.68;
+}
+
+.task.task-completed .task-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.task.daily-focus {
+  border-left-color: var(--accent-dark);
+  box-shadow: var(--shadow-sm), inset 3px 0 0 var(--accent-light);
+}

@@ -512,3 +512,50 @@
   right: 20px;
   z-index: 100;
 }
+/* ====== BOARD TOOLBAR ====== */
+.board-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  flex-wrap: wrap;
+}
+
+.daily-focus-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: var(--border-thin) solid var(--gray-500);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.daily-focus-filter:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.daily-focus-filter.active {
+  border-color: var(--accent-dark);
+  color: var(--accent-dark);
+  background-color: var(--primary-transparent);
+}
+
+.daily-focus-count {
+  font-variant-numeric: tabular-nums;
+  background-color: var(--surface-light);
+  border-radius: var(--radius-full);
+  padding: 0 var(--spacing-xs);
+  min-width: 1.25rem;
+  text-align: center;
+}
+
+.daily-focus-empty {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}

@@ -35,7 +35,11 @@
       "noDeadline": "لا يوجد موعد نهائي",
       "columnHistory": "تاريخ العمود",
       "upcoming": "قادم",
-      "addTaskHere": "+ أضف مهمة هنا"
+      "addTaskHere": "+ أضف مهمة هنا",
+      "complete": "وضع علامة كمكتملة",
+      "reopen": "إعادة فتح المهمة",
+      "addToDailyFocus": "إضافة إلى تركيز اليوم",
+      "removeFromDailyFocus": "إزالة من تركيز اليوم"
     },
     "board": {
       "loading": "جاري تحميل لوحة كانبان...",
@@ -44,7 +48,9 @@
       "addRow": "إضافة صف",
       "title": "لوحة كانبان",
       "subtitle": "إدارة مهامك بكفاءة",
-      "labels": "التصنيفات"
+      "labels": "التصنيفات",
+      "dailyFocus": "تركيز اليوم",
+      "dailyFocusEmpty": "لا توجد مهام في تركيز اليوم بعد."
     },
     "notifications": {
       "taskAdded": "تمت إضافة المهمة \"{{title}}\"",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "تم تعيين المستخدم {{user}} للمهمة \"{{title}}\"",
       "usersLoadError": "خطأ أثناء تحميل المستخدمين: {{message}}",
       "wipLimitUpdateError": "خطأ أثناء تحديث حد العمل قيد التنفيذ: {{message}}",
-      "userWipLimitExceeded": "وصل {{name}} إلى حد العمل قيد التنفيذ البالغ {{limit}} مهام"
+      "userWipLimitExceeded": "وصل {{name}} إلى حد العمل قيد التنفيذ البالغ {{limit}} مهام",
+      "taskCompleted": "اكتملت المهمة",
+      "taskReopened": "أعيد فتح المهمة",
+      "parentTaskNotCompleted": "لا يمكن إكمال هذه المهمة ما دامت المهمة الأصلية مفتوحة.",
+      "dailyFocusAdded": "أُضيفت إلى تركيز اليوم",
+      "dailyFocusRemoved": "أُزيلت من تركيز اليوم"
     },
     "column": {
       "deleteConfirm": "هل أنت متأكد أنك تريد حذف هذا العمود؟",

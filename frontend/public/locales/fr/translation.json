@@ -35,7 +35,11 @@
       "noDeadline": "Pas de date limite",
       "columnHistory": "Historique des colonnes",
       "upcoming": "À venir",
-      "addTaskHere": "+ Ajouter une tâche ici"
+      "addTaskHere": "+ Ajouter une tâche ici",
+      "complete": "Marquer comme terminée",
+      "reopen": "Rouvrir la tâche",
+      "addToDailyFocus": "Ajouter au focus du jour",
+      "removeFromDailyFocus": "Retirer du focus du jour"
     },
     "board": {
       "loading": "Chargement du tableau kanban...",
@@ -44,7 +48,9 @@
       "addRow": "Ajouter une ligne",
       "title": "Tableau Kanban",
       "subtitle": "Gérez vos tâches efficacement",
-      "labels": "Étiquettes"
+      "labels": "Étiquettes",
+      "dailyFocus": "Focus du jour",
+      "dailyFocusEmpty": "Aucune tâche dans le focus du jour."
     },
     "notifications": {
       "taskAdded": "La tâche \"{{title}}\" a été ajoutée",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "L'utilisateur {{user}} a été affecté à la tâche \"{{title}}\"",
       "usersLoadError": "Erreur lors du chargement des utilisateurs : {{message}}",
       "wipLimitUpdateError": "Erreur lors de la mise à jour de la limite WIP : {{message}}",
-      "userWipLimitExceeded": "{{name}} a atteint sa limite WIP de {{limit}} tâches"
+      "userWipLimitExceeded": "{{name}} a atteint sa limite WIP de {{limit}} tâches",
+      "taskCompleted": "Tâche terminée",
+      "taskReopened": "Tâche rouverte",
+      "parentTaskNotCompleted": "Cette tâche ne peut pas être terminée tant que sa tâche parente reste ouverte.",
+      "dailyFocusAdded": "Ajoutée au focus du jour",
+      "dailyFocusRemoved": "Retirée du focus du jour"
     },
     "column": {
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette colonne ?",

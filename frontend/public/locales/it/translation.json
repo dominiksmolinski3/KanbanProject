@@ -35,7 +35,11 @@
       "noDeadline": "Nessuna scadenza",
       "columnHistory": "Cronologia colonna",
       "upcoming": "In arrivo",
-      "addTaskHere": "+ Aggiungi attività qui"
+      "addTaskHere": "+ Aggiungi attività qui",
+      "complete": "Segna come completata",
+      "reopen": "Riapri attività",
+      "addToDailyFocus": "Aggiungi al focus giornaliero",
+      "removeFromDailyFocus": "Rimuovi dal focus giornaliero"
     },
     "board": {
       "loading": "Caricamento bacheca kanban...",
@@ -44,7 +48,9 @@
       "addRow": "Aggiungi riga",
       "title": "Bacheca Kanban",
       "subtitle": "Gestisci le tue attività in modo efficiente",
-      "labels": "Etichette"
+      "labels": "Etichette",
+      "dailyFocus": "Focus giornaliero",
+      "dailyFocusEmpty": "Nessuna attività nel focus giornaliero."
     },
     "notifications": {
       "taskAdded": "Attività \"{{title}}\" è stata aggiunta",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "L'utente {{user}} è stato assegnato all'attività \"{{title}}\"",
       "usersLoadError": "Errore durante il caricamento degli utenti: {{message}}",
       "wipLimitUpdateError": "Errore durante l'aggiornamento del limite WIP: {{message}}",
-      "userWipLimitExceeded": "{{name}} ha raggiunto il limite WIP di {{limit}} attività"
+      "userWipLimitExceeded": "{{name}} ha raggiunto il limite WIP di {{limit}} attività",
+      "taskCompleted": "Attività completata",
+      "taskReopened": "Attività riaperta",
+      "parentTaskNotCompleted": "Questa attività non può essere completata finché l'attività principale resta aperta.",
+      "dailyFocusAdded": "Aggiunta al focus giornaliero",
+      "dailyFocusRemoved": "Rimossa dal focus giornaliero"
     },
     "column": {
       "deleteConfirm": "Sei sicuro di voler eliminare questa colonna?",

@@ -35,7 +35,11 @@
       "noDeadline": "期限なし",
       "columnHistory": "カラム履歴",
       "upcoming": "今後の予定",
-      "addTaskHere": "+ ここにタスクを追加"
+      "addTaskHere": "+ ここにタスクを追加",
+      "complete": "完了にする",
+      "reopen": "タスクを再開する",
+      "addToDailyFocus": "今日のフォーカスに追加",
+      "removeFromDailyFocus": "今日のフォーカスから削除"
     },
     "board": {
       "loading": "かんばんボードを読み込み中...",
@@ -44,7 +48,9 @@
       "addRow": "行を追加",
       "title": "かんばんボード",
       "subtitle": "タスクを効率的に管理",
-      "labels": "ラベル"
+      "labels": "ラベル",
+      "dailyFocus": "今日のフォーカス",
+      "dailyFocusEmpty": "今日のフォーカスにタスクはまだありません。"
     },
     "notifications": {
       "taskAdded": "タスク「{{title}}」が追加されました",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "ユーザー {{user}} がタスク「{{title}}」に割り当てられました",
       "usersLoadError": "ユーザーの読み込みエラー: {{message}}",
       "wipLimitUpdateError": "WIP 制限の更新エラー: {{message}}",
-      "userWipLimitExceeded": "{{name}} は WIP 制限（{{limit}} 件）に達しています"
+      "userWipLimitExceeded": "{{name}} は WIP 制限（{{limit}} 件）に達しています",
+      "taskCompleted": "タスクを完了しました",
+      "taskReopened": "タスクを再開しました",
+      "parentTaskNotCompleted": "親タスクが未完了のため、このタスクは完了できません。",
+      "dailyFocusAdded": "今日のフォーカスに追加しました",
+      "dailyFocusRemoved": "今日のフォーカスから削除しました"
     },
     "column": {
       "deleteConfirm": "このカラムを削除してもよろしいですか？",

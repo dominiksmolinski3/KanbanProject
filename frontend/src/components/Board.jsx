@@ -21,6 +21,8 @@ function Board() {
     dragAndDrop,
     updateColumnName,
     updateRowName,
+    dailyFocusOnly,
+    setDailyFocusOnly,
   } = useKanban();
   
   const { t } = useTranslation();
@@ -49,8 +51,11 @@ function Board() {
     return <div className="board-error">{t('board.error', { message: error })}</div>;
   }
 
+  const visibleTasks = dailyFocusOnly ? tasks.filter(task => task.dailyFocus) : tasks;
+  const dailyFocusCount = tasks.filter(task => task.dailyFocus).length;
+
   const getTasksByColumnAndRow = (columnId, rowId = null) => {
-    return tasks.filter(task => 
+    return visibleTasks.filter(task => 
       task.columnId === columnId && task.rowId === rowId
     );
   };
@@ -356,6 +361,20 @@ function Board() {
 
   return (
     <div className="board-grid" onDragOver={onBoardDragOver}>
+      <div className="board-toolbar">
+        <button
+          type="button"
+          className={`daily-focus-filter ${dailyFocusOnly ? 'active' : ''}`}
+          aria-pressed={dailyFocusOnly}
+          onClick={() => setDailyFocusOnly(!dailyFocusOnly)}
+        >
+          ★ {t('board.dailyFocus')}
+          <span className="daily-focus-count">{dailyFocusCount}</span>
+        </button>
+        {dailyFocusOnly && dailyFocusCount === 0 && (
+          <span className="daily-focus-empty">{t('board.dailyFocusEmpty')}</span>
+        )}
+      </div>
       <table className="kanban-table">
         <thead>
           <tr>
