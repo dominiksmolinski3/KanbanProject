@@ -608,7 +608,9 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   
   const saveDeadline = async () => {
     try {
-      await updateTask(task.id, { deadline: deadlineValue });
+      // An emptied field means "remove the deadline". The API distinguishes an explicit null from an
+      // omitted field, so send null rather than '' — which is not a date and would be rejected.
+      await updateTask(task.id, { deadline: deadlineValue || null });
       
       setOriginalDeadline(deadlineValue);
       setEditingDeadline(false);

@@ -20,10 +20,13 @@ public class ColumnService {
         return columnRepository.findAll().stream().map(columnMapper).toList();
     }
 
-    public ColumnResponseDto addNewColumn(Column column) {
-        if (column.getPosition() == null) {
-            column.setPosition((int) columnRepository.count() + 1);
-        }
+    public ColumnResponseDto addNewColumn(CreateColumnRequest request) {
+        var column = new Column();
+        column.setName(request.name());
+        column.setWipLimit(request.wipLimit());
+        column.setPosition(request.position() != null
+                ? request.position()
+                : (int) columnRepository.count() + 1);
         return columnMapper.toResponseDto(columnRepository.save(column));
     }
 

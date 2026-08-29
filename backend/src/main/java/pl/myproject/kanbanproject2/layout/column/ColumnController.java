@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.layout.column;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,8 +23,8 @@ public class ColumnController {
     }
 
     @PostMapping
-    public ResponseEntity<ColumnResponseDto> addNewColumn(@RequestBody Column column) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(columnService.addNewColumn(column));
+    public ResponseEntity<ColumnResponseDto> addNewColumn(@Valid @RequestBody CreateColumnRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(columnService.addNewColumn(request));
     }
 
     @PatchMapping("/{id}")
