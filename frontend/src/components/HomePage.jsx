@@ -308,12 +308,12 @@ const HomePage = () => {
                 </div>
                 {captchaWarn && captchaReady && (
                   <div className="captcha-warning" style={{ marginTop: '8px', fontSize: '0.8rem', color: '#c0392b' }}>
-                    reCAPTCHA nie załadował się (script blocked?). Sprawdź: brak blokady wtyczek (uBlock / AdBlock).
+                    {t('auth.captchaBlocked')}
                   </div>
                 )}
                 {captchaLoadError && (
                   <div style={{ marginTop: '6px', fontSize: '0.75rem', color: '#b03a2e' }}>
-                    Script load error. <button type="button" style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#007bff', padding: 0 }} onClick={() => {
+                    {t('auth.captchaLoadError')} <button type="button" style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#007bff', padding: 0 }} onClick={() => {
                       setCaptchaLoadError(false);
                       setCaptchaWarn(false);
                       setCaptchaReady(false);
@@ -331,7 +331,7 @@ const HomePage = () => {
                         };
                         document.head.appendChild(script);
                       }
-                    }}>Reload</button>
+                    }}>{t('auth.retry')}</button>
                   </div>
                 )}
               </div>
