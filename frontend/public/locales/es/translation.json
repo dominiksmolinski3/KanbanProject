@@ -81,7 +81,8 @@
       "parentTaskRemoveError": "Se produjo un error al eliminar la tarea principal",
       "userAssignedToTask": "El usuario {{user}} ha sido asignado a la tarea \"{{title}}\"",
       "usersLoadError": "Error al cargar los usuarios: {{message}}",
-      "wipLimitUpdateError": "Error al actualizar el límite WIP: {{message}}"
+      "wipLimitUpdateError": "Error al actualizar el límite WIP: {{message}}",
+      "userWipLimitExceeded": "{{name}} ha alcanzado su límite WIP de {{limit}} tareas"
     },
     "column": {
       "deleteConfirm": "¿Está seguro de que desea eliminar esta columna?",

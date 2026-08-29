@@ -3,7 +3,7 @@ import { useKanban } from '../context/KanbanContext';
 import TaskDetails from './TaskDetails';
 import EditableText from './EditableText';
 import Xarrow from "react-xarrows";
-import { getUserAvatar, assignUserToTask, fetchSubTasksByTaskId, fetchTask, getChildTasks } from '../services/api';
+import { getUserAvatar, assignUserToTask, fetchSubTasksByTaskId, fetchTask, getChildTasks, WipLimitExceededError } from '../services/api';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -337,13 +337,20 @@ function Task({ task, columnId }) {
             
             toast.success(t('notifications.userAssignedToTask', { user: userName, title: task.title }));
           } catch (error) {
-            setAssignmentError(error.message || 'Error assigning user to task');
-            console.error('Error assigning user:', error.message);
+            console.error('Error assigning user:', error);
+            setAssignmentError(
+              error instanceof WipLimitExceededError
+                ? t('notifications.userWipLimitExceeded', {
+                    name: userName,
+                    limit: error.status?.wipLimit
+                  })
+                : t('notifications.userAssignError')
+            );
           }
         }
       } catch (err) {
         console.error('Error processing user drop:', err);
-        setAssignmentError('Error processing user assignment');
+        setAssignmentError(t('notifications.userAssignError'));
       }
     }
   };
