@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String requestPath = request.getRequestURI();
+        String requestPath = request.getRequestURI().substring(request.getContextPath().length());
         String method = request.getMethod();
 
         if (shouldSkipFilter(requestPath, method)) {
@@ -84,14 +84,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
+    /*
+     * Delegates to the same patterns the filter chain permits with. The hand-rolled version this
+     * replaces had drifted twice over: it still tested `/auth/`, which moved to `/api/auth/` when
+     * the prefix landed, and it skipped anything merely *ending* in a static-asset extension. A
+     * label is a free-text path segment, so `PUT /api/tasks/5/label/build.js` skipped the filter,
+     * arrived unauthenticated and was rejected by the authorize rules with a bare 403.
+     */
     private boolean shouldSkipFilter(String requestPath, String method) {
-        return requestPath.startsWith("/auth/")
-                || requestPath.equals("/actuator/health")
-                || requestPath.startsWith("/actuator/health/")
-                || requestPath.equals("/actuator/info")
-                || requestPath.startsWith("/ws/")
-                || requestPath.equals("/error")
-                || "OPTIONS".equals(method)
-                || requestPath.matches(".*\\.(html|js|css|ico|json|png|svg|jpg|jpeg|gif|webp|woff|woff2|ttf)$");
+        return "OPTIONS".equals(method) || PublicPaths.isPublic(requestPath);
     }
 }
