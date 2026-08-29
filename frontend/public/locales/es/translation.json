@@ -35,7 +35,11 @@
       "noDeadline": "Sin fecha límite",
       "columnHistory": "Historial de columnas",
       "upcoming": "Próximo",
-      "addTaskHere": "+ Añadir tarea aquí"
+      "addTaskHere": "+ Añadir tarea aquí",
+      "complete": "Marcar como completada",
+      "reopen": "Reabrir tarea",
+      "addToDailyFocus": "Añadir al foco diario",
+      "removeFromDailyFocus": "Quitar del foco diario"
     },
     "board": {
       "loading": "Cargando tablero kanban...",
@@ -44,7 +48,9 @@
       "addRow": "Añadir fila",
       "title": "Tablero Kanban",
       "subtitle": "Gestione sus tareas de manera eficiente",
-      "labels": "Etiquetas"
+      "labels": "Etiquetas",
+      "dailyFocus": "Foco diario",
+      "dailyFocusEmpty": "Aún no hay tareas en el foco diario."
     },
     "notifications": {
       "taskAdded": "Tarea \"{{title}}\" ha sido añadida",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "El usuario {{user}} ha sido asignado a la tarea \"{{title}}\"",
       "usersLoadError": "Error al cargar los usuarios: {{message}}",
       "wipLimitUpdateError": "Error al actualizar el límite WIP: {{message}}",
-      "userWipLimitExceeded": "{{name}} ha alcanzado su límite WIP de {{limit}} tareas"
+      "userWipLimitExceeded": "{{name}} ha alcanzado su límite WIP de {{limit}} tareas",
+      "taskCompleted": "Tarea completada",
+      "taskReopened": "Tarea reabierta",
+      "parentTaskNotCompleted": "Esta tarea no puede completarse mientras su tarea principal siga abierta.",
+      "dailyFocusAdded": "Añadida al foco diario",
+      "dailyFocusRemoved": "Quitada del foco diario"
     },
     "column": {
       "deleteConfirm": "¿Está seguro de que desea eliminar esta columna?",
