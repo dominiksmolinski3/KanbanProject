@@ -81,7 +81,8 @@
     "parentTaskRemoveError": "An error occurred while removing the parent task",
     "userAssignedToTask": "User {{user}} has been assigned to task \"{{title}}\"",
     "usersLoadError": "Error loading users: {{message}}",
-    "wipLimitUpdateError": "Error updating the WIP limit: {{message}}"
+    "wipLimitUpdateError": "Error updating the WIP limit: {{message}}",
+    "userWipLimitExceeded": "{{name}} has reached their WIP limit of {{limit}} tasks"
   },
   "column": {
     "deleteConfirm": "Are you sure you want to delete this column?",
