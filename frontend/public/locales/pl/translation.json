@@ -35,7 +35,11 @@
     "noDeadline": "Brak terminu",
     "columnHistory": "Historia kolumny",
     "upcoming": "Nadchodzące",
-    "addTaskHere": "+ Dodaj zadanie"
+    "addTaskHere": "+ Dodaj zadanie",
+    "complete": "Oznacz jako ukończone",
+    "reopen": "Otwórz ponownie",
+    "addToDailyFocus": "Dodaj do dziennego skupienia",
+    "removeFromDailyFocus": "Usuń z dziennego skupienia"
   },
   "board": {
     "loading": "Ładowanie tablicy kanban...",
@@ -44,7 +48,9 @@
     "addRow": "Dodaj wiersz",
     "title": "Tablica Kanban",
     "subtitle": "Zarządzaj swoimi zadaniami efektywnie",
-    "labels": "Etykiety"
+    "labels": "Etykiety",
+    "dailyFocus": "Dzienne skupienie",
+    "dailyFocusEmpty": "Brak zadań w dziennym skupieniu."
   },
   "notifications": {
     "taskAdded": "Zadanie \"{{title}}\" zostało dodane",
@@ -82,7 +88,12 @@
     "userAssignedToTask": "Użytkownik {{user}} został przypisany do zadania \"{{title}}\"",
     "usersLoadError": "Błąd podczas ładowania użytkowników: {{message}}",
     "wipLimitUpdateError": "Błąd podczas aktualizacji limitu WIP: {{message}}",
-    "userWipLimitExceeded": "{{name}} osiągnął limit WIP wynoszący {{limit}} zadań"
+    "userWipLimitExceeded": "{{name}} osiągnął limit WIP wynoszący {{limit}} zadań",
+    "taskCompleted": "Zadanie ukończone",
+    "taskReopened": "Zadanie otwarte ponownie",
+    "parentTaskNotCompleted": "Tego zadania nie można ukończyć, dopóki zadanie nadrzędne pozostaje otwarte.",
+    "dailyFocusAdded": "Dodano do dziennego skupienia",
+    "dailyFocusRemoved": "Usunięto z dziennego skupienia"
   },
   "column": {
     "deleteConfirm": "Czy na pewno chcesz usunąć tę kolumnę?",

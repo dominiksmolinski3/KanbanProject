@@ -10,7 +10,14 @@ import { useTranslation } from 'react-i18next';
 import '../styles/components/Task.css';
 
 function Task({ task, columnId }) {
-  const { deleteTask, dragAndDrop, refreshTasks, updateTaskName } = useKanban();
+  const {
+    deleteTask,
+    dragAndDrop,
+    refreshTasks,
+    updateTaskName,
+    updateTaskCompletion,
+    setDailyFocus,
+  } = useKanban();
   const [showDetails, setShowDetails] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -173,6 +180,8 @@ function Task({ task, columnId }) {
         e.target.classList.contains('editable-text') ||
         e.target.classList.contains('editable-text-input') ||
         e.target.classList.contains('warning-close-btn') ||
+        e.target.classList.contains('task-complete-checkbox') ||
+        e.target.classList.contains('daily-focus-btn') ||
         e.target.classList.contains('description-dropdown-btn') ||
         e.target.closest('.task-description-dropdown')) return;
     setShowDetails(!showDetails);
@@ -193,6 +202,16 @@ function Task({ task, columnId }) {
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     setIsConfirmingDelete(true);
+  };
+
+  const handleToggleCompletion = (e) => {
+    e.stopPropagation();
+    updateTaskCompletion(task.id, !task.completed);
+  };
+
+  const handleToggleDailyFocus = (e) => {
+    e.stopPropagation();
+    setDailyFocus(task.id, !task.dailyFocus);
   };
 
   const handleConfirmDelete = (e) => {
@@ -436,6 +455,8 @@ function Task({ task, columnId }) {
         id={`task-${task.id}`}
         className={`task ${isDragOver ? 'user-drag-over' : ''} 
           ${isParentTask ? 'parent-task' : ''} 
+          ${task.completed ? 'task-completed' : ''} 
+          ${task.dailyFocus ? 'daily-focus' : ''} 
           ${isDeadlineExpired ? 'deadline-expired' : ''} 
           ${isDeadlineUpcoming ? 'deadline-upcoming' : ''}`}
         draggable="true"
@@ -451,6 +472,15 @@ function Task({ task, columnId }) {
         data-is-parent={isParentTask}
       >
         <div className="task-header">
+          <input
+            type="checkbox"
+            className="task-complete-checkbox"
+            checked={Boolean(task.completed)}
+            onChange={handleToggleCompletion}
+            onClick={(e) => e.stopPropagation()}
+            title={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
+            aria-label={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
+          />
           <div className="task-content">
             <EditableText 
               id={task.id} 
@@ -466,13 +496,25 @@ function Task({ task, columnId }) {
             </div>
           </div>
           
-          <button 
-            className="delete-btn" 
-            title={t('taskActions.delete')}
-            onClick={handleDeleteClick}
-          >
-            ×
-          </button>
+          <div className="task-header-actions">
+            <button
+              className={`daily-focus-btn ${task.dailyFocus ? 'active' : ''}`}
+              title={task.dailyFocus
+                ? t('taskActions.removeFromDailyFocus')
+                : t('taskActions.addToDailyFocus')}
+              aria-pressed={Boolean(task.dailyFocus)}
+              onClick={handleToggleDailyFocus}
+            >
+              ★
+            </button>
+            <button
+              className="delete-btn"
+              title={t('taskActions.delete')}
+              onClick={handleDeleteClick}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {(isDeadlineExpired || isDeadlineUpcoming) && (
