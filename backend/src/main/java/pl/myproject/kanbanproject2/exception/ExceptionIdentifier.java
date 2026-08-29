@@ -10,6 +10,7 @@ public enum ExceptionIdentifier {
 
     USER_NOT_FOUND(NOT_FOUND, "User not found"),
     USER_ALREADY_EXISTS(CONFLICT, "A user with the provided email address already exists"),
+    NOT_ACCOUNT_OWNER(FORBIDDEN, "You can only modify your own account"),
 
     AVATAR_NOT_FOUND(NOT_FOUND, "Avatar not found"),
     INVALID_AVATAR_FILE_TYPE(UNSUPPORTED_MEDIA_TYPE, "Only image files are allowed"),
