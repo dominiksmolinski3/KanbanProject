@@ -108,43 +108,6 @@ describe('API Services', () => {
       expect(result).toEqual(mockColumn);
     });
 
-    test('fetchColumnById should return a specific column', async () => {
-        const mockColumn = { id: 'col1', name: 'To Do', position: 0, wipLimit: 3 };
-        
-        fetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockColumn
-        });
-      
-        const result = await api.fetchColumnById('col1');
-      
-        expect(fetch).toHaveBeenCalledWith('/api/columns/col1');
-        expect(result).toEqual(mockColumn);
-      });
-      
-    test('updateColumnWipLimit should update column WIP limit', async () => {
-        const mockColumn = { id: 'col1', wipLimit: 5 };
-        const wipLimit = 5;
-          
-        fetch.mockResolvedValueOnce({
-          status: 200,
-          json: async () => mockColumn
-        });
-        
-        const result = await api.updateColumnWipLimit('col1', wipLimit);
-        
-        expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            wipLimit: parseInt(wipLimit)
-          }),
-        });
-        expect(result).toEqual(mockColumn);
-    });
-      
     test('updateColumnWipLimit should handle JSON parsing errors', async () => {
       const columnId = 'col1';
       const wipLimit = 5;
@@ -246,15 +209,6 @@ describe('API Services', () => {
       });
         
       await expect(api.updateColumnWipLimit('col1', 5)).rejects.toThrow('Error updating WIP limit: 400');
-    });
-
-    test('fetchColumnById should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404
-      });
-        
-      await expect(api.fetchColumnById('col1')).rejects.toThrow('Error fetching column: 404');
     });
 
     test('updateColumnName should handle error responses', async () => {
@@ -913,19 +867,6 @@ describe('API Services', () => {
         expect(result).toBe(true);
     });
         
-    test('deleteRow with cascade should include cascade parameter', async () => {
-        fetch.mockResolvedValueOnce({
-            ok: true
-        });
-
-        const result = await api.deleteRow('row1', true);
-
-        expect(fetch).toHaveBeenCalledWith('/api/rows/row1?cascade=true', {
-            method: 'DELETE'
-        });
-        expect(result).toBe(true);
-    });
-
     test('fetchRows should return rows when successful', async () => {
         const mockRows = [
           { id: 'row1', name: 'Team A', position: 0, wipLimit: 5 },
@@ -973,20 +914,6 @@ describe('API Services', () => {
       
         await expect(api.fetchRows(2)).rejects.toThrow('Error fetching rows: 500');
         expect(fetch).toHaveBeenCalledTimes(2);
-    });
-      
-    test('fetchRow should return a specific row', async () => {
-        const mockRow = { id: 'row1', name: 'Team A', position: 0, wipLimit: 5 };
-        
-        fetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockRow
-        });
-      
-        const result = await api.fetchRow('row1');
-      
-        expect(fetch).toHaveBeenCalledWith('/api/rows/row1');
-        expect(result).toEqual(mockRow);
     });
       
     test('addRow should create a new row', async () => {
@@ -1091,19 +1018,6 @@ describe('API Services', () => {
         expect(result).toBe(true);
     });
       
-    test('deleteRow with cascade should include cascade parameter', async () => {
-        fetch.mockResolvedValueOnce({
-          ok: true
-        });
-      
-        const result = await api.deleteRow('row1', true);
-      
-        expect(fetch).toHaveBeenCalledWith('/api/rows/row1?cascade=true', {
-          method: 'DELETE'
-        });
-        expect(result).toBe(true);
-    });
-      
     test('deleteRow should handle 404 responses', async () => {
         fetch.mockResolvedValueOnce({
           ok: false,
@@ -1151,15 +1065,6 @@ describe('API Services', () => {
         expect(fetch).toHaveBeenCalledWith('/api/rows/row1', expect.any(Object));
     });
 
-    test('fetchRow should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404
-      });
-        
-      await expect(api.fetchRow('row1')).rejects.toThrow('Error fetching row: 404');
-    });
-      
     test('addRow should handle error responses', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
@@ -1287,71 +1192,6 @@ describe('API Services', () => {
       const result = await api.fetchUser('user1');
       
       expect(fetch).toHaveBeenCalledWith('/api/users/user1');
-      expect(result).toEqual(mockUser);
-    });
-      
-    test('addUser should create a new user', async () => {
-      const userData = { name: 'New User', email: 'new@example.com', wipLimit: 5 };
-      const mockUser = { id: 'user3', ...userData };
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser
-      });
-      
-      const result = await api.addUser(userData);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-      expect(result).toEqual(mockUser);
-    });
-      
-    test('updateUser should update a user with PUT', async () => {
-      const userId = 'user1';
-      const userData = { name: 'Updated User', email: 'updated@example.com' };
-      const mockUser = { id: userId, ...userData };
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser
-      });
-      
-      const result = await api.updateUser(userId, userData);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-      expect(result).toEqual(mockUser);
-    });
-      
-    test('patchUser should update partial user data with PATCH', async () => {
-      const userId = 'user1';
-      const userData = { name: 'Patched Name' };
-      const mockUser = { id: userId, name: 'Patched Name', email: 'existing@example.com' };
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser
-      });
-      
-      const result = await api.patchUser(userId, userData);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
       expect(result).toEqual(mockUser);
     });
       
@@ -1595,23 +1435,6 @@ describe('API Services', () => {
       expect(result).toEqual(mockSubTask);
     });
 
-    test('fetchSubTasks should return all subtasks when successful', async () => {
-      const mockSubTasks = [
-        { id: 'sub1', title: 'SubTask 1', completed: false },
-        { id: 'sub2', title: 'SubTask 2', completed: true }
-      ];
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSubTasks
-      });
-      
-      const result = await api.fetchSubTasks();
-      
-      expect(fetch).toHaveBeenCalledWith('/api/subtasks');
-      expect(result).toEqual(mockSubTasks);
-    });
-      
     test('fetchSubTask should return a specific subtask', async () => {
       const mockSubTask = { id: 'sub1', title: 'SubTask 1', completed: false };
         
@@ -1722,27 +1545,6 @@ describe('API Services', () => {
       expect(result).toEqual(mockSubTask);
     });
       
-    test('updateSubTaskPosition should update subtask position', async () => {
-      const subTaskId = 'sub1';
-      const position = 2;
-      const mockSubTask = { id: subTaskId, title: 'SubTask 1', position: 2 };
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSubTask
-      });
-      
-      const result = await api.updateSubTaskPosition(subTaskId, position);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/position/2', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      expect(result).toEqual(mockSubTask);
-    });
-
     test('updateSubTaskPosition should handle error responses', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
@@ -1750,36 +1552,6 @@ describe('API Services', () => {
       });
         
       await expect(api.updateTaskPosition('1', 2)).rejects.toThrow('Error updating task position: 400');
-    });
-      
-    test('assignTaskToSubTask should assign a task to a subtask', async () => {
-      const subTaskId = 'sub1';
-      const taskId = 'task2';
-      const mockSubTask = { id: subTaskId, title: 'SubTask 1', task: { id: taskId } };
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSubTask
-      });
-    
-      const result = await api.assignTaskToSubTask(subTaskId, taskId);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/task/task2', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      expect(result).toEqual(mockSubTask);
-    });
-
-    test('assignTaskToSubTask should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400
-      });
-        
-      await expect(api.assignTaskToSubTask('sub1', 'task1')).rejects.toThrow('Error assigning task to subtask: 400');
     });
       
     test('deleteSubTask should delete a subtask', async () => {
@@ -1831,206 +1603,7 @@ describe('API Services', () => {
   });
 
   // ====== FILE OPERATIONS TESTS ======
-  describe('File Operations', () => {
-    test('uploadFile should upload a file', async () => {
-      const mockFile = new File(['file content'], 'document.pdf', { type: 'application/pdf' });
-      
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => 'File uploaded successfully!'
-      });
-
-      const result = await api.uploadFile(mockFile);
-
-      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-      expect(result).toBe('File uploaded successfully!');
-    });
-
-    test('uploadFile should upload a file successfully', async () => {
-      const file = new File(['test file content'], 'test.txt', { type: 'text/plain' });
-      const mockResponse = 'file-123';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => mockResponse
-      });
-      
-      const result = await api.uploadFile(file);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-        
-      expect(result).toBe(mockResponse);
-    });
-      
-    test('uploadFile should handle error responses', async () => {
-      const file = new File(['test file content'], 'test.txt', { type: 'text/plain' });
-        
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 413 
-      });
-      
-      await expect(api.uploadFile(file)).rejects.toThrow('Error uploading file: 413');
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-    });
-      
-    test('getFile should return the full response for blob handling', async () => {
-      const fileId = 'file-123';
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        blob: async () => new Blob(['file content'], { type: 'text/plain' })
-      };
-        
-      fetch.mockResolvedValueOnce(mockResponse);
-      const result = await api.getFile(fileId);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
-      expect(result).toBe(mockResponse);
-    });
-      
-    test('getFile should handle error responses', async () => {
-      const fileId = 'file-123';
-        
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404
-      });
-      
-      await expect(api.getFile(fileId)).rejects.toThrow('Error fetching file: 404');
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
-    });
-      
-    test('deleteFile should delete a file successfully', async () => {
-      const fileId = 'file-123';
-      const mockResponse = 'File deleted successfully';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => mockResponse
-      });
-      
-      const result = await api.deleteFile(fileId);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123', {
-        method: 'DELETE'
-      });
-        
-      expect(result).toBe(mockResponse);
-    });
-      
-    test('deleteFile should handle error responses', async () => {
-      const fileId = 'file-123';
-        
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404
-      });
-      
-      await expect(api.deleteFile(fileId)).rejects.toThrow('Error deleting file: 404');
-      
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123', {
-        method: 'DELETE'
-      });
-    });
-      
-    test('file upload should create and populate FormData correctly', async () => {
-      const fileName = 'important-document.pdf';
-      const fileContent = 'PDF document content';
-      const fileType = 'application/pdf';
-      const file = new File([fileContent], fileName, { type: fileType });
-        
-      fetch.mockImplementationOnce((url, options) => {
-        const formData = options.body;
-        const fileFromForm = formData.get('file');
-          
-        expect(fileFromForm.name).toBe(fileName);
-        expect(fileFromForm.type).toBe(fileType);
-          
-        return Promise.resolve({
-          ok: true,
-          text: async () => 'file-123'
-        });
-      });
-      
-      await api.uploadFile(file);
-        
-      expect(fetch).toHaveBeenCalledWith('/api/files/upload', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-    });
-      
-    test('getFile should allow consuming the response as blob', async () => {
-      const fileId = 'file-123';
-      const mockBlob = new Blob(['file content'], { type: 'application/pdf' });
-        
-      const mockResponse = {
-        ok: true,
-        blob: jest.fn().mockResolvedValue(mockBlob)
-      };
-        
-      fetch.mockResolvedValueOnce(mockResponse);
-      const response = await api.getFile(fileId);
-      const blob = await response.blob();
-        
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
-      expect(mockResponse.blob).toHaveBeenCalled();
-      expect(blob).toBe(mockBlob);
-    });
-      
-    test('getFile should allow creating an object URL', async () => {
-      const fileId = 'file-123';
-      const mockBlob = new Blob(['file content'], { type: 'application/pdf' });
-        
-      const mockResponse = {
-        ok: true,
-        blob: jest.fn().mockResolvedValue(mockBlob)
-      };
-        
-      fetch.mockResolvedValueOnce(mockResponse);
-      
-      const response = await api.getFile(fileId);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-        
-      expect(fetch).toHaveBeenCalledWith('/api/files/file-123');
-      expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
-      expect(objectUrl).toBe('mock-blob-url');
-    });
-
-    test('uploadFile should use proper FormData with file contents', async () => {
-        const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
-        
-        fetch.mockImplementationOnce((url, options) => {
-          const formData = options.body;
-          expect(formData instanceof FormData).toBe(true);
-          
-          const fileFromForm = formData.get('file');
-          expect(fileFromForm).toBe(file);
-          
-          return Promise.resolve({
-            ok: true,
-            text: async () => 'Success'
-          });
-        });
-        
-        await api.uploadFile(file);
-        expect(fetch).toHaveBeenCalledWith('/api/files/upload', expect.any(Object));
-    });
-      
+  describe('Avatar Uploads', () => {
     test('uploadUserAvatar should use proper FormData with file contents', async () => {
       const file = new File(['avatar content'], 'avatar.png', { type: 'image/png' });
         

@@ -29,19 +29,6 @@ export const fetchColumns = async (retries = 3) => {
   }
 };
 
-export const fetchColumnById = async (columnId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.COLUMNS}/${columnId}`);
-    if (!response.ok) {
-      throw new Error(`Error fetching column: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching column ${columnId}:`, error);
-    throw error;
-  }
-};
-
 export const addColumn = async (name, wipLimit) => {
   try {
     const response = await fetch(API_ENDPOINTS.COLUMNS, {
@@ -640,19 +627,6 @@ export const fetchRows = async (retries = 3) => {
   }
 };
 
-export const fetchRow = async (rowId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.ROWS}/${rowId}`);
-    if (!response.ok) {
-      throw new Error(`Error fetching row: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching row ${rowId}:`, error);
-    throw error;
-  }
-};
-
 export const addRow = async (name, wipLimit) => {
   try {
     const response = await fetch(API_ENDPOINTS.ROWS, {
@@ -728,9 +702,9 @@ export const updateRowPosition = async (rowId, position) => {
   }
 };
 
-export const deleteRow = async (rowId, cascade = false) => {
+export const deleteRow = async (rowId) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.ROWS}/${rowId}${cascade ? '?cascade=true' : ''}`, {
+    const response = await fetch(`${API_ENDPOINTS.ROWS}/${rowId}`, {
       method: 'DELETE'
     });
     
@@ -789,69 +763,6 @@ export const fetchUser = async (userId) => {
     return await response.json();
   } catch (error) {
     console.error(`Error fetching user ${userId}:`, error);
-    throw error;
-  }
-};
-
-export const addUser = async (userData) => {
-  try {
-    const response = await fetch(API_ENDPOINTS.USERS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error adding user: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error adding user:', error);
-    throw error;
-  }
-};
-
-export const updateUser = async (userId, userData) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error updating user: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error updating user ${userId}:`, error);
-    throw error;
-  }
-};
-
-export const patchUser = async (userId, userData) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error patching user: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error patching user ${userId}:`, error);
     throw error;
   }
 };
@@ -986,19 +897,6 @@ export const getChildTasks = async (taskId) => {
   }
 };
 
-export const getParentTask = async (taskId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/parent`);
-    if (!response.ok) {
-      throw new Error(`Error fetching parent task: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching parent task for ${taskId}:`, error);
-    throw error;
-  }
-};
-
 export const canTaskBeCompleted = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/can-complete`);
@@ -1026,19 +924,6 @@ export const getTaskColumnHistory = async (taskId) => {
 };
 
 // ====== SUBTASK OPERATIONS ======
-export const fetchSubTasks = async () => {
-  try {
-    const response = await fetch(API_ENDPOINTS.SUBTASKS);
-    if (!response.ok) {
-      throw new Error(`Error fetching subtasks: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching subtasks:', error);
-    throw error;
-  }
-};
-
 export const fetchSubTask = async (subTaskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}`);
@@ -1133,46 +1018,6 @@ export const toggleSubTaskCompletion = async (subTaskId) => {
   }
 };
 
-export const updateSubTaskPosition = async (subTaskId, position) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}/position/${position}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error updating subtask position: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error updating position for subtask ${subTaskId}:`, error);
-    throw error;
-  }
-};
-
-export const assignTaskToSubTask = async (subTaskId, taskId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}/task/${taskId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error assigning task to subtask: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error assigning task ${taskId} to subtask ${subTaskId}:`, error);
-    throw error;
-  }
-};
-
 export const deleteSubTask = async (subTaskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}`, {
@@ -1186,58 +1031,6 @@ export const deleteSubTask = async (subTaskId) => {
     return true;
   } catch (error) {
     console.error(`Error deleting subtask ${subTaskId}:`, error);
-    throw error;
-  }
-};
-
-// ====== FILE OPERATIONS ======
-export const uploadFile = async (file) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${API_ENDPOINTS.FILES}/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error uploading file: ${response.status}`);
-    }
-    
-    return await response.text();
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    throw error;
-  }
-};
-
-export const getFile = async (fileId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.FILES}/${fileId}`);
-    if (!response.ok) {
-      throw new Error(`Error fetching file: ${response.status}`);
-    }
-    return response; // Return the full response to handle as blob
-  } catch (error) {
-    console.error(`Error fetching file ${fileId}:`, error);
-    throw error;
-  }
-};
-
-export const deleteFile = async (fileId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.FILES}/${fileId}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error deleting file: ${response.status}`);
-    }
-    
-    return await response.text();
-  } catch (error) {
-    console.error(`Error deleting file ${fileId}:`, error);
     throw error;
   }
 };

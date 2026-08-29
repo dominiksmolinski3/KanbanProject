@@ -273,41 +273,6 @@
     background-color: rgba(255, 255, 255, 0.4);
   }
   
-  .dark-mode .chat-panel {
-    background-color: var(--surface-dark);
-    border: 1px solid var(--gray-700);
-  }
-  
-  .dark-mode .chat-messages {
-    background-color: var(--surface-dark-hover);
-  }
-  
-  .dark-mode .chat-input-container {
-    background-color: var(--surface-dark);
-    border-top-color: var(--gray-700);
-  }
-  
-  .dark-mode .chat-input {
-    background-color: var(--surface-dark-hover);
-    border-color: var(--gray-700);
-    color: var(--text-light);
-  }
-  
-  .dark-mode .other-message {
-    background-color: var(--surface-dark-hover);
-    color: var(--text-light);
-  }
-  
-  .dark-mode .system-message {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-light-secondary);
-  }
-  
-  .dark-mode .own-message {
-    background-color: var(--primary-dark);
-    color: white;
-  }
-  
   @media (max-width: 768px) {
     .chat-panel {
       width: 300px;

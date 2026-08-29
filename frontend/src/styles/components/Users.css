@@ -3,30 +3,6 @@
   margin: 0 auto;
 }
 
-.controls {
-  display: flex;
-  flex-direction: column;
-  max-width: 1000px;
-  margin: 0 auto 40px auto;
-  background: var(--surface-light);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  border: 1px solid var(--gray-200);
-  box-shadow: 0 4px 6px -1px rgba(14, 27, 54, 0.1), 0 2px 4px -1px rgba(14, 27, 54, 0.06);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.controls:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(14, 27, 54, 0.1), 0 4px 6px -2px rgba(14, 27, 54, 0.05);
-}
-
-.main-controls {
-  display: flex;
-  width: 100%;
-  gap: 15px;
-}
-
 input, input[type="password"] {
   padding: 0.6em 1.2em;
   background: var(--gray-50);
@@ -209,10 +185,6 @@ input:focus, input[type="password"]:focus {
     font-size: 2rem;
   }
   
-  .main-controls {
-    flex-direction: column;
-  }
-
   .users-header, .user-item {
     grid-template-columns: 50px 50px 1fr 2fr 50px;
     font-size: 0.875rem;
@@ -227,7 +199,6 @@ input:focus, input[type="password"]:focus {
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .controls,
   .users-container {
     background-color: var(--surface-dark);
     border-color: var(--gray-700);
