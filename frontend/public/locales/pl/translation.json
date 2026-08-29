@@ -219,21 +219,16 @@
     "fields": {
       "name": "Imię i nazwisko",
       "email": "Email",
-      "password": "Hasło",
       "avatar": "Avatar",
       "id": "ID",
       "actions": "Akcje"
     },
     "buttons": {
-      "add": "Dodaj Użytkownika",
       "delete": "Usuń użytkownika",
       "change": "Zmień",
       "back": "Powrót do Tablicy Kanban"
     },
     "messages": {
-      "emptyFields": "Proszę wypełnić wszystkie pola!",
-      "invalidEmail": "Proszę podać poprawny adres email!",
-      "addError": "Wystąpił błąd podczas dodawania użytkownika",
       "deleteConfirm": "Czy na pewno chcesz usunąć tego użytkownika?",
       "deleteError": "Wystąpił błąd podczas usuwania użytkownika",
       "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 10MB.",
