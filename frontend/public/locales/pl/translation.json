@@ -81,7 +81,8 @@
     "parentTaskRemoveError": "Wystąpił błąd podczas usuwania zadania nadrzędnego",
     "userAssignedToTask": "Użytkownik {{user}} został przypisany do zadania \"{{title}}\"",
     "usersLoadError": "Błąd podczas ładowania użytkowników: {{message}}",
-    "wipLimitUpdateError": "Błąd podczas aktualizacji limitu WIP: {{message}}"
+    "wipLimitUpdateError": "Błąd podczas aktualizacji limitu WIP: {{message}}",
+    "userWipLimitExceeded": "{{name}} osiągnął limit WIP wynoszący {{limit}} zadań"
   },
   "column": {
     "deleteConfirm": "Czy na pewno chcesz usunąć tę kolumnę?",

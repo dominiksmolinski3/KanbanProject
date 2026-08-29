@@ -81,7 +81,8 @@
       "parentTaskRemoveError": "Si è verificato un errore durante la rimozione dell'attività principale",
       "userAssignedToTask": "L'utente {{user}} è stato assegnato all'attività \"{{title}}\"",
       "usersLoadError": "Errore durante il caricamento degli utenti: {{message}}",
-      "wipLimitUpdateError": "Errore durante l'aggiornamento del limite WIP: {{message}}"
+      "wipLimitUpdateError": "Errore durante l'aggiornamento del limite WIP: {{message}}",
+      "userWipLimitExceeded": "{{name}} ha raggiunto il limite WIP di {{limit}} attività"
     },
     "column": {
       "deleteConfirm": "Sei sicuro di voler eliminare questa colonna?",
