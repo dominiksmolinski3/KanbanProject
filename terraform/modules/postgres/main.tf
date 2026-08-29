@@ -25,6 +25,8 @@ resource "azurerm_postgresql_flexible_server" "main" {
   zone                          = var.zone
   storage_mb                    = var.storage_mb
   sku_name                      = var.sku_name
+  backup_retention_days         = var.backup_retention_days
+  geo_redundant_backup_enabled  = var.geo_redundant_backup_enabled
 
   maintenance_window {
     day_of_week  = 0
@@ -44,6 +46,12 @@ resource "azurerm_postgresql_flexible_server" "main" {
   # Azure only rejects these two combinations once it has the create request, by
   # which point the vnet, the vault and its secrets already exist. Fail the plan.
   lifecycle {
+    # This is the only copy of the data. Several attributes here force replacement when they
+    # change — zone and delegated_subnet_id among them — so without this, a stray edit to a
+    # tfvars file plans a destroy that reads like an ordinary diff. Tearing an environment down
+    # on purpose means deleting these two lines first, which is the friction being bought.
+    prevent_destroy = true
+
     precondition {
       condition     = var.high_availability_mode == null || !can(regex("^B_", var.sku_name))
       error_message = "High availability is not available on Burstable SKUs. Set sku_name to a GP_ or MO_ SKU, or leave high_availability_mode null."

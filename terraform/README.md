@@ -225,8 +225,10 @@ says nothing gets the cheap shape.
 | `postgres_sku_name` | `B_Standard_B1ms` | `GP_Standard_D2ds_v4` |
 | `postgres_storage_mb` | 32768 (32 GiB) | 131072 (128 GiB) |
 | `postgres_high_availability_mode` | null | `ZoneRedundant` |
+| `postgres_backup_retention_days` | 7 / 14 | 35 |
+| `postgres_geo_redundant_backup_enabled` | false | true |
 
-Three things about that table are worth knowing before changing it.
+Five things about that table are worth knowing before changing it.
 
 **Burstable is a throttle, not just a small server.** A `B_` SKU runs at a fraction
 of a vCore and spends credits to exceed it. Once the credits are gone the server is
@@ -245,10 +247,47 @@ throttled.
 door. The size also sets the IOPS ceiling - 32 GiB is the smallest tier and caps out
 correspondingly, which makes it a throughput decision as much as a capacity one.
 
+**High availability is not a backup.** A standby replicates every write, including the
+one that dropped the table. Point-in-time restore is the control that answers a bad
+migration, and `postgres_backup_retention_days` is how far back it reaches. Left unset,
+Azure gives 7 days. `postgres_geo_redundant_backup_enabled` copies those backups to the
+paired region, and Azure fixes it at create time — turning it on later replaces the
+server, so decide it before the environment carries anything.
+
+**The server refuses to be destroyed.** The module carries
+`lifecycle { prevent_destroy = true }`, because several attributes here force
+replacement when they change — `zone` and `delegated_subnet_id` among them — and a
+replacement of this resource is the data. Without the block, an edit to a tfvars file
+plans a destroy that reads like an ordinary diff. Tearing an environment down on
+purpose means deleting those lines first; that is the friction being bought.
+
 Changing the SKU or storage on a live server is an in-place scale with a restart, so
 expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
+
+### The container image
+
+The Container App pulls `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>`.
+
+`github_repository_owner` has to name the account **`kanban-cd.yml` publishes to** — the
+workflow pushes under the repository owner, so on a fork that is the fork's owner, not the
+upstream's. A wrong value plans cleanly and then fails at pull time, which is a slow way to
+find out.
+
+GHCR authenticates with an account name and a token. Unlike ACR it does not accept an Azure
+managed identity, so the app's user-assigned identity cannot do the pull. Two shapes work:
+
+- **Public package** — leave `ghcr_username` and `ghcr_token` empty. The template declares no
+  registry and the pull is anonymous. This is the default, and it is only a choice while the
+  package is genuinely public.
+- **Private package** — set both. The token (a PAT with `read:packages`) is written to Key
+  Vault as `GHCR-TOKEN` and read back through the app's identity, so it never sits in the
+  Container App template in clear text. Setting `ghcr_token` without `ghcr_username` fails the
+  plan.
+
+A private package with neither set fails with `ImagePullBackOff` and nothing to authenticate
+with.
 
 ### Key Vault network access
 

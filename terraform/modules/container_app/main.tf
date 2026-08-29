@@ -1,5 +1,7 @@
 locals {
   app_port = 8080
+
+  ghcr_credentials_configured = var.ghcr_token != ""
 }
 
 resource "azurerm_container_app" "main" {
@@ -13,6 +15,7 @@ resource "azurerm_container_app" "main" {
     azurerm_key_vault_secret.spring_mail_username,
     azurerm_key_vault_secret.spring_mail_password,
     azurerm_key_vault_secret.captcha_secret,
+    azurerm_key_vault_secret.ghcr_token,
   ]
 
   secret {
@@ -49,6 +52,26 @@ resource "azurerm_container_app" "main" {
     name                = "captcha-secret"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "CAPTCHA-SECRET")
     identity            = azurerm_user_assigned_identity.main.id
+  }
+
+  dynamic "secret" {
+    for_each = local.ghcr_credentials_configured ? [1] : []
+
+    content {
+      name                = "ghcr-token"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "GHCR-TOKEN")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
+  }
+
+  dynamic "registry" {
+    for_each = local.ghcr_credentials_configured ? [1] : []
+
+    content {
+      server               = "ghcr.io"
+      username             = var.ghcr_username
+      password_secret_name = "ghcr-token"
+    }
   }
 
   template {
@@ -219,5 +242,13 @@ resource "azurerm_key_vault_secret" "spring_mail_password" {
 resource "azurerm_key_vault_secret" "captcha_secret" {
   name         = "CAPTCHA-SECRET"
   value        = var.captcha_secret
+  key_vault_id = var.key_vault_id
+}
+
+resource "azurerm_key_vault_secret" "ghcr_token" {
+  count = local.ghcr_credentials_configured ? 1 : 0
+
+  name         = "GHCR-TOKEN"
+  value        = var.ghcr_token
   key_vault_id = var.key_vault_id
 }
