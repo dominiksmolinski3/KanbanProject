@@ -9,6 +9,7 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskService;
 
 import java.util.List;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @Transactional
@@ -29,8 +30,21 @@ public class ColumnService {
         column.setWipLimit(request.wipLimit());
         column.setPosition(request.position() != null
                 ? request.position()
-                : (int) columnRepository.count() + 1);
+                : nextPosition());
         return columnMapper.toResponseDto(columnRepository.save(column));
+    }
+
+    /**
+     * The next free position, taken from the highest one in use rather than from a row count.
+     * A count drops after any delete, so the next create hands out a position that is still
+     * taken, and two concurrent creates read the same count.
+     */
+    private int nextPosition() {
+        return columnRepository.findAll().stream()
+                .map(Column::getPosition)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
     }
 
     public ColumnDto patchColumn(ColumnDto columnDto, Integer id) {

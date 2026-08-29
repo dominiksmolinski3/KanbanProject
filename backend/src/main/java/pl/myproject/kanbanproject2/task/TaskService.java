@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,15 +41,18 @@ public class TaskService {
     private final RowRepository rowRepository;
 
     public TaskDto addTask(CreateTaskRequest request) {
+        var column = request.column() != null ? findColumn(request.column().id()) : null;
+        var row = request.row() != null ? findRow(request.row().id()) : null;
+
         var task = new Task();
         task.setTitle(request.title());
         task.setDescription(request.description());
+        task.setLabels(request.labels() != null ? new HashSet<>(request.labels()) : new HashSet<>());
+        task.setColumn(column);
+        task.setRow(row);
         task.setPosition(request.position() != null
                 ? request.position()
-                : (int) taskRepository.count() + 1);
-        task.setLabels(request.labels() != null ? new HashSet<>(request.labels()) : new HashSet<>());
-        task.setColumn(request.column() != null ? findColumn(request.column().id()) : null);
-        task.setRow(request.row() != null ? findRow(request.row().id()) : null);
+                : nextPositionIn(column, row));
         applyDeadline(task, request.deadline());
 
         var savedTask = taskRepository.save(task);
@@ -62,8 +66,31 @@ public class TaskService {
     public List<TaskDto> getAllTasks() {
         return taskRepository.findAll().stream()
                 .map(taskMapper)
-                .sorted(Comparator.comparing(TaskDto::position))
+                .sorted(POSITION_ORDER)
                 .toList();
+    }
+
+    /**
+     * Rows written before positions were scoped to a cell can still carry a null one, and a task
+     * that cannot be placed is no reason to fail the whole board listing - it sorts last instead.
+     */
+    private static final Comparator<TaskDto> POSITION_ORDER =
+            Comparator.comparing(TaskDto::position, Comparator.nullsLast(Comparator.naturalOrder()));
+
+    /**
+     * The next free position in one cell of the board.
+     *
+     * <p>This used to be {@code count() + 1} over the whole table, which collides two ways: the
+     * count drops after any delete, so the next create reuses a number that is still in use, and
+     * two concurrent creates read the same count. Scoping it to the cell also makes the number
+     * mean what the board renders - an ordinal within the cell, not a row number.
+     */
+    private int nextPositionIn(Column column, Row row) {
+        return taskRepository.findByColumnAndRow(column, row).stream()
+                .map(Task::getPosition)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
     }
 
     public void deleteTask(Integer id) {
@@ -135,6 +162,11 @@ public class TaskService {
     /**
      * Records the move the way the history report expects, and tolerates a column of {@code null}
      * — a task can be taken off the board, and there is no arrival to record when it is.
+     *
+     * <p>Only the arrival is recorded. Writing the departure as well put two rows on the same
+     * instant, and the report orders on nothing but that instant: which of the pair sorts first
+     * is arbitrary, and one of the two orders charges the whole of the next column's time to the
+     * previous one. Time in a column is the gap to the next arrival, which needs a single row.
      */
     private void moveToColumn(Task task, Column newColumn) {
         var currentColumn = task.getColumn();
@@ -145,9 +177,6 @@ public class TaskService {
             return;
         }
 
-        if (currentColumn != null) {
-            saveTaskColumnHistory(task, currentColumn);
-        }
         task.setColumn(newColumn);
         if (newColumn != null) {
             saveTaskColumnHistory(task, newColumn);
@@ -297,12 +326,24 @@ public class TaskService {
     /**
      * Returns true if making {@code newParent} the parent of {@code child} would form a cycle,
      * i.e. {@code newParent} is already a descendant of {@code child}.
+     *
+     * <p>The walk carries the ids it has already visited. That guard is what stops a cycle which
+     * is <em>already</em> in the data - written before this check existed, or by hand - from
+     * turning every later parent assignment into a {@link StackOverflowError}.
      */
     private boolean wouldCreateCycle(Task child, Task newParent) {
-        if (child.getId().equals(newParent.getId())) {
+        return isDescendantOf(child, newParent, new HashSet<>());
+    }
+
+    private boolean isDescendantOf(Task candidate, Task newParent, Set<Integer> visited) {
+        if (candidate.getId().equals(newParent.getId())) {
             return true;
         }
-        return child.getChildTasks().stream().anyMatch(c -> wouldCreateCycle(c, newParent));
+        if (!visited.add(candidate.getId())) {
+            return false;
+        }
+        return candidate.getChildTasks().stream()
+                .anyMatch(child -> isDescendantOf(child, newParent, visited));
     }
 
     public boolean canTaskBeCompleted(Integer taskId) {
@@ -325,11 +366,19 @@ public class TaskService {
     }
 
     private void updateDependentTasksCompletion(Task parentTask) {
+        updateDependentTasksCompletion(parentTask, new HashSet<>());
+    }
+
+    /** Cascades the un-completion downward, visiting each task once. See {@link #wouldCreateCycle}. */
+    private void updateDependentTasksCompletion(Task parentTask, Set<Integer> visited) {
+        if (!visited.add(parentTask.getId())) {
+            return;
+        }
         parentTask.getChildTasks().forEach(childTask -> {
             if (childTask.isCompleted()) {
                 childTask.setCompleted(false);
                 taskRepository.save(childTask);
-                updateDependentTasksCompletion(childTask);
+                updateDependentTasksCompletion(childTask, visited);
             }
         });
     }
