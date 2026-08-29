@@ -19,10 +19,15 @@ public class SubTaskService {
     private final TaskRepository taskRepository;
     private final SubTaskMapper subTaskMapper;
 
-    public SubTaskDto addSubTask(SubTask subTask) {
-        if (subTask.getPosition() == null) {
-            subTask.setPosition((int) subTaskRepository.count() + 1);
-        }
+    public SubTaskDto addSubTask(CreateSubTaskRequest request) {
+        var subTask = new SubTask();
+        subTask.setTitle(request.title());
+        subTask.setDescription(request.description());
+        subTask.setCompleted(request.completed());
+        subTask.setPosition(request.position() != null
+                ? request.position()
+                : (int) subTaskRepository.count() + 1);
+        subTask.setTask(request.task() != null ? findTask(request.task().id()) : null);
         return subTaskMapper.toDto(subTaskRepository.save(subTask));
     }
 
@@ -42,21 +47,36 @@ public class SubTaskService {
                 .orElseThrow(() -> subTaskNotFound(id));
     }
 
-    public SubTaskDto patchSubTask(Integer id, SubTask subTask) {
+    public SubTaskDto patchSubTask(Integer id, PatchSubTaskRequest request) {
         var existingSubTask = findSubTask(id);
 
-        if (subTask.getTitle() != null) {
-            existingSubTask.setTitle(subTask.getTitle());
+        if (request.title().isPresent()) {
+            var title = request.title().get();
+            if (title == null || title.isBlank()) {
+                throw new IllegalArgumentException("A subtask title cannot be blank");
+            }
+            existingSubTask.setTitle(title);
         }
-        if (subTask.getDescription() != null) {
-            existingSubTask.setDescription(subTask.getDescription());
+        if (request.description().isPresent()) {
+            existingSubTask.setDescription(request.description().get());
         }
-        existingSubTask.setCompleted(subTask.isCompleted());
-        if (subTask.getTask() != null) {
-            existingSubTask.setTask(subTask.getTask());
+        if (request.completed().isPresent()) {
+            var completed = request.completed().get();
+            if (completed == null) {
+                throw new IllegalArgumentException("A subtask completion state cannot be cleared");
+            }
+            existingSubTask.setCompleted(completed);
         }
-        if (subTask.getPosition() != null) {
-            existingSubTask.setPosition(subTask.getPosition());
+        if (request.task().isPresent()) {
+            var task = request.task().get();
+            existingSubTask.setTask(task == null ? null : findTask(task.id()));
+        }
+        if (request.position().isPresent()) {
+            var position = request.position().get();
+            if (position == null) {
+                throw new IllegalArgumentException("A subtask position cannot be cleared");
+            }
+            existingSubTask.setPosition(position);
         }
 
         return subTaskMapper.toDto(subTaskRepository.save(existingSubTask));
@@ -64,9 +84,7 @@ public class SubTaskService {
 
     public SubTaskDto assignTaskToSubTask(Integer subTaskId, Integer taskId) {
         var subTask = findSubTask(subTaskId);
-        var task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.TASK_NOT_FOUND,
-                        "Task not found with id: " + taskId));
+        var task = findTask(taskId);
 
         subTask.setTask(task);
         task.getSubTasks().add(subTask);
@@ -76,10 +94,7 @@ public class SubTaskService {
     }
 
     public List<SubTaskDto> getSubTasksByTaskId(Integer taskId) {
-        var task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.TASK_NOT_FOUND,
-                        "Task not found with id: " + taskId));
-        return task.getSubTasks().stream().map(subTaskMapper::toDto).toList();
+        return findTask(taskId).getSubTasks().stream().map(subTaskMapper::toDto).toList();
     }
 
     public SubTaskDto toggleSubTaskCompletion(Integer id) {
@@ -96,6 +111,12 @@ public class SubTaskService {
 
     private SubTask findSubTask(Integer id) {
         return subTaskRepository.findById(id).orElseThrow(() -> subTaskNotFound(id));
+    }
+
+    private Task findTask(Integer id) {
+        return taskRepository.findById(id)
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.TASK_NOT_FOUND,
+                        "Task not found with id: " + id));
     }
 
     private GlobalException subTaskNotFound(Integer id) {

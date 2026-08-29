@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.task.subtask;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,13 +41,14 @@ public class SubTaskController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<SubTaskDto> patchSubTask(@PathVariable Integer id, @RequestBody SubTask subTask) {
-        return ResponseEntity.ok(subTaskService.patchSubTask(id, subTask));
+    public ResponseEntity<SubTaskDto> patchSubTask(@PathVariable Integer id,
+                                                   @Valid @RequestBody PatchSubTaskRequest request) {
+        return ResponseEntity.ok(subTaskService.patchSubTask(id, request));
     }
 
     @PostMapping
-    public ResponseEntity<SubTaskDto> createSubTask(@RequestBody SubTask subTask) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(subTaskService.addSubTask(subTask));
+    public ResponseEntity<SubTaskDto> createSubTask(@Valid @RequestBody CreateSubTaskRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(subTaskService.addSubTask(request));
     }
 
     @PutMapping("/{subTaskId}/task/{taskId}")
