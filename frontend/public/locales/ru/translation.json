@@ -35,7 +35,11 @@
       "noDeadline": "Без срока",
       "columnHistory": "История колонок",
       "upcoming": "Предстоящие",
-      "addTaskHere": "+ Добавить задачу здесь"
+      "addTaskHere": "+ Добавить задачу здесь",
+      "complete": "Отметить выполненной",
+      "reopen": "Открыть задачу заново",
+      "addToDailyFocus": "Добавить в фокус дня",
+      "removeFromDailyFocus": "Убрать из фокуса дня"
     },
     "board": {
       "loading": "Загрузка канбан-доски...",
@@ -44,7 +48,9 @@
       "addRow": "Добавить строку",
       "title": "Канбан-доска",
       "subtitle": "Управляйте задачами эффективно",
-      "labels": "Метки"
+      "labels": "Метки",
+      "dailyFocus": "Фокус дня",
+      "dailyFocusEmpty": "В фокусе дня пока нет задач."
     },
     "notifications": {
       "taskAdded": "Задача \"{{title}}\" была добавлена",
@@ -82,7 +88,12 @@
       "userAssignedToTask": "Пользователь {{user}} назначен на задачу «{{title}}»",
       "usersLoadError": "Ошибка при загрузке пользователей: {{message}}",
       "wipLimitUpdateError": "Ошибка при обновлении лимита WIP: {{message}}",
-      "userWipLimitExceeded": "{{name}} достиг лимита WIP в {{limit}} задач"
+      "userWipLimitExceeded": "{{name}} достиг лимита WIP в {{limit}} задач",
+      "taskCompleted": "Задача выполнена",
+      "taskReopened": "Задача открыта заново",
+      "parentTaskNotCompleted": "Эту задачу нельзя выполнить, пока родительская задача остаётся открытой.",
+      "dailyFocusAdded": "Добавлено в фокус дня",
+      "dailyFocusRemoved": "Убрано из фокуса дня"
     },
     "column": {
       "deleteConfirm": "Вы уверены, что хотите удалить эту колонку?",

@@ -35,7 +35,11 @@
     "noDeadline": "No deadline",
     "columnHistory": "Column history",
     "upcoming": "Upcoming",
-    "addTaskHere": "+ Add task"
+    "addTaskHere": "+ Add task",
+    "complete": "Mark as done",
+    "reopen": "Reopen task",
+    "addToDailyFocus": "Add to daily focus",
+    "removeFromDailyFocus": "Remove from daily focus"
   },
   "board": {
     "loading": "Loading kanban board...",
@@ -44,7 +48,9 @@
     "addRow": "Add row",
     "title": "Kanban Board",
     "subtitle": "Manage your tasks efficiently",
-    "labels": "Labels"
+    "labels": "Labels",
+    "dailyFocus": "Daily focus",
+    "dailyFocusEmpty": "No tasks in daily focus yet."
   },
   "notifications": {
     "taskAdded": "Task \"{{title}}\" has been added",
@@ -82,7 +88,12 @@
     "userAssignedToTask": "User {{user}} has been assigned to task \"{{title}}\"",
     "usersLoadError": "Error loading users: {{message}}",
     "wipLimitUpdateError": "Error updating the WIP limit: {{message}}",
-    "userWipLimitExceeded": "{{name}} has reached their WIP limit of {{limit}} tasks"
+    "userWipLimitExceeded": "{{name}} has reached their WIP limit of {{limit}} tasks",
+    "taskCompleted": "Task completed",
+    "taskReopened": "Task reopened",
+    "parentTaskNotCompleted": "This task cannot be completed while its parent task is still open.",
+    "dailyFocusAdded": "Added to daily focus",
+    "dailyFocusRemoved": "Removed from daily focus"
   },
   "column": {
     "deleteConfirm": "Are you sure you want to delete this column?",

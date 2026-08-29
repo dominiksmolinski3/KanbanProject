@@ -35,7 +35,11 @@
     "noDeadline": "Keine Frist",
     "columnHistory": "Spaltenverlauf",
     "upcoming": "Bevorstehend",
-    "addTaskHere": "+ Aufgabe hier hinzufügen"
+    "addTaskHere": "+ Aufgabe hier hinzufügen",
+    "complete": "Als erledigt markieren",
+    "reopen": "Aufgabe wieder öffnen",
+    "addToDailyFocus": "Zum Tagesfokus hinzufügen",
+    "removeFromDailyFocus": "Aus dem Tagesfokus entfernen"
   },
   "board": {
     "loading": "Kanban-Board wird geladen...",
@@ -44,7 +48,9 @@
     "addRow": "Zeile hinzufügen",
     "title": "Kanban Board",
     "subtitle": "Verwalten Sie Ihre Aufgaben effizient",
-    "labels": "Labels"
+    "labels": "Labels",
+    "dailyFocus": "Tagesfokus",
+    "dailyFocusEmpty": "Noch keine Aufgaben im Tagesfokus."
   },
   "notifications": {
     "taskAdded": "Aufgabe \"{{title}}\" wurde hinzugefügt",
@@ -82,7 +88,12 @@
     "userAssignedToTask": "Benutzer {{user}} wurde der Aufgabe \"{{title}}\" zugewiesen",
     "usersLoadError": "Fehler beim Laden der Benutzer: {{message}}",
     "wipLimitUpdateError": "Fehler beim Aktualisieren des WIP-Limits: {{message}}",
-    "userWipLimitExceeded": "{{name}} hat das WIP-Limit von {{limit}} Aufgaben erreicht"
+    "userWipLimitExceeded": "{{name}} hat das WIP-Limit von {{limit}} Aufgaben erreicht",
+    "taskCompleted": "Aufgabe erledigt",
+    "taskReopened": "Aufgabe wieder geöffnet",
+    "parentTaskNotCompleted": "Diese Aufgabe kann nicht erledigt werden, solange die übergeordnete Aufgabe offen ist.",
+    "dailyFocusAdded": "Zum Tagesfokus hinzugefügt",
+    "dailyFocusRemoved": "Aus dem Tagesfokus entfernt"
   },
   "column": {
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Spalte löschen möchten?",

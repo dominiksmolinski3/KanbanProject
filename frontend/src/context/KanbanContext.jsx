@@ -24,6 +24,9 @@ import {
   updateColumnName,
   getUserWipStatus,
   updateUserWipLimit,
+  updateTaskCompletion,
+  setTaskDailyFocus,
+  ParentTaskNotCompletedError,
 } from '../services/api';
 
 const KanbanContext = createContext();
@@ -36,6 +39,7 @@ export function KanbanProvider({ children }) {
   const [error, setError] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
   const [columnMap, setColumnMap] = useState({});
+  const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -486,6 +490,55 @@ export function KanbanProvider({ children }) {
     }
   };
   
+  /**
+   * Completion is the one board mutation with a real server rule behind it: a task whose parent is
+   * still open cannot be completed, and un-completing one cascades to everything below it. The
+   * cascade is why this refreshes rather than patching local state — the response describes the
+   * task that was asked about, not the dependents the server also changed.
+   */
+  const handleUpdateTaskCompletion = async (taskId, completed) => {
+    try {
+      const updated = await updateTaskCompletion(taskId, completed);
+      setTasks(previous => previous.map(task =>
+        task.id === taskId ? { ...task, completed: updated.completed } : task
+      ));
+      toast.success(completed
+        ? t('notifications.taskCompleted')
+        : t('notifications.taskReopened'));
+      if (!completed) {
+        await refreshTasks();
+      }
+      return true;
+    } catch (err) {
+      if (err instanceof ParentTaskNotCompletedError) {
+        toast.error(t('notifications.parentTaskNotCompleted'));
+      } else {
+        console.error('Error updating task completion:', err);
+        setError(err.message);
+        toast.error(t('notifications.errorOccurred', { message: err.message }));
+      }
+      return false;
+    }
+  };
+
+  const handleSetDailyFocus = async (taskId, dailyFocus) => {
+    try {
+      await setTaskDailyFocus(taskId, dailyFocus);
+      setTasks(previous => previous.map(task =>
+        task.id === taskId ? { ...task, dailyFocus } : task
+      ));
+      toast.success(dailyFocus
+        ? t('notifications.dailyFocusAdded')
+        : t('notifications.dailyFocusRemoved'));
+      return true;
+    } catch (err) {
+      console.error('Error updating daily focus:', err);
+      setError(err.message);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return false;
+    }
+  };
+
   const handleDeleteTask = async (taskId) => {
     try {
       await deleteTask(taskId);
@@ -762,6 +815,10 @@ export function KanbanProvider({ children }) {
     updateRowName: handleUpdateRowName,
     getUserWipStatus: handleGetUserWipStatus,
     updateUserWipLimit: handleUpdateUserWipLimit,
+    updateTaskCompletion: handleUpdateTaskCompletion,
+    setDailyFocus: handleSetDailyFocus,
+    dailyFocusOnly,
+    setDailyFocusOnly,
     dragAndDrop
   };
   

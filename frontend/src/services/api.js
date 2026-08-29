@@ -924,6 +924,73 @@ export const canTaskBeCompleted = async (taskId) => {
   }
 };
 
+/**
+ * The server refuses to complete a task whose parent is still open. That is the one refusal a
+ * caller can do something about, so it gets its own type — everything else stays a plain Error,
+ * the way assignUserToTask distinguishes a WIP limit from a dropped connection.
+ */
+export class ParentTaskNotCompletedError extends Error {
+  constructor(taskId) {
+    super(`Task ${taskId} has a parent that is still open`);
+    this.name = 'ParentTaskNotCompletedError';
+    this.taskId = taskId;
+  }
+}
+
+export const updateTaskCompletion = async (taskId, completed) => {
+  const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/complete/${completed}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+
+    if (response.status === 400 && errorData.code === 'PARENT_TASK_NOT_COMPLETED') {
+      throw new ParentTaskNotCompletedError(taskId);
+    }
+
+    throw new Error(`${response.status}: Failed to update completion for task ${taskId}`);
+  }
+
+  return await response.json();
+};
+
+export const fetchDailyFocusTasks = async () => {
+  try {
+    const response = await fetch(`${API_ENDPOINTS.TASKS}/daily-focus`);
+    if (!response.ok) {
+      throw new Error(`Error fetching daily focus tasks: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching daily focus tasks:', error);
+    throw error;
+  }
+};
+
+export const setTaskDailyFocus = async (taskId, dailyFocus) => {
+  try {
+    const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/daily-focus/${dailyFocus}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error updating daily focus: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error updating daily focus for task ${taskId}:`, error);
+    throw error;
+  }
+};
+
 export const getTaskColumnHistory = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/column-history`);
