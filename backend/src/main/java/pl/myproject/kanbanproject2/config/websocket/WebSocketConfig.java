@@ -1,34 +1,28 @@
 package pl.myproject.kanbanproject2.config.websocket;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
 
 @Configuration
 @EnableWebSocketMessageBroker
+@EnableConfigurationProperties(AllowedOriginsProperties.class)
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final AllowedOriginsProperties allowedOrigins;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("https://kanbanproject.pl",
-                        "https://www.kanbanproject.pl",
-                        "http://kanbanproject.pl",
-                        "http://www.kanbanproject.pl",
-                        "http://localhost:5173",
-                        "http://localhost:3000",
-                        "http://localhost:5174",
-                        "http://localhost:8080",
-                        "http://localhost:80",
-                        "http://127.0.0.1:8080",
-                        "http://app:8080")
+                .setAllowedOrigins(allowedOrigins.asArray())
                 .withSockJS();
     }
 

@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
 import pl.myproject.kanbanproject2.config.SpaRoutes;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
@@ -26,7 +27,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(AuthRateLimitProperties.class)
+@EnableConfigurationProperties({AuthRateLimitProperties.class, AllowedOriginsProperties.class})
 public class SecurityConfiguration {
 
     private final AuthenticationProvider authenticationProvider;
@@ -35,6 +36,7 @@ public class SecurityConfiguration {
     private final AuthRateLimiter authRateLimiter;
     private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper;
+    private final AllowedOriginsProperties allowedOrigins;
 
     public SecurityConfiguration(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -42,7 +44,8 @@ public class SecurityConfiguration {
             AuthRateLimitProperties authRateLimitProperties,
             AuthRateLimiter authRateLimiter,
             ClientIpResolver clientIpResolver,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AllowedOriginsProperties allowedOrigins
     ) {
         this.authenticationProvider = authenticationProvider;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -50,6 +53,7 @@ public class SecurityConfiguration {
         this.authRateLimiter = authRateLimiter;
         this.clientIpResolver = clientIpResolver;
         this.objectMapper = objectMapper;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Bean
@@ -89,17 +93,7 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "https://kanbanproject.pl",
-                "https://www.kanbanproject.pl",
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:5174",
-                "http://localhost:8080",
-                "http://localhost:80",
-                "http://127.0.0.1:8080",
-                "http://app:8080"
-        ));
+        configuration.setAllowedOrigins(allowedOrigins.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
         configuration.setExposedHeaders(List.of("Authorization"));
