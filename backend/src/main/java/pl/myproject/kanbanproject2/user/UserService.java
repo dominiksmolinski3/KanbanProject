@@ -69,13 +69,22 @@ public class UserService {
         return userMapper.apply(userRepository.save(user));
     }
 
-    public boolean checkWipStatus(Integer userId) {
+    /**
+     * Describes how close a user is to their WIP limit, rather than only whether they are under it.
+     *
+     * <p>A null limit means "no limit", so such a user is always within it.
+     */
+    public WipStatusDto getWipStatus(Integer userId) {
         var user = userRepository.findById(userId).orElseThrow(() -> userNotFound(userId));
         Integer wipLimit = user.getWipLimit();
-        if (wipLimit == null) {
-            return true;
-        }
-        return user.getTasks().size() < wipLimit;
+        int assignedCount = user.getTasks().size();
+        boolean withinLimit = wipLimit == null || assignedCount < wipLimit;
+
+        return new WipStatusDto(user.getId(), wipLimit, assignedCount, withinLimit);
+    }
+
+    public boolean checkWipStatus(Integer userId) {
+        return getWipStatus(userId).withinLimit();
     }
 
     private GlobalException userNotFound(Integer id) {

@@ -81,7 +81,8 @@
     "parentTaskRemoveError": "Beim Entfernen der übergeordneten Aufgabe ist ein Fehler aufgetreten",
     "userAssignedToTask": "Benutzer {{user}} wurde der Aufgabe \"{{title}}\" zugewiesen",
     "usersLoadError": "Fehler beim Laden der Benutzer: {{message}}",
-    "wipLimitUpdateError": "Fehler beim Aktualisieren des WIP-Limits: {{message}}"
+    "wipLimitUpdateError": "Fehler beim Aktualisieren des WIP-Limits: {{message}}",
+    "userWipLimitExceeded": "{{name}} hat das WIP-Limit von {{limit}} Aufgaben erreicht"
   },
   "column": {
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Spalte löschen möchten?",

@@ -25,7 +25,7 @@ jest.mock('../../services/api', () => ({
   updateTaskName: jest.fn(),
   updateRowName: jest.fn(),
   updateColumnName: jest.fn(),
-  getUserWipLimit: jest.fn(),
+  getUserWipStatus: jest.fn(),
   updateUserWipLimit: jest.fn(),
   refreshBoard: jest.fn(),
 }));
@@ -57,7 +57,7 @@ const TestComponent = () => {
       <button onClick={() => context.updateRowWipLimit('row1', 5)}>Update Row WIP</button>
       <button onClick={() => context.refreshTasks()}>Refresh Tasks</button>
       <button onClick={() => context.refreshBoard()}>Refresh Board</button>
-      <button onClick={() => context.getUserWipLimit(1)}>Get User WIP Limit</button>
+      <button onClick={() => context.getUserWipStatus(1)}>Get User WIP Status</button>
       <button onClick={() => context.updateUserWipLimit(1, 10)}>Update User WIP Limit</button>
     </div>
   );
@@ -464,7 +464,7 @@ describe('KanbanContext Provider', () => {
   });
 
   test('handles user WIP limit operations', async () => {
-    api.getUserWipLimit.mockResolvedValueOnce(5);
+    api.getUserWipStatus.mockResolvedValueOnce({ userId: 1, wipLimit: 5, assignedCount: 2, withinLimit: true });
     api.updateUserWipLimit.mockResolvedValueOnce({ success: true });
     
     await act(async () => {
@@ -480,10 +480,10 @@ describe('KanbanContext Provider', () => {
     });
     
     await act(async () => {
-      fireEvent.click(screen.getByText('Get User WIP Limit'));
+      fireEvent.click(screen.getByText('Get User WIP Status'));
     });
     
-    expect(api.getUserWipLimit).toHaveBeenCalledWith(1);
+    expect(api.getUserWipStatus).toHaveBeenCalledWith(1);
     
     await act(async () => {
       fireEvent.click(screen.getByText('Update User WIP Limit'));

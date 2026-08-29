@@ -333,20 +333,16 @@ describe('API Services', () => {
       expect(result).toEqual(mockTask);
     });
 
-    test('assignUserToTask should throw error when WIP limit exceeded', async () => {
+    test('assignUserToTask should refuse before the PUT when the user is at their limit', async () => {
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ 
-          willExceedLimit: true, 
-          userName: 'Test User',
-          wipLimit: 3
-        })
+        json: async () => ({ userId: 123, wipLimit: 3, assignedCount: 3, withinLimit: false })
       });
 
-      await expect(api.assignUserToTask('1', '123')).rejects.toThrow(
-        'WIP limit exceeded: Test User has reached their maximum of 3 tasks.'
-      );
+      const error = await api.assignUserToTask('1', '123').catch(e => e);
 
+      expect(error).toBeInstanceOf(api.WipLimitExceededError);
+      expect(error.status).toEqual({ userId: 123, wipLimit: 3, assignedCount: 3, withinLimit: false });
       expect(fetch).toHaveBeenCalledWith('/api/users/123/wip-status');
       expect(fetch).toHaveBeenCalledTimes(1); 
     });
@@ -356,7 +352,7 @@ describe('API Services', () => {
       
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ willExceedLimit: false })
+        json: async () => ({ userId: 123, wipLimit: 5, assignedCount: 1, withinLimit: true })
       });
       
       fetch.mockResolvedValueOnce({
@@ -759,40 +755,59 @@ describe('API Services', () => {
         );
     });
 
-    test('assignUserToTask should handle general errors', async () => {
+    test('assignUserToTask reports a network failure as itself, not as a WIP limit', async () => {
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ willExceedLimit: false })
+        json: async () => ({ userId: 1, wipLimit: 5, assignedCount: 1, withinLimit: true })
       });
         
       fetch.mockImplementationOnce(() => {
         throw new Error('Network error');
       });
         
-      await expect(api.assignUserToTask('task1', 'user1')).rejects.toThrow(
-        'Limit WIP osiągnięty: Nie można przypisać więcej tasków temu userowi.'
-      );
+      const error = await api.assignUserToTask('task1', 'user1').catch(e => e);
+
+      expect(error).not.toBeInstanceOf(api.WipLimitExceededError);
+      expect(error.message).toBe('Network error');
     });
 
-    test('assignUserToTask should handle server error responses', async () => {
-      const errorResponse = { error: 'WIP limit exceeded for this user' };
-        
+    test('assignUserToTask reports a 404 as itself, not as a WIP limit', async () => {
       fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ willExceedLimit: false })
+        json: async () => ({ userId: 1, wipLimit: 5, assignedCount: 1, withinLimit: true })
+      });
+        
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ code: 'TASK_NOT_FOUND', message: 'Task not found' })
+      });
+        
+      const error = await api.assignUserToTask('task1', 'user1').catch(e => e);
+
+      expect(error).not.toBeInstanceOf(api.WipLimitExceededError);
+      expect(error.message).toBe('404: Failed to assign user to task');
+    });
+
+    test('assignUserToTask maps the server WIP refusal onto WipLimitExceededError', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ userId: 1, wipLimit: 3, assignedCount: 2, withinLimit: true })
       });
         
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: async () => errorResponse
+        json: async () => ({
+          code: 'USER_WIP_LIMIT_EXCEEDED',
+          message: "The user's WIP limit has been exceeded"
+        })
       });
         
-      await expect(api.assignUserToTask('task1', 'user1')).rejects.toThrow(
-        'Limit WIP osiągnięty: Nie można przypisać więcej tasków temu userowi.'
-      );
-        
-       expect(fetch).toHaveBeenCalledTimes(2);
+      const error = await api.assignUserToTask('task1', 'user1').catch(e => e);
+
+      expect(error).toBeInstanceOf(api.WipLimitExceededError);
+      expect(fetch).toHaveBeenCalledTimes(2);
     });
 
   });
@@ -1504,13 +1519,13 @@ describe('API Services', () => {
       expect(result).toEqual(mockUser);
     });
       
-    test('getUserWipLimit should return user WIP status', async () => {
+    test('getUserWipStatus should return the WIP status record', async () => {
       const userId = 'user1';
       const mockStatus = { 
-        userName: 'John Doe',
-        currentTasks: 3,
+        userId: 1,
         wipLimit: 5,
-        willExceedLimit: false
+        assignedCount: 3,
+        withinLimit: true
       };
         
       fetch.mockResolvedValueOnce({
@@ -1518,7 +1533,7 @@ describe('API Services', () => {
         json: async () => mockStatus
       });
       
-      const result = await api.getUserWipLimit(userId);
+      const result = await api.getUserWipStatus(userId);
       
       expect(fetch).toHaveBeenCalledWith('/api/users/user1/wip-status');
       expect(result).toEqual(mockStatus);
@@ -1535,13 +1550,13 @@ describe('API Services', () => {
       );
     });
 
-    test('getUserWipLimit should handle response with status 400', async () => {
+    test('getUserWipStatus should handle response with status 400', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,
         status: 400
       });
         
-      await expect(api.getUserWipLimit('user1')).rejects.toThrow(
+      await expect(api.getUserWipStatus('user1')).rejects.toThrow(
         'Failed to check user WIP status'
       );
     });

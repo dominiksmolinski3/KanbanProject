@@ -81,7 +81,8 @@
       "parentTaskRemoveError": "حدث خطأ أثناء إزالة المهمة الرئيسية",
       "userAssignedToTask": "تم تعيين المستخدم {{user}} للمهمة \"{{title}}\"",
       "usersLoadError": "خطأ أثناء تحميل المستخدمين: {{message}}",
-      "wipLimitUpdateError": "خطأ أثناء تحديث حد العمل قيد التنفيذ: {{message}}"
+      "wipLimitUpdateError": "خطأ أثناء تحديث حد العمل قيد التنفيذ: {{message}}",
+      "userWipLimitExceeded": "وصل {{name}} إلى حد العمل قيد التنفيذ البالغ {{limit}} مهام"
     },
     "column": {
       "deleteConfirm": "هل أنت متأكد أنك تريد حذف هذا العمود؟",

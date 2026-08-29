@@ -99,8 +99,8 @@ public class UserController {
     }
 
     @GetMapping("/{id}/wip-status")
-    public ResponseEntity<Boolean> checkWipStatus(@PathVariable Integer id) {
-        return ResponseEntity.ok(userService.checkWipStatus(id));
+    public ResponseEntity<WipStatusDto> getWipStatus(@PathVariable Integer id) {
+        return ResponseEntity.ok(userService.getWipStatus(id));
     }
 
     /*
