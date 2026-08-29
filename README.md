@@ -64,7 +64,8 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 ## 📦 Prerequisites
 
 - [Java 21](https://www.oracle.com/java/technologies/downloads/)
-- [Node.js 18](https://nodejs.org/) or higher
+- [Node.js 20.19](https://nodejs.org/) or higher - Vite 8 refuses to start below it; CI and the
+  Docker build both use 26
 - [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
 - [PostgreSQL](https://www.postgresql.org/) (if running locally)
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (if using containers)
