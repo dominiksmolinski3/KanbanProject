@@ -335,7 +335,7 @@ function Task({ task, columnId }) {
             refreshTasks();
             setAssignmentError(null);
             
-            toast.success(`Użytkownik ${userName} został przypisany do zadania "${task.title}"`);
+            toast.success(t('notifications.userAssignedToTask', { user: userName, title: task.title }));
           } catch (error) {
             setAssignmentError(error.message || 'Error assigning user to task');
             console.error('Error assigning user:', error.message);

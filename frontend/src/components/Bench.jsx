@@ -45,8 +45,8 @@ function Bench() {
       setLoading(false);
     } catch (error) {
       console.error('Error loading users:', error);
-      setError('Wystąpił błąd podczas ładowania użytkowników');
-      toast.error(`Błąd podczas ładowania użytkowników: ${error.message}`);
+      setError(t('bench.loadError'));
+      toast.error(t('notifications.usersLoadError', { message: error.message }));
       setLoading(false);
     }
   };
@@ -108,13 +108,13 @@ function Bench() {
         [userId]: false
       });
       
-      const userName = users.find(u => u.id === userId)?.name || 'użytkownika';
-      const limitText = newLimit ? newLimit : '∞';
-      toast.success(`Limit WIP dla ${userName} został zaktualizowany do ${limitText}`);
+      const userName = users.find(u => u.id === userId)?.name || t('bench.thisUser');
+      const limitText = newLimit ? newLimit : t('bench.unlimited');
+      toast.success(t('notifications.wipLimitUpdated', { name: userName, limit: limitText }));
       refreshTasks();
     } catch (error) {
       console.error('Error updating WIP limit:', error);
-      toast.error(`Błąd podczas aktualizacji limitu WIP: ${error.message}`);
+      toast.error(t('notifications.wipLimitUpdateError', { message: error.message }));
     }
   };
 

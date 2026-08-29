@@ -26,4 +26,16 @@ i18n
     }
   });
 
+const RTL_LANGUAGES = ['ar', 'fa', 'he', 'ur'];
+
+function applyDocumentDirection(language) {
+  if (typeof document === 'undefined') return;
+  const base = (language || 'en').split('-')[0];
+  document.documentElement.lang = base;
+  document.documentElement.dir = RTL_LANGUAGES.includes(base) ? 'rtl' : 'ltr';
+}
+
+i18n.on('languageChanged', applyDocumentDirection);
+applyDocumentDirection(i18n.language);
+
 export default i18n;

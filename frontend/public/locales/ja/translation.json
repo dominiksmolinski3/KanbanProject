@@ -68,7 +68,20 @@
       "taskMovedToColumnAndRow": "タスク「{{title}}」がカラム「{{column}}」と行「{{row}}」に移動されました",
       "taskMovedToRow": "タスク「{{title}}」が行「{{row}}」に移動されました",
       "columnMoved": "カラム「{{name}}」が移動されました",
-      "rowMoved": "行「{{name}}」が移動されました"
+      "rowMoved": "行「{{name}}」が移動されました",
+      "labelsUpdateError": "ラベルの更新中にエラーが発生しました",
+      "subtaskAddError": "サブタスクの追加中にエラーが発生しました",
+      "subtaskToggleError": "サブタスクのステータス変更中にエラーが発生しました",
+      "subtaskDeleteError": "サブタスクの削除中にエラーが発生しました",
+      "subtaskDescriptionError": "サブタスクの説明の保存中にエラーが発生しました",
+      "userRemoveError": "ユーザーの削除中にエラーが発生しました",
+      "userAssignError": "ユーザーの割り当て中にエラーが発生しました",
+      "parentTasksLoadError": "利用可能な親タスクを取得できませんでした",
+      "parentTaskAssignError": "親タスクの割り当て中にエラーが発生しました",
+      "parentTaskRemoveError": "親タスクの削除中にエラーが発生しました",
+      "userAssignedToTask": "ユーザー {{user}} がタスク「{{title}}」に割り当てられました",
+      "usersLoadError": "ユーザーの読み込みエラー: {{message}}",
+      "wipLimitUpdateError": "WIP 制限の更新エラー: {{message}}"
     },
     "column": {
       "deleteConfirm": "このカラムを削除してもよろしいですか？",
@@ -171,7 +184,9 @@
       "tasks": "タスク",
       "editWipLimit": "WIP制限を編集",
       "saveWipLimit": "WIP制限を保存",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "loadError": "ユーザーの読み込み中にエラーが発生しました",
+      "thisUser": "このユーザー"
     },
     "auth": {
       "login": "ログイン",
@@ -196,7 +211,12 @@
       "registerFailed": "登録に失敗しました:",
       "verifySuccess": "アカウントが正常に確認されました！ログインしてください。",
       "verifyFailed": "確認に失敗しました:",
-      "codeSent": "確認コードがメールに送信されました。"
+      "codeSent": "確認コードがメールに送信されました。",
+      "captchaBlocked": "reCAPTCHA を読み込めませんでした（スクリプトがブロックされていませんか？）。uBlock や AdBlock などの拡張機能を確認してください。",
+      "captchaLoadError": "スクリプトの読み込みエラー。",
+      "retry": "再読み込み",
+      "recentlyVerified": "アカウントが確認されました！このログインでは CAPTCHA をスキップします。",
+      "verifyAndLoginSuccess": "アカウントの確認とログインが完了しました！"
     },
     "taskLabels": {
       "addLabel": "+ ラベル",

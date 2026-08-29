@@ -68,7 +68,20 @@
       "taskMovedToColumnAndRow": "Tarea \"{{title}}\" ha sido movida a la columna \"{{column}}\" y fila \"{{row}}\"",
       "taskMovedToRow": "Tarea \"{{title}}\" ha sido movida a la fila \"{{row}}\"",
       "columnMoved": "Columna \"{{name}}\" ha sido movida",
-      "rowMoved": "Fila \"{{name}}\" ha sido movida"
+      "rowMoved": "Fila \"{{name}}\" ha sido movida",
+      "labelsUpdateError": "Se produjo un error al actualizar las etiquetas",
+      "subtaskAddError": "Se produjo un error al añadir la subtarea",
+      "subtaskToggleError": "Se produjo un error al cambiar el estado de la subtarea",
+      "subtaskDeleteError": "Se produjo un error al eliminar la subtarea",
+      "subtaskDescriptionError": "Se produjo un error al guardar la descripción de la subtarea",
+      "userRemoveError": "Se produjo un error al eliminar el usuario",
+      "userAssignError": "Se produjo un error al asignar el usuario",
+      "parentTasksLoadError": "No se pudieron cargar las tareas principales disponibles",
+      "parentTaskAssignError": "Se produjo un error al asignar la tarea principal",
+      "parentTaskRemoveError": "Se produjo un error al eliminar la tarea principal",
+      "userAssignedToTask": "El usuario {{user}} ha sido asignado a la tarea \"{{title}}\"",
+      "usersLoadError": "Error al cargar los usuarios: {{message}}",
+      "wipLimitUpdateError": "Error al actualizar el límite WIP: {{message}}"
     },
     "column": {
       "deleteConfirm": "¿Está seguro de que desea eliminar esta columna?",
@@ -171,7 +184,9 @@
       "tasks": "Tareas",
       "editWipLimit": "Editar límite WIP",
       "saveWipLimit": "Guardar límite WIP",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "loadError": "Se produjo un error al cargar los usuarios",
+      "thisUser": "este usuario"
     },
     "auth": {
       "login": "Iniciar sesión",
@@ -196,7 +211,12 @@
       "registerFailed": "Error en el registro:",
       "verifySuccess": "¡Cuenta verificada exitosamente! Por favor, inicie sesión.",
       "verifyFailed": "Error en la verificación:",
-      "codeSent": "Código de verificación enviado a su correo electrónico."
+      "codeSent": "Código de verificación enviado a su correo electrónico.",
+      "captchaBlocked": "reCAPTCHA no se cargó (¿script bloqueado?). Comprueba si un bloqueador como uBlock o AdBlock está activo.",
+      "captchaLoadError": "Error al cargar el script.",
+      "retry": "Recargar",
+      "recentlyVerified": "¡Cuenta verificada! CAPTCHA omitido para este inicio de sesión.",
+      "verifyAndLoginSuccess": "¡Cuenta verificada y sesión iniciada correctamente!"
     },
     "taskLabels": {
       "addLabel": "+ Etiqueta",
