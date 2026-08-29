@@ -4,9 +4,6 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
 function UsersManagement() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [users, setUsers] = useState([]);
   const [avatarPreviews, setAvatarPreviews] = useState({});
   const avatarPreviewsRef = useRef({});
@@ -180,48 +177,6 @@ function UsersManagement() {
     );
   };
 
-  const addUser = () => {
-    if (name.trim() === '' || email.trim() === '' || password.trim() === '') {
-      toast.warning(t('usersManagement.messages.emptyFields'));
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      toast.info(t('usersManagement.messages.invalidEmail'));
-      return;
-    }
-
-    const userData = {
-      name: name,
-      email: email,
-      password: password
-    };
-
-    fetch('/api/users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(t('usersManagement.messages.addError'));
-        }
-        return response.json();
-      })
-      .then(newUser => {
-        setUsers([...users, newUser]);
-        setName('');
-        setEmail('');
-        setPassword('');
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        toast.error(t('usersManagement.messages.addError'));
-      });
-  };
-
   const deleteUser = (userId) => {
     if (window.confirm(t('usersManagement.messages.deleteConfirm'))) {
       fetch(`/api/users/${userId}`, {
@@ -241,58 +196,9 @@ function UsersManagement() {
     }
   };
 
-  const handleKeyPress = (e, nextField) => {
-    if (e.key === 'Enter') {
-      if (nextField === 'email') {
-        document.getElementById('emailInput').focus();
-      } else if (nextField === 'password') {
-        document.getElementById('passwordInput').focus();
-      } else if (nextField === 'submit') {
-        addUser();
-      }
-    }
-  };
-
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   return (
     <div className="container">
       <h1>{t('usersManagement.title')}</h1>
-
-      <div className="controls">
-        <div className="main-controls">
-          <input
-            type="text"
-            id="nameInput"
-            placeholder={t('usersManagement.fields.name')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyPress={(e) => handleKeyPress(e, 'email')}
-          />
-          <input
-            type="email"
-            id="emailInput"
-            placeholder={t('usersManagement.fields.email')}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyPress={(e) => handleKeyPress(e, 'password')}
-          />
-          <input
-            type="password"
-            id="passwordInput"
-            placeholder={t('usersManagement.fields.password')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyPress={(e) => handleKeyPress(e, 'submit')}
-          />
-          <button id="addUserBtn" onClick={addUser}>
-            {t('usersManagement.buttons.add')}
-          </button>
-        </div>
-      </div>
 
       <div className="users-container">
         <div className="users-header">

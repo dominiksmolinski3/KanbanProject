@@ -219,21 +219,16 @@
       "fields": {
         "name": "Nome completo",
         "email": "Email",
-        "password": "Password",
         "avatar": "Avatar",
         "id": "ID",
         "actions": "Azioni"
       },
       "buttons": {
-        "add": "Aggiungi utente",
         "delete": "Elimina utente",
         "change": "Cambia",
         "back": "Torna alla bacheca Kanban"
       },
       "messages": {
-        "emptyFields": "Compila tutti i campi!",
-        "invalidEmail": "Fornisci un indirizzo email valido!",
-        "addError": "Si è verificato un errore durante l'aggiunta dell'utente",
         "deleteConfirm": "Sei sicuro di voler eliminare questo utente?",
         "deleteError": "Si è verificato un errore durante l'eliminazione dell'utente",
         "fileTooLarge": "Il file è troppo grande. La dimensione massima è 10MB.",
