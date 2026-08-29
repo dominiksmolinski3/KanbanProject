@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
+import pl.myproject.kanbanproject2.layout.row.Row;
+import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryDto;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
@@ -33,19 +36,25 @@ public class TaskService {
     private final UserService userService;
     private final TaskColumnHistoryRepository taskColumnHistoryRepository;
     private final TaskColumnHistoryMapper historyMapper;
+    private final ColumnRepository columnRepository;
+    private final RowRepository rowRepository;
 
-    public TaskDto addTask(Task task) {
-        if (task.getPosition() == null) {
-            task.setPosition((int) taskRepository.count() + 1);
-        }
-        if (task.getLabels() == null) {
-            task.setLabels(new HashSet<>());
-        }
+    public TaskDto addTask(CreateTaskRequest request) {
+        var task = new Task();
+        task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setPosition(request.position() != null
+                ? request.position()
+                : (int) taskRepository.count() + 1);
+        task.setLabels(request.labels() != null ? new HashSet<>(request.labels()) : new HashSet<>());
+        task.setColumn(request.column() != null ? findColumn(request.column().id()) : null);
+        task.setRow(request.row() != null ? findRow(request.row().id()) : null);
+        applyDeadline(task, request.deadline());
 
         var savedTask = taskRepository.save(task);
 
-        if (task.getColumn() != null) {
-            saveTaskColumnHistory(savedTask, task.getColumn());
+        if (savedTask.getColumn() != null) {
+            saveTaskColumnHistory(savedTask, savedTask.getColumn());
         }
         return taskMapper.apply(savedTask);
     }
@@ -77,47 +86,82 @@ public class TaskService {
         return taskRepository.findById(id).map(taskMapper).orElseThrow(() -> taskNotFound(id));
     }
 
-    public TaskDto patchTask(Integer id, Task task) {
+    public TaskDto patchTask(Integer id, PatchTaskRequest request) {
         var existingTask = findTask(id);
-        var currentColumn = existingTask.getColumn();
 
-        if (task.getTitle() != null) {
-            existingTask.setTitle(task.getTitle());
-        }
-
-        if (task.getColumn() != null) {
-            boolean columnChanged = currentColumn == null
-                    || !currentColumn.getId().equals(task.getColumn().getId());
-
-            if (columnChanged) {
-                if (currentColumn != null) {
-                    saveTaskColumnHistory(existingTask, currentColumn);
-                }
-                existingTask.setColumn(task.getColumn());
-                saveTaskColumnHistory(existingTask, task.getColumn());
+        if (request.title().isPresent()) {
+            var title = request.title().get();
+            if (title == null || title.isBlank()) {
+                throw new IllegalArgumentException("A task title cannot be blank");
             }
+            existingTask.setTitle(title);
         }
 
-        if (task.getUsers() != null) {
-            existingTask.setUsers(task.getUsers());
+        if (request.column().isPresent()) {
+            var column = request.column().get();
+            moveToColumn(existingTask, column == null ? null : findColumn(column.id()));
         }
-        if (task.getPosition() != null) {
-            existingTask.setPosition(task.getPosition());
+
+        if (request.position().isPresent()) {
+            var position = request.position().get();
+            if (position == null) {
+                // getAllTasks sorts on it, so a null position would break the whole board listing.
+                throw new IllegalArgumentException("A task position cannot be cleared");
+            }
+            existingTask.setPosition(position);
         }
-        if (task.getRow() != null) {
-            existingTask.setRow(task.getRow());
+
+        if (request.row().isPresent()) {
+            var row = request.row().get();
+            existingTask.setRow(row == null ? null : findRow(row.id()));
         }
-        if (task.getLabels() != null) {
-            existingTask.setLabels(task.getLabels());
+
+        if (request.labels().isPresent()) {
+            var labels = request.labels().get();
+            existingTask.setLabels(labels == null ? new HashSet<>() : new HashSet<>(labels));
         }
-        if (task.getDescription() != null) {
-            existingTask.setDescription(task.getDescription());
+
+        if (request.description().isPresent()) {
+            existingTask.setDescription(request.description().get());
         }
-        if (task.getDeadline() != null) {
-            existingTask.setDeadline(task.getDeadline());
+
+        if (request.deadline().isPresent()) {
+            applyDeadline(existingTask, request.deadline().get());
         }
 
         return taskMapper.apply(taskRepository.save(existingTask));
+    }
+
+    /**
+     * Records the move the way the history report expects, and tolerates a column of {@code null}
+     * — a task can be taken off the board, and there is no arrival to record when it is.
+     */
+    private void moveToColumn(Task task, Column newColumn) {
+        var currentColumn = task.getColumn();
+        boolean unchanged = currentColumn == null
+                ? newColumn == null
+                : newColumn != null && currentColumn.getId().equals(newColumn.getId());
+        if (unchanged) {
+            return;
+        }
+
+        if (currentColumn != null) {
+            saveTaskColumnHistory(task, currentColumn);
+        }
+        task.setColumn(newColumn);
+        if (newColumn != null) {
+            saveTaskColumnHistory(task, newColumn);
+        }
+    }
+
+    /**
+     * Keeps {@code expired} consistent with the deadline it describes. The scheduled sweep only
+     * looks at tasks that still have a deadline, so clearing one would otherwise leave the flag
+     * stuck on whatever it was when the deadline was removed.
+     */
+    private void applyDeadline(Task task, LocalDateTime deadline) {
+        task.setDeadline(deadline);
+        task.setExpired(deadline != null && deadline.isBefore(LocalDateTime.now()));
     }
 
     private void saveTaskColumnHistory(Task task, Column column) {
@@ -321,6 +365,18 @@ public class TaskService {
     private Task findTask(Integer id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> taskNotFound(id));
+    }
+
+    private Column findColumn(Integer id) {
+        return columnRepository.findById(id)
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.COLUMN_NOT_FOUND,
+                        "Column not found with id: " + id));
+    }
+
+    private Row findRow(Integer id) {
+        return rowRepository.findById(id)
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.ROW_NOT_FOUND,
+                        "Row not found with id: " + id));
     }
 
     private GlobalException taskNotFound(Integer id) {

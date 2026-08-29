@@ -20,10 +20,13 @@ public class RowService {
         return rowRepository.findAll().stream().map(rowMapper).toList();
     }
 
-    public RowResponseDto createRow(Row row) {
-        if (row.getPosition() == null) {
-            row.setPosition((int) rowRepository.count() + 1);
-        }
+    public RowResponseDto createRow(CreateRowRequest request) {
+        var row = new Row();
+        row.setName(request.name());
+        row.setWipLimit(request.wipLimit());
+        row.setPosition(request.position() != null
+                ? request.position()
+                : (int) rowRepository.count() + 1);
         return rowMapper.toResponseDto(rowRepository.save(row));
     }
 

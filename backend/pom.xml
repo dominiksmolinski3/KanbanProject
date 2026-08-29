@@ -30,6 +30,7 @@
         <java.version>21</java.version>
         <postgresql.version>42.7.13</postgresql.version>
         <bucket4j.version>8.10.1</bucket4j.version>
+        <jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
     </properties>
     <dependencies>
         <dependency>
@@ -100,6 +101,17 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!--
+            Jackson maps both an absent property and an explicit JSON null onto the same Java null,
+            which is why every PATCH here used to mean "leave unchanged" and nothing could be
+            cleared. JsonNullable keeps the two apart: undefined() for absent, of(null) for null.
+        -->
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>${jackson-databind-nullable.version}</version>
         </dependency>
 
         <dependency>
