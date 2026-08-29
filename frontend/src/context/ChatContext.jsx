@@ -53,7 +53,7 @@ function chatReducer(state, action) {
 
 export function ChatProvider({ children }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { t } = useTranslation();
   const chatApiRef = useRef(null);
 
@@ -100,12 +100,14 @@ export function ChatProvider({ children }) {
     toast.error(t('chat.connectionError'));
   };
 
+  const chatUsername = user?.email;
+
   const connect = async () => {
     if (!user) return;
-    
+
     try {
       chatApiRef.current = new ChatApi(onMessageReceived, onError);
-      await chatApiRef.current.connect(user.username);
+      await chatApiRef.current.connect(chatUsername, token);
       dispatch({ type: 'SET_CONNECTED', payload: true });
       //toast.info(t('chat.connected'));
     } catch (error) {
@@ -131,7 +133,7 @@ export function ChatProvider({ children }) {
       leaveRoom();
     }
     
-    const joined = chatApiRef.current.joinRoom(user.username, roomId);
+    const joined = chatApiRef.current.joinRoom(chatUsername, roomId);
     if (joined) {
       dispatch({ type: 'SET_CURRENT_ROOM', payload: roomId });
       dispatch({ type: 'SET_MESSAGE_TYPE', payload: 'room' });
@@ -164,7 +166,7 @@ export function ChatProvider({ children }) {
     }
     
     const sent = chatApiRef.current.sendMessage(
-      user.username, 
+      chatUsername,
       state.messageType,
       state.message,
       state.currentRoom,

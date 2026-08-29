@@ -7,16 +7,23 @@ export default class ChatApi {
     this.onMessageReceived = onMessageReceived;
     this.onError = onError;
     this.roomSubscription = null;
-    this.serverUrl = 'http://localhost:8080'; // Backend server URL
+    this.serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
   }
 
-  connect(username) {
+  /**
+   * @param {string} username the authenticated principal — the account's email. Spring resolves
+   *   /user/{name}/queue destinations against it, so anything else subscribes to a queue that
+   *   never receives a message.
+   * @param {string} token the JWT. WebSocketAuthInterceptor refuses a CONNECT frame without it.
+   */
+  connect(username, token) {
     return new Promise((resolve, reject) => {
       try {
         // Create a STOMP client using the modern approach
         this.stompClient = new Client({
           // Use proper factory function format for SockJS
           webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
+          connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
           debug: () => {},
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
