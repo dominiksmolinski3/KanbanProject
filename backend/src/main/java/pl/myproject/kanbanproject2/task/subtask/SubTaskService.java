@@ -9,6 +9,7 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 
 import java.util.List;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @Transactional
@@ -20,15 +21,30 @@ public class SubTaskService {
     private final SubTaskMapper subTaskMapper;
 
     public SubTaskDto addSubTask(CreateSubTaskRequest request) {
+        var task = request.task() != null ? findTask(request.task().id()) : null;
+
         var subTask = new SubTask();
         subTask.setTitle(request.title());
         subTask.setDescription(request.description());
         subTask.setCompleted(request.completed());
+        subTask.setTask(task);
         subTask.setPosition(request.position() != null
                 ? request.position()
-                : (int) subTaskRepository.count() + 1);
-        subTask.setTask(request.task() != null ? findTask(request.task().id()) : null);
+                : nextPositionUnder(task));
         return subTaskMapper.toDto(subTaskRepository.save(subTask));
+    }
+
+    /**
+     * The next free position among one task's subtasks. It used to be a count of every subtask in
+     * the table, which both collided after a delete and numbered a task's first subtask by how
+     * many other tasks happened to have some.
+     */
+    private int nextPositionUnder(Task task) {
+        return subTaskRepository.findByTask(task).stream()
+                .map(SubTask::getPosition)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
     }
 
     public List<SubTaskDto> getAllSubTasks() {
