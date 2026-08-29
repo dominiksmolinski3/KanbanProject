@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import pl.myproject.kanbanproject2.task.Task;
+import pl.myproject.kanbanproject2.task.TaskRepository;
 
 import java.util.List;
 
@@ -15,6 +17,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final TaskRepository taskRepository;
 
     public List<UserDto> getAllUsers() {
         return userRepository.findAll().stream().map(userMapper).toList();
@@ -25,11 +28,24 @@ public class UserService {
                 .orElseThrow(() -> userNotFound(id));
     }
 
+    /**
+     * Unassigns the user from every task before removing the account.
+     *
+     * <p>{@code User.tasks} is the inverse side of {@code user_task} — {@link Task} owns the join
+     * table — so nothing Hibernate does on the user's behalf clears those rows, and the delete
+     * failed on the foreign key for any user who was assigned to anything. The tasks themselves
+     * stay: they belong to the board, not to the account.
+     */
     public void deleteUser(Integer id) {
-        if (!userRepository.existsById(id)) {
-            throw userNotFound(id);
+        var user = userRepository.findById(id).orElseThrow(() -> userNotFound(id));
+
+        for (Task task : List.copyOf(user.getTasks())) {
+            task.getUsers().remove(user);
+            taskRepository.save(task);
         }
-        userRepository.deleteById(id);
+        user.getTasks().clear();
+
+        userRepository.delete(user);
     }
 
     public UserDto patchUser(UserDto userDto, Integer id) {
