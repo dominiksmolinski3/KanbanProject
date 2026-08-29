@@ -20,7 +20,10 @@ public final class PublicPaths {
             "/api/auth/signup",
             "/api/auth/login",
             "/api/auth/verify",
-            "/api/auth/resend"
+            "/api/auth/resend",
+            // Someone who has forgotten their password has, by definition, no token.
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password"
     };
 
     public static final String[] INFRA_ENDPOINTS = {
