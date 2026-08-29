@@ -44,11 +44,13 @@ module "postgres" {
   subnet_id           = module.vnet.db_subnet_id
   key_vault_id        = module.key_vault.id
 
-  sku_name                  = var.postgres_sku_name
-  storage_mb                = var.postgres_storage_mb
-  zone                      = var.postgres_zone
-  high_availability_mode    = var.postgres_high_availability_mode
-  standby_availability_zone = var.postgres_standby_availability_zone
+  sku_name                     = var.postgres_sku_name
+  storage_mb                   = var.postgres_storage_mb
+  zone                         = var.postgres_zone
+  high_availability_mode       = var.postgres_high_availability_mode
+  standby_availability_zone    = var.postgres_standby_availability_zone
+  backup_retention_days        = var.postgres_backup_retention_days
+  geo_redundant_backup_enabled = var.postgres_geo_redundant_backup_enabled
 
   depends_on = [module.key_vault]
 }
@@ -65,6 +67,8 @@ module "container_app" {
   key_vault_uri           = module.key_vault.uri
   key_vault_id            = module.key_vault.id
   github_repository_owner = var.github_repository_owner
+  ghcr_username           = var.ghcr_username
+  ghcr_token              = var.ghcr_token
   spring_mail_username    = var.spring_mail_username
   spring_mail_password    = var.spring_mail_password
   captcha_enabled         = var.captcha_enabled
