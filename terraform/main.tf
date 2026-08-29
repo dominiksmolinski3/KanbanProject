@@ -60,6 +60,7 @@ module "container_app" {
   env                     = var.env
   container_app_env_id    = module.vnet.container_app_env_id
   app_image_tag           = var.app_image_tag
+  max_replicas            = var.max_replicas
   allowed_ingress_cidrs   = var.allowed_ingress_cidrs
   key_vault_uri           = module.key_vault.uri
   key_vault_id            = module.key_vault.id
