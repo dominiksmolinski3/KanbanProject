@@ -36,6 +36,17 @@ variable "app_image_tag" {
   }
 }
 
+variable "max_replicas" {
+  description = "Upper bound on app replicas. Keep at 1: the STOMP broker and the auth rate limiter both hold state in the JVM, so a second replica loses chat messages and multiplies every rate limit. See the module variable of the same name."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.max_replicas >= 1
+    error_message = "The max_replicas must be at least 1."
+  }
+}
+
 variable "ingress_source_address_prefixes" {
   description = "Source ranges the backend subnet NSG allows to reach the container app on 80/443. Leave at Internet for a publicly reachable environment; narrow to office/CI CIDRs otherwise."
   type        = list(string)

@@ -36,6 +36,31 @@ variable "app_image_tag" {
   }
 }
 
+variable "max_replicas" {
+  description = <<-EOT
+    Upper bound on app replicas. Defaults to 1, and should stay there until two pieces of
+    in-JVM state are moved out:
+
+      * The STOMP broker is registry.enableSimpleBroker("/topic", "/queue") -- in-process. A chat
+        message published on one replica never reaches a subscriber on another, so messages are
+        lost silently rather than visibly.
+      * The auth rate limiter holds its Caffeine buckets per JVM (AuthRateLimitProperties says so
+        in its own docs), which multiplies every configured limit by the replica count.
+
+    Ingress also declares no session affinity, which SockJS's XHR fallback transports need.
+
+    Raising this needs an external broker and a shared-state limiter first; until then a higher
+    value promises horizontal scaling the app does not have.
+  EOT
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.max_replicas >= 1
+    error_message = "The max_replicas must be at least 1."
+  }
+}
+
 variable "spring_mail_username" {
   type      = string
   sensitive = true
