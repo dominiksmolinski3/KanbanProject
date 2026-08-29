@@ -6,6 +6,7 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.TimeMeter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -29,6 +30,14 @@ public class AuthRateLimiter {
     private final Map<AuthRateLimitRule, Map<AuthRateLimitDimension, Bandwidth>> bandwidths;
     private final TimeMeter timeMeter;
 
+    /*
+     * @Autowired is load-bearing, not decoration. There are two constructors here, so Spring stops
+     * looking for the single obvious one and falls back to a no-arg constructor that does not
+     * exist - the context then fails to start with "No default constructor found", and every bean
+     * downstream of the security chain fails with it. Nothing caught that, because until
+     * SpringContextStartsTest nothing in the suite ever built a context.
+     */
+    @Autowired
     public AuthRateLimiter(AuthRateLimitProperties properties) {
         this(properties, TimeMeter.SYSTEM_NANOTIME);
     }
