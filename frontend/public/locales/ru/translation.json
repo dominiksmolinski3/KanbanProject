@@ -81,7 +81,8 @@
       "parentTaskRemoveError": "Произошла ошибка при удалении родительской задачи",
       "userAssignedToTask": "Пользователь {{user}} назначен на задачу «{{title}}»",
       "usersLoadError": "Ошибка при загрузке пользователей: {{message}}",
-      "wipLimitUpdateError": "Ошибка при обновлении лимита WIP: {{message}}"
+      "wipLimitUpdateError": "Ошибка при обновлении лимита WIP: {{message}}",
+      "userWipLimitExceeded": "{{name}} достиг лимита WIP в {{limit}} задач"
     },
     "column": {
       "deleteConfirm": "Вы уверены, что хотите удалить эту колонку?",

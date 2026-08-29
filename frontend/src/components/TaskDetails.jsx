@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { createPortal } from 'react-dom';
-import { fetchUsers, fetchColumns, assignUserToTask, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary } from '../services/api';
+import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary } from '../services/api';
 import '../styles/components/TaskDetails.css';
 import TaskLabels from './TaskLabels';
 import { toast } from 'react-toastify';
@@ -543,7 +543,15 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       }, 3000);
     } catch (error) {
       console.error('Error assigning user:', error);
-      toast.error(t('notifications.userAssignError'));
+      if (error instanceof WipLimitExceededError) {
+        const assignee = users.find(user => String(user.id) === String(selectedUserId));
+        toast.error(t('notifications.userWipLimitExceeded', {
+          name: assignee?.name || assignee?.email || selectedUserId,
+          limit: error.status?.wipLimit
+        }));
+      } else {
+        toast.error(t('notifications.userAssignError'));
+      }
     }
   };
 

@@ -274,51 +274,65 @@ export const updateTaskPosition = async (taskId, position) => {
   }
 };
 
+/**
+ * Raised only when the server refuses an assignment because the user is at their WIP limit, or
+ * when the pre-flight status says the same. Carries the status so the caller can name the limit
+ * in its own language instead of reading a message written here.
+ */
+export class WipLimitExceededError extends Error {
+  constructor(status) {
+    super(`WIP limit reached for user ${status?.userId}`);
+    this.name = 'WipLimitExceededError';
+    this.status = status;
+  }
+}
+
 export const assignUserToTask = async (taskId, userId) => {
-  const userWipStatus = await getUserWipLimit(userId);
-  console.log(`User WIP status:`, userWipStatus);
-  
-  if (userWipStatus.willExceedLimit) {
-    throw new Error(`WIP limit exceeded: ${userWipStatus.userName} has reached their maximum of ${userWipStatus.wipLimit} tasks.`);
+  const wipStatus = await getUserWipStatus(userId);
+
+  if (!wipStatus.withinLimit) {
+    throw new WipLimitExceededError(wipStatus);
   }
-  
-  try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/user/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData.error && errorData.error.includes('WIP limit')) {
-        throw new Error(`Limit WIP osiągnięty: Nie można przypisać więcej tasków temu userowi.`);
-      }
-      throw new Error(`${response.status}: Failed to assign user to task`);
+
+  const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/user/${userId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
     }
-    
-    return await response.json();
-  } catch (error) {
-    if (!error.message.includes('WIP limit')) {
-      console.error(`Error assigning user to task ${taskId}:`, error);
-      throw new Error(`Limit WIP osiągnięty: Nie można przypisać więcej tasków temu userowi.`);
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+
+    // Only this one answer means the limit. Everything else — a 404, a 500, a dropped
+    // connection — used to be reported as a WIP limit too, which sent people looking at
+    // the wrong thing.
+    if (response.status === 400 && errorData.code === 'USER_WIP_LIMIT_EXCEEDED') {
+      throw new WipLimitExceededError(wipStatus);
     }
-    throw error;
+
+    throw new Error(`${response.status}: Failed to assign user to task`);
   }
+
+  return await response.json();
 };
 
-export async function getUserWipLimit(userId) {
+/**
+ * Returns { userId, wipLimit, assignedCount, withinLimit }. The route used to answer a bare
+ * boolean, and the caller read a `willExceedLimit` field that was never on it — always undefined,
+ * so the pre-flight check never fired.
+ */
+export async function getUserWipStatus(userId) {
   try {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/wip-status`);
-    
+
     if (!response.ok) {
       throw new Error('Failed to check user WIP status');
     }
-    
+
     return await response.json();
   } catch (error) {
-    console.error('Error checking user WIP limit:', error);
+    console.error('Error checking user WIP status:', error);
     throw error;
   }
 }

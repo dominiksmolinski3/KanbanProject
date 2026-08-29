@@ -22,7 +22,7 @@ import {
   updateTaskName,
   updateRowName,
   updateColumnName,
-  getUserWipLimit,
+  getUserWipStatus,
   updateUserWipLimit,
 } from '../services/api';
 
@@ -338,11 +338,11 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  const handlegetUserWipLimit = async (userId) => {
+  const handleGetUserWipStatus = async (userId) => {
     try {
-      return await getUserWipLimit(userId);
+      return await getUserWipStatus(userId);
     } catch (err) {
-      console.error('Error checking user WIP limit:', new Error(err.message));
+      console.error('Error checking user WIP status:', new Error(err.message));
       setError(err.message);
       throw err;
     }
@@ -760,7 +760,7 @@ export function KanbanProvider({ children }) {
     updateTaskName: handleUpdateTaskName,
     updateColumnName: handleUpdateColumnName,
     updateRowName: handleUpdateRowName,
-    getUserWipLimit: handlegetUserWipLimit,
+    getUserWipStatus: handleGetUserWipStatus,
     updateUserWipLimit: handleUpdateUserWipLimit,
     dragAndDrop
   };
