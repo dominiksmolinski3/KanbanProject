@@ -24,7 +24,6 @@ import {
   updateColumnName,
   getUserWipLimit,
   updateUserWipLimit,
-  assignUserToTask,
 } from '../services/api';
 
 const KanbanContext = createContext();
@@ -33,7 +32,6 @@ export function KanbanProvider({ children }) {
   const [columns, setColumns] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [rows, setRows] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
@@ -354,12 +352,6 @@ export function KanbanProvider({ children }) {
     try {
       const result = await updateUserWipLimit(userId, wipLimit);
 
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, wipLimit } : user
-        )
-      );
-    
       toast.success(t('notifications.userWipLimitUpdated', { limit: wipLimit }));
       return result;
     } catch (err) {
@@ -472,7 +464,7 @@ export function KanbanProvider({ children }) {
           }
         }
 
-        await deleteRow(rowId, true);
+        await deleteRow(rowId);
         setRows([]);
         const updatedTasks = tasks.map(task => 
           task.rowId === rowId ? { ...task, rowId: null } : task
@@ -519,7 +511,6 @@ export function KanbanProvider({ children }) {
       let targetColumnName = '';
       let targetRowName = '';
 
-      const originalUserIds = task.userIds || [];
       const updatedTask = { ...task };
       
       if (columnChanged) {
@@ -537,17 +528,6 @@ export function KanbanProvider({ children }) {
         targetRowName = targetRow ? targetRow.name : '';
       }
       
-      if (originalUserIds.length > 0) {
-        for (const userId of originalUserIds) {
-          try {
-            await assignUserToTask(taskId, userId);
-          } catch (userErr) {
-            console.error(`Error reassigning user ${userId} to task ${taskId}:`, userErr);
-          }
-        }
-      }
-      
-      updatedTask.userIds = originalUserIds;
       setTasks(prevTasks => prevTasks.map(t => 
         t.id === taskId ? updatedTask : t
       ));
@@ -761,7 +741,6 @@ export function KanbanProvider({ children }) {
     columns,
     tasks,
     rows,
-    users,
     loading,
     error,
     columnMap,
