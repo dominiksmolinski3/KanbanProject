@@ -221,21 +221,16 @@
     "fields": {
       "name": "Full Name",
       "email": "Email",
-      "password": "Password",
       "avatar": "Avatar",
       "id": "ID",
       "actions": "Actions"
     },
     "buttons": {
-      "add": "Add User",
       "delete": "Delete user",
       "change": "Change",
       "back": "Back to Kanban Board"
     },
     "messages": {
-      "emptyFields": "Please fill in all fields!",
-      "invalidEmail": "Please provide a valid email address!",
-      "addError": "An error occurred while adding the user",
       "deleteConfirm": "Are you sure you want to delete this user?",
       "deleteError": "An error occurred while deleting the user",
       "fileTooLarge": "The file is too large. Maximum size is 10MB.",
