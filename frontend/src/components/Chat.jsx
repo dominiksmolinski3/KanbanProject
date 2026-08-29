@@ -48,7 +48,8 @@ function Chat() {
       return 'system-message';
     }
     
-    if (msg.sender === user?.username) {
+    // The server stamps every message with the JWT subject, which is the account's email.
+    if (msg.sender === user?.email) {
       return 'own-message';
     }
     
