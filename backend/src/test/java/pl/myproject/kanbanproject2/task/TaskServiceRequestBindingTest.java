@@ -119,7 +119,6 @@ class TaskServiceRequestBindingTest {
     @Test
     @DisplayName("a created task starts uncompleted with a generated id, whatever the caller sends")
     void createIgnoresFieldsTheRequestCannotCarry() {
-        when(taskRepository.count()).thenReturn(3L);
         when(columnRepository.findById(2)).thenReturn(Optional.of(column(2)));
 
         TaskDto created = taskService.addTask(new CreateTaskRequest(
@@ -128,7 +127,9 @@ class TaskServiceRequestBindingTest {
         // CreateTaskRequest has no id and no completed component, so neither can arrive off the wire.
         assertThat(created.id()).isNull();
         assertThat(created.completed()).isFalse();
-        assertThat(created.position()).isEqualTo(4);
+        // Where the position comes from is BoardDataIntegrityTest's subject; that it is set at all
+        // matters here, because getAllTasks sorts on it.
+        assertThat(created.position()).isEqualTo(1);
         assertThat(created.columnId()).isEqualTo(2);
         assertThat(created.labels()).containsExactly("bug");
     }

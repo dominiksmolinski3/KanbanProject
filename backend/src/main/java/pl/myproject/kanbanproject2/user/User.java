@@ -33,8 +33,10 @@ public class User implements UserDetails {
     private String email;
     private String password;
     private String name;
-    @Column(name = "enabled")
-    private Boolean enabled = false;
+    // Unboxed straight into isEnabled() below, which Spring Security calls on every
+    // authentication: a nullable column here meant one bad row threw an NPE mid-login.
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = false;
     @Column(name = "verification_code")
     private String verificationCode;
     @Column(name = "verification_expiration")
