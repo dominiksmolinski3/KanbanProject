@@ -36,7 +36,10 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/db.sql:/docker-entrypoint-initdb.d/db.sql:ro
+      # No init script. Flyway creates the schema and seeds the default columns on first start,
+      # so local development gets the same schema by the same route as every other environment -
+      # and an init script here would leave the volume non-empty, which is exactly the state
+      # baseline-on-migrate reads as "already migrated".
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

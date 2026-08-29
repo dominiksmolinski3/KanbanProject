@@ -178,7 +178,13 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 
 `application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
 
-`spring.jpa.hibernate.ddl-auto=update` means Hibernate owns the schema at runtime. `backend/db.sql` is only mounted as a Postgres init script by docker-compose and covers a small subset of the tables — it is not a migration system, so schema changes come from entity edits, and there is no Flyway/Liquibase here.
+**Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
+
+A schema change is therefore two edits, not one: the entity, **and** a new `V<n>__description.sql`. `ddl-auto=validate` will not add a column for you — it refuses to start without it, which on Container Apps is a revision that never becomes healthy. `FlywayMigrationsMatchEntitiesTest` regenerates the DDL Hibernate would emit and fails the build when an entity has moved on without a migration, so that mismatch is caught at build time rather than at startup.
+
+`V1__baseline_schema.sql` is the schema as `ddl-auto=update` left it, generated from the entity mappings under **Spring Boot's** naming strategies rather than Hibernate's bare defaults — that is the difference between `recipient_id` and `recipientId`, and between the `task` table and `Task`. `spring.flyway.baseline-on-migrate=true` means an environment that already has that schema is marked at V1 without re-running it, while a fresh database runs it like any other migration.
+
+`backend/db.sql` is gone. The default columns it seeded are `V3__seed_default_columns.sql`, so local development gets them by the same route as every other environment — and an init script would have left the volume non-empty, which is exactly the state `baseline-on-migrate` reads as "already migrated".
 
 Captcha is currently frontend-only: the widget renders if `VITE_RECAPTCHA_SITE_KEY` was baked in at Vite build time (it is a Docker `ARG`), and `authService.js` sends the token as `captcha: { token }`, but no backend code reads it — `CAPTCHA_SECRET` / `CAPTCHA_ENABLED` are plumbed through docker-compose and Terraform to a server-side check that does not exist yet, so the token is silently ignored.
 
