@@ -12,10 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
+import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
 import pl.myproject.kanbanproject2.user.UserDto;
 import pl.myproject.kanbanproject2.user.UserMapper;
+import pl.myproject.kanbanproject2.user.auth.ForgotPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
+import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
@@ -26,6 +29,7 @@ import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final PasswordResetService passwordResetService;
     private final UserMapper userMapper;
 
     @PostMapping("/signup")
@@ -41,6 +45,26 @@ public class AuthenticationController {
     @PostMapping("/verify")
     public ResponseEntity<Void> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto) {
         authenticationService.verifyUser(verifyUserDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Answers {@code 202 Accepted} whether or not the address has an account.
+     *
+     * <p>Needs no authentication - someone who has forgotten their password has no token - so
+     * telling the caller which of the two happened would make it a membership oracle anyone could
+     * walk. The person who owns the mailbox sees the difference; nobody else does.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    /** Redeems a reset code. Every failure is one status, for the same reason. */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
         return ResponseEntity.noContent().build();
     }
 

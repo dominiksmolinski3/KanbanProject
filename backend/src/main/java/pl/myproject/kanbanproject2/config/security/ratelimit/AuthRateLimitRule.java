@@ -20,12 +20,19 @@ public enum AuthRateLimitRule {
     static final String VERIFY_PATH = "/api/auth/verify";
     static final String SIGNUP_PATH = "/api/auth/signup";
     static final String RESEND_PATH = "/api/auth/resend";
+    static final String FORGOT_PASSWORD_PATH = "/api/auth/forgot-password";
+    static final String RESET_PASSWORD_PATH = "/api/auth/reset-password";
 
     private static final Map<String, AuthRateLimitRule> BY_PATH = Map.of(
             LOGIN_PATH, CREDENTIALS,
             VERIFY_PATH, CREDENTIALS,
             SIGNUP_PATH, EMAIL,
-            RESEND_PATH, EMAIL
+            RESEND_PATH, EMAIL,
+            // Asking for a reset sends mail on demand against the same shared quota signup does,
+            // and it needs no authentication at all - so it belongs on the EMAIL limit, not as an
+            // afterthought. Redeeming a code is guessing a six-digit secret, which is CREDENTIALS.
+            FORGOT_PASSWORD_PATH, EMAIL,
+            RESET_PASSWORD_PATH, CREDENTIALS
     );
 
     /**
