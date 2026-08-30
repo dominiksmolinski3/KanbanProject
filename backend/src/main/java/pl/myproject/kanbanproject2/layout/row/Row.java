@@ -23,6 +23,9 @@ public class Row {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
+    /** Optimistic lock; see {@link pl.myproject.kanbanproject2.task.Task#getVersion()}. */
+    @Version
+    private Integer version;
     @Column(name = "name")
     private String name;
     private Integer position;

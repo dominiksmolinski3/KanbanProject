@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -147,6 +148,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ErrorResponse.of("ACCESS_DENIED", "You do not have permission to perform this operation"));
+    }
+
+    /**
+     * Two callers changed the same {@code @Version}-carrying row and the second one lost the race.
+     * Nothing is broken - the loser is holding a stale copy - so it is a 409 to reload and retry,
+     * not the 500 the catch-all would have logged and alerted on.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex) {
+        log.debug("Optimistic lock conflict: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(
+                        ExceptionIdentifier.CONCURRENT_MODIFICATION.name(),
+                        ExceptionIdentifier.CONCURRENT_MODIFICATION.getDefaultMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
