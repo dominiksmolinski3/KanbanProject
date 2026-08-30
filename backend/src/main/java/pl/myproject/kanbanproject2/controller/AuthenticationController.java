@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -12,8 +13,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
+import pl.myproject.kanbanproject2.config.security.captcha.CaptchaVerifier;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
+import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
 import pl.myproject.kanbanproject2.user.auth.ForgotPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
@@ -28,6 +32,8 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
     private final PasswordResetService passwordResetService;
+    private final CaptchaVerifier captchaVerifier;
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * Answers {@code 202 Accepted} with no body, whether or not the address was new.
@@ -39,13 +45,17 @@ public class AuthenticationController {
      * accepted, and what happens next arrives by mail or does not.
      */
     @PostMapping("/signup")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterUserDto registerUserDto) {
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterUserDto registerUserDto,
+                                         HttpServletRequest request) {
+        verifyCaptcha(registerUserDto.getCaptcha(), request);
         authenticationService.signup(registerUserDto);
         return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginUserDto loginDto) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginUserDto loginDto,
+                                               HttpServletRequest request) {
+        verifyCaptcha(loginDto.getCaptcha(), request);
         return ResponseEntity.ok(authenticationService.login(loginDto));
     }
 
@@ -82,5 +92,16 @@ public class AuthenticationController {
     ) {
         authenticationService.resendVerificationCode(email);
         return ResponseEntity.accepted().build();
+    }
+
+    /**
+     * Checked here rather than in the service because the address to report to the provider is a
+     * servlet fact, and {@link ClientIpResolver} is where the project already decides which address
+     * a request belongs to - the same answer the rate limiter bills. It runs before the credentials
+     * are looked at, so a failed challenge costs nothing downstream and tells the caller nothing
+     * about the account.
+     */
+    private void verifyCaptcha(CaptchaDto captcha, HttpServletRequest request) {
+        captchaVerifier.verify(captcha, clientIpResolver.resolve(request));
     }
 }

@@ -35,6 +35,13 @@ public enum ExceptionIdentifier {
      * than the request and would tell an unauthenticated caller which addresses have accounts.
      * Expiry is separate only because reaching it already required a valid code.
      */
+    /*
+     * One answer for four different failures: no token, a token the provider rejects, a token it
+     * has already seen, and a check that could not be completed at all. Which of those happened is
+     * the provider's business and not the caller's - and the only useful action is the same in
+     * every case, which is to solve a fresh challenge.
+     */
+    CAPTCHA_FAILED(BAD_REQUEST, "Captcha verification failed, please try again"),
     INVALID_RESET_CODE(BAD_REQUEST, "Invalid password reset code"),
     RESET_CODE_EXPIRED(BAD_REQUEST, "The password reset code has expired"),
     EMAIL_SEND_FAILED(INTERNAL_SERVER_ERROR, "Failed to send the email message"),
