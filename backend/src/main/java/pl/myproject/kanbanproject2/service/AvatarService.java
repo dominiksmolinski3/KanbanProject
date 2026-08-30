@@ -59,7 +59,9 @@ public class AvatarService {
             throw new GlobalException(ExceptionIdentifier.INVALID_AVATAR_FILE_TYPE);
         }
 
-        var newAvatar = new File(file.getOriginalFilename(), normalisedContentType(file), bytes);
+        // Owned by the account it belongs to, so it answers the same ownership question as any
+        // other upload if it is ever reached through /api/files.
+        var newAvatar = new File(file.getOriginalFilename(), normalisedContentType(file), bytes, user);
         fileRepository.save(newAvatar);
         user.setAvatar(newAvatar);
         userRepository.save(user);

@@ -93,7 +93,43 @@
     "taskReopened": "Task reopened",
     "parentTaskNotCompleted": "This task cannot be completed while its parent task is still open.",
     "dailyFocusAdded": "Added to daily focus",
-    "dailyFocusRemoved": "Removed from daily focus"
+    "dailyFocusRemoved": "Removed from daily focus",
+    "boardCreated": "Board created",
+    "boardRenamed": "Board renamed",
+    "boardDeleted": "Board deleted",
+    "boardMemberInvited": "If that address has an account here, it now has access to this board",
+    "boardMemberRemoved": "Member removed from the board"
+  },
+  "boards": {
+    "switcher": {
+      "label": "Board",
+      "heading": "Your boards",
+      "shared": "shared",
+      "newBoard": "New board",
+      "create": "Create",
+      "namePlaceholder": "Board name"
+    },
+    "members": {
+      "youOwnIt": "You own this board",
+      "sharedWithYou": "Shared with you",
+      "rename": "Rename",
+      "save": "Save",
+      "cancel": "Cancel",
+      "explainer": "Everyone listed here can see and change this board. Nobody else can.",
+      "you": "(you)",
+      "owner": "Owner",
+      "member": "Member",
+      "leave": "Leave this board",
+      "remove": "Remove from board",
+      "removeConfirm": "Remove this person from the board?",
+      "leaveConfirm": "Leave this board? You will lose access to it.",
+      "deleteConfirm": "Delete \"{{name}}\" and every column, swimlane and task on it? This cannot be undone.",
+      "addLabel": "Add someone to this board",
+      "addPlaceholder": "their email address",
+      "add": "Add",
+      "addNote": "The answer is the same whether or not that address has an account here, so this form cannot be used to find out who is registered.",
+      "delete": "Delete this board"
+    }
   },
   "column": {
     "deleteConfirm": "Are you sure you want to delete this column?",

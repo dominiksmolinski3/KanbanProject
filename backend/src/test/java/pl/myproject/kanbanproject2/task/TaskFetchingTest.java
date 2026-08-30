@@ -55,7 +55,7 @@ class TaskFetchingTest {
         @Test
         @DisplayName("every to-one association is lazy, so a listing does not fetch what it will not read")
         void toOneAssociationsAreLazy() {
-            for (String name : List.of("column", "row", "parentTask")) {
+            for (String name : List.of("board", "column", "row", "parentTask")) {
                 ManyToOne mapping = field(name).getAnnotation(ManyToOne.class);
                 assertThat(mapping).as(name + " is @ManyToOne").isNotNull();
                 assertThat(mapping.fetch())
@@ -94,10 +94,11 @@ class TaskFetchingTest {
         @DisplayName("every listing names the to-one associations the mapper reads")
         void listingsCarryAnEntityGraph() {
             List<EntityGraph> graphs = List.of(
-                    graphOn("findAll"),
+                    graphOn("findByBoardOrderByIdAsc", pl.myproject.kanbanproject2.board.Board.class),
                     graphOn("findAllByDeadlineIsNotNull"),
-                    graphOn("findAllByDailyFocusTrue"),
-                    graphOn("findByColumnAndRow",
+                    graphOn("findByBoardAndDailyFocusTrue", pl.myproject.kanbanproject2.board.Board.class),
+                    graphOn("findByBoardAndColumnAndRow",
+                            pl.myproject.kanbanproject2.board.Board.class,
                             pl.myproject.kanbanproject2.layout.column.Column.class,
                             pl.myproject.kanbanproject2.layout.row.Row.class));
 
@@ -113,12 +114,62 @@ class TaskFetchingTest {
         @Test
         @DisplayName("no listing joins a collection - two of them would multiply the rows")
         void listingsDoNotJoinCollections() {
-            String[] paths = graphOn("findAll").attributePaths();
+            String[] paths = graphOn("findByBoardOrderByIdAsc",
+                    pl.myproject.kanbanproject2.board.Board.class).attributePaths();
 
             assertThat(paths)
                     .as("users and childTasks are Sets, so Hibernate would allow the cartesian "
                             + "product rather than refusing it; @BatchSize handles them instead")
                     .doesNotContain("users", "childTasks", "subTasks", "labels");
+        }
+    }
+
+    @Nested
+    @DisplayName("the layout entities")
+    class Layout {
+
+        @Test
+        @DisplayName("a column's and a swimlane's tasks are batched - the board renders all of them")
+        void containerCollectionsAreBatched() {
+            /*
+             * ColumnMapper renders every task in every column, so an unbatched collection here is
+             * one query per column and then a separate round of batching inside each of those
+             * little lists. Measured against a board of 57 tasks in 8 columns, adding this took
+             * GET /api/columns from 35 queries to 10.
+             */
+            for (Class<?> type : List.of(
+                    pl.myproject.kanbanproject2.layout.column.Column.class,
+                    pl.myproject.kanbanproject2.layout.row.Row.class)) {
+                try {
+                    BatchSize batch = type.getDeclaredField("tasks").getAnnotation(BatchSize.class);
+                    assertThat(batch)
+                            .as(type.getSimpleName() + ".tasks must be batched")
+                            .isNotNull();
+                    assertThat(batch.size()).isGreaterThan(1);
+                } catch (NoSuchFieldException e) {
+                    throw new AssertionError(type.getSimpleName() + " has no tasks field", e);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("the board is a lazy to-one on everything that carries one")
+        void boardIsLazyEverywhere() {
+            for (Class<?> type : List.of(
+                    Task.class,
+                    pl.myproject.kanbanproject2.layout.column.Column.class,
+                    pl.myproject.kanbanproject2.layout.row.Row.class)) {
+                try {
+                    ManyToOne mapping = type.getDeclaredField("board").getAnnotation(ManyToOne.class);
+                    assertThat(mapping).as(type.getSimpleName() + ".board is @ManyToOne").isNotNull();
+                    assertThat(mapping.fetch())
+                            .as(type.getSimpleName() + ".board must be LAZY - every listing already "
+                                    + "knows which board it asked for")
+                            .isEqualTo(FetchType.LAZY);
+                } catch (NoSuchFieldException e) {
+                    throw new AssertionError(type.getSimpleName() + " has no board field", e);
+                }
+            }
         }
     }
 
@@ -130,12 +181,13 @@ class TaskFetchingTest {
         @DisplayName("comes from a projection, not from loading every task")
         void labelsComeFromAProjection() {
             var repository = mock(TaskRepository.class);
-            when(repository.findDistinctLabels()).thenReturn(Set.of("bug", "chore"));
+            when(repository.findDistinctLabels(any())).thenReturn(Set.of("bug", "chore"));
 
             var service = TaskServiceTestSupport.withRepository(repository);
 
-            assertThat(service.getAllLabels()).containsExactlyInAnyOrder("bug", "chore");
-            verify(repository).findDistinctLabels();
+            assertThat(service.getAllLabels(TaskServiceTestSupport.caller(), null))
+                    .containsExactlyInAnyOrder("bug", "chore");
+            verify(repository).findDistinctLabels(TaskServiceTestSupport.board());
             verify(repository, never()).findAll();
         }
     }
@@ -148,15 +200,15 @@ class TaskFetchingTest {
         @DisplayName("is a MAX in the database, not a fold over fetched rows")
         void positionIsAnAggregate() {
             var repository = mock(TaskRepository.class);
-            when(repository.findMaxPosition(any(), any())).thenReturn(java.util.Optional.of(7));
+            when(repository.findMaxPosition(any(), any(), any())).thenReturn(java.util.Optional.of(7));
             when(repository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
 
             var service = TaskServiceTestSupport.withRepository(repository);
-            var created = service.addTask(
+            var created = service.addTask(TaskServiceTestSupport.caller(), null,
                     new CreateTaskRequest("Next", null, null, null, null, null, null));
 
             assertThat(created.position()).isEqualTo(8);
-            verify(repository, never()).findByColumnAndRow(any(), any());
+            verify(repository, never()).findByBoardAndColumnAndRow(any(), any(), any());
             verify(repository, never()).count();
         }
 
@@ -164,11 +216,11 @@ class TaskFetchingTest {
         @DisplayName("an empty cell answers 1, because MAX over no rows is absent, not zero")
         void emptyCellStartsAtOne() {
             var repository = mock(TaskRepository.class);
-            when(repository.findMaxPosition(any(), any())).thenReturn(java.util.Optional.empty());
+            when(repository.findMaxPosition(any(), any(), any())).thenReturn(java.util.Optional.empty());
             when(repository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
 
             var service = TaskServiceTestSupport.withRepository(repository);
-            var created = service.addTask(
+            var created = service.addTask(TaskServiceTestSupport.caller(), null,
                     new CreateTaskRequest("First", null, null, null, null, null, null));
 
             assertThat(created.position()).isEqualTo(1);
@@ -180,6 +232,7 @@ class TaskFetchingTest {
     void servicesAreTransactional() {
         List<Class<?>> services = List.of(
                 TaskService.class,
+                pl.myproject.kanbanproject2.board.BoardService.class,
                 pl.myproject.kanbanproject2.layout.column.ColumnService.class,
                 pl.myproject.kanbanproject2.layout.row.RowService.class,
                 pl.myproject.kanbanproject2.user.UserService.class,

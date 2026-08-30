@@ -93,8 +93,44 @@
       "taskReopened": "Tarea reabierta",
       "parentTaskNotCompleted": "Esta tarea no puede completarse mientras su tarea principal siga abierta.",
       "dailyFocusAdded": "Añadida al foco diario",
-      "dailyFocusRemoved": "Quitada del foco diario"
+      "dailyFocusRemoved": "Quitada del foco diario",
+    "boardCreated": "Tablero creado",
+    "boardRenamed": "Tablero renombrado",
+    "boardDeleted": "Tablero eliminado",
+    "boardMemberInvited": "Si esa dirección tiene una cuenta aquí, ahora tiene acceso a este tablero",
+    "boardMemberRemoved": "Miembro eliminado del tablero"
     },
+  "boards": {
+    "switcher": {
+      "label": "Tablero",
+      "heading": "Tus tableros",
+      "shared": "compartido",
+      "newBoard": "Nuevo tablero",
+      "create": "Crear",
+      "namePlaceholder": "Nombre del tablero"
+    },
+    "members": {
+      "youOwnIt": "Eres el propietario de este tablero",
+      "sharedWithYou": "Compartido contigo",
+      "rename": "Renombrar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "explainer": "Todas las personas de esta lista pueden ver y modificar este tablero. Nadie más.",
+      "you": "(tú)",
+      "owner": "Propietario",
+      "member": "Miembro",
+      "leave": "Salir de este tablero",
+      "remove": "Quitar del tablero",
+      "removeConfirm": "¿Quitar a esta persona del tablero?",
+      "leaveConfirm": "¿Salir de este tablero? Perderás el acceso.",
+      "deleteConfirm": "¿Eliminar \"{{name}}\" y todas sus columnas, carriles y tareas? Esto no se puede deshacer.",
+      "addLabel": "Añadir a alguien a este tablero",
+      "addPlaceholder": "su dirección de correo",
+      "add": "Añadir",
+      "addNote": "La respuesta es la misma tenga o no cuenta esa dirección, así que este formulario no sirve para averiguar quién está registrado.",
+      "delete": "Eliminar este tablero"
+    }
+  },
     "column": {
       "deleteConfirm": "¿Está seguro de que desea eliminar esta columna?",
       "wipLimit": "Límite",

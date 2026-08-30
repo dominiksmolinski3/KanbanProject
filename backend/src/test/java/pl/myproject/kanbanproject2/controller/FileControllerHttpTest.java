@@ -12,7 +12,9 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.file.File;
+import pl.myproject.kanbanproject2.board.FixedPrincipalResolver;
 import pl.myproject.kanbanproject2.file.FileService;
+import pl.myproject.kanbanproject2.user.User;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -37,12 +39,16 @@ class FileControllerHttpTest {
 
     private FileService fileService;
     private MockMvc mvc;
+    private User caller;
 
     @BeforeEach
     void setUp() {
         fileService = mock(FileService.class);
+        caller = new User();
+        caller.setId(1);
         mvc = MockMvcBuilders.standaloneSetup(new FileController(fileService))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new FixedPrincipalResolver(caller))
                 .build();
     }
 
@@ -55,7 +61,7 @@ class FileControllerHttpTest {
     @Test
     @DisplayName("uploading answers 201 with a Location header and the stored metadata")
     void uploadAnswers201() throws Exception {
-        when(fileService.saveFile(any()))
+        when(fileService.saveFile(any(), any()))
                 .thenReturn(file(9L, "notes.txt", "text/plain", new byte[]{1, 2, 3}));
 
         var upload = new MockMultipartFile("file", "notes.txt", "text/plain", new byte[]{1, 2, 3});
@@ -72,7 +78,7 @@ class FileControllerHttpTest {
     @Test
     @DisplayName("a rejected upload reaches the client as a 400, not a 500")
     void rejectedUploadIs400() throws Exception {
-        when(fileService.saveFile(any()))
+        when(fileService.saveFile(any(), any()))
                 .thenThrow(new IllegalArgumentException("The uploaded file must not be empty"));
 
         var empty = new MockMultipartFile("file", "notes.txt", "text/plain", new byte[0]);
@@ -85,7 +91,7 @@ class FileControllerHttpTest {
     @Test
     @DisplayName("downloading serves the stored bytes as an attachment under the stored type")
     void downloadIsAnAttachment() throws Exception {
-        when(fileService.getFile(9L))
+        when(fileService.getFile(caller, 9L))
                 .thenReturn(file(9L, "notes.txt", "text/plain", new byte[]{1, 2, 3}));
 
         mvc.perform(get("/files/9"))
@@ -101,7 +107,7 @@ class FileControllerHttpTest {
     @Test
     @DisplayName("a blank stored content type falls back to octet-stream")
     void blankTypeFallsBackToOctetStream() throws Exception {
-        when(fileService.getFile(9L)).thenReturn(file(9L, "blob", "  ", new byte[]{7}));
+        when(fileService.getFile(caller, 9L)).thenReturn(file(9L, "blob", "  ", new byte[]{7}));
 
         mvc.perform(get("/files/9"))
                 .andExpect(status().isOk())
@@ -112,7 +118,7 @@ class FileControllerHttpTest {
     @Test
     @DisplayName("a missing file is a 404 carrying FILE_NOT_FOUND")
     void missingFileIs404() throws Exception {
-        when(fileService.getFile(404L))
+        when(fileService.getFile(caller, 404L))
                 .thenThrow(new GlobalException(ExceptionIdentifier.FILE_NOT_FOUND));
 
         mvc.perform(get("/files/404"))
@@ -126,10 +132,10 @@ class FileControllerHttpTest {
         mvc.perform(delete("/files/9"))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
-        verify(fileService).deleteFile(9L);
+        verify(fileService).deleteFile(caller, 9L);
 
         doThrow(new GlobalException(ExceptionIdentifier.FILE_NOT_FOUND))
-                .when(fileService).deleteFile(404L);
+                .when(fileService).deleteFile(caller, 404L);
 
         mvc.perform(delete("/files/404"))
                 .andExpect(status().isNotFound());

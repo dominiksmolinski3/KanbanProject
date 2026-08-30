@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.row.Row;
 
@@ -20,37 +21,47 @@ import java.util.Set;
  * of one query per task. The collections are deliberately not named: joining two of them in the
  * same query multiplies rows into a cartesian product, and because they are {@code Set}s Hibernate
  * would allow it rather than refusing. {@code @BatchSize} on the entity covers those instead.
+ *
+ * <p>Every listing is also scoped to one board. That is the authorization boundary rather than a
+ * convenience: an unscoped listing hands the caller every task in the deployment, which is what
+ * {@code findAll()} used to do here.
  */
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Integer> {
 
-    @Override
-    @EntityGraph(attributePaths = {"column", "row", "parentTask"})
-    List<Task> findAll();
+    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
+    List<Task> findByBoardOrderByIdAsc(Board board);
 
-    @EntityGraph(attributePaths = {"column", "row", "parentTask"})
+    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
+    List<Task> findByBoardAndDailyFocusTrue(Board board);
+
+    /**
+     * Every task with a deadline, across every board.
+     *
+     * <p>The one query here that is deliberately not board-scoped. It backs the scheduled sweep,
+     * which runs as the system rather than as a caller and has to see the whole deployment; there
+     * is no user on whose behalf it could be narrowed.
+     */
+    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
     List<Task> findAllByDeadlineIsNotNull();
-
-    @EntityGraph(attributePaths = {"column", "row", "parentTask"})
-    List<Task> findAllByDailyFocusTrue();
 
     /**
      * The tasks in one cell of the board. A {@code null} argument means exactly what it means on
      * the board — the backlog column, or no swimlane — and Spring Data turns it into {@code IS
      * NULL} rather than an equality that can never match.
      */
-    @EntityGraph(attributePaths = {"column", "row", "parentTask"})
-    List<Task> findByColumnAndRow(Column column, Row row);
+    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
+    List<Task> findByBoardAndColumnAndRow(Board board, Column column, Row row);
 
     /**
-     * Every label in use, as a projection.
+     * Every label in use on one board, as a projection.
      *
      * <p>This used to load every task row and every task's label collection with it, to fold a set
      * together in Java. The database answers it with one query over the join table, and the answer
      * is a handful of short strings rather than the whole board.
      */
-    @Query("SELECT DISTINCT label FROM Task task JOIN task.labels label")
-    Set<String> findDistinctLabels();
+    @Query("SELECT DISTINCT label FROM Task task JOIN task.labels label WHERE task.board = :board")
+    Set<String> findDistinctLabels(Board board);
 
     /**
      * The highest position in use in one cell, or empty when the cell is empty.
@@ -59,18 +70,27 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
      * cell's tasks and folded them in Java, so computing one number got more expensive exactly as
      * a column filled up. The aggregate belongs in the database.
      *
-     * <p>The null branches are the whole reason this is written out rather than left as
-     * {@code task.column = :column AND task.row = :row}. A null argument means what it means on the
-     * board - the backlog, or no swimlane - and an equality against a null bind is never true in
-     * SQL, so that form answered "empty cell" for every cell without a swimlane and handed out
-     * position 1 forever. A derived query would have written {@code IS NULL} on its own; this one
-     * has to say so. Ids rather than entities because an id is what the comparison needs, and
+     * <p>The board is part of the key because a task can sit in no column and no swimlane, and
+     * without it two boards' loose tasks would be handing each other positions.
+     *
+     * <p>The null branches on the other two are the whole reason this is written out rather than
+     * left as {@code task.column = :column AND task.row = :row}. A null argument means what it
+     * means on the board - the backlog, or no swimlane - and an equality against a null bind is
+     * never true in SQL, so that form answered "empty cell" for every cell without a swimlane and
+     * handed out position 1 forever. A derived query would have written {@code IS NULL} on its own;
+     * this one has to say so. The board takes no such branch because a task always has one - the
+     * column on {@code Task} is {@code NOT NULL} since V5.
+     *
+     * <p>Ids rather than entities because an id is what the comparison needs, and
      * {@code :columnId IS NULL} has a type Hibernate can infer.
      */
     @Query("""
             SELECT MAX(task.position) FROM Task task
-            WHERE ((:columnId IS NULL AND task.column IS NULL) OR task.column.id = :columnId)
+            WHERE task.board.id = :boardId
+              AND ((:columnId IS NULL AND task.column IS NULL) OR task.column.id = :columnId)
               AND ((:rowId IS NULL AND task.row IS NULL) OR task.row.id = :rowId)
             """)
-    Optional<Integer> findMaxPosition(@Param("columnId") Integer columnId, @Param("rowId") Integer rowId);
+    Optional<Integer> findMaxPosition(@Param("boardId") Integer boardId,
+                                      @Param("columnId") Integer columnId,
+                                      @Param("rowId") Integer rowId);
 }

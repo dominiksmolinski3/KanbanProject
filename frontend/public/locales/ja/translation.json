@@ -93,8 +93,44 @@
       "taskReopened": "タスクを再開しました",
       "parentTaskNotCompleted": "親タスクが未完了のため、このタスクは完了できません。",
       "dailyFocusAdded": "今日のフォーカスに追加しました",
-      "dailyFocusRemoved": "今日のフォーカスから削除しました"
+      "dailyFocusRemoved": "今日のフォーカスから削除しました",
+    "boardCreated": "ボードを作成しました",
+    "boardRenamed": "ボード名を変更しました",
+    "boardDeleted": "ボードを削除しました",
+    "boardMemberInvited": "そのアドレスにアカウントがある場合、このボードへのアクセス権が付与されました",
+    "boardMemberRemoved": "メンバーをボードから削除しました"
     },
+  "boards": {
+    "switcher": {
+      "label": "ボード",
+      "heading": "自分のボード",
+      "shared": "共有",
+      "newBoard": "新しいボード",
+      "create": "作成",
+      "namePlaceholder": "ボード名"
+    },
+    "members": {
+      "youOwnIt": "このボードの所有者です",
+      "sharedWithYou": "共有されています",
+      "rename": "名前を変更",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "explainer": "ここに表示されている人だけが、このボードを閲覧・変更できます。",
+      "you": "(自分)",
+      "owner": "所有者",
+      "member": "メンバー",
+      "leave": "このボードから退出",
+      "remove": "ボードから削除",
+      "removeConfirm": "この人をボードから削除しますか？",
+      "leaveConfirm": "このボードから退出しますか？アクセスできなくなります。",
+      "deleteConfirm": "「{{name}}」とそのすべての列・スイムレーン・タスクを削除しますか？元に戻せません。",
+      "addLabel": "このボードにメンバーを追加",
+      "addPlaceholder": "メールアドレス",
+      "add": "追加",
+      "addNote": "そのアドレスにアカウントがあるかどうかにかかわらず応答は同じです。このフォームで登録済みのアドレスを調べることはできません。",
+      "delete": "このボードを削除"
+    }
+  },
     "column": {
       "deleteConfirm": "このカラムを削除してもよろしいですか？",
       "wipLimit": "制限",

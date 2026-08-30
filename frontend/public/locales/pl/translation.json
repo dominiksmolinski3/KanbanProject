@@ -93,7 +93,43 @@
     "taskReopened": "Zadanie otwarte ponownie",
     "parentTaskNotCompleted": "Tego zadania nie można ukończyć, dopóki zadanie nadrzędne pozostaje otwarte.",
     "dailyFocusAdded": "Dodano do dziennego skupienia",
-    "dailyFocusRemoved": "Usunięto z dziennego skupienia"
+    "dailyFocusRemoved": "Usunięto z dziennego skupienia",
+    "boardCreated": "Tablica utworzona",
+    "boardRenamed": "Nazwa tablicy zmieniona",
+    "boardDeleted": "Tablica usunięta",
+    "boardMemberInvited": "Jeśli ten adres ma tutaj konto, ma teraz dostęp do tej tablicy",
+    "boardMemberRemoved": "Usunięto uczestnika z tablicy"
+  },
+  "boards": {
+    "switcher": {
+      "label": "Tablica",
+      "heading": "Twoje tablice",
+      "shared": "udostępniona",
+      "newBoard": "Nowa tablica",
+      "create": "Utwórz",
+      "namePlaceholder": "Nazwa tablicy"
+    },
+    "members": {
+      "youOwnIt": "Jesteś właścicielem tej tablicy",
+      "sharedWithYou": "Udostępniona tobie",
+      "rename": "Zmień nazwę",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "explainer": "Wszystkie osoby z tej listy mogą oglądać i zmieniać tę tablicę. Nikt inny.",
+      "you": "(ty)",
+      "owner": "Właściciel",
+      "member": "Uczestnik",
+      "leave": "Opuść tę tablicę",
+      "remove": "Usuń z tablicy",
+      "removeConfirm": "Usunąć tę osobę z tablicy?",
+      "leaveConfirm": "Opuścić tę tablicę? Stracisz do niej dostęp.",
+      "deleteConfirm": "Usunąć „{{name}}” wraz ze wszystkimi kolumnami, torami i zadaniami? Tej operacji nie można cofnąć.",
+      "addLabel": "Dodaj kogoś do tej tablicy",
+      "addPlaceholder": "adres e-mail",
+      "add": "Dodaj",
+      "addNote": "Odpowiedź jest taka sama niezależnie od tego, czy ten adres ma tutaj konto, więc tym formularzem nie da się sprawdzić, kto jest zarejestrowany.",
+      "delete": "Usuń tę tablicę"
+    }
   },
   "column": {
     "deleteConfirm": "Czy na pewno chcesz usunąć tę kolumnę?",
