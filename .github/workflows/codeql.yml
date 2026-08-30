@@ -40,6 +40,33 @@ jobs:
         with:
           distribution: temurin
           java-version: '23'
+          cache: maven
+
+      - name: Repair the Maven wrapper
+        if: matrix.language == 'java-kotlin'
+        run: |
+          chmod +x backend/mvnw
+          sed -i 's/\r$//' backend/mvnw
+
+      - name: Cache the Maven distribution
+        if: matrix.language == 'java-kotlin'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('backend/.mvn/wrapper/maven-wrapper.properties') }}
+
+      - name: Download Maven
+        if: matrix.language == 'java-kotlin'
+        working-directory: backend
+        run: |
+          for attempt in 1 2 3; do
+            if ./mvnw --version; then exit 0; fi
+            echo "::warning::Maven download failed (attempt $attempt of 3)"
+            export MVNW_VERBOSE=true
+            [ "$attempt" = 3 ] || sleep $((attempt * 10))
+          done
+          echo "::error::could not download Maven after 3 attempts"
+          exit 1
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
@@ -47,15 +74,10 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      # Manual build for Java to handle backend/ submodule layout and CRLF wrapper
       - name: Build backend (Maven)
         if: matrix.language == 'java-kotlin' && matrix.build-mode == 'manual'
-        shell: bash
-        run: |
-          chmod +x backend/mvnw || true
-          sed -i 's/\r$//' backend/mvnw || true
-          cd backend
-          ./mvnw -q -DskipTests -Dmaven.test.skip=true package
+        working-directory: backend
+        run: ./mvnw -q -DskipTests -Dmaven.test.skip=true package
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
