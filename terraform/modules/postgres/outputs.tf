@@ -5,3 +5,7 @@ output "postgres_server_name" {
 output "postgres_db_name" {
   value = azurerm_postgresql_flexible_server_database.main.name
 }
+
+output "postgres_server_id" {
+  value = azurerm_postgresql_flexible_server.main.id
+}

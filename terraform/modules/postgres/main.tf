@@ -13,6 +13,7 @@ resource "random_string" "suffix" {
 }
 
 resource "azurerm_postgresql_flexible_server" "main" {
+  tags                          = var.tags
   name                          = "psql-${var.env}-${random_string.suffix.result}"
   resource_group_name           = var.resource_group_name
   location                      = var.location
@@ -72,11 +73,13 @@ resource "azurerm_postgresql_flexible_server_database" "main" {
 }
 
 resource "azurerm_private_dns_zone" "main" {
+  tags                = var.tags
   name                = "privatelink.postgres.database.azure.com"
   resource_group_name = var.resource_group_name
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "main" {
+  tags                  = var.tags
   name                  = "${var.env}-dns-vnet-link"
   resource_group_name   = var.resource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.main.name
@@ -84,18 +87,21 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
 }
 
 resource "azurerm_key_vault_secret" "postgres_user" {
+  tags         = var.tags
   name         = "POSTGRES-USER"
   value        = azurerm_postgresql_flexible_server.main.administrator_login
   key_vault_id = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "postgres_password" {
+  tags         = var.tags
   name         = "POSTGRES-PASSWORD"
   value        = random_password.password.result
   key_vault_id = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "postgres_connection_string" {
+  tags         = var.tags
   name         = "POSTGRES-CONNECTION-STRING"
   value        = format("jdbc:postgresql://%s:5432/%s?sslmode=require", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
   key_vault_id = var.key_vault_id
