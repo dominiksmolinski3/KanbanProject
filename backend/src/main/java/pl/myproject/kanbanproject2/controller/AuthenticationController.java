@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
-import pl.myproject.kanbanproject2.user.UserDto;
-import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
@@ -26,11 +24,20 @@ import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
-    private final UserMapper userMapper;
 
+    /**
+     * Answers {@code 202 Accepted} with no body, whether or not the address was new.
+     *
+     * <p>The body was the other half of the leak: it returned the created {@code UserDto}, so even
+     * under a uniform status a caller could tell a new account from a collision by whether an id
+     * came back. Nothing consumes it — the client discards the value and moves to the verification
+     * screen — so there is nothing to return, and 202 is the honest status: the request was
+     * accepted, and what happens next arrives by mail or does not.
+     */
     @PostMapping("/signup")
-    public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterUserDto registerUserDto) {
-        return ResponseEntity.ok(userMapper.apply(authenticationService.signup(registerUserDto)));
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterUserDto registerUserDto) {
+        authenticationService.signup(registerUserDto);
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/login")
@@ -44,11 +51,12 @@ public class AuthenticationController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Also {@code 202}, and for the same reason: whether a code was sent is not the caller's to know. */
     @PostMapping("/resend")
     public ResponseEntity<Void> resendVerificationCode(
             @RequestParam @NotBlank(message = "Email is required") @Email(message = "Invalid email address") String email
     ) {
         authenticationService.resendVerificationCode(email);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.accepted().build();
     }
 }
