@@ -9,7 +9,6 @@ import static org.springframework.http.HttpStatus.*;
 public enum ExceptionIdentifier {
 
     USER_NOT_FOUND(NOT_FOUND, "User not found"),
-    USER_ALREADY_EXISTS(CONFLICT, "A user with the provided email address already exists"),
     NOT_ACCOUNT_OWNER(FORBIDDEN, "You can only modify your own account"),
 
     AVATAR_NOT_FOUND(NOT_FOUND, "Avatar not found"),
@@ -18,9 +17,16 @@ public enum ExceptionIdentifier {
     FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "A server error occurred while processing the file"),
     FILE_NOT_FOUND(NOT_FOUND, "File not found"),
 
+    /*
+     * The unauthenticated routes answer three statuses between them and no more: 202 for signup
+     * and resend whatever the address turns out to be, 401 for every login failure including an
+     * unverified account, and 400 for a verification code that is wrong, expired, or attached to
+     * an address with no account. USER_ALREADY_EXISTS, ACCOUNT_NOT_VERIFIED and
+     * ACCOUNT_ALREADY_VERIFIED are gone rather than left unused, because each of them is exactly
+     * the answer that turns one of those routes back into a membership oracle, and an unused
+     * constant is an invitation to reach for it.
+     */
     INVALID_CREDENTIALS(UNAUTHORIZED, "Invalid email or password"),
-    ACCOUNT_NOT_VERIFIED(FORBIDDEN, "The account has not been verified"),
-    ACCOUNT_ALREADY_VERIFIED(BAD_REQUEST, "The account has already been verified"),
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),
     EMAIL_SEND_FAILED(INTERNAL_SERVER_ERROR, "Failed to send the email message"),
