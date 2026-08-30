@@ -71,7 +71,15 @@ public enum ExceptionIdentifier {
     BOARD_NOT_FOUND(NOT_FOUND, "Board not found"),
     NOT_BOARD_OWNER(FORBIDDEN, "Only the board owner can do that"),
     CANNOT_REMOVE_BOARD_OWNER(BAD_REQUEST, "The board owner cannot be removed from the board"),
-    BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board");
+    BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board"),
+
+    /*
+     * Someone else changed the same task, column, row or subtask between the caller reading it and
+     * saving it back. A 409 rather than a 500: nothing is broken, the caller just has a stale copy
+     * and the fix is to reload and reapply. Raised from Hibernate's optimistic lock, not thrown by
+     * a service.
+     */
+    CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again");
 
     private final HttpStatus status;
     private final String defaultMessage;

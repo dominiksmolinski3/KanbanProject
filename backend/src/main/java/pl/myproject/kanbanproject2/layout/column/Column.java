@@ -21,6 +21,9 @@ public class Column {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    /** Optimistic lock; see {@link pl.myproject.kanbanproject2.task.Task#getVersion()}. */
+    @Version
+    private Integer version;
     private String name;
     private Integer position;
     @jakarta.persistence.Column(name = "wip_limit")
