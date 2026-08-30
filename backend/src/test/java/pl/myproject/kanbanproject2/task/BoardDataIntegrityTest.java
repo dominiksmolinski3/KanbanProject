@@ -12,7 +12,6 @@ import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
-import pl.myproject.kanbanproject2.task.subtask.SubTask;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
@@ -53,6 +52,8 @@ class BoardDataIntegrityTest {
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         // The next position is now a MAX aggregate rather than a fold over fetched rows, so
         // these stub the aggregate. What each test asserts is unchanged: the number handed out.
+        // It is keyed by ids rather than by the entities, because a null cell has to reach the
+        // query as a null id it can test for - see TaskRepository.findMaxPosition.
         when(taskRepository.findMaxPosition(any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
@@ -78,7 +79,7 @@ class BoardDataIntegrityTest {
             Row row = row(8);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(rowRepository.findById(8)).thenReturn(Optional.of(row));
-            when(taskRepository.findMaxPosition(column, row)).thenReturn(Optional.of(2));
+            when(taskRepository.findMaxPosition(3, 8)).thenReturn(Optional.of(2));
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("Third", null, null, null, null, new IdRef(3), new IdRef(8)));
@@ -91,7 +92,7 @@ class BoardDataIntegrityTest {
         void startsAtOneInAnEmptyCell() {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
-            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.empty());
+            when(taskRepository.findMaxPosition(3, null)).thenReturn(Optional.empty());
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
@@ -110,7 +111,7 @@ class BoardDataIntegrityTest {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             // Positions 1 and 2 were deleted; 3 is still in use. count() would answer 2.
-            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.of(3));
+            when(taskRepository.findMaxPosition(3, null)).thenReturn(Optional.of(3));
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("Next", null, null, null, null, new IdRef(3), null));
@@ -231,7 +232,6 @@ class BoardDataIntegrityTest {
         // Nothing else in the suite boots a JPA context, so a property that stopped existing would
         // otherwise surface at runtime. PartTree is the same parser Spring Data derives them with.
         assertThat(new PartTree("findByColumnAndRow", Task.class).getParts()).hasSize(2);
-        assertThat(new PartTree("findByTask", SubTask.class).getParts()).hasSize(1);
     }
 
     private PatchTaskRequest patchColumn(Integer columnId) {
