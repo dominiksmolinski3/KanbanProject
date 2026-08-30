@@ -40,15 +40,20 @@ class SubTaskControllerHttpTest {
 
     private SubTaskService subTaskService;
     private MockMvc mvc;
+    private pl.myproject.kanbanproject2.user.User caller;
 
     @BeforeEach
     void setUp() {
         subTaskService = mock(SubTaskService.class);
+        caller = new pl.myproject.kanbanproject2.user.User();
+        caller.setId(1);
 
         var converter = new MappingJackson2HttpMessageConverter(
                 new ObjectMapper().registerModule(new JsonNullableModule()));
         mvc = MockMvcBuilders.standaloneSetup(new SubTaskController(subTaskService))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(
+                        new pl.myproject.kanbanproject2.board.FixedPrincipalResolver(caller))
                 .setMessageConverters(converter)
                 .build();
     }
@@ -60,7 +65,7 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("the listing answers 200 with the mapped DTOs")
     void listAnswers200() throws Exception {
-        when(subTaskService.getAllSubTasks()).thenReturn(List.of(dto(1, "first")));
+        when(subTaskService.getAllSubTasks(caller, null)).thenReturn(List.of(dto(1, "first")));
 
         mvc.perform(get("/subtasks"))
                 .andExpect(status().isOk())
@@ -71,7 +76,7 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("creating answers 201")
     void createAnswers201() throws Exception {
-        when(subTaskService.addSubTask(any())).thenReturn(dto(1, "new"));
+        when(subTaskService.addSubTask(eq(caller), any())).thenReturn(dto(1, "new"));
 
         mvc.perform(post("/subtasks")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,7 +94,7 @@ class SubTaskControllerHttpTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
 
-        verify(subTaskService, org.mockito.Mockito.never()).addSubTask(any());
+        verify(subTaskService, org.mockito.Mockito.never()).addSubTask(eq(caller), any());
     }
 
     @Test
@@ -109,7 +114,7 @@ class SubTaskControllerHttpTest {
                 .andExpect(content().string(""));
 
         doThrow(new GlobalException(ExceptionIdentifier.SUBTASK_NOT_FOUND))
-                .when(subTaskService).deleteSubTask(404);
+                .when(subTaskService).deleteSubTask(caller, 404);
 
         mvc.perform(delete("/subtasks/404"))
                 .andExpect(status().isNotFound())
@@ -119,7 +124,7 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("a body naming only description arrives with the other fields undefined")
     void partialPatchKeepsTheOtherFieldsUndefined() throws Exception {
-        when(subTaskService.patchSubTask(eq(1), any())).thenReturn(dto(1, "unchanged"));
+        when(subTaskService.patchSubTask(eq(caller), eq(1), any())).thenReturn(dto(1, "unchanged"));
 
         mvc.perform(patch("/subtasks/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,7 +132,7 @@ class SubTaskControllerHttpTest {
                 .andExpect(status().isOk());
 
         var captor = org.mockito.ArgumentCaptor.forClass(PatchSubTaskRequest.class);
-        verify(subTaskService).patchSubTask(eq(1), captor.capture());
+        verify(subTaskService).patchSubTask(eq(caller), eq(1), captor.capture());
 
         var request = captor.getValue();
         org.assertj.core.api.Assertions.assertThat(request.description().isPresent()).isTrue();
@@ -141,7 +146,7 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("an explicit null arrives as present-and-null, which is a different instruction")
     void explicitNullIsPresent() throws Exception {
-        when(subTaskService.patchSubTask(eq(1), any())).thenReturn(dto(1, "unchanged"));
+        when(subTaskService.patchSubTask(eq(caller), eq(1), any())).thenReturn(dto(1, "unchanged"));
 
         mvc.perform(patch("/subtasks/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -149,7 +154,7 @@ class SubTaskControllerHttpTest {
                 .andExpect(status().isOk());
 
         var captor = org.mockito.ArgumentCaptor.forClass(PatchSubTaskRequest.class);
-        verify(subTaskService).patchSubTask(eq(1), captor.capture());
+        verify(subTaskService).patchSubTask(eq(caller), eq(1), captor.capture());
 
         org.assertj.core.api.Assertions.assertThat(captor.getValue().description().isPresent()).isTrue();
         org.assertj.core.api.Assertions.assertThat(captor.getValue().description().get()).isNull();
@@ -158,7 +163,7 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("a service-level IllegalArgumentException reaches the client as 400 BAD_REQUEST")
     void serviceRefusalIs400() throws Exception {
-        when(subTaskService.patchSubTask(eq(1), any()))
+        when(subTaskService.patchSubTask(eq(caller), eq(1), any()))
                 .thenThrow(new IllegalArgumentException("A subtask title cannot be blank"));
 
         mvc.perform(patch("/subtasks/1")
@@ -171,11 +176,11 @@ class SubTaskControllerHttpTest {
     @Test
     @DisplayName("the assignment, toggle, position and by-task routes reach the service as mapped")
     void remainingRoutes() throws Exception {
-        when(subTaskService.assignTaskToSubTask(1, 7)).thenReturn(dto(1, "a"));
-        when(subTaskService.toggleSubTaskCompletion(1)).thenReturn(dto(1, "a"));
-        when(subTaskService.updateSubTaskPosition(1, 5)).thenReturn(dto(1, "a"));
-        when(subTaskService.getSubTasksByTaskId(7)).thenReturn(List.of(dto(1, "a")));
-        when(subTaskService.getSubTaskById(1)).thenReturn(dto(1, "a"));
+        when(subTaskService.assignTaskToSubTask(caller, 1, 7)).thenReturn(dto(1, "a"));
+        when(subTaskService.toggleSubTaskCompletion(caller, 1)).thenReturn(dto(1, "a"));
+        when(subTaskService.updateSubTaskPosition(caller, 1, 5)).thenReturn(dto(1, "a"));
+        when(subTaskService.getSubTasksByTaskId(caller, 7)).thenReturn(List.of(dto(1, "a")));
+        when(subTaskService.getSubTaskById(caller, 1)).thenReturn(dto(1, "a"));
 
         mvc.perform(put("/subtasks/1/task/7")).andExpect(status().isOk());
         mvc.perform(patch("/subtasks/1/change")).andExpect(status().isOk());
@@ -183,7 +188,7 @@ class SubTaskControllerHttpTest {
         mvc.perform(get("/subtasks/task/7")).andExpect(status().isOk());
         mvc.perform(get("/subtasks/1")).andExpect(status().isOk());
 
-        verify(subTaskService).assignTaskToSubTask(1, 7);
-        verify(subTaskService).updateSubTaskPosition(1, 5);
+        verify(subTaskService).assignTaskToSubTask(caller, 1, 7);
+        verify(subTaskService).updateSubTaskPosition(caller, 1, 5);
     }
 }

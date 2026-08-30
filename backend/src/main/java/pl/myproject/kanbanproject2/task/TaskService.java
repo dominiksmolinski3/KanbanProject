@@ -4,6 +4,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -22,10 +24,14 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+/**
+ * Every method here takes the caller, and every lookup goes through {@link #findTask(User, Integer)}
+ * — the one place that decides whether the caller may see a task at all. Passing the caller in
+ * rather than reading it out of the security context is what lets {@code BoardScopedRoutesTest}
+ * check by reflection that no route was left without one.
+ */
 @RequiredArgsConstructor
 @Transactional
 @Service
@@ -39,12 +45,15 @@ public class TaskService {
     private final TaskColumnHistoryMapper historyMapper;
     private final ColumnRepository columnRepository;
     private final RowRepository rowRepository;
+    private final BoardService boardService;
 
-    public TaskDto addTask(CreateTaskRequest request) {
-        var column = request.column() != null ? findColumn(request.column().id()) : null;
-        var row = request.row() != null ? findRow(request.row().id()) : null;
+    public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
+        var board = boardService.resolve(caller, boardId);
+        var column = request.column() != null ? findColumn(caller, board, request.column().id()) : null;
+        var row = request.row() != null ? findRow(caller, board, request.row().id()) : null;
 
         var task = new Task();
+        task.setBoard(board);
         task.setTitle(request.title());
         task.setDescription(request.description());
         task.setLabels(request.labels() != null ? new HashSet<>(request.labels()) : new HashSet<>());
@@ -52,7 +61,7 @@ public class TaskService {
         task.setRow(row);
         task.setPosition(request.position() != null
                 ? request.position()
-                : nextPositionIn(column, row));
+                : nextPositionIn(board, column, row));
         applyDeadline(task, request.deadline());
 
         var savedTask = taskRepository.save(task);
@@ -63,8 +72,9 @@ public class TaskService {
         return taskMapper.apply(savedTask);
     }
 
-    public List<TaskDto> getAllTasks() {
-        return taskRepository.findAll().stream()
+    public List<TaskDto> getAllTasks(User caller, Integer boardId) {
+        var board = boardService.resolve(caller, boardId);
+        return taskRepository.findByBoardOrderByIdAsc(board).stream()
                 .map(taskMapper)
                 .sorted(POSITION_ORDER)
                 .toList();
@@ -84,15 +94,20 @@ public class TaskService {
      * count drops after any delete, so the next create reuses a number that is still in use, and
      * two concurrent creates read the same count. Scoping it to the cell also makes the number
      * mean what the board renders - an ordinal within the cell, not a row number.
+     *
+     * <p>The board is part of the key because the column and the swimlane are both optional: a
+     * task in neither still has to be numbered, and without the board every such task in the
+     * deployment would be drawing from one shared sequence.
      */
-    private int nextPositionIn(Column column, Row row) {
+    private int nextPositionIn(Board board, Column column, Row row) {
         return taskRepository.findMaxPosition(
+                board.getId(),
                 column == null ? null : column.getId(),
                 row == null ? null : row.getId()).orElse(0) + 1;
     }
 
-    public void deleteTask(Integer id) {
-        var task = findTask(id);
+    public void deleteTask(User caller, Integer id) {
+        var task = findTask(caller, id);
 
         taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task));
 
@@ -107,12 +122,13 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    public TaskDto getTaskById(Integer id) {
-        return taskRepository.findById(id).map(taskMapper).orElseThrow(() -> taskNotFound(id));
+    public TaskDto getTaskById(User caller, Integer id) {
+        return taskMapper.apply(findTask(caller, id));
     }
 
-    public TaskDto patchTask(Integer id, PatchTaskRequest request) {
-        var existingTask = findTask(id);
+    public TaskDto patchTask(User caller, Integer id, PatchTaskRequest request) {
+        var existingTask = findTask(caller, id);
+        var board = existingTask.getBoard();
 
         if (request.title().isPresent()) {
             var title = request.title().get();
@@ -124,7 +140,7 @@ public class TaskService {
 
         if (request.column().isPresent()) {
             var column = request.column().get();
-            moveToColumn(existingTask, column == null ? null : findColumn(column.id()));
+            moveToColumn(existingTask, column == null ? null : findColumn(caller, board, column.id()));
         }
 
         if (request.position().isPresent()) {
@@ -138,7 +154,7 @@ public class TaskService {
 
         if (request.row().isPresent()) {
             var row = request.row().get();
-            existingTask.setRow(row == null ? null : findRow(row.id()));
+            existingTask.setRow(row == null ? null : findRow(caller, board, row.id()));
         }
 
         if (request.labels().isPresent()) {
@@ -205,24 +221,31 @@ public class TaskService {
         taskColumnHistoryRepository.save(history);
     }
 
-    public List<TaskColumnHistory> getTaskColumnHistory(Integer taskId) {
-        var task = findTask(taskId);
+    public List<TaskColumnHistory> getTaskColumnHistory(User caller, Integer taskId) {
+        var task = findTask(caller, taskId);
         return taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task);
     }
 
-    public List<TaskColumnHistoryDto> getTaskColumnHistoryDTOs(Integer taskId) {
-        return getTaskColumnHistory(taskId).stream().map(historyMapper::toDTO).toList();
+    public List<TaskColumnHistoryDto> getTaskColumnHistoryDTOs(User caller, Integer taskId) {
+        return getTaskColumnHistory(caller, taskId).stream().map(historyMapper::toDTO).toList();
     }
 
-    public TaskDto assignUserToTask(Integer taskId, Integer userId) {
+    /**
+     * Puts a member of the board on one of its tasks.
+     *
+     * <p>The assignee is checked against the task's board rather than merely looked up by id.
+     * Without that, any id in the deployment could be written onto a task — pinning work on
+     * somebody who cannot open the board, and counting it against their WIP limit. An account that
+     * is not on the board answers as one that does not exist, for the reason given in
+     * {@link BoardService}.
+     */
+    public TaskDto assignUserToTask(User caller, Integer taskId, Integer userId) {
+        var task = findTask(caller, taskId);
+        var user = findBoardMember(task.getBoard(), userId);
+
         if (!userService.checkWipStatus(userId)) {
             throw new GlobalException(ExceptionIdentifier.USER_WIP_LIMIT_EXCEEDED);
         }
-
-        var task = findTask(taskId);
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
-                        "User not found with id: " + userId));
 
         task.getUsers().add(user);
         user.getTasks().add(task);
@@ -231,8 +254,12 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(task));
     }
 
-    public TaskDto removeUserFromTask(Integer taskId, Integer userId) {
-        var task = findTask(taskId);
+    /**
+     * Takes somebody off a task. Deliberately not restricted to current members: a user removed
+     * from the board, or deleted and recreated, still has to be removable from the work.
+     */
+    public TaskDto removeUserFromTask(User caller, Integer taskId, Integer userId) {
+        var task = findTask(caller, taskId);
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
                         "User not found with id: " + userId));
@@ -244,14 +271,14 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(task));
     }
 
-    public TaskDto updateTaskPosition(Integer id, Integer position) {
-        var task = findTask(id);
+    public TaskDto updateTaskPosition(User caller, Integer id, Integer position) {
+        var task = findTask(caller, id);
         task.setPosition(position);
         return taskMapper.apply(taskRepository.save(task));
     }
 
-    public TaskDto addLabelToTask(Integer taskId, String label) {
-        var task = findTask(taskId);
+    public TaskDto addLabelToTask(User caller, Integer taskId, String label) {
+        var task = findTask(caller, taskId);
         if (task.getLabels() == null) {
             task.setLabels(new HashSet<>());
         }
@@ -259,8 +286,8 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(task));
     }
 
-    public TaskDto removeLabelFromTask(Integer taskId, String label) {
-        var task = findTask(taskId);
+    public TaskDto removeLabelFromTask(User caller, Integer taskId, String label) {
+        var task = findTask(caller, taskId);
         if (task.getLabels() != null) {
             task.getLabels().remove(label);
             return taskMapper.apply(taskRepository.save(task));
@@ -268,21 +295,30 @@ public class TaskService {
         return taskMapper.apply(task);
     }
 
-    public TaskDto updateTaskLabels(Integer taskId, Set<String> labels) {
-        var task = findTask(taskId);
+    public TaskDto updateTaskLabels(User caller, Integer taskId, Set<String> labels) {
+        var task = findTask(caller, taskId);
         task.setLabels(labels);
         return taskMapper.apply(taskRepository.save(task));
     }
 
-    public Set<String> getAllLabels() {
-        return taskRepository.findDistinctLabels();
+    public Set<String> getAllLabels(User caller, Integer boardId) {
+        return taskRepository.findDistinctLabels(boardService.resolve(caller, boardId));
     }
 
-    public TaskDto assignParentTask(Integer childTaskId, Integer parentTaskId) {
-        var childTask = findTask(childTaskId);
+    public TaskDto assignParentTask(User caller, Integer childTaskId, Integer parentTaskId) {
+        var childTask = findTask(caller, childTaskId);
         var parentTask = taskRepository.findById(parentTaskId)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_FOUND,
-                        "Parent task not found with id: " + parentTaskId));
+                .orElseThrow(() -> parentNotFound(parentTaskId));
+
+        /*
+         * A dependency across two boards would make one board's progress wait on work the other
+         * board's members cannot see, and would let the un-completion cascade reach into a board
+         * the caller may not even be on. An unreachable parent answers as a missing one.
+         */
+        if (!parentTask.getBoard().isVisibleTo(caller)
+                || !parentTask.getBoard().getId().equals(childTask.getBoard().getId())) {
+            throw parentNotFound(parentTaskId);
+        }
 
         if (wouldCreateCycle(childTask, parentTask)) {
             throw new GlobalException(ExceptionIdentifier.CYCLIC_TASK_DEPENDENCY);
@@ -295,8 +331,8 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(childTask));
     }
 
-    public TaskDto removeParentTask(Integer childTaskId) {
-        var childTask = findTask(childTaskId);
+    public TaskDto removeParentTask(User caller, Integer childTaskId) {
+        var childTask = findTask(caller, childTaskId);
         if (childTask.getParentTask() != null) {
             var parentTask = childTask.getParentTask();
             parentTask.getChildTasks().remove(childTask);
@@ -306,12 +342,12 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(childTask));
     }
 
-    public List<TaskDto> getChildTasks(Integer taskId) {
-        return findTask(taskId).getChildTasks().stream().map(taskMapper).toList();
+    public List<TaskDto> getChildTasks(User caller, Integer taskId) {
+        return findTask(caller, taskId).getChildTasks().stream().map(taskMapper).toList();
     }
 
-    public TaskDto getParentTask(Integer taskId) {
-        var task = findTask(taskId);
+    public TaskDto getParentTask(User caller, Integer taskId) {
+        var task = findTask(caller, taskId);
         if (task.getParentTask() == null) {
             throw new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_SET);
         }
@@ -341,15 +377,23 @@ public class TaskService {
                 .anyMatch(child -> isDescendantOf(child, newParent, visited));
     }
 
-    public boolean canTaskBeCompleted(Integer taskId) {
-        var task = findTask(taskId);
+    public boolean canTaskBeCompleted(User caller, Integer taskId) {
+        return canTaskBeCompleted(findTask(caller, taskId));
+    }
+
+    /**
+     * The rule itself, over a task already fetched and already checked. It used to take an id and
+     * re-read the task, which meant {@link #updateTaskCompletion} paid for a second lookup and,
+     * once the lookup carried an access check, would have paid for that twice too.
+     */
+    private boolean canTaskBeCompleted(Task task) {
         return task.getParentTask() == null || task.getParentTask().isCompleted();
     }
 
-    public TaskDto updateTaskCompletion(Integer taskId, boolean completed) {
-        var task = findTask(taskId);
+    public TaskDto updateTaskCompletion(User caller, Integer taskId, boolean completed) {
+        var task = findTask(caller, taskId);
 
-        if (completed && !canTaskBeCompleted(taskId)) {
+        if (completed && !canTaskBeCompleted(task)) {
             throw new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_COMPLETED);
         }
 
@@ -378,12 +422,13 @@ public class TaskService {
         });
     }
 
-    public List<TaskDto> getDailyFocusTasks() {
-        return taskRepository.findAllByDailyFocusTrue().stream().map(taskMapper).toList();
+    public List<TaskDto> getDailyFocusTasks(User caller, Integer boardId) {
+        var board = boardService.resolve(caller, boardId);
+        return taskRepository.findByBoardAndDailyFocusTrue(board).stream().map(taskMapper).toList();
     }
 
-    public TaskDto setDailyFocus(Integer taskId, boolean dailyFocus) {
-        var task = findTask(taskId);
+    public TaskDto setDailyFocus(User caller, Integer taskId, boolean dailyFocus) {
+        var task = findTask(caller, taskId);
         if (task.isDailyFocus() == dailyFocus) {
             return taskMapper.apply(task);
         }
@@ -391,6 +436,10 @@ public class TaskService {
         return taskMapper.apply(taskRepository.save(task));
     }
 
+    /**
+     * The one method here that takes no caller, because it has none: it runs on a timer, on behalf
+     * of the deployment rather than of a user, and every board's deadlines have to be swept.
+     */
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
         var tasksWithDeadline = taskRepository.findAllByDeadlineIsNotNull();
@@ -406,25 +455,70 @@ public class TaskService {
         }
     }
 
-    private Task findTask(Integer id) {
-        return taskRepository.findById(id)
-                .orElseThrow(() -> taskNotFound(id));
+    /**
+     * Looks a task up and refuses to hand it back unless the caller is on its board.
+     *
+     * <p>Every public method above goes through here, which is the point: a check that has to be
+     * remembered at each call site is one that will eventually be forgotten at one of them. A task
+     * on another board answers as a task that does not exist.
+     */
+    private Task findTask(User caller, Integer id) {
+        var task = taskRepository.findById(id).orElseThrow(() -> taskNotFound(id));
+        if (!task.getBoard().isVisibleTo(caller)) {
+            throw taskNotFound(id);
+        }
+        return task;
     }
 
-    private Column findColumn(Integer id) {
-        return columnRepository.findById(id)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.COLUMN_NOT_FOUND,
-                        "Column not found with id: " + id));
+    private Column findColumn(User caller, Board board, Integer id) {
+        var column = columnRepository.findById(id).orElseThrow(() -> columnNotFound(id));
+        if (!column.getBoard().isVisibleTo(caller)) {
+            throw columnNotFound(id);
+        }
+        boardService.requireSameBoard(board, column.getBoard());
+        return column;
     }
 
-    private Row findRow(Integer id) {
-        return rowRepository.findById(id)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.ROW_NOT_FOUND,
-                        "Row not found with id: " + id));
+    private Row findRow(User caller, Board board, Integer id) {
+        var row = rowRepository.findById(id).orElseThrow(() -> rowNotFound(id));
+        if (!row.getBoard().isVisibleTo(caller)) {
+            throw rowNotFound(id);
+        }
+        boardService.requireSameBoard(board, row.getBoard());
+        return row;
+    }
+
+    private User findBoardMember(Board board, Integer userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> userNotFound(userId));
+        if (!board.isVisibleTo(user)) {
+            throw userNotFound(userId);
+        }
+        return user;
     }
 
     private GlobalException taskNotFound(Integer id) {
         return new GlobalException(ExceptionIdentifier.TASK_NOT_FOUND,
                 "Task not found with id: " + id);
+    }
+
+    private GlobalException parentNotFound(Integer id) {
+        return new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_FOUND,
+                "Parent task not found with id: " + id);
+    }
+
+    private GlobalException columnNotFound(Integer id) {
+        return new GlobalException(ExceptionIdentifier.COLUMN_NOT_FOUND,
+                "Column not found with id: " + id);
+    }
+
+    private GlobalException rowNotFound(Integer id) {
+        return new GlobalException(ExceptionIdentifier.ROW_NOT_FOUND,
+                "Row not found with id: " + id);
+    }
+
+    private GlobalException userNotFound(Integer id) {
+        return new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
+                "User not found with id: " + id);
     }
 }

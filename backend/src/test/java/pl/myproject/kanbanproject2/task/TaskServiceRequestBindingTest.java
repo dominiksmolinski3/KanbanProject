@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
+import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -13,6 +15,7 @@ import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
+import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
@@ -37,9 +40,14 @@ class TaskServiceRequestBindingTest {
     private RowRepository rowRepository;
     private TaskColumnHistoryRepository historyRepository;
     private TaskService taskService;
+    private User caller;
+    private Board board;
 
     @BeforeEach
     void setUp() {
+        var tenant = TenancyFixtures.tenant();
+        caller = tenant.caller();
+        board = tenant.board();
         taskRepository = Mockito.mock(TaskRepository.class);
         columnRepository = Mockito.mock(ColumnRepository.class);
         rowRepository = Mockito.mock(RowRepository.class);
@@ -56,7 +64,8 @@ class TaskServiceRequestBindingTest {
                 historyRepository,
                 Mockito.mock(TaskColumnHistoryMapper.class),
                 columnRepository,
-                rowRepository);
+                rowRepository,
+                tenant.boardService());
     }
 
     @Test
@@ -65,7 +74,7 @@ class TaskServiceRequestBindingTest {
         Task task = existingTask(1);
         task.setRow(row(9));
 
-        TaskDto patched = taskService.patchTask(1, patch(b -> b.row = JsonNullable.of(null)));
+        TaskDto patched = taskService.patchTask(caller, 1, patch(b -> b.row = JsonNullable.of(null)));
 
         assertThat(patched.rowId()).isNull();
     }
@@ -76,7 +85,7 @@ class TaskServiceRequestBindingTest {
         Task task = existingTask(1);
         task.setRow(row(9));
 
-        TaskDto patched = taskService.patchTask(1, patch(b -> b.title = JsonNullable.of("renamed")));
+        TaskDto patched = taskService.patchTask(caller, 1, patch(b -> b.title = JsonNullable.of("renamed")));
 
         assertThat(patched.rowId()).isEqualTo(9);
         assertThat(patched.title()).isEqualTo("renamed");
@@ -89,7 +98,7 @@ class TaskServiceRequestBindingTest {
         task.setDeadline(LocalDateTime.now().minusDays(2));
         task.setExpired(true);
 
-        TaskDto patched = taskService.patchTask(1, patch(b -> b.deadline = JsonNullable.of(null)));
+        TaskDto patched = taskService.patchTask(caller, 1, patch(b -> b.deadline = JsonNullable.of(null)));
 
         assertThat(patched.deadline()).isNull();
         assertThat(patched.expired()).isFalse();
@@ -101,7 +110,7 @@ class TaskServiceRequestBindingTest {
         existingTask(1);
         when(columnRepository.findById(404)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskService.patchTask(1, patch(b -> b.column = JsonNullable.of(new IdRef(404)))))
+        assertThatThrownBy(() -> taskService.patchTask(caller, 1, patch(b -> b.column = JsonNullable.of(new IdRef(404)))))
                 .isInstanceOf(GlobalException.class)
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.COLUMN_NOT_FOUND);
@@ -112,7 +121,7 @@ class TaskServiceRequestBindingTest {
     void rejectsABlankTitle() {
         existingTask(1);
 
-        assertThatThrownBy(() -> taskService.patchTask(1, patch(b -> b.title = JsonNullable.of("   "))))
+        assertThatThrownBy(() -> taskService.patchTask(caller, 1, patch(b -> b.title = JsonNullable.of("   "))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -121,7 +130,7 @@ class TaskServiceRequestBindingTest {
     void createIgnoresFieldsTheRequestCannotCarry() {
         when(columnRepository.findById(2)).thenReturn(Optional.of(column(2)));
 
-        TaskDto created = taskService.addTask(new CreateTaskRequest(
+        TaskDto created = taskService.addTask(caller, null, new CreateTaskRequest(
                 "new task", null, null, null, Set.of("bug"), new IdRef(2), null));
 
         // CreateTaskRequest has no id and no completed component, so neither can arrive off the wire.
@@ -139,6 +148,7 @@ class TaskServiceRequestBindingTest {
         task.setId(id);
         task.setTitle("original");
         task.setPosition(1);
+        task.setBoard(board);
         when(taskRepository.findById(id)).thenReturn(Optional.of(task));
         return task;
     }
@@ -147,6 +157,7 @@ class TaskServiceRequestBindingTest {
         Column column = new Column();
         column.setId(id);
         column.setName("Doing");
+        column.setBoard(board);
         return column;
     }
 
@@ -154,6 +165,7 @@ class TaskServiceRequestBindingTest {
         Row row = new Row();
         row.setId(id);
         row.setName("Team A");
+        row.setBoard(board);
         return row;
     }
 

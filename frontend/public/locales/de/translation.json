@@ -93,7 +93,43 @@
     "taskReopened": "Aufgabe wieder geöffnet",
     "parentTaskNotCompleted": "Diese Aufgabe kann nicht erledigt werden, solange die übergeordnete Aufgabe offen ist.",
     "dailyFocusAdded": "Zum Tagesfokus hinzugefügt",
-    "dailyFocusRemoved": "Aus dem Tagesfokus entfernt"
+    "dailyFocusRemoved": "Aus dem Tagesfokus entfernt",
+    "boardCreated": "Board erstellt",
+    "boardRenamed": "Board umbenannt",
+    "boardDeleted": "Board gelöscht",
+    "boardMemberInvited": "Falls diese Adresse hier ein Konto hat, hat sie jetzt Zugriff auf dieses Board",
+    "boardMemberRemoved": "Mitglied vom Board entfernt"
+  },
+  "boards": {
+    "switcher": {
+      "label": "Board",
+      "heading": "Deine Boards",
+      "shared": "geteilt",
+      "newBoard": "Neues Board",
+      "create": "Erstellen",
+      "namePlaceholder": "Board-Name"
+    },
+    "members": {
+      "youOwnIt": "Du besitzt dieses Board",
+      "sharedWithYou": "Mit dir geteilt",
+      "rename": "Umbenennen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "explainer": "Alle hier Aufgeführten können dieses Board sehen und ändern. Sonst niemand.",
+      "you": "(du)",
+      "owner": "Eigentümer",
+      "member": "Mitglied",
+      "leave": "Dieses Board verlassen",
+      "remove": "Vom Board entfernen",
+      "removeConfirm": "Diese Person vom Board entfernen?",
+      "leaveConfirm": "Dieses Board verlassen? Du verlierst den Zugriff darauf.",
+      "deleteConfirm": "\"{{name}}\" mit allen Spalten, Swimlanes und Aufgaben löschen? Das kann nicht rückgängig gemacht werden.",
+      "addLabel": "Jemanden zu diesem Board hinzufügen",
+      "addPlaceholder": "E-Mail-Adresse",
+      "add": "Hinzufügen",
+      "addNote": "Die Antwort ist dieselbe, unabhängig davon, ob diese Adresse hier ein Konto hat – dieses Formular verrät also nicht, wer registriert ist.",
+      "delete": "Dieses Board löschen"
+    }
   },
   "column": {
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Spalte löschen möchten?",

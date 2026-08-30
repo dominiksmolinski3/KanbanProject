@@ -10,4 +10,10 @@ import java.util.List;
 public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHistory, Integer> {
     List<TaskColumnHistory> findByTaskOrderByChangedAtDesc(Task task);
 
+    /**
+     * The history of a set of tasks, for taking a whole board apart at once. {@code task_id} is not
+     * nullable and nothing cascades to it, so these rows have to go before the tasks do.
+     */
+    List<TaskColumnHistory> findByTaskIn(List<Task> tasks);
+
 }
