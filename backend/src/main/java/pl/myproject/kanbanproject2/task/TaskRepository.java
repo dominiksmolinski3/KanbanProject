@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.task;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.row.Row;
@@ -52,12 +53,24 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
     Set<String> findDistinctLabels();
 
     /**
-     * The highest position in use in one cell, or {@code null} when the cell is empty.
+     * The highest position in use in one cell, or empty when the cell is empty.
      *
      * <p>Scoping positions to their cell was the right fix by the wrong route: it fetched the
      * cell's tasks and folded them in Java, so computing one number got more expensive exactly as
      * a column filled up. The aggregate belongs in the database.
+     *
+     * <p>The null branches are the whole reason this is written out rather than left as
+     * {@code task.column = :column AND task.row = :row}. A null argument means what it means on the
+     * board - the backlog, or no swimlane - and an equality against a null bind is never true in
+     * SQL, so that form answered "empty cell" for every cell without a swimlane and handed out
+     * position 1 forever. A derived query would have written {@code IS NULL} on its own; this one
+     * has to say so. Ids rather than entities because an id is what the comparison needs, and
+     * {@code :columnId IS NULL} has a type Hibernate can infer.
      */
-    @Query("SELECT MAX(task.position) FROM Task task WHERE task.column = :column AND task.row = :row")
-    Optional<Integer> findMaxPosition(Column column, Row row);
+    @Query("""
+            SELECT MAX(task.position) FROM Task task
+            WHERE ((:columnId IS NULL AND task.column IS NULL) OR task.column.id = :columnId)
+              AND ((:rowId IS NULL AND task.row IS NULL) OR task.row.id = :rowId)
+            """)
+    Optional<Integer> findMaxPosition(@Param("columnId") Integer columnId, @Param("rowId") Integer rowId);
 }

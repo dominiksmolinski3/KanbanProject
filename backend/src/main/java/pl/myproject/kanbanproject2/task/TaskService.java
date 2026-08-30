@@ -86,7 +86,9 @@ public class TaskService {
      * mean what the board renders - an ordinal within the cell, not a row number.
      */
     private int nextPositionIn(Column column, Row row) {
-        return taskRepository.findMaxPosition(column, row).orElse(0) + 1;
+        return taskRepository.findMaxPosition(
+                column == null ? null : column.getId(),
+                row == null ? null : row.getId()).orElse(0) + 1;
     }
 
     public void deleteTask(Integer id) {
