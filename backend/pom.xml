@@ -223,6 +223,19 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
+                                        <include>pl.myproject.kanbanproject2.config.security.captcha</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
                                         <include>pl.myproject.kanbanproject2.controller</include>
                                     </includes>
                                     <limits>

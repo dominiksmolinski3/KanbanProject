@@ -72,6 +72,23 @@ const HomePage = () => {
     };
   }, [loading]);
   
+  /**
+   * A reCAPTCHA token is single-use: the provider accepts it once and rejects every replay. Until
+   * the server actually checked one that did not matter, because nothing was replayed anywhere.
+   * Now it does - so a failed attempt has to hand the user a fresh challenge, or their second try
+   * fails on a spent token and reports a captcha problem for what was really a wrong password.
+   */
+  const resetCaptcha = () => {
+    if (!isCaptchaRequired) return;
+    setCaptchaToken('');
+    try {
+      recaptchaRef.current?.reset();
+    } catch {
+      // The widget is not mounted, or the script never loaded. Clearing the token is enough:
+      // the submit button stays disabled until a fresh one arrives.
+    }
+  };
+
   const handleLogin = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setError('');
@@ -88,6 +105,7 @@ const HomePage = () => {
       console.error('[Auth] Login failed:', error.message);
       setError(error.message);
       toast.error(t('auth.loginFailed', 'Login failed:') + ' ' + error.message);
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -108,6 +126,7 @@ const HomePage = () => {
     } catch (error) {
       setError(error.message);
       toast.error(t('auth.registerFailed', 'Registration failed:') + ' ' + error.message);
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
