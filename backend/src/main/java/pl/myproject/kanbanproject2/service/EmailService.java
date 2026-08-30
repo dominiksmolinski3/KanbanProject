@@ -12,12 +12,16 @@ public class EmailService {
     private final JavaMailSender emailSender;
 
     public void sendVerificationEmail(String to, String subject, String text) throws MessagingException {
+        sendEmail(to, subject, text);
+    }
+
+    public void sendEmail(String to, String subject, String htmlBody) throws MessagingException {
         var message = emailSender.createMimeMessage();
         var helper = new MimeMessageHelper(message, true);
 
         helper.setTo(to);
         helper.setSubject(subject);
-        helper.setText(text, true);
+        helper.setText(htmlBody, true);
 
         emailSender.send(message);
     }

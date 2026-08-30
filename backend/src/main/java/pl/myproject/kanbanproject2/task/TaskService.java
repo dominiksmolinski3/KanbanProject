@@ -21,6 +21,7 @@ import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +47,7 @@ public class TaskService {
     private final ColumnRepository columnRepository;
     private final RowRepository rowRepository;
     private final BoardService boardService;
+    private final DeadlineNotifier deadlineNotifier;
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
@@ -439,11 +441,16 @@ public class TaskService {
     /**
      * The one method here that takes no caller, because it has none: it runs on a timer, on behalf
      * of the deployment rather than of a user, and every board's deadlines have to be swept.
+     *
+     * <p>Every flag is written first and the mail goes out afterwards, so a slow or unreachable
+     * SMTP server cannot leave the {@code expired} column half-updated. Only the crossing into
+     * expired is notified; a task whose deadline was pushed back goes quiet without a second mail.
      */
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
         var tasksWithDeadline = taskRepository.findAllByDeadlineIsNotNull();
         var now = LocalDateTime.now();
+        var newlyExpired = new ArrayList<Task>();
 
         for (Task task : tasksWithDeadline) {
             boolean wasExpired = task.isExpired();
@@ -451,8 +458,13 @@ public class TaskService {
             if (wasExpired != isExpired) {
                 task.setExpired(isExpired);
                 taskRepository.save(task);
+                if (isExpired) {
+                    newlyExpired.add(task);
+                }
             }
         }
+
+        newlyExpired.forEach(deadlineNotifier::notifyExpired);
     }
 
     /**
