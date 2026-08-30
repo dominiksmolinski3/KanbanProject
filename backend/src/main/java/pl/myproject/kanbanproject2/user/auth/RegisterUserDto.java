@@ -21,4 +21,11 @@ public class RegisterUserDto {
     @NotBlank(message = "Username is required")
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
     private String username;
+
+    /**
+     * Verified by CaptchaVerifier when security.captcha.enabled is on, and ignored when it is not.
+     * Unvalidated here deliberately: a missing token is a captcha failure rather than a field
+     * error, so that both answers - absent and wrong - come out of the same place.
+     */
+    private CaptchaDto captcha;
 }
