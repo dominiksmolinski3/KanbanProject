@@ -21,8 +21,10 @@ export const authService = {
       const errorData = await response.text();
       throw new Error(errorData || 'Registration failed');
     }
-    
-    return await response.json();
+
+    // 202 with no body, whether or not the address was new. Parsing this as JSON used to throw on
+    // an empty response, and reading an id out of it was the other half of the enumeration leak.
+    return undefined;
   },
   
   login: async (credentials) => {

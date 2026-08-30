@@ -29,3 +29,8 @@ variable "ingress_source_address_prefixes" {
     error_message = "ingress_source_address_prefixes must list at least one source, otherwise nothing can reach the app."
   }
 }
+
+variable "tags" {
+  description = "Tags applied to every resource this module creates. Set once at the root."
+  type        = map(string)
+}
