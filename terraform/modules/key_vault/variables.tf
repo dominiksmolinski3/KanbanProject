@@ -62,3 +62,8 @@ variable "soft_delete_retention_days" {
     error_message = "soft_delete_retention_days must be between 7 and 90."
   }
 }
+
+variable "tags" {
+  description = "Tags applied to every resource this module creates. Set once at the root."
+  type        = map(string)
+}

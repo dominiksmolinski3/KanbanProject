@@ -1,7 +1,16 @@
 data "azurerm_client_config" "current" {}
 
+resource "random_string" "suffix" {
+  length  = 5
+  upper   = false
+  lower   = true
+  numeric = true
+  special = false
+}
+
 resource "azurerm_key_vault" "main" {
-  name                = "kv-${var.env}-kanban"
+  tags                = var.tags
+  name                = "kv-${var.env}-kanban-${random_string.suffix.result}"
   location            = var.location
   resource_group_name = var.resource_group_name
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -36,11 +45,13 @@ resource "time_sleep" "wait_for_secrets_officer" {
 }
 
 resource "azurerm_private_dns_zone" "kv" {
+  tags                = var.tags
   name                = "privatelink.vaultcore.azure.net"
   resource_group_name = var.resource_group_name
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "kv" {
+  tags                  = var.tags
   name                  = "${var.env}-kv-vnet-link"
   resource_group_name   = var.resource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.kv.name
@@ -48,6 +59,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv" {
 }
 
 resource "azurerm_private_endpoint" "kv" {
+  tags                = var.tags
   name                = "pe-kv-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name

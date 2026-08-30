@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.task;
 import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -45,7 +46,17 @@ public class TaskMapper implements Function<Task, TaskDto> {
                     .collect(Collectors.toSet());
         }
 
-        Set<String> labels = task.getLabels();
+        /*
+         * Copied, not handed over. getLabels() returns Hibernate's own collection, and putting it
+         * straight into the DTO carried it out of the service's transaction and into Jackson -
+         * which then tried to initialize it during serialisation, with open-in-view=false and no
+         * session left to do it with. Every GET /api/tasks answered 500.
+         *
+         * Copying inside the transaction both initializes it where a session still exists and
+         * stops a persistent collection escaping into a response at all, which is what a DTO is
+         * for. The other two are already copies: Collectors.toSet() builds a plain set.
+         */
+        Set<String> labels = task.getLabels() == null ? null : new HashSet<>(task.getLabels());
 
         return new TaskDto(
                 task.getId(),

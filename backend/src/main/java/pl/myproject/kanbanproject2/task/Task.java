@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.subtask.SubTask;
@@ -36,14 +37,30 @@ public class Task {
     private boolean expired = false;
     @jakarta.persistence.Column(name = "daily_focus")
     private boolean dailyFocus = false;
+    /*
+     * Fetching, deliberately.
+     *
+     * The to-one associations are LAZY because @ManyToOne defaults to EAGER, and the default made
+     * every listing fetch a column and a row per task whether or not anything read them. What does
+     * read them is TaskMapper, and it reads only getId() - so the ones a listing genuinely needs
+     * are named in an @EntityGraph on the query instead, which fetches them in one join rather
+     * than one query each.
+     *
+     * The collections were already LAZY and were the other half of the problem: the mapper touches
+     * users and childTasks on every task, which is a query each. @BatchSize turns that into one
+     * query per fifty tasks. It is the right shape here precisely because they cannot all be
+     * joined in the same query - two collection joins multiply into a cartesian product, and
+     * these are Sets, so Hibernate would let it happen rather than refusing.
+     */
     @ElementCollection
     @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
     @jakarta.persistence.Column(name = "label")
+    @BatchSize(size = 50)
     private Set<String> labels;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "column_id")
     private Column column;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "row_id")
     private Row row;
     @ManyToMany
@@ -53,16 +70,19 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @JsonIgnoreProperties("tasks")
+    @BatchSize(size = 50)
     private Set<User> users = new HashSet<>();
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<SubTask> subTasks = new ArrayList<>();
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_task_id")
     @JsonIgnoreProperties("childTasks")
     private Task parentTask;
 
     @OneToMany(mappedBy = "parentTask", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JsonIgnoreProperties("parentTask")
+    @BatchSize(size = 50)
     private Set<Task> childTasks = new HashSet<>();
 }

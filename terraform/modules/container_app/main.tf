@@ -5,6 +5,7 @@ locals {
 }
 
 resource "azurerm_container_app" "main" {
+  tags                         = var.tags
   name                         = "kanban-app-${var.env}"
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_env_id
@@ -187,6 +188,7 @@ resource "azurerm_container_app" "main" {
 }
 
 resource "azurerm_user_assigned_identity" "main" {
+  tags                = var.tags
   name                = "kanban-app-identity-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -215,6 +217,7 @@ resource "random_password" "jwt_secret_key" {
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
+  tags         = var.tags
   name         = "JWT-SECRET-KEY"
   value        = base64encode(random_password.jwt_secret_key.result)
   key_vault_id = var.key_vault_id
@@ -228,24 +231,28 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
 }
 
 resource "azurerm_key_vault_secret" "spring_mail_username" {
+  tags         = var.tags
   name         = "SPRING-MAIL-USERNAME"
   value        = var.spring_mail_username
   key_vault_id = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "spring_mail_password" {
+  tags         = var.tags
   name         = "SPRING-MAIL-PASSWORD"
   value        = var.spring_mail_password
   key_vault_id = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "captcha_secret" {
+  tags         = var.tags
   name         = "CAPTCHA-SECRET"
   value        = var.captcha_secret
   key_vault_id = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
+  tags  = var.tags
   count = local.ghcr_credentials_configured ? 1 : 0
 
   name         = "GHCR-TOKEN"

@@ -133,3 +133,8 @@ variable "ingress_trusted_proxy_count" {
     error_message = "ingress_trusted_proxy_count must be a non-negative whole number."
   }
 }
+
+variable "tags" {
+  description = "Tags applied to every resource this module creates. Set once at the root."
+  type        = map(string)
+}

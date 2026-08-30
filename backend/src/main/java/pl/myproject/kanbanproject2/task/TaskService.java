@@ -86,11 +86,7 @@ public class TaskService {
      * mean what the board renders - an ordinal within the cell, not a row number.
      */
     private int nextPositionIn(Column column, Row row) {
-        return taskRepository.findByColumnAndRow(column, row).stream()
-                .map(Task::getPosition)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(0) + 1;
+        return taskRepository.findMaxPosition(column, row).orElse(0) + 1;
     }
 
     public void deleteTask(Integer id) {
@@ -277,10 +273,7 @@ public class TaskService {
     }
 
     public Set<String> getAllLabels() {
-        return taskRepository.findAll().stream()
-                .filter(task -> task.getLabels() != null)
-                .flatMap(task -> task.getLabels().stream())
-                .collect(Collectors.toSet());
+        return taskRepository.findDistinctLabels();
     }
 
     public TaskDto assignParentTask(Integer childTaskId, Integer parentTaskId) {
