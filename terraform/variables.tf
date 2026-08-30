@@ -193,3 +193,26 @@ variable "postgres_geo_redundant_backup_enabled" {
   type        = bool
   default     = false
 }
+
+variable "owner_tag" {
+  description = "Value of the `owner` tag on every resource - a team or a person accountable for the environment. Cost reports and policy both group on it, so an empty value is worse than a rough one."
+  type        = string
+  default     = "unassigned"
+}
+
+variable "extra_tags" {
+  description = "Additional tags merged over the standard set. Use for cost-centre or ticket references that only apply to one environment."
+  type        = map(string)
+  default     = {}
+}
+
+variable "ingress_trusted_proxy_count" {
+  description = "How many reverse proxies sit in front of the app, counted from the app outwards. Container Apps ingress is one hop; putting Front Door in front of it makes this 2. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge. Set to 0 to ignore the header entirely."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count
+    error_message = "ingress_trusted_proxy_count must be a non-negative whole number."
+  }
+}
