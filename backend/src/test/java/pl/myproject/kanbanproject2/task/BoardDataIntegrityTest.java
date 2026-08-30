@@ -51,7 +51,9 @@ class BoardDataIntegrityTest {
         historyRepository = Mockito.mock(TaskColumnHistoryRepository.class);
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
-        when(taskRepository.findByColumnAndRow(any(), any())).thenReturn(List.of());
+        // The next position is now a MAX aggregate rather than a fold over fetched rows, so
+        // these stub the aggregate. What each test asserts is unchanged: the number handed out.
+        when(taskRepository.findMaxPosition(any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
         taskService = new TaskService(
@@ -76,8 +78,7 @@ class BoardDataIntegrityTest {
             Row row = row(8);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(rowRepository.findById(8)).thenReturn(Optional.of(row));
-            when(taskRepository.findByColumnAndRow(column, row))
-                    .thenReturn(List.of(taskAt(1, 1), taskAt(2, 2)));
+            when(taskRepository.findMaxPosition(column, row)).thenReturn(Optional.of(2));
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("Third", null, null, null, null, new IdRef(3), new IdRef(8)));
@@ -90,15 +91,17 @@ class BoardDataIntegrityTest {
         void startsAtOneInAnEmptyCell() {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
-            when(taskRepository.findByColumnAndRow(column, null)).thenReturn(List.of());
+            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.empty());
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
 
             assertThat(created.position()).isEqualTo(1);
             // The old count()-based number is what made a delete anywhere on the board collide
-            // with the next create here.
+            // with the next create here. Nor is the cell's own list fetched any more - the
+            // database answers the max, rather than handing over rows to fold in Java.
             verify(taskRepository, never()).count();
+            verify(taskRepository, never()).findByColumnAndRow(any(), any());
         }
 
         @Test
@@ -107,7 +110,7 @@ class BoardDataIntegrityTest {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             // Positions 1 and 2 were deleted; 3 is still in use. count() would answer 2.
-            when(taskRepository.findByColumnAndRow(column, null)).thenReturn(List.of(taskAt(9, 3)));
+            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.of(3));
 
             TaskDto created = taskService.addTask(
                     new CreateTaskRequest("Next", null, null, null, null, new IdRef(3), null));
