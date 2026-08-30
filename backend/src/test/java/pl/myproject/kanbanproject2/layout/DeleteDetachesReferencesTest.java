@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
+import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -46,6 +48,10 @@ import static org.mockito.Mockito.when;
  */
 class DeleteDetachesReferencesTest {
 
+    private static final TenancyFixtures.Tenant TENANT = TenancyFixtures.tenant();
+    private static final Board BOARD = TENANT.board();
+    private static final User CALLER = TENANT.caller();
+
     @Nested
     @DisplayName("deleting a swimlane")
     class DeletingARow {
@@ -54,20 +60,22 @@ class DeleteDetachesReferencesTest {
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final RowService rowService =
                 new RowService(rowRepository, new RowMapper(new pl.myproject.kanbanproject2.task.TaskMapper()),
-                        taskRepository);
+                        taskRepository, TENANT.boardService());
 
         @Test
         @DisplayName("clears row_id on its tasks before the row is removed")
         void detachesTasksFirst() {
             Row row = new Row();
             row.setId(3);
+            row.setBoard(BOARD);
             Task task = new Task();
             task.setId(11);
             task.setRow(row);
+            task.setBoard(BOARD);
             row.setTasks(new ArrayList<>(List.of(task)));
             when(rowRepository.findById(3)).thenReturn(Optional.of(row));
 
-            rowService.deleteRow(3);
+            rowService.deleteRow(CALLER, 3);
 
             assertThat(task.getRow()).isNull();
             InOrder order = inOrder(taskRepository, rowRepository);
@@ -80,7 +88,7 @@ class DeleteDetachesReferencesTest {
         void unknownRowIsNotFound() {
             when(rowRepository.findById(99)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> rowService.deleteRow(99))
+            assertThatThrownBy(() -> rowService.deleteRow(CALLER, 99))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ROW_NOT_FOUND);
@@ -95,24 +103,27 @@ class DeleteDetachesReferencesTest {
         private final TaskService taskService = Mockito.mock(TaskService.class);
         private final ColumnService columnService =
                 new ColumnService(columnRepository,
-                        new ColumnMapper(new pl.myproject.kanbanproject2.task.TaskMapper()), taskService);
+                        new ColumnMapper(new pl.myproject.kanbanproject2.task.TaskMapper()), taskService,
+                        TENANT.boardService());
 
         @Test
         @DisplayName("removes each task through the path that clears its history rows")
         void deletesTasksThroughTaskService() {
             Column column = new Column();
             column.setId(2);
+            column.setBoard(BOARD);
             Task task = new Task();
             task.setId(7);
+            task.setBoard(BOARD);
             column.setTasks(new ArrayList<>(List.of(task)));
             when(columnRepository.findById(2)).thenReturn(Optional.of(column));
 
-            columnService.deleteColumn(2);
+            columnService.deleteColumn(CALLER, 2);
 
             // task_column_history.task_id is nullable = false, so the cascade on Column.tasks could
             // never have done this on its own.
             InOrder order = inOrder(taskService, columnRepository);
-            order.verify(taskService).deleteTask(7);
+            order.verify(taskService).deleteTask(CALLER, 7);
             order.verify(columnRepository).delete(column);
         }
 
@@ -121,7 +132,7 @@ class DeleteDetachesReferencesTest {
         void unknownColumnIsNotFound() {
             when(columnRepository.findById(99)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> columnService.deleteColumn(99))
+            assertThatThrownBy(() -> columnService.deleteColumn(CALLER, 99))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.COLUMN_NOT_FOUND);
@@ -135,7 +146,7 @@ class DeleteDetachesReferencesTest {
         private final UserRepository userRepository = Mockito.mock(UserRepository.class);
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final UserService userService =
-                new UserService(userRepository, new UserMapper(), taskRepository);
+                new UserService(userRepository, new UserMapper(), taskRepository, TENANT.boardService());
 
         @Test
         @DisplayName("clears the user_task join rows from the owning side before removing the account")

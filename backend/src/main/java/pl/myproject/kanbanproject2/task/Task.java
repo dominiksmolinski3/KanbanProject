@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.subtask.SubTask;
@@ -57,6 +58,16 @@ public class Task {
     @jakarta.persistence.Column(name = "label")
     @BatchSize(size = 50)
     private Set<String> labels;
+    /*
+     * The board is carried on the task itself rather than read through the column, because the
+     * column is nullable - a task can be taken off the board and still exist - and a task with no
+     * column would then have no owner at all. It is set once, from the board the task is created
+     * on, and TaskService refuses any move that would put the task in a column or row belonging to
+     * a different one.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "board_id", nullable = false)
+    private Board board;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "column_id")
     private Column column;

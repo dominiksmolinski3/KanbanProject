@@ -33,9 +33,14 @@ public class UserController {
     private final AvatarService avatarService;
     private final PasswordResetService passwordResetService;
 
+    /**
+     * The people the caller shares a board with, not the whole {@code users} table. The route keeps
+     * its path because the client asks it the same question it always did — "who can I assign this
+     * to" — and only the answer has narrowed.
+     */
     @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<List<UserDto>> getAllUsers(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.getVisibleUsers(currentUser));
     }
 
     @GetMapping("/me")
@@ -44,8 +49,9 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserById(@PathVariable Integer id) {
-        return ResponseEntity.ok(userService.getUserById(id));
+    public ResponseEntity<UserDto> getUserById(@PathVariable Integer id,
+                                               @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.getUserById(currentUser, id));
     }
 
     @DeleteMapping("/{id}")
@@ -79,7 +85,9 @@ public class UserController {
      * is pinned to attachment + nosniff, so a stored file can never render as a document here.
      */
     @GetMapping("/{id}/avatar")
-    public ResponseEntity<byte[]> getAvatar(@PathVariable Integer id) {
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Integer id,
+                                            @AuthenticationPrincipal User currentUser) {
+        userService.requireVisibleUser(currentUser, id);
         var avatarData = avatarService.getAvatar(id);
         var contentType = avatarService.getAvatarContentType(id);
         return ResponseEntity.ok()
@@ -112,13 +120,21 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/wip-limit")
-    public ResponseEntity<UserDto> updateWipLimit(@PathVariable Integer id, @RequestBody Integer wipLimit) {
-        return ResponseEntity.ok(userService.updateWipLimit(id, wipLimit));
+    public ResponseEntity<UserDto> updateWipLimit(@PathVariable Integer id,
+                                                  @RequestBody Integer wipLimit,
+                                                  @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.updateWipLimit(currentUser, id, wipLimit));
     }
 
+    /*
+     * Readable by anyone who shares a board with the account, not only by the account itself: the
+     * board shows how loaded each assignee is, and hiding that from their colleagues would make the
+     * WIP limit unenforceable in the only place it is meant to be read.
+     */
     @GetMapping("/{id}/wip-status")
-    public ResponseEntity<WipStatusDto> getWipStatus(@PathVariable Integer id) {
-        return ResponseEntity.ok(userService.getWipStatus(id));
+    public ResponseEntity<WipStatusDto> getWipStatus(@PathVariable Integer id,
+                                                     @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.getWipStatus(currentUser, id));
     }
 
     /*

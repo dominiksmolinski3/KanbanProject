@@ -3,11 +3,13 @@ package pl.myproject.kanbanproject2.task.history;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.task.TaskService;
+import pl.myproject.kanbanproject2.user.User;
 
 import java.util.List;
 
@@ -20,7 +22,9 @@ public class TaskColumnHistoryController {
 
 
     @GetMapping("/{taskId}/column-history")
-    public ResponseEntity<List<TaskColumnHistoryDto>> getTaskColumnHistory(@PathVariable Integer taskId) {
-        return ResponseEntity.ok(taskService.getTaskColumnHistoryDTOs(taskId));
+    public ResponseEntity<List<TaskColumnHistoryDto>> getTaskColumnHistory(
+            @PathVariable Integer taskId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(taskService.getTaskColumnHistoryDTOs(currentUser, taskId));
     }
 }
