@@ -28,6 +28,14 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    /*
+     * Optimistic lock. The board is edited by every member at once and the client sends one
+     * position PATCH per card in a reordered cell, so two people dragging in the same column race
+     * by construction. Without this the second write silently wins; with it the stale transaction
+     * fails its UPDATE ... WHERE version = ? and the caller is told 409 instead of losing the move.
+     */
+    @Version
+    private Integer version;
     private String title;
     private Integer position;
     private boolean completed;

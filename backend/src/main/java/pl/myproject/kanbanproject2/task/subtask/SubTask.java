@@ -18,6 +18,9 @@ public class SubTask {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    /** Optimistic lock; see {@link pl.myproject.kanbanproject2.task.Task#getVersion()}. */
+    @Version
+    private Integer version;
     @Column(columnDefinition = "TEXT")
     private String title;
     private String description;
