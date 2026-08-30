@@ -93,7 +93,7 @@ class UserControllerHttpTest {
     @Test
     @DisplayName("the listing answers 200 and never exposes the password field")
     void listAnswers200() throws Exception {
-        when(userService.getAllUsers())
+        when(userService.getVisibleUsers(caller))
                 .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3)));
 
         mvc.perform(get("/users"))
@@ -173,7 +173,7 @@ class UserControllerHttpTest {
     @Test
     @DisplayName("the WIP status answers a record, so a caller reads fields rather than a bare boolean")
     void wipStatusAnswersARecord() throws Exception {
-        when(userService.getWipStatus(CALLER_ID)).thenReturn(new WipStatusDto(CALLER_ID, 5, 5, false));
+        when(userService.getWipStatus(caller, CALLER_ID)).thenReturn(new WipStatusDto(CALLER_ID, 5, 5, false));
 
         mvc.perform(get("/users/" + CALLER_ID + "/wip-status"))
                 .andExpect(status().isOk())
@@ -186,7 +186,7 @@ class UserControllerHttpTest {
     @Test
     @DisplayName("the WIP limit route reaches the service with the parsed body")
     void wipLimitRoute() throws Exception {
-        when(userService.updateWipLimit(eq(CALLER_ID), eq(5)))
+        when(userService.updateWipLimit(eq(caller), eq(CALLER_ID), eq(5)))
                 .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5));
 
         mvc.perform(patch("/users/" + CALLER_ID + "/wip-limit")
@@ -199,7 +199,7 @@ class UserControllerHttpTest {
     @Test
     @DisplayName("a missing user reaches the client as a 404")
     void missingUserIs404() throws Exception {
-        when(userService.getUserById(404))
+        when(userService.getUserById(caller, 404))
                 .thenThrow(new GlobalException(ExceptionIdentifier.USER_NOT_FOUND));
 
         mvc.perform(get("/users/404"))

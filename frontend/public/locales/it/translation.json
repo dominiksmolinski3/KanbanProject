@@ -93,8 +93,44 @@
       "taskReopened": "Attività riaperta",
       "parentTaskNotCompleted": "Questa attività non può essere completata finché l'attività principale resta aperta.",
       "dailyFocusAdded": "Aggiunta al focus giornaliero",
-      "dailyFocusRemoved": "Rimossa dal focus giornaliero"
+      "dailyFocusRemoved": "Rimossa dal focus giornaliero",
+    "boardCreated": "Bacheca creata",
+    "boardRenamed": "Bacheca rinominata",
+    "boardDeleted": "Bacheca eliminata",
+    "boardMemberInvited": "Se quell'indirizzo ha un account qui, ora ha accesso a questa bacheca",
+    "boardMemberRemoved": "Membro rimosso dalla bacheca"
     },
+  "boards": {
+    "switcher": {
+      "label": "Bacheca",
+      "heading": "Le tue bacheche",
+      "shared": "condivisa",
+      "newBoard": "Nuova bacheca",
+      "create": "Crea",
+      "namePlaceholder": "Nome della bacheca"
+    },
+    "members": {
+      "youOwnIt": "Sei il proprietario di questa bacheca",
+      "sharedWithYou": "Condivisa con te",
+      "rename": "Rinomina",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "explainer": "Tutte le persone elencate qui possono vedere e modificare questa bacheca. Nessun altro.",
+      "you": "(tu)",
+      "owner": "Proprietario",
+      "member": "Membro",
+      "leave": "Esci da questa bacheca",
+      "remove": "Rimuovi dalla bacheca",
+      "removeConfirm": "Rimuovere questa persona dalla bacheca?",
+      "leaveConfirm": "Uscire da questa bacheca? Perderai l'accesso.",
+      "deleteConfirm": "Eliminare \"{{name}}\" con tutte le sue colonne, corsie e attività? L'operazione non è reversibile.",
+      "addLabel": "Aggiungi qualcuno a questa bacheca",
+      "addPlaceholder": "il suo indirizzo email",
+      "add": "Aggiungi",
+      "addNote": "La risposta è la stessa sia che quell'indirizzo abbia un account sia che non ce l'abbia, quindi questo modulo non può essere usato per scoprire chi è registrato.",
+      "delete": "Elimina questa bacheca"
+    }
+  },
     "column": {
       "deleteConfirm": "Sei sicuro di voler eliminare questa colonna?",
       "wipLimit": "Limite",

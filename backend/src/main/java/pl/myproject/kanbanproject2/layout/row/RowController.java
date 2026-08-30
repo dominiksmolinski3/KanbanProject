@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pl.myproject.kanbanproject2.user.User;
 
 import java.util.List;
 
@@ -24,35 +27,45 @@ public class RowController {
 
 
     @GetMapping
-    public ResponseEntity<List<RowDto>> getAllRows() {
-        return ResponseEntity.ok(rowService.getAllRows());
+    public ResponseEntity<List<RowDto>> getAllRows(
+            @RequestParam(required = false) Integer boardId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(rowService.getAllRows(currentUser, boardId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RowDto> getRowById(@PathVariable Integer id) {
-        return ResponseEntity.ok(rowService.getRowById(id));
+    public ResponseEntity<RowDto> getRowById(@PathVariable Integer id,
+                                             @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(rowService.getRowById(currentUser, id));
     }
 
     @PostMapping
-    public ResponseEntity<RowResponseDto> createRow(@Valid @RequestBody CreateRowRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(rowService.createRow(request));
+    public ResponseEntity<RowResponseDto> createRow(
+            @Valid @RequestBody CreateRowRequest request,
+            @RequestParam(required = false) Integer boardId,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(rowService.createRow(currentUser, boardId, request));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<RowDto> updateRow(@RequestBody RowDto row, @PathVariable Integer id) {
-        return ResponseEntity.ok(rowService.patchRow(row, id));
+    public ResponseEntity<RowDto> updateRow(@RequestBody RowDto row, @PathVariable Integer id,
+                                            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(rowService.patchRow(currentUser, row, id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRow(@PathVariable Integer id) {
-        rowService.deleteRow(id);
+    public ResponseEntity<Void> deleteRow(@PathVariable Integer id,
+                                          @AuthenticationPrincipal User currentUser) {
+        rowService.deleteRow(currentUser, id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/position/{position}")
     public ResponseEntity<RowDto> updateRowPosition(
             @PathVariable Integer id,
-            @PathVariable Integer position) {
-        return ResponseEntity.ok(rowService.updateRowPosition(id, position));
+            @PathVariable Integer position,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(rowService.updateRowPosition(currentUser, id, position));
     }
 }

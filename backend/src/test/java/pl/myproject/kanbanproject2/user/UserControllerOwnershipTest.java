@@ -108,7 +108,7 @@ class UserControllerOwnershipTest {
         when(avatarService.getAvatar(eq(VICTIM_ID))).thenReturn(new byte[]{1, 2, 3});
         when(avatarService.getAvatarContentType(eq(VICTIM_ID))).thenReturn("image/svg+xml");
 
-        var response = controller.getAvatar(VICTIM_ID);
+        var response = controller.getAvatar(VICTIM_ID, caller);
 
         assertThat(response.getHeaders().getFirst("Content-Disposition")).isEqualTo("attachment");
         assertThat(response.getHeaders().getFirst("X-Content-Type-Options")).isEqualTo("nosniff");

@@ -8,6 +8,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.data.repository.query.parser.PartTree;
+import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
@@ -16,6 +18,7 @@ import pl.myproject.kanbanproject2.task.subtask.SubTask;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
+import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
@@ -42,9 +45,14 @@ class BoardDataIntegrityTest {
     private RowRepository rowRepository;
     private TaskColumnHistoryRepository historyRepository;
     private TaskService taskService;
+    private User caller;
+    private Board board;
 
     @BeforeEach
     void setUp() {
+        var tenant = TenancyFixtures.tenant();
+        caller = tenant.caller();
+        board = tenant.board();
         taskRepository = Mockito.mock(TaskRepository.class);
         columnRepository = Mockito.mock(ColumnRepository.class);
         rowRepository = Mockito.mock(RowRepository.class);
@@ -53,7 +61,7 @@ class BoardDataIntegrityTest {
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         // The next position is now a MAX aggregate rather than a fold over fetched rows, so
         // these stub the aggregate. What each test asserts is unchanged: the number handed out.
-        when(taskRepository.findMaxPosition(any(), any())).thenReturn(Optional.empty());
+        when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
         taskService = new TaskService(
@@ -64,7 +72,8 @@ class BoardDataIntegrityTest {
                 historyRepository,
                 Mockito.mock(TaskColumnHistoryMapper.class),
                 columnRepository,
-                rowRepository);
+                rowRepository,
+                tenant.boardService());
     }
 
     @Nested
@@ -78,9 +87,9 @@ class BoardDataIntegrityTest {
             Row row = row(8);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(rowRepository.findById(8)).thenReturn(Optional.of(row));
-            when(taskRepository.findMaxPosition(column, row)).thenReturn(Optional.of(2));
+            when(taskRepository.findMaxPosition(board, column, row)).thenReturn(Optional.of(2));
 
-            TaskDto created = taskService.addTask(
+            TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("Third", null, null, null, null, new IdRef(3), new IdRef(8)));
 
             assertThat(created.position()).isEqualTo(3);
@@ -91,9 +100,9 @@ class BoardDataIntegrityTest {
         void startsAtOneInAnEmptyCell() {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
-            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.empty());
+            when(taskRepository.findMaxPosition(board, column, null)).thenReturn(Optional.empty());
 
-            TaskDto created = taskService.addTask(
+            TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
 
             assertThat(created.position()).isEqualTo(1);
@@ -101,7 +110,7 @@ class BoardDataIntegrityTest {
             // with the next create here. Nor is the cell's own list fetched any more - the
             // database answers the max, rather than handing over rows to fold in Java.
             verify(taskRepository, never()).count();
-            verify(taskRepository, never()).findByColumnAndRow(any(), any());
+            verify(taskRepository, never()).findByBoardAndColumnAndRow(any(), any(), any());
         }
 
         @Test
@@ -110,9 +119,9 @@ class BoardDataIntegrityTest {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             // Positions 1 and 2 were deleted; 3 is still in use. count() would answer 2.
-            when(taskRepository.findMaxPosition(column, null)).thenReturn(Optional.of(3));
+            when(taskRepository.findMaxPosition(board, column, null)).thenReturn(Optional.of(3));
 
-            TaskDto created = taskService.addTask(
+            TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("Next", null, null, null, null, new IdRef(3), null));
 
             assertThat(created.position()).isEqualTo(4);
@@ -121,9 +130,10 @@ class BoardDataIntegrityTest {
         @Test
         @DisplayName("a legacy task with no position sorts last instead of failing the listing")
         void toleratesANullPositionWhenListing() {
-            when(taskRepository.findAll()).thenReturn(List.of(taskAt(1, null), taskAt(2, 5), taskAt(3, 1)));
+            when(taskRepository.findByBoardOrderByIdAsc(board))
+                    .thenReturn(List.of(taskAt(1, null), taskAt(2, 5), taskAt(3, 1)));
 
-            List<TaskDto> all = taskService.getAllTasks();
+            List<TaskDto> all = taskService.getAllTasks(caller, null);
 
             assertThat(all).extracting(TaskDto::id).containsExactly(3, 2, 1);
         }
@@ -140,7 +150,7 @@ class BoardDataIntegrityTest {
             task.setColumn(column(3));
             when(columnRepository.findById(4)).thenReturn(Optional.of(column(4)));
 
-            taskService.patchTask(1, patchColumn(4));
+            taskService.patchTask(caller, 1, patchColumn(4));
 
             ArgumentCaptor<TaskColumnHistory> written = ArgumentCaptor.forClass(TaskColumnHistory.class);
             verify(historyRepository, times(1)).save(written.capture());
@@ -153,7 +163,7 @@ class BoardDataIntegrityTest {
             Task task = existingTask(1);
             task.setColumn(column(3));
 
-            taskService.patchTask(1, patchColumn(null));
+            taskService.patchTask(caller, 1, patchColumn(null));
 
             verify(historyRepository, never()).save(any());
         }
@@ -165,7 +175,7 @@ class BoardDataIntegrityTest {
             task.setColumn(column(3));
             when(columnRepository.findById(3)).thenReturn(Optional.of(column(3)));
 
-            taskService.patchTask(1, patchColumn(3));
+            taskService.patchTask(caller, 1, patchColumn(3));
 
             verify(historyRepository, never()).save(any());
         }
@@ -185,7 +195,7 @@ class BoardDataIntegrityTest {
 
             existingTask(3);
 
-            TaskDto patched = taskService.assignParentTask(1, 3);
+            TaskDto patched = taskService.assignParentTask(caller, 1, 3);
 
             assertThat(patched.parentTaskId()).isEqualTo(3);
         }
@@ -200,7 +210,7 @@ class BoardDataIntegrityTest {
             first.getChildTasks().add(second);
             second.getChildTasks().add(first);
 
-            taskService.updateTaskCompletion(1, false);
+            taskService.updateTaskCompletion(caller, 1, false);
 
             assertThat(first.isCompleted()).isFalse();
             assertThat(second.isCompleted()).isFalse();
@@ -218,7 +228,7 @@ class BoardDataIntegrityTest {
             parent.getChildTasks().add(child);
             child.getChildTasks().add(grandchild);
 
-            taskService.updateTaskCompletion(1, false);
+            taskService.updateTaskCompletion(caller, 1, false);
 
             assertThat(child.isCompleted()).isFalse();
             assertThat(grandchild.isCompleted()).isFalse();
@@ -230,8 +240,12 @@ class BoardDataIntegrityTest {
     void derivedQueriesResolve() {
         // Nothing else in the suite boots a JPA context, so a property that stopped existing would
         // otherwise surface at runtime. PartTree is the same parser Spring Data derives them with.
-        assertThat(new PartTree("findByColumnAndRow", Task.class).getParts()).hasSize(2);
+        assertThat(new PartTree("findByBoardAndColumnAndRow", Task.class).getParts()).hasSize(3);
+        assertThat(new PartTree("findByBoardOrderByIdAsc", Task.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByTask", SubTask.class).getParts()).hasSize(1);
+        assertThat(new PartTree("findByTaskBoardOrderByIdAsc", SubTask.class).getParts()).hasSize(1);
+        assertThat(new PartTree("findByBoardOrderByPositionAsc", Column.class).getParts()).hasSize(1);
+        assertThat(new PartTree("findByBoardOrderByPositionAsc", Row.class).getParts()).hasSize(1);
     }
 
     private PatchTaskRequest patchColumn(Integer columnId) {
@@ -251,26 +265,29 @@ class BoardDataIntegrityTest {
         return task;
     }
 
-    private static Task taskAt(Integer id, Integer position) {
+    private Task taskAt(Integer id, Integer position) {
         Task task = new Task();
         task.setId(id);
         task.setTitle("Task " + id);
         task.setPosition(position);
         task.setLabels(Set.of());
+        task.setBoard(board);
         return task;
     }
 
-    private static Column column(Integer id) {
+    private Column column(Integer id) {
         Column column = new Column();
         column.setId(id);
         column.setName("Column " + id);
+        column.setBoard(board);
         return column;
     }
 
-    private static Row row(Integer id) {
+    private Row row(Integer id) {
         Row row = new Row();
         row.setId(id);
         row.setName("Row " + id);
+        row.setBoard(board);
         return row;
     }
 }

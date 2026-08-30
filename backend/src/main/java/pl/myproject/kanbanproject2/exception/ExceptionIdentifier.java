@@ -49,7 +49,22 @@ public enum ExceptionIdentifier {
     USER_WIP_LIMIT_EXCEEDED(BAD_REQUEST, "The user's WIP limit has been exceeded"),
 
     COLUMN_NOT_FOUND(NOT_FOUND, "Column not found"),
-    ROW_NOT_FOUND(NOT_FOUND, "Row not found");
+    ROW_NOT_FOUND(NOT_FOUND, "Row not found"),
+
+    /*
+     * A board, or anything on one, that the caller is not a member of answers BOARD_NOT_FOUND and
+     * not a 403. The distinction is the whole point: 403 confirms the object exists, which lets a
+     * caller map out somebody else's board by walking ids and reading the status codes. The same
+     * reasoning already applies to TASK_NOT_FOUND, COLUMN_NOT_FOUND and ROW_NOT_FOUND, which the
+     * services now raise for an object on a board the caller cannot see.
+     *
+     * NOT_BOARD_OWNER is a 403 precisely because it is only ever reached by a caller who can
+     * already see the board, so it discloses nothing new.
+     */
+    BOARD_NOT_FOUND(NOT_FOUND, "Board not found"),
+    NOT_BOARD_OWNER(FORBIDDEN, "Only the board owner can do that"),
+    CANNOT_REMOVE_BOARD_OWNER(BAD_REQUEST, "The board owner cannot be removed from the board"),
+    BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board");
 
     private final HttpStatus status;
     private final String defaultMessage;

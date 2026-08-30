@@ -37,8 +37,30 @@ jest.mock('../../services/api', () => ({
   updateUserWipLimit: jest.fn(),
   updateTaskCompletion: jest.fn(),
   setTaskDailyFocus: jest.fn(),
-  ParentTaskNotCompletedError: class ParentTaskNotCompletedError extends Error {}
+  ParentTaskNotCompletedError: class ParentTaskNotCompletedError extends Error {},
+  getActiveBoardId: jest.fn(() => null),
+  setActiveBoardId: jest.fn(),
 }));
+
+/*
+ * The context resolves which board it is looking at before it fetches anything, so every suite
+ * that renders it has to answer that question first. One board, owned by the caller, which is the
+ * shape a single-tenant install has had all along.
+ */
+jest.mock('../../services/boardApi', () => ({
+  fetchBoards: jest.fn(() => Promise.resolve([
+    { id: 1, name: 'Kanban', ownerId: 1, owned: true, members: [] }
+  ])),
+  fetchCurrentBoard: jest.fn(() => Promise.resolve(
+    { id: 1, name: 'Kanban', ownerId: 1, owned: true, members: [] }
+  )),
+  createBoard: jest.fn(),
+  renameBoard: jest.fn(),
+  deleteBoard: jest.fn(),
+  addBoardMember: jest.fn(),
+  removeBoardMember: jest.fn(),
+}));
+
 
 jest.mock('react-toastify', () => ({
   toast: { error: jest.fn(), success: jest.fn(), info: jest.fn(), warning: jest.fn() }
