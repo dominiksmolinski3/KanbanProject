@@ -9,7 +9,6 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 
 import java.util.List;
-import java.util.Objects;
 
 @RequiredArgsConstructor
 @Transactional
@@ -37,14 +36,12 @@ public class SubTaskService {
     /**
      * The next free position among one task's subtasks. It used to be a count of every subtask in
      * the table, which both collided after a delete and numbered a task's first subtask by how
-     * many other tasks happened to have some.
+     * many other tasks happened to have some; then a fold over the fetched list, which was correct
+     * but is the shape the task service has since moved away from. The aggregate belongs in the
+     * database, where a null position simply does not take part in a MAX.
      */
     private int nextPositionUnder(Task task) {
-        return subTaskRepository.findByTask(task).stream()
-                .map(SubTask::getPosition)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(0) + 1;
+        return subTaskRepository.findMaxPosition(task == null ? null : task.getId()).orElse(0) + 1;
     }
 
     public List<SubTaskDto> getAllSubTasks() {
