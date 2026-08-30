@@ -1,14 +1,43 @@
+locals {
+  tags = merge(
+    {
+      environment = var.env
+      application = "kanban"
+      managed_by  = "terraform"
+      owner       = var.owner_tag
+    },
+    var.extra_tags,
+  )
+
+  log_retention_days = {
+    dev  = 30
+    uat  = 30
+    prod = 90
+  }
+}
+
 resource "azurerm_resource_group" "main" {
+  tags     = local.tags
   name     = var.resource_group_name
   location = var.location
+
+  lifecycle {
+    prevent_destroy = true
+
+    precondition {
+      condition     = can(regex("(^|[^a-z])${var.env}([^a-z]|$)", var.resource_group_name))
+      error_message = "resource_group_name (${var.resource_group_name}) does not name env (${var.env}); the -var-file and the backend key are probably from different environments."
+    }
+  }
 }
 
 resource "azurerm_log_analytics_workspace" "main" {
+  tags                = local.tags
   name                = "law-kanban-${var.env}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   sku                 = "PerGB2018"
-  retention_in_days   = 30
+  retention_in_days   = lookup(local.log_retention_days, var.env, 30)
 }
 
 module "vnet" {
@@ -18,6 +47,7 @@ module "vnet" {
   env                             = var.env
   log_analytics_workspace_id      = azurerm_log_analytics_workspace.main.id
   ingress_source_address_prefixes = var.ingress_source_address_prefixes
+  tags                            = local.tags
 }
 
 module "key_vault" {
@@ -33,6 +63,7 @@ module "key_vault" {
   network_default_action      = var.key_vault_network_default_action
   purge_protection_enabled    = var.key_vault_purge_protection_enabled
   soft_delete_retention_days  = var.key_vault_soft_delete_retention_days
+  tags                        = local.tags
 }
 
 module "postgres" {
@@ -51,6 +82,7 @@ module "postgres" {
   standby_availability_zone    = var.postgres_standby_availability_zone
   backup_retention_days        = var.postgres_backup_retention_days
   geo_redundant_backup_enabled = var.postgres_geo_redundant_backup_enabled
+  tags                         = local.tags
 
   depends_on = [module.key_vault]
 }
@@ -73,6 +105,9 @@ module "container_app" {
   spring_mail_password    = var.spring_mail_password
   captcha_enabled         = var.captcha_enabled
   captcha_secret          = var.captcha_secret
+  tags                    = local.tags
+
+  ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
   depends_on = [module.key_vault, module.postgres]
 }
@@ -86,4 +121,8 @@ module "diagnostics" {
   container_app_env_id       = module.vnet.container_app_env_id
   resource_group_name        = azurerm_resource_group.main.name
   alert_email                = var.alert_email
+  tags                       = local.tags
+
+  key_vault_id       = module.key_vault.id
+  postgres_server_id = module.postgres.postgres_server_id
 }

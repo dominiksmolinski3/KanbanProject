@@ -6,6 +6,7 @@ locals {
 }
 
 resource "azurerm_virtual_network" "main" {
+  tags                = var.tags
   name                = "vnet-${var.env}"
   address_space       = [local.vnet_address_space]
   location            = var.location
@@ -47,6 +48,7 @@ resource "azurerm_subnet" "db" {
 }
 
 resource "azurerm_container_app_environment" "main" {
+  tags                       = var.tags
   name                       = "cae-${var.env}"
   location                   = var.location
   resource_group_name        = var.resource_group_name

@@ -1,4 +1,5 @@
 resource "azurerm_network_security_group" "backend" {
+  tags                = var.tags
   name                = "nsg-backend-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -56,6 +57,7 @@ resource "azurerm_network_security_group" "backend" {
 }
 
 resource "azurerm_network_security_group" "db" {
+  tags                = var.tags
   name                = "nsg-db-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -98,6 +100,7 @@ resource "azurerm_network_security_group" "db" {
 }
 
 resource "azurerm_network_security_group" "private_endpoints" {
+  tags                = var.tags
   name                = "nsg-pe-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name

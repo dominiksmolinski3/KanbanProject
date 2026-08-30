@@ -84,3 +84,8 @@ variable "geo_redundant_backup_enabled" {
   type        = bool
   default     = false
 }
+
+variable "tags" {
+  description = "Tags applied to every resource this module creates. Set once at the root."
+  type        = map(string)
+}
