@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
+import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 
@@ -29,12 +30,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthenticationControllerHttpTest {
 
     private AuthenticationService authenticationService;
+    private PasswordResetService passwordResetService;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         authenticationService = mock(AuthenticationService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new AuthenticationController(authenticationService))
+        passwordResetService = mock(PasswordResetService.class);
+        mvc = MockMvcBuilders.standaloneSetup(new AuthenticationController(authenticationService, passwordResetService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
