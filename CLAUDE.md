@@ -133,7 +133,7 @@ The prefix exists to keep the API off the paths React Router owns. `App.jsx` ser
 
 ### Backend layering
 
-Packages are organised **by feature, not by layer**: `task/`, `task/subtask/`, `task/history/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/` and `exception/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
+Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/` and `exception/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
@@ -142,11 +142,54 @@ Within a feature the flow is controller → service → repository, with `mapper
 - Services throw `EntityNotFoundException`, catch it, and rethrow as `ResponseStatusException`; [GlobalExceptionHandler](backend/src/main/java/pl/myproject/kanbanproject2/exception/GlobalExceptionHandler.java) maps validation failures to 400 bodies.
 - Error messages in services are written in Polish; UI strings are translated separately through i18n.
 
+### Tenancy: boards with members
+
+`Board` is the unit of access. Every `Column`, `Row` and `Task` carries a non-null `board_id`, and
+being on a board's member list is the only thing that grants access to anything on it. Two levels
+only: the **owner** may rename, delete and change the membership; a **member** may do anything to the
+board's contents.
+
+Three conventions follow from it, and all three are load-bearing:
+
+- **Every controller method takes `@AuthenticationPrincipal User currentUser` and passes it to the
+  service.** `BoardScopedRoutesTest` scans every `@RestController` and fails the build for any
+  handler that takes no caller and is not on a path in `PublicPaths` — so a new route is either
+  public on purpose or it checks who is asking.
+- **Services never look an object up without the caller.** `TaskService.findTask(caller, id)`,
+  `ColumnService.findColumn(caller, id)` and their siblings are the only lookups; each throws the
+  feature's own `*_NOT_FOUND` when the object is on a board the caller cannot see.
+- **Cross-tenant access answers 404, never 403.** A 403 would confirm the id is in use, which is
+  enough to map somebody else's board by walking ids. 403 (`NOT_BOARD_OWNER`) is reserved for a
+  caller who can already see the board and simply does not own it.
+
+`BoardService` is the only place the checks live, and it depends on repositories only — the feature
+services depend on it, never the other way round, so a check cannot be short-circuited by a service
+that has already run one. `Board.isVisibleTo` compares **ids, not instances**: the caller comes from
+the JWT filter and the members from the persistence context, and `User` inherits identity equality.
+The same trap produced a real bug on this branch (`/api/users` listed the caller twice), which is why
+`peersOf` and `everyone()` key on id.
+
+Listings and creates take an optional `?boardId=`; leaving it out means "the caller's own board",
+which is what lets the pre-boards client keep working. Routes that already name an object take the
+board from the object. `BoardService.defaultFor` provisions a board (with the default columns from
+`V3`) for any account that has none — including the first account to open one on a fresh install,
+which **adopts** the ownerless board `V5` created for the seeded columns.
+
+`GET /api/users` lists only accounts the caller shares a board with, not the whole `users` table, and
+`File` carries an `owner_id` that `FileService` checks on read and delete. A file with no owner —
+anything uploaded before that column existed, other than an avatar, whose owner `V5` recovers from
+`users.avatar_id` — belongs to nobody rather than to everybody.
+
 ### The board model
 
 `Task` sits at the intersection of a `Column` (workflow stage, horizontal) and an optional `Row` (swimlane, vertical). Both `Column` and `Row` carry `position` and `wipLimit`; `Task` carries `position` within its cell. Tasks also support self-referencing parent/child links, a `SubTask` list, a `Set<String> labels` element collection, many-to-many `users`, and a `deadline`/`expired` pair.
 
 Because the entity is named `Column`, `jakarta.persistence.Column` cannot be imported — entity field annotations are written fully qualified as `@jakarta.persistence.Column(...)`. Keep that pattern when adding fields.
+
+The board is carried on `Task` itself rather than read through its column, because the column is
+nullable — a task can be taken off the board — and a task with no column would otherwise be a task
+with no owner. `TaskService` refuses any move that would put a task in a column or swimlane on a
+different board (`BOARD_MISMATCH`).
 
 **WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.jsx](frontend/src/components/Board.jsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API.
 
@@ -179,6 +222,12 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 `application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
 
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
+
+`V5__add_boards.sql` is the one to read before adding another: it adds a column, backfills it, and
+only then makes it `NOT NULL`, in that order, because any other order fails against a database that
+already has rows. It puts everything an existing deployment already had onto one board and makes
+every existing account a member of it, which is precisely the arrangement those accounts had before
+— one shared board — except that it is now written down and checked.
 
 A schema change is therefore two edits, not one: the entity, **and** a new `V<n>__description.sql`. `ddl-auto=validate` will not add a column for you — it refuses to start without it, which on Container Apps is a revision that never becomes healthy. `FlywayMigrationsMatchEntitiesTest` regenerates the DDL Hibernate would emit and fails the build when an entity has moved on without a migration, so that mismatch is caught at build time rather than at startup.
 

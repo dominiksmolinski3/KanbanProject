@@ -36,6 +36,12 @@ jest.mock('../../components/WipLimitControl', () => {
   };
 });
 
+jest.mock('../../components/BoardSwitcher', () => {
+  return function MockBoardSwitcher() {
+    return <div data-testid="mock-board-switcher"></div>;
+  };
+});
+
 jest.mock('../../components/AddRowColumnForm', () => {
   return function MockAddBoardItemForm({ onClose }) {
     return (

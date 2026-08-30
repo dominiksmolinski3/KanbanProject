@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task.subtask;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.util.List;
@@ -14,4 +15,7 @@ public interface SubTaskRepository extends JpaRepository<SubTask, Integer> {
      * scoped to this list, so the caller needs it to work out the next one.
      */
     List<SubTask> findByTask(Task task);
+
+    /** Every subtask on one board, reached through the task that owns it. */
+    List<SubTask> findByTaskBoardOrderByIdAsc(Board board);
 }
