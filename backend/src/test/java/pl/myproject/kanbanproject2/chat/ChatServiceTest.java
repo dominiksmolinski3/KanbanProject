@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 
 class ChatServiceTest {
 
+    private SimpMessagingTemplate messagingTemplate;
     private ChatRepository chatRepository;
     private ChatService service;
 
