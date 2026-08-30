@@ -49,6 +49,7 @@ final class TaskServiceTestSupport {
                 mock(TaskColumnHistoryMapper.class),
                 mock(ColumnRepository.class),
                 mock(RowRepository.class),
-                TenancyFixtures.boardServiceReturning(TENANT.board()));
+                TenancyFixtures.boardServiceReturning(TENANT.board()),
+                mock(DeadlineNotifier.class));
     }
 }

@@ -115,7 +115,7 @@ class TenantIsolationTest {
         userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService);
         taskService = new TaskService(taskRepository, userRepository, taskMapper, userService,
                 historyRepository, mock(TaskColumnHistoryMapper.class), columnRepository,
-                rowRepository, boardService);
+                rowRepository, boardService, mock(pl.myproject.kanbanproject2.task.DeadlineNotifier.class));
         columnService = new ColumnService(columnRepository, new ColumnMapper(taskMapper),
                 taskService, boardService);
         rowService = new RowService(rowRepository, new RowMapper(taskMapper), taskRepository, boardService);

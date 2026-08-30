@@ -75,7 +75,8 @@ class BoardDataIntegrityTest {
                 Mockito.mock(TaskColumnHistoryMapper.class),
                 columnRepository,
                 rowRepository,
-                tenant.boardService());
+                tenant.boardService(),
+                Mockito.mock(DeadlineNotifier.class));
     }
 
     @Nested
