@@ -15,6 +15,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
+import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
@@ -50,6 +51,7 @@ class UserControllerHttpTest {
     private UserService userService;
     private AvatarService avatarService;
     private UserMapper userMapper;
+    private PasswordResetService passwordResetService;
     private MockMvc mvc;
     private User caller;
 
@@ -72,13 +74,14 @@ class UserControllerHttpTest {
         userService = mock(UserService.class);
         avatarService = mock(AvatarService.class);
         userMapper = mock(UserMapper.class);
+        passwordResetService = mock(PasswordResetService.class);
 
         caller = new User();
         caller.setId(CALLER_ID);
 
         // The avatar route answers byte[], so the byte-array converter has to be listed
         // alongside Jackson - overriding the converters drops the defaults entirely.
-        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, avatarService))
+        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, avatarService, passwordResetService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
                 .setMessageConverters(

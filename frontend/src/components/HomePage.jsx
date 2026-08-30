@@ -16,6 +16,11 @@ const HomePage = () => {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerification, setShowVerification] = useState(false);
+  // 'request' asks for a code, 'confirm' redeems it. null means the reset flow is not showing.
+  const [resetStage, setResetStage] = useState(null);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [longLoading, setLongLoading] = useState(false);
@@ -133,6 +138,58 @@ const HomePage = () => {
     }
   };
   
+  const openPasswordReset = () => {
+    setError('');
+    setResetEmail(email);
+    setResetCode('');
+    setNewPassword('');
+    setResetStage('request');
+  };
+
+  const closePasswordReset = () => {
+    setError('');
+    setResetStage(null);
+  };
+
+  const handleRequestReset = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await authService.requestPasswordReset(resetEmail);
+      // The server answers the same either way, so the message says what was accepted rather
+      // than what happened - claiming a code was sent would be a membership oracle in the UI.
+      toast.info(t('auth.resetRequested', 'If that address has an account, a reset code is on its way.'));
+      setResetStage('confirm');
+    } catch (error) {
+      setError(error.message);
+      toast.error(t('auth.resetRequestFailed', 'Could not request a reset:') + ' ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await authService.resetPassword(resetEmail, resetCode, newPassword);
+      toast.success(t('auth.resetSuccess', 'Password changed. You can sign in with it now.'));
+      setResetStage(null);
+      setActiveTab('login');
+      setEmail(resetEmail);
+      setPassword('');
+    } catch (error) {
+      setError(error.message);
+      toast.error(t('auth.resetFailed', 'Could not reset the password:') + ' ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResendCode = async () => {
     try {
       await authService.resendVerificationCode(verificationEmail);
@@ -150,7 +207,90 @@ const HomePage = () => {
       <div className="auth-container">
         <h1>{t('board.title', 'Kanban Project')}</h1>
         
-        {showVerification ? (
+        {resetStage ? (
+          <div className="verification-form">
+            {resetStage === 'request' ? (
+              <>
+                <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
+                <p>{t('auth.resetIntro', 'Enter your email address and we will send you a reset code.')}</p>
+
+                <form onSubmit={handleRequestReset}>
+                  <div className="form-group">
+                    <input
+                      type="email"
+                      placeholder={t('auth.email', 'Email')}
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {error && <div className="error-message">{error}</div>}
+
+                  <button type="submit" disabled={loading} className="auth-button">
+                    {loading ? (
+                      <>
+                        <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                        <span className="loading-text">{t('auth.sending', 'Sending...')}</span>
+                      </>
+                    ) : t('auth.sendResetCode', 'Send Reset Code')}
+                  </button>
+
+                  <p className="resend-link">
+                    <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
+                  </p>
+                </form>
+              </>
+            ) : (
+              <>
+                <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
+                <p>{t('auth.enterResetCode', 'Enter the reset code sent to your email and choose a new password.')}</p>
+
+                <form onSubmit={handleResetPassword}>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={t('auth.resetCode', 'Reset Code')}
+                      value={resetCode}
+                      onChange={(e) => setResetCode(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <input
+                      type="password"
+                      placeholder={t('auth.newPassword', 'New Password')}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      minLength={8}
+                      maxLength={72}
+                      required
+                    />
+                  </div>
+
+                  {error && <div className="error-message">{error}</div>}
+
+                  <button type="submit" disabled={loading} className="auth-button">
+                    {loading ? (
+                      <>
+                        <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                        <span className="loading-text">{t('auth.resetting', 'Resetting...')}</span>
+                      </>
+                    ) : t('auth.setNewPassword', 'Set New Password')}
+                  </button>
+
+                  <p className="resend-link">
+                    <span onClick={() => setResetStage('request')}>{t('auth.resendCode', 'Resend Code')}</span>
+                  </p>
+                  <p className="resend-link">
+                    <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
+                  </p>
+                </form>
+              </>
+            )}
+          </div>
+        ) : showVerification ? (
           <div className="verification-form">
             <h2>{t('auth.verifyAccount', 'Verify Your Account')}</h2>
             <p>{t('auth.enterCode', 'Enter the verification code sent to your email')}</p>
@@ -226,6 +366,11 @@ const HomePage = () => {
                     />
                   </div>
                   {error && <div className="error-message">{error}</div>}
+                  <p className="resend-link">
+                    <span onClick={openPasswordReset}>
+                      {t('auth.forgotPassword', 'Forgot your password?')}
+                    </span>
+                  </p>
                 </form>
               ) : (
                 <form onSubmit={handleRegister}>

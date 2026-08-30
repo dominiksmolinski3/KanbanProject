@@ -29,6 +29,14 @@ public enum ExceptionIdentifier {
     INVALID_CREDENTIALS(UNAUTHORIZED, "Invalid email or password"),
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),
+    /*
+     * One answer for four facts. An unknown address, an account with no reset in flight, and a
+     * wrong code are all INVALID_RESET_CODE, because the other three describe the account rather
+     * than the request and would tell an unauthenticated caller which addresses have accounts.
+     * Expiry is separate only because reaching it already required a valid code.
+     */
+    INVALID_RESET_CODE(BAD_REQUEST, "Invalid password reset code"),
+    RESET_CODE_EXPIRED(BAD_REQUEST, "The password reset code has expired"),
     EMAIL_SEND_FAILED(INTERNAL_SERVER_ERROR, "Failed to send the email message"),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Too many requests, please try again later"),
 
