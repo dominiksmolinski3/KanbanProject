@@ -65,7 +65,8 @@ class TaskServiceRequestBindingTest {
                 Mockito.mock(TaskColumnHistoryMapper.class),
                 columnRepository,
                 rowRepository,
-                tenant.boardService());
+                tenant.boardService(),
+                Mockito.mock(DeadlineNotifier.class));
     }
 
     @Test
