@@ -27,3 +27,18 @@ variable "alert_email" {
   type        = string
   description = "Email address for alert notifications. Leave empty to disable alert resources."
 }
+
+variable "tags" {
+  description = "Tags applied to every resource this module creates. Set once at the root."
+  type        = map(string)
+}
+
+variable "key_vault_id" {
+  type        = string
+  description = "Resource ID of the Key Vault. AuditEvent is the log that records who read which secret."
+}
+
+variable "postgres_server_id" {
+  type        = string
+  description = "Resource ID of the PostgreSQL Flexible Server."
+}
