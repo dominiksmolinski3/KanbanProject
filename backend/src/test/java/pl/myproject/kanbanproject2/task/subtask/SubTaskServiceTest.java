@@ -90,8 +90,7 @@ class SubTaskServiceTest {
         void positionIsScopedToTheParentTask() {
             var parent = task(7);
             when(taskRepository.findById(7)).thenReturn(Optional.of(parent));
-            when(subTaskRepository.findByTask(parent))
-                    .thenReturn(List.of(subTask(1, "a", 1), subTask(2, "b", 4)));
+            when(subTaskRepository.findMaxPosition(7)).thenReturn(Optional.of(4));
 
             var created = service.addSubTask(caller,
                     new CreateSubTaskRequest("c", null, false, null, new IdRef(7)));
@@ -104,8 +103,7 @@ class SubTaskServiceTest {
         void positionUsesTheMaxRatherThanTheCount() {
             var parent = task(7);
             when(taskRepository.findById(7)).thenReturn(Optional.of(parent));
-            when(subTaskRepository.findByTask(parent))
-                    .thenReturn(List.of(subTask(1, "a", 1), subTask(3, "c", 3)));
+            when(subTaskRepository.findMaxPosition(7)).thenReturn(Optional.of(3));
 
             var created = service.addSubTask(caller,
                     new CreateSubTaskRequest("d", null, false, null, new IdRef(7)));
@@ -114,25 +112,11 @@ class SubTaskServiceTest {
         }
 
         @Test
-        @DisplayName("a subtask already carrying a null position is skipped rather than throwing")
-        void nullPositionsAreTolerated() {
-            var parent = task(7);
-            when(taskRepository.findById(7)).thenReturn(Optional.of(parent));
-            when(subTaskRepository.findByTask(parent))
-                    .thenReturn(List.of(subTask(1, "a", null), subTask(2, "b", 2)));
-
-            var created = service.addSubTask(caller,
-                    new CreateSubTaskRequest("c", null, false, null, new IdRef(7)));
-
-            assertThat(created.position()).isEqualTo(3);
-        }
-
-        @Test
         @DisplayName("the first subtask of an empty task is numbered 1, not by the table size")
         void firstSubtaskStartsAtOne() {
             var parent = task(7);
             when(taskRepository.findById(7)).thenReturn(Optional.of(parent));
-            when(subTaskRepository.findByTask(parent)).thenReturn(List.of());
+            when(subTaskRepository.findMaxPosition(7)).thenReturn(Optional.empty());
 
             var created = service.addSubTask(caller,
                     new CreateSubTaskRequest("first", null, false, null, new IdRef(7)));
@@ -154,7 +138,7 @@ class SubTaskServiceTest {
             assertThat(created.completed()).isTrue();
             assertThat(created.description()).isEqualTo("why");
             assertThat(created.taskId()).isEqualTo(7);
-            verify(subTaskRepository, never()).findByTask(any());
+            verify(subTaskRepository, never()).findMaxPosition(any());
         }
 
         @Test
