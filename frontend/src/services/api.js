@@ -3,6 +3,7 @@
 // keeps the API off /board and /users, the paths React Router owns. In dev, one Vite proxy entry
 // covers all of it.
 const API_ENDPOINTS = {
+  BOARDS: '/api/boards',
   COLUMNS: '/api/columns',
   TASKS: '/api/tasks',
   USERS: '/api/users',
@@ -11,11 +12,45 @@ const API_ENDPOINTS = {
   FILES: '/api/files'
 };
 
+// Which board this session is looking at.
+//
+// Every route that names a column, task or swimlane takes the board from that object, so only the
+// listings and the creates need to say. Ambient rather than a parameter on ten functions, for the
+// same reason the token is: it is a property of the session, not of any one call. The server does
+// not trust it - a board the caller is not a member of answers 404 either way - so this decides
+// what is shown, never what is allowed.
+//
+// It survives a reload because a board is a place the user chose to be, and dropping them back on
+// a different one is the kind of small betrayal that makes an app feel unreliable.
+const ACTIVE_BOARD_KEY = 'activeBoardId';
+
+export const getActiveBoardId = () => {
+  const stored = localStorage.getItem(ACTIVE_BOARD_KEY);
+  return stored ? Number(stored) : null;
+};
+
+export const setActiveBoardId = (boardId) => {
+  if (boardId === null || boardId === undefined) {
+    localStorage.removeItem(ACTIVE_BOARD_KEY);
+  } else {
+    localStorage.setItem(ACTIVE_BOARD_KEY, String(boardId));
+  }
+};
+
+/** Appends the active board, if there is one. Absent means "whichever board is mine". */
+const onActiveBoard = (path) => {
+  const boardId = getActiveBoardId();
+  if (!boardId) {
+    return path;
+  }
+  return `${path}${path.includes('?') ? '&' : '?'}boardId=${boardId}`;
+};
+
 // ====== COLUMN OPERATIONS ======
 export const fetchColumns = async (retries = 3) => {
   while (retries > 0) {
     try {
-      const response = await fetch(API_ENDPOINTS.COLUMNS);
+      const response = await fetch(onActiveBoard(API_ENDPOINTS.COLUMNS));
       if (!response.ok) {
         throw new Error(`Error fetching columns: ${response.status}`);
       }
@@ -31,7 +66,7 @@ export const fetchColumns = async (retries = 3) => {
 
 export const addColumn = async (name, wipLimit) => {
   try {
-    const response = await fetch(API_ENDPOINTS.COLUMNS, {
+    const response = await fetch(onActiveBoard(API_ENDPOINTS.COLUMNS), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -145,7 +180,7 @@ export const updateColumnName = async (id, name) => {
 // ====== TASK OPERATIONS ======
 export const fetchTasks = async () => {
   try {
-    const response = await fetch(API_ENDPOINTS.TASKS);
+    const response = await fetch(onActiveBoard(API_ENDPOINTS.TASKS));
     if (!response.ok) {
       throw new Error(`Error fetching tasks: ${response.status}`);
     }
@@ -171,7 +206,7 @@ export const fetchTask = async (taskId) => {
 
 export const addTask = async (title, columnId, deadline = null) => {
   try {
-    const response = await fetch(API_ENDPOINTS.TASKS, {
+    const response = await fetch(onActiveBoard(API_ENDPOINTS.TASKS), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -441,7 +476,7 @@ export const updateTaskLabels = async (taskId, labels) => {
 
 export const getAllLabels = async () => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/get/all/labels`);
+    const response = await fetch(onActiveBoard(`${API_ENDPOINTS.TASKS}/get/all/labels`));
     if (!response.ok) {
       throw new Error(`Error fetching labels: ${response.status}`);
     }
@@ -627,7 +662,7 @@ export const getTaskColumnTimeSpentSummary = async (taskId) => {
 export const fetchRows = async (retries = 3) => {
   while (retries > 0) {
     try {
-      const response = await fetch(API_ENDPOINTS.ROWS);
+      const response = await fetch(onActiveBoard(API_ENDPOINTS.ROWS));
       if (!response.ok) {
         throw new Error(`Error fetching rows: ${response.status}`);
       }
@@ -643,7 +678,7 @@ export const fetchRows = async (retries = 3) => {
 
 export const addRow = async (name, wipLimit) => {
   try {
-    const response = await fetch(API_ENDPOINTS.ROWS, {
+    const response = await fetch(onActiveBoard(API_ENDPOINTS.ROWS), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -960,7 +995,7 @@ export const updateTaskCompletion = async (taskId, completed) => {
 
 export const fetchDailyFocusTasks = async () => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/daily-focus`);
+    const response = await fetch(onActiveBoard(`${API_ENDPOINTS.TASKS}/daily-focus`));
     if (!response.ok) {
       throw new Error(`Error fetching daily focus tasks: ${response.status}`);
     }

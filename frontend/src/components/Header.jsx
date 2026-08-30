@@ -5,6 +5,7 @@ import AddBoardItemForm from './AddRowColumnForm';
 import WipLimitControl from './WipLimitControl';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import BoardSwitcher from './BoardSwitcher';
 import { useAuth } from '../context/AuthContext';
 
 function Header() {
@@ -47,6 +48,7 @@ function Header() {
         
         <div className="header-right">
           <LanguageSwitcher />
+          <BoardSwitcher />
           
           <div className="header-nav">
             <button 

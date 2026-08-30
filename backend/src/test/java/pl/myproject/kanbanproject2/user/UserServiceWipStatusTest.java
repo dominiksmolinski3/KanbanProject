@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.user;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -28,11 +29,19 @@ class UserServiceWipStatusTest {
 
     private UserRepository userRepository;
     private UserService userService;
+    private User caller;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class));
+        var tenant = TenancyFixtures.tenant();
+        // The caller asks about their own account, which is the one id the visibility check lets
+        // through without consulting a board at all. What these tests are about is the arithmetic
+        // on the far side of that check.
+        caller = tenant.caller();
+        caller.setId(USER_ID);
+        userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class),
+                tenant.boardService());
     }
 
     @Test
@@ -40,7 +49,7 @@ class UserServiceWipStatusTest {
     void describesTheWholePicture() {
         givenUser(4, 3);
 
-        var status = userService.getWipStatus(USER_ID);
+        var status = userService.getWipStatus(caller, USER_ID);
 
         assertThat(status.userId()).isEqualTo(USER_ID);
         assertThat(status.wipLimit()).isEqualTo(4);
@@ -53,7 +62,7 @@ class UserServiceWipStatusTest {
     void atTheLimitIsNotWithinIt() {
         givenUser(3, 3);
 
-        var status = userService.getWipStatus(USER_ID);
+        var status = userService.getWipStatus(caller, USER_ID);
 
         assertThat(status.assignedCount()).isEqualTo(3);
         assertThat(status.withinLimit()).isFalse();
@@ -64,7 +73,7 @@ class UserServiceWipStatusTest {
     void overTheLimit() {
         givenUser(2, 5);
 
-        assertThat(userService.getWipStatus(USER_ID).withinLimit()).isFalse();
+        assertThat(userService.getWipStatus(caller, USER_ID).withinLimit()).isFalse();
     }
 
     @Test
@@ -72,7 +81,7 @@ class UserServiceWipStatusTest {
     void nullLimitMeansUnlimited() {
         givenUser(null, 12);
 
-        var status = userService.getWipStatus(USER_ID);
+        var status = userService.getWipStatus(caller, USER_ID);
 
         assertThat(status.wipLimit()).isNull();
         assertThat(status.assignedCount()).isEqualTo(12);
@@ -94,7 +103,7 @@ class UserServiceWipStatusTest {
     void unknownUser() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.getWipStatus(USER_ID))
+        assertThatThrownBy(() -> userService.getWipStatus(caller, USER_ID))
                 .isInstanceOf(GlobalException.class)
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.USER_NOT_FOUND);

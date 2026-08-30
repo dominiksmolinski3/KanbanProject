@@ -27,7 +27,18 @@ import {
   updateTaskCompletion,
   setTaskDailyFocus,
   ParentTaskNotCompletedError,
+  getActiveBoardId,
+  setActiveBoardId as persistActiveBoardId,
 } from '../services/api';
+import {
+  fetchBoards,
+  fetchCurrentBoard,
+  createBoard,
+  renameBoard,
+  deleteBoard,
+  addBoardMember,
+  removeBoardMember,
+} from '../services/boardApi';
 
 const KanbanContext = createContext();
 
@@ -40,9 +51,43 @@ export function KanbanProvider({ children }) {
   const [draggedItem, setDraggedItem] = useState(null);
   const [columnMap, setColumnMap] = useState({});
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
+  const [boards, setBoards] = useState([]);
+  const [activeBoardId, setActiveBoardId] = useState(null);
   const { t } = useTranslation();
 
+  /*
+   * Which board, before anything else.
+   *
+   * Every listing below is scoped to one, and a member of somebody else's board has at least two -
+   * their own and the one they were invited to - so the client cannot simply let the server pick.
+   * A remembered choice is honoured only if it is still on the list: being removed from a board
+   * would otherwise leave the app asking for one it can no longer see, over and over.
+   */
   useEffect(() => {
+    const resolveBoard = async () => {
+      try {
+        const [available, current] = await Promise.all([fetchBoards(), fetchCurrentBoard()]);
+        setBoards(available);
+
+        const remembered = getActiveBoardId();
+        const chosen = available.some(board => board.id === remembered) ? remembered : current.id;
+        persistActiveBoardId(chosen);
+        setActiveBoardId(chosen);
+      } catch (err) {
+        console.error('Error resolving the board:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    resolveBoard();
+  }, []);
+
+  useEffect(() => {
+    if (activeBoardId === null) {
+      return;
+    }
+
     const loadData = async () => {
       try {
         setLoading(true);
@@ -87,8 +132,107 @@ export function KanbanProvider({ children }) {
     };
     
     loadData();
-  }, []);
-  
+  }, [activeBoardId]);
+
+  const activeBoard = boards.find(board => board.id === activeBoardId) || null;
+
+  /** Switches boards, which reloads the whole board through the effect above. */
+  const selectBoard = (boardId) => {
+    if (boardId === activeBoardId) {
+      return;
+    }
+    persistActiveBoardId(boardId);
+    setActiveBoardId(boardId);
+  };
+
+  const refreshBoards = async () => {
+    const available = await fetchBoards();
+    setBoards(available);
+    return available;
+  };
+
+  const handleCreateBoard = async (name) => {
+    try {
+      const board = await createBoard(name);
+      await refreshBoards();
+      selectBoard(board.id);
+      toast.success(t('notifications.boardCreated'));
+      return board;
+    } catch (err) {
+      console.error('Error creating board:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return null;
+    }
+  };
+
+  const handleRenameBoard = async (boardId, name) => {
+    try {
+      await renameBoard(boardId, name);
+      await refreshBoards();
+      toast.success(t('notifications.boardRenamed'));
+      return true;
+    } catch (err) {
+      console.error('Error renaming board:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return false;
+    }
+  };
+
+  /*
+   * Deleting takes the board's columns, swimlanes and tasks with it, so the client asks first and
+   * then falls back to whatever board is left - there is always one, because the server provisions
+   * a fresh board for an account that has none.
+   */
+  const handleDeleteBoard = async (boardId) => {
+    try {
+      await deleteBoard(boardId);
+      const remaining = await refreshBoards();
+      const next = remaining.find(board => board.id !== boardId);
+      persistActiveBoardId(next ? next.id : null);
+      setActiveBoardId(next ? next.id : null);
+      if (!next) {
+        const current = await fetchCurrentBoard();
+        await refreshBoards();
+        persistActiveBoardId(current.id);
+        setActiveBoardId(current.id);
+      }
+      toast.success(t('notifications.boardDeleted'));
+      return true;
+    } catch (err) {
+      console.error('Error deleting board:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return false;
+    }
+  };
+
+  const handleAddBoardMember = async (boardId, email) => {
+    try {
+      const board = await addBoardMember(boardId, email);
+      await refreshBoards();
+      // Deliberately not "added": the server answers the same whether or not that address has an
+      // account here, so claiming success would be a claim the client cannot back up.
+      toast.info(t('notifications.boardMemberInvited'));
+      return board;
+    } catch (err) {
+      console.error('Error adding board member:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return null;
+    }
+  };
+
+  const handleRemoveBoardMember = async (boardId, userId) => {
+    try {
+      const board = await removeBoardMember(boardId, userId);
+      await refreshBoards();
+      toast.success(t('notifications.boardMemberRemoved'));
+      return board;
+    } catch (err) {
+      console.error('Error removing board member:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return null;
+    }
+  };
+
   const handleUpdateTaskName = async (taskId, newName) => {
     try {
       await updateTaskName(taskId, newName);
@@ -791,6 +935,16 @@ export function KanbanProvider({ children }) {
   };
   
   const value = {
+    boards,
+    activeBoard,
+    activeBoardId,
+    selectBoard,
+    refreshBoards,
+    createBoard: handleCreateBoard,
+    renameBoard: handleRenameBoard,
+    deleteBoard: handleDeleteBoard,
+    addBoardMember: handleAddBoardMember,
+    removeBoardMember: handleRemoveBoardMember,
     columns,
     tasks,
     rows,

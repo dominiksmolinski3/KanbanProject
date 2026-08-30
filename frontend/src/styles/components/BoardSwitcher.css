@@ -1,0 +1,116 @@
+.board-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.board-switcher-toggle {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-switcher-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 40;
+  min-width: 15rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.board-switcher-heading {
+  margin: 0.15rem 0.4rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.board-switcher-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.board-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  font: inherit;
+  color: #111827;
+  text-align: left;
+  cursor: pointer;
+}
+
+.board-option:hover,
+.board-option:focus-visible {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.board-option.active {
+  font-weight: 600;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.board-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-option-tag {
+  flex-shrink: 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 0.7rem;
+  color: #4b5563;
+}
+
+.board-switcher-new,
+.board-switcher-create button {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: rgba(37, 99, 235, 0.1);
+  font: inherit;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+
+.board-switcher-create {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.board-switcher-create input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0.35rem;
+  font: inherit;
+}
+
+.board-switcher-create button {
+  width: auto;
+  margin-top: 0;
+  flex: 0 0 auto;
+}

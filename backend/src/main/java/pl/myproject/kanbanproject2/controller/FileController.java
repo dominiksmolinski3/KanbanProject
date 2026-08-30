@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pl.myproject.kanbanproject2.file.File;
 import pl.myproject.kanbanproject2.file.FileUploadResponse;
 import pl.myproject.kanbanproject2.file.FileService;
+import pl.myproject.kanbanproject2.user.User;
 
 import java.net.URI;
 
@@ -28,8 +30,9 @@ public class FileController {
     private final FileService fileService;
 
     @PostMapping("/upload")
-    public ResponseEntity<FileUploadResponse> uploadFile(@RequestParam("file") MultipartFile file) {
-        File savedFile = fileService.saveFile(file);
+    public ResponseEntity<FileUploadResponse> uploadFile(@RequestParam("file") MultipartFile file,
+                                                        @AuthenticationPrincipal User currentUser) {
+        File savedFile = fileService.saveFile(currentUser, file);
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/files/{id}")
                 .buildAndExpand(savedFile.getId())
@@ -47,8 +50,9 @@ public class FileController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> getFile(@PathVariable Long id) {
-        File fileEntity = fileService.getFile(id);
+    public ResponseEntity<byte[]> getFile(@PathVariable Long id,
+                                         @AuthenticationPrincipal User currentUser) {
+        File fileEntity = fileService.getFile(currentUser, id);
         MediaType mediaType = StringUtils.hasText(fileEntity.getType())
                 ? MediaType.parseMediaType(fileEntity.getType())
                 : MediaType.APPLICATION_OCTET_STREAM;
@@ -61,8 +65,9 @@ public class FileController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFile(@PathVariable Long id) {
-        fileService.deleteFile(id);
+    public ResponseEntity<Void> deleteFile(@PathVariable Long id,
+                                           @AuthenticationPrincipal User currentUser) {
+        fileService.deleteFile(currentUser, id);
         return ResponseEntity.noContent().build();
     }
 }

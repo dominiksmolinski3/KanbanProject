@@ -93,8 +93,44 @@
       "taskReopened": "Tâche rouverte",
       "parentTaskNotCompleted": "Cette tâche ne peut pas être terminée tant que sa tâche parente reste ouverte.",
       "dailyFocusAdded": "Ajoutée au focus du jour",
-      "dailyFocusRemoved": "Retirée du focus du jour"
+      "dailyFocusRemoved": "Retirée du focus du jour",
+    "boardCreated": "Tableau créé",
+    "boardRenamed": "Tableau renommé",
+    "boardDeleted": "Tableau supprimé",
+    "boardMemberInvited": "Si cette adresse a un compte ici, elle a désormais accès à ce tableau",
+    "boardMemberRemoved": "Membre retiré du tableau"
     },
+  "boards": {
+    "switcher": {
+      "label": "Tableau",
+      "heading": "Vos tableaux",
+      "shared": "partagé",
+      "newBoard": "Nouveau tableau",
+      "create": "Créer",
+      "namePlaceholder": "Nom du tableau"
+    },
+    "members": {
+      "youOwnIt": "Vous êtes propriétaire de ce tableau",
+      "sharedWithYou": "Partagé avec vous",
+      "rename": "Renommer",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "explainer": "Toutes les personnes listées ici peuvent voir et modifier ce tableau. Personne d'autre.",
+      "you": "(vous)",
+      "owner": "Propriétaire",
+      "member": "Membre",
+      "leave": "Quitter ce tableau",
+      "remove": "Retirer du tableau",
+      "removeConfirm": "Retirer cette personne du tableau ?",
+      "leaveConfirm": "Quitter ce tableau ? Vous en perdrez l'accès.",
+      "deleteConfirm": "Supprimer « {{name}} » ainsi que toutes ses colonnes, couloirs et tâches ? Cette action est irréversible.",
+      "addLabel": "Ajouter quelqu'un à ce tableau",
+      "addPlaceholder": "son adresse e-mail",
+      "add": "Ajouter",
+      "addNote": "La réponse est la même que cette adresse ait un compte ou non : ce formulaire ne permet donc pas de savoir qui est inscrit.",
+      "delete": "Supprimer ce tableau"
+    }
+  },
     "column": {
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette colonne ?",
       "wipLimit": "Limite",
