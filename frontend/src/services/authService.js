@@ -72,6 +72,56 @@ export const authService = {
     }
   },
   
+  /**
+   * Asks for a reset code. Answers 202 whether or not the address has an account, so there is
+   * nothing in the response to branch on - and nothing for a caller to learn from it either.
+   */
+  requestPasswordReset: async (email) => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not request a password reset');
+    }
+  },
+
+  resetPassword: async (email, resetCode, newPassword) => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, resetCode, newPassword }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not reset the password');
+    }
+  },
+
+  /** Authenticated: the interceptor attaches the token, since this path has no `/auth/` in it. */
+  changePassword: async (userId, currentPassword, newPassword) => {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/password`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not change the password');
+    }
+  },
+
   resendVerificationCode: async (email) => {
     const response = await fetch(`${API_BASE_URL}/auth/resend?email=${encodeURIComponent(email)}`, {
       method: 'POST',

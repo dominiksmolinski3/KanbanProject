@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.user;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.service.AvatarService;
+import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
 
 import java.util.List;
 
@@ -28,6 +31,7 @@ public class UserController {
     private final UserService userService;
     private final UserMapper userMapper;
     private final AvatarService avatarService;
+    private final PasswordResetService passwordResetService;
 
     @GetMapping
     public ResponseEntity<List<UserDto>> getAllUsers() {
@@ -90,6 +94,20 @@ public class UserController {
                                              @AuthenticationPrincipal User currentUser) {
         requireSelf(id, currentUser);
         avatarService.deleteAvatar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Changes the caller's own password. Ownership is checked here like every other write on an
+     * account, and the current password is checked in the service - a token proves less than a
+     * password does, and this is the write that could lock the owner out.
+     */
+    @PatchMapping("/{id}/password")
+    public ResponseEntity<Void> changePassword(@PathVariable Integer id,
+                                               @Valid @RequestBody ChangePasswordRequest request,
+                                               @AuthenticationPrincipal User currentUser) {
+        requireSelf(id, currentUser);
+        passwordResetService.changePassword(currentUser, request);
         return ResponseEntity.noContent().build();
     }
 

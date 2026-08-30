@@ -41,6 +41,18 @@ public class User implements UserDetails {
     private String verificationCode;
     @Column(name = "verification_expiration")
     private LocalDateTime verificationCodeExpiresAt;
+    /*
+     * Deliberately a second pair rather than a reuse of the verification code above. They answer
+     * different questions - "is this address real" and "does this person still control it" - and
+     * sharing one field would mean a pending reset silently cancelled a pending verification, or
+     * that a code mailed for one purpose was accepted for the other. The reset code is stored
+     * hashed, because unlike the verification code it is a credential: anyone who can read the
+     * users table could otherwise reset any account at will.
+     */
+    @Column(name = "password_reset_code")
+    private String passwordResetCode;
+    @Column(name = "password_reset_expiration")
+    private LocalDateTime passwordResetExpiresAt;
     private Integer wipLimit;
     @ManyToMany(mappedBy = "users")
     @JsonIgnore
