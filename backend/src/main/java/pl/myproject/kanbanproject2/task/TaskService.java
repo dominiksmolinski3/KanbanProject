@@ -100,7 +100,10 @@ public class TaskService {
      * deployment would be drawing from one shared sequence.
      */
     private int nextPositionIn(Board board, Column column, Row row) {
-        return taskRepository.findMaxPosition(board, column, row).orElse(0) + 1;
+        return taskRepository.findMaxPosition(
+                board.getId(),
+                column == null ? null : column.getId(),
+                row == null ? null : row.getId()).orElse(0) + 1;
     }
 
     public void deleteTask(User caller, Integer id) {

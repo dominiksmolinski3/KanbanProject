@@ -61,6 +61,8 @@ class BoardDataIntegrityTest {
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         // The next position is now a MAX aggregate rather than a fold over fetched rows, so
         // these stub the aggregate. What each test asserts is unchanged: the number handed out.
+        // It is keyed by ids rather than by the entities, because a null cell has to reach the
+        // query as a null id it can test for - see TaskRepository.findMaxPosition.
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
@@ -87,7 +89,7 @@ class BoardDataIntegrityTest {
             Row row = row(8);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(rowRepository.findById(8)).thenReturn(Optional.of(row));
-            when(taskRepository.findMaxPosition(board, column, row)).thenReturn(Optional.of(2));
+            when(taskRepository.findMaxPosition(board.getId(), 3, 8)).thenReturn(Optional.of(2));
 
             TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("Third", null, null, null, null, new IdRef(3), new IdRef(8)));
@@ -100,7 +102,7 @@ class BoardDataIntegrityTest {
         void startsAtOneInAnEmptyCell() {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
-            when(taskRepository.findMaxPosition(board, column, null)).thenReturn(Optional.empty());
+            when(taskRepository.findMaxPosition(board.getId(), 3, null)).thenReturn(Optional.empty());
 
             TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
@@ -119,7 +121,7 @@ class BoardDataIntegrityTest {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             // Positions 1 and 2 were deleted; 3 is still in use. count() would answer 2.
-            when(taskRepository.findMaxPosition(board, column, null)).thenReturn(Optional.of(3));
+            when(taskRepository.findMaxPosition(board.getId(), 3, null)).thenReturn(Optional.of(3));
 
             TaskDto created = taskService.addTask(caller, null,
                     new CreateTaskRequest("Next", null, null, null, null, new IdRef(3), null));
@@ -242,7 +244,8 @@ class BoardDataIntegrityTest {
         // otherwise surface at runtime. PartTree is the same parser Spring Data derives them with.
         assertThat(new PartTree("findByBoardAndColumnAndRow", Task.class).getParts()).hasSize(3);
         assertThat(new PartTree("findByBoardOrderByIdAsc", Task.class).getParts()).hasSize(1);
-        assertThat(new PartTree("findByTask", SubTask.class).getParts()).hasSize(1);
+        // findByTask is gone: the subtask position is a MAX aggregate now, and it was that
+        // method's only caller. The aggregate is guarded by QueryStringsResolveTest instead.
         assertThat(new PartTree("findByTaskBoardOrderByIdAsc", SubTask.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByBoardOrderByPositionAsc", Column.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByBoardOrderByPositionAsc", Row.class).getParts()).hasSize(1);
