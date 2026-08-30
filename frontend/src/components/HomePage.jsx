@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
+import SafeReCAPTCHA from './SafeReCAPTCHA';
+import { resetRecaptchaLoader } from '../services/recaptchaLoader';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
@@ -71,7 +72,16 @@ const HomePage = () => {
       clearTimeout(timeoutId);
     };
   }, [loading]);
-  
+
+  /**
+   * These two views replace the login form, taking the captcha widget down with
+   * it. Its readiness has to go down too: left set, the placeholder is skipped
+   * when the form comes back and the box sits blank until the widget paints.
+   */
+  useEffect(() => {
+    if (resetStage || showVerification) setCaptchaReady(false);
+  }, [resetStage, showVerification]);
+
   /**
    * A reCAPTCHA token is single-use: the provider accepts it once and rejects every replay. Until
    * the server actually checked one that did not matter, because nothing was replayed anywhere.
@@ -453,22 +463,24 @@ const HomePage = () => {
                       }}></span>
                     </div>
                   )}
-                  <ReCAPTCHA
+                  <SafeReCAPTCHA
                     key={captchaKey}
                     ref={recaptchaRef}
                     sitekey={siteKey}
                     onChange={(val) => setCaptchaToken(val || '')}
-                    asyncScriptOnLoad={() => setCaptchaReady(true)}
+                    // Fires once the widget is in the DOM, so the spinner gives way
+                    // to something that is already there rather than to a blank gap.
+                    onReady={() => setCaptchaReady(true)}
+                    onLoadError={() => {
+                      setCaptchaLoadError(true);
+                      setCaptchaWarn(true);
+                    }}
                     onErrored={() => {
                       setCaptchaWarn(true);
                       console.warn('[Captcha] onErrored event fired');
                     }}
                     style={{ opacity: captchaReady ? 1 : 0, transition: 'opacity 0.3s ease' }}
                   />
-                  {/* Manual fallback container (will be used only if library fails to inject iframe) */}
-                  {!captchaReady && (
-                    <div id="manual-recaptcha" style={{ minWidth: 302, minHeight: 76 }} />
-                  )}
                 </div>
                 {captchaWarn && captchaReady && (
                   <div className="captcha-warning" style={{ marginTop: '8px', fontSize: '0.8rem', color: '#c0392b' }}>
@@ -481,20 +493,10 @@ const HomePage = () => {
                       setCaptchaLoadError(false);
                       setCaptchaWarn(false);
                       setCaptchaReady(false);
+                      // Drop the failed attempt first: remounting the widget alone
+                      // would just await the same cached rejection.
+                      resetRecaptchaLoader();
                       setCaptchaKey(k => k + 1);
-                      // Try reinjecting if still absent
-                      const existing = document.querySelector('script[src*="recaptcha/api.js"]');
-                      if (!existing) {
-                        const script = document.createElement('script');
-                        script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
-                        script.async = true;
-                        script.defer = true;
-                        script.onerror = () => {
-                          setCaptchaLoadError(true);
-                          setCaptchaWarn(true);
-                        };
-                        document.head.appendChild(script);
-                      }
                     }}>{t('auth.retry')}</button>
                   </div>
                 )}
