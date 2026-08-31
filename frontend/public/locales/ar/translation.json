@@ -74,6 +74,7 @@
       "taskMovedToColumnAndRow": "تم نقل المهمة \"{{title}}\" إلى العمود \"{{column}}\" والصف \"{{row}}\"",
       "taskMovedToRow": "تم نقل المهمة \"{{title}}\" إلى الصف \"{{row}}\"",
       "columnMoved": "تم نقل العمود \"{{name}}\"",
+      "changedBySomeoneElse": "قام شخص آخر بتغيير اللوحة أولاً - يتم عرض أحدث إصدار",
       "rowMoved": "تم نقل الصف \"{{name}}\"",
       "labelsUpdateError": "حدث خطأ أثناء تحديث التسميات",
       "subtaskAddError": "حدث خطأ أثناء إضافة المهمة الفرعية",

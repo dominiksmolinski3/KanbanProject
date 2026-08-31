@@ -22,6 +22,10 @@ jest.mock('../../services/api', () => ({
   updateColumnPosition: jest.fn(),
   updateRowPosition: jest.fn(),
   updateTaskPosition: jest.fn(),
+  reorderColumns: jest.fn(),
+  reorderRows: jest.fn(),
+  reorderTasks: jest.fn(),
+  ConcurrentModificationError: class ConcurrentModificationError extends Error {},
   updateTaskName: jest.fn(),
   updateRowName: jest.fn(),
   updateColumnName: jest.fn(),
@@ -651,7 +655,7 @@ describe('KanbanContext Provider', () => {
   });
 
   test('handles task reordering successfully', async () => {
-    api.updateTaskPosition.mockResolvedValue({ success: true });
+    api.reorderTasks.mockResolvedValue([]);
     api.fetchTasks.mockResolvedValue(mockTasks);
     
     const mockTasksInSameContainer = [
@@ -699,7 +703,7 @@ describe('KanbanContext Provider', () => {
     });
     
     await waitFor(() => {
-      expect(api.updateTaskPosition).toHaveBeenCalled();
+      expect(api.reorderTasks).toHaveBeenCalled();
     }, { timeout: 3000 });
   });
 
@@ -874,7 +878,7 @@ describe('KanbanContext Provider', () => {
       fireEvent.click(screen.getByTestId('column-drop-button'));
     });
     
-    expect(api.updateColumnPosition).toHaveBeenCalled();
+    expect(api.reorderColumns).toHaveBeenCalled();
   });
 
   test('handles drag over event', async () => {
@@ -963,7 +967,10 @@ describe('KanbanContext Provider', () => {
     api.fetchColumns.mockResolvedValue(mockColumns);
     api.fetchRows.mockResolvedValue(mockRows);
     api.fetchTasks.mockResolvedValue(mockTasks);
-    api.updateRowPosition.mockResolvedValue({ success: true });
+    api.reorderRows.mockResolvedValue([
+      { id: 'row2', name: 'Bugs', position: 0, wipLimit: 3 },
+      { id: 'row1', name: 'Features', position: 1, wipLimit: 2 }
+    ]);
     
     const RowMovementTester = () => {
       const { moveRow, rows } = useKanban();
@@ -993,7 +1000,7 @@ describe('KanbanContext Provider', () => {
       expect(screen.getByTestId('current-rows')).toHaveTextContent('Features,Bugs');
     });
 
-    api.updateRowPosition.mockClear();
+    api.reorderRows.mockClear();
     await act(async () => {
       fireEvent.click(screen.getByTestId('move-row-button'));
     });
@@ -1001,9 +1008,10 @@ describe('KanbanContext Provider', () => {
       expect(screen.getByTestId('current-rows')).toHaveTextContent('Bugs,Features');
     });
 
-    expect(api.updateRowPosition).toHaveBeenCalledTimes(2);
-    expect(api.updateRowPosition).toHaveBeenCalledWith('row2', 0);
-    expect(api.updateRowPosition).toHaveBeenCalledWith('row1', 1);
+    // One call, not one per swimlane: the whole order goes in a single transaction so a
+    // conflict cannot leave half of it applied.
+    expect(api.reorderRows).toHaveBeenCalledTimes(1);
+    expect(api.reorderRows).toHaveBeenCalledWith(['row2', 'row1']);
   });
   
   test('handles drop event with row data correctly', async () => {
@@ -1054,7 +1062,7 @@ describe('KanbanContext Provider', () => {
       fireEvent.click(screen.getByTestId('row-drop-button'));
     });
     
-    expect(api.updateRowPosition).toHaveBeenCalled();
+    expect(api.reorderRows).toHaveBeenCalled();
   });
   
   test('handles move task with both column and row change', async () => {
@@ -1171,7 +1179,7 @@ describe('KanbanContext Provider', () => {
       fireEvent.click(screen.getByTestId('invalid-column-move'));
     });
     
-    expect(api.updateColumnPosition).not.toHaveBeenCalled();
+    expect(api.reorderColumns).not.toHaveBeenCalled();
   });
   
   test('handles delete last row scenario', async () => {

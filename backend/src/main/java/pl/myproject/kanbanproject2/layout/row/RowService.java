@@ -11,7 +11,9 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 @Transactional
@@ -94,6 +96,29 @@ public class RowService {
         var row = findRow(caller, id);
         row.setPosition(position);
         return rowMapper.apply(rowRepository.save(row));
+    }
+
+    /**
+     * Renumbers a board's swimlanes in one transaction. Same reasoning as
+     * {@code ColumnService.reorderColumns}: one PATCH per swimlane could leave half of a drag
+     * applied once a stale write became a 409 instead of a silent overwrite.
+     */
+    public List<RowDto> reorderRows(User caller, List<Integer> orderedIds) {
+        if (orderedIds.size() != Set.copyOf(orderedIds).size()) {
+            throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
+                    "The same swimlane appears more than once in the requested order");
+        }
+
+        var rows = orderedIds.stream().map(id -> findRow(caller, id)).toList();
+        rows.forEach(row -> boardService.requireSameBoard(rows.get(0).getBoard(), row.getBoard()));
+
+        var reordered = new ArrayList<RowDto>(rows.size());
+        for (int position = 0; position < rows.size(); position++) {
+            var row = rows.get(position);
+            row.setPosition(position);
+            reordered.add(rowMapper.apply(rowRepository.save(row)));
+        }
+        return reordered;
     }
 
     /** A swimlane on somebody else's board answers as one that is not there. See ColumnService. */
