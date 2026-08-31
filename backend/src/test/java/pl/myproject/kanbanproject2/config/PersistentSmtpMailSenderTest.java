@@ -4,6 +4,7 @@ import jakarta.mail.Address;
 import jakarta.mail.MessagingException;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -181,6 +182,73 @@ class PersistentSmtpMailSenderTest {
 
         assertThat(sender.opened).containsExactly(dropped, fresh);
         verify(fresh).sendMessage(any(MimeMessage.class), any(Address[].class));
+    }
+
+    @Test
+    @DisplayName("a 421 that expires the connection is retried, however the provider types it")
+    void anExpiredConnectionIsRetriedEvenAsASendFailure() throws Exception {
+        // Gmail retires a held connection with `421 4.7.0 Connection expired, try reconnecting`,
+        // and Angus reports it as SMTPSendFailedException - a SendFailedException, which this class
+        // used to read as "the server rejected this message" and rethrow. It is the opposite: the
+        // link is gone, the message was never seen, and the server is asking to be reconnected to.
+        Transport expired = mock(Transport.class);
+        when(expired.isConnected()).thenReturn(true, false);
+        doThrow(new SendFailedException("421 4.7.0 Connection expired, try reconnecting"))
+                .when(expired).sendMessage(any(MimeMessage.class), any(Address[].class));
+        Transport fresh = liveTransport();
+        sender.willOpen(expired, fresh);
+
+        sender.openOnStartup();
+        sender.send(message());
+
+        assertThat(sender.opened).containsExactly(expired, fresh);
+        verify(fresh).sendMessage(any(MimeMessage.class), any(Address[].class));
+    }
+
+    @Test
+    @DisplayName("a partial send is never retried, even on a connection that then died")
+    void aPartiallyDeliveredMessageIsNotRetried() throws Exception {
+        Transport transport = mock(Transport.class);
+        when(transport.isConnected()).thenReturn(true, false);
+        Address[] delivered = { new InternetAddress("recipient@example.test") };
+        doThrow(new SendFailedException("partially sent", new MessagingException("dropped"),
+                delivered, new Address[0], new Address[0]))
+                .when(transport).sendMessage(any(MimeMessage.class), any(Address[].class));
+        sender.willOpen(transport);
+
+        sender.openOnStartup();
+        MimeMessage partial = message();
+        assertThatThrownBy(() -> sender.send(partial)).isInstanceOf(MailSendException.class);
+
+        assertThat(sender.opened).containsExactly(transport);
+    }
+
+    @Test
+    @DisplayName("a connection old enough to be expired is replaced by the keep-alive, not pinged")
+    void anAgedConnectionIsRecycled() throws Exception {
+        Transport aged = liveTransport();
+        Transport fresh = liveTransport();
+        sender.willOpen(aged, fresh);
+        sender.setMaxConnectionAgeMs(0);
+
+        sender.openOnStartup();
+        sender.keepAlive();
+
+        assertThat(sender.opened).containsExactly(aged, fresh);
+        verify(aged).close();
+    }
+
+    @Test
+    @DisplayName("a connection still inside its age is kept, so the keep-alive is a ping and nothing more")
+    void aYoungConnectionIsKept() throws Exception {
+        Transport transport = liveTransport();
+        sender.willOpen(transport);
+
+        sender.openOnStartup();
+        sender.keepAlive();
+
+        assertThat(sender.opened).containsExactly(transport);
+        verify(transport, never()).close();
     }
 
     @Test
