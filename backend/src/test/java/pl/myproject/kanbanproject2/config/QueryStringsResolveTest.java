@@ -34,6 +34,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QueryStringsResolveTest {
 
     private record RepositoryQuery(String owner, String method, String hql) {
+
+        /**
+         * {@code createQuery} is for selects only and rejects an {@code UPDATE} or {@code DELETE}
+         * outright, so a {@code @Modifying} query would have gone unchecked - or worse, been read
+         * as a broken query. Hibernate compiles those through {@code createMutationQuery}, which
+         * is the same parser and the same failure for a typo.
+         */
+        boolean isMutation() {
+            String start = hql.stripLeading().toUpperCase(java.util.Locale.ROOT);
+            return start.startsWith("UPDATE") || start.startsWith("DELETE") || start.startsWith("INSERT");
+        }
     }
 
     @Test
@@ -43,6 +54,10 @@ class QueryStringsResolveTest {
         assertThat(queries)
                 .as("the repositories should still carry hand-written queries for this to guard")
                 .isNotEmpty();
+        assertThat(queries)
+                .as("both kinds have to be reachable, or the mutation branch below guards nothing")
+                .anyMatch(RepositoryQuery::isMutation)
+                .anyMatch(query -> !query.isMutation());
 
         var registry = new StandardServiceRegistryBuilder()
                 .applySetting(AvailableSettings.DIALECT, "org.hibernate.dialect.PostgreSQLDialect")
@@ -62,7 +77,11 @@ class QueryStringsResolveTest {
                  var session = factory.openSession()) {
                 for (RepositoryQuery query : queries) {
                     try {
-                        session.createQuery(query.hql(), Object.class);
+                        if (query.isMutation()) {
+                            session.createMutationQuery(query.hql());
+                        } else {
+                            session.createQuery(query.hql(), Object.class);
+                        }
                     } catch (RuntimeException e) {
                         throw new AssertionError(
                                 query.owner() + "." + query.method() + " does not resolve: "

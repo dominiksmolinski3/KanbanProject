@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
+import pl.myproject.kanbanproject2.config.security.LoginResponse;
 import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.captcha.CaptchaVerifier;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
@@ -167,5 +169,76 @@ class AuthenticationControllerHttpTest {
         // Not skipped here: when verification is on, absent and wrong are the same answer, and
         // that decision lives in one place rather than being half-made at the controller.
         verify(captchaVerifier).verify(eq(null), any());
+    }
+
+    @Test
+    @DisplayName("refresh hands back a new pair and never asks the captcha verifier anything")
+    void refreshAnswersWithANewPair() throws Exception {
+        when(authenticationService.refresh("a-refresh-token"))
+                .thenReturn(new LoginResponse("new-access", 900_000L, "rotated-refresh", 2_592_000_000L));
+
+        mvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"a-refresh-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("new-access"))
+                .andExpect(jsonPath("$.refreshToken").value("rotated-refresh"))
+                .andExpect(jsonPath("$.expiresIn").value(900_000L));
+
+        // No widget is on screen when a token lapses mid-session, so a captcha here would be a
+        // challenge nobody could answer.
+        verifyNoInteractions(captchaVerifier);
+    }
+
+    @Test
+    @DisplayName("a refresh token the server will not honour is 401, and says nothing else")
+    void aRejectedRefreshTokenIs401() throws Exception {
+        when(authenticationService.refresh(any()))
+                .thenThrow(new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS));
+
+        mvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"spent-or-unknown\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    @DisplayName("an empty refresh token is a 400 before the service is asked")
+    void anEmptyRefreshTokenIsRejected() throws Exception {
+        mvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    @DisplayName("logout answers 204 with no body and withdraws the token it was given")
+    void logoutAnswers204() throws Exception {
+        mvc.perform(post("/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"still-live\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(authenticationService).logout("still-live");
+    }
+
+    @Test
+    @DisplayName("logging out with a token that is already gone looks identical to logging out")
+    void logoutOfASpentTokenIsIndistinguishable() throws Exception {
+        MvcResult live = mvc.perform(post("/auth/logout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"still-live\"}")).andReturn();
+
+        MvcResult spent = mvc.perform(post("/auth/logout")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"already-spent\"}")).andReturn();
+
+        assertThat(live.getResponse().getStatus()).isEqualTo(spent.getResponse().getStatus());
+        assertThat(live.getResponse().getContentAsString())
+                .isEqualTo(spent.getResponse().getContentAsString());
     }
 }

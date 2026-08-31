@@ -1,4 +1,10 @@
 import { setupApiInterceptors, SessionExpiredError } from '../../services/apiInterceptor';
+import { REFRESH_TOKEN_KEY, resetRefreshState } from '../../services/session';
+import { authService } from '../../services/authService';
+
+jest.mock('../../services/authService', () => ({
+  authService: { refresh: jest.fn(), logout: jest.fn() }
+}));
 
 describe('apiInterceptor', () => {
   let originalFetch;
@@ -13,6 +19,8 @@ describe('apiInterceptor', () => {
     window.location = { href: '/board' };
 
     localStorage.clear();
+    resetRefreshState();
+    jest.clearAllMocks();
     setupApiInterceptors();
   });
 
@@ -87,6 +95,82 @@ describe('apiInterceptor', () => {
       { url: 'http://localhost:8080/api/auth/login' },
       {}
     );
+  });
+
+  test('renews the session instead of ending it when there is a refresh token', async () => {
+    localStorage.setItem('token', 'stale-jwt');
+    localStorage.setItem('tokenExpiration', pastExpiry());
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+    authService.refresh.mockResolvedValue({
+      token: 'fresh-jwt',
+      expiresIn: 900,
+      refreshToken: 'rotated'
+    });
+
+    await window.fetch('/api/tasks');
+
+    // The old behaviour here was a redirect to the sign-in screen every fifteen minutes, which is
+    // what made a short access token unaffordable in the first place.
+    expect(window.location.href).toBe('/board');
+    expect(originalFetch.mock.calls[0][1].headers.Authorization).toBe('Bearer fresh-jwt');
+  });
+
+  test('ends the session when the refresh token is refused', async () => {
+    localStorage.setItem('token', 'stale-jwt');
+    localStorage.setItem('tokenExpiration', pastExpiry());
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'withdrawn');
+    authService.refresh.mockRejectedValue(new Error('Invalid email or password'));
+
+    await expect(window.fetch('/api/tasks')).rejects.toBeInstanceOf(SessionExpiredError);
+
+    expect(originalFetch).not.toHaveBeenCalled();
+    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
+    expect(window.location.href).toBe('/');
+  });
+
+  test('retries once behind a 401 the client did not see coming', async () => {
+    localStorage.setItem('token', 'revoked-jwt');
+    localStorage.setItem('tokenExpiration', futureExpiry());
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+    originalFetch
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    authService.refresh.mockResolvedValue({
+      token: 'fresh-jwt',
+      expiresIn: 900,
+      refreshToken: 'rotated'
+    });
+
+    const response = await window.fetch('/api/tasks');
+
+    expect(response.status).toBe(200);
+    expect(originalFetch).toHaveBeenCalledTimes(2);
+    expect(originalFetch.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh-jwt');
+  });
+
+  test('a 401 with no refresh token is handed back rather than retried forever', async () => {
+    localStorage.setItem('token', 'jwt');
+    localStorage.setItem('tokenExpiration', futureExpiry());
+    originalFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    const response = await window.fetch('/api/tasks');
+
+    expect(response.status).toBe(401);
+    expect(originalFetch).toHaveBeenCalledTimes(1);
+    expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  test('a request made with only a refresh token in hand renews before it is sent', async () => {
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+    authService.refresh.mockResolvedValue({
+      token: 'fresh-jwt',
+      expiresIn: 900,
+      refreshToken: 'rotated'
+    });
+
+    await window.fetch('/api/tasks');
+
+    expect(originalFetch.mock.calls[0][1].headers.Authorization).toBe('Bearer fresh-jwt');
   });
 
   test('does not clone the response it returns', async () => {

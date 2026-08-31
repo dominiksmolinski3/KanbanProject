@@ -43,6 +43,7 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Mails a reset code if the address has an account, and does nothing if it does not.
@@ -96,6 +97,14 @@ public class PasswordResetService {
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         clearResetCode(user);
+        /*
+         * Every session the account had is withdrawn here, and this is the route where it matters
+         * most: somebody resetting a password they did not lose is doing it because another person
+         * has it, and leaving that person's sessions running would mean the reset changed nothing
+         * they were using. What the reset cannot do is retract the access tokens already issued -
+         * those run to their own expiry, which is the reason that expiry is now short.
+         */
+        refreshTokenService.revokeAllFor(user);
 
         /*
          * Redeeming the code proves control of the mailbox, which is the same thing the
@@ -116,9 +125,11 @@ public class PasswordResetService {
     /**
      * Changes the password of the account the caller is already signed in as.
      *
-     * <p>Requires the current password rather than trusting the token alone: a token is valid for
-     * an hour and cannot be revoked, so it is a weaker claim than knowledge of the password, and
-     * this is the operation that would let a borrowed one lock the owner out.
+     * <p>Requires the current password rather than trusting the token alone. That was a workaround
+     * while a token could not be withdrawn at all; it stays because it is still the right rule for
+     * this one route - knowledge of the password is a stronger claim than possession of a token,
+     * and this is the operation that would let a borrowed one lock the owner out. What has changed
+     * is what happens afterwards: the change now ends every other session the account holds.
      */
     public void changePassword(User currentUser, ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
@@ -132,6 +143,14 @@ public class PasswordResetService {
         // A reset in flight is stale the moment the password changes deliberately.
         clearResetCode(user);
         userRepository.save(user);
+        /*
+         * Including the caller's own session. Changing a password is the one moment where signing
+         * everyone out is the point, and there is no way to tell the caller's refresh token from
+         * anybody else's here - the request carries an access token, not a refresh one. The client
+         * asks for a new pair with the new password, which is a login it was going to be shown
+         * anyway.
+         */
+        refreshTokenService.revokeAllFor(user);
     }
 
     private static void clearResetCode(User user) {
