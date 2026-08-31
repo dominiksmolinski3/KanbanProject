@@ -50,6 +50,21 @@ public class PersistentSmtpMailSender extends JavaMailSenderImpl {
 
     private Transport transport;
 
+    /** When {@link #transport} was opened, which is what {@link #keepAlive()} ages it against. */
+    private long openedAt;
+
+    private long maxConnectionAgeMs = 600000;
+
+    /**
+     * How long a connection may be held before the keep-alive replaces it. A server retires one on
+     * its own schedule whatever this says - Gmail answers {@code 421 Connection expired} - and the
+     * retry in {@link #sendOverHeldConnection} is what makes that survivable. This is what keeps it
+     * rare, and keeps the reconnect on the scheduler thread rather than in somebody's signup.
+     */
+    public void setMaxConnectionAgeMs(long maxConnectionAgeMs) {
+        this.maxConnectionAgeMs = maxConnectionAgeMs;
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     public void openOnStartup() {
         renew("startup");
@@ -59,10 +74,23 @@ public class PersistentSmtpMailSender extends JavaMailSenderImpl {
      * Keeps the held connection live, and reopens it when the server has hung up - which it will,
      * unprompted, on an idle connection. Four minutes by default, comfortably inside the idle
      * timeout of every SMTP server this is likely to talk to.
+     *
+     * <p>A connection past {@link #setMaxConnectionAgeMs} is replaced rather than pinged. Staying
+     * alive is not the same as staying usable - Gmail expires a connection on its own terms however
+     * faithfully it has been pinged - and the difference between meeting that here and meeting it
+     * inside {@code sendMessage} is the difference between a log line and a signup that waits for a
+     * reconnect it did not expect.
      */
     @Scheduled(fixedRateString = "${app.mail.keep-alive-interval-ms:240000}",
             initialDelayString = "${app.mail.keep-alive-interval-ms:240000}")
     public void keepAlive() {
+        synchronized (lock) {
+            if (transport != null && System.currentTimeMillis() - openedAt >= maxConnectionAgeMs) {
+                log.info("Replacing the SMTP connection before the server retires it");
+                closeQuietly(transport);
+                transport = null;
+            }
+        }
         renew("keep-alive");
     }
 
@@ -115,6 +143,7 @@ public class PersistentSmtpMailSender extends JavaMailSenderImpl {
         Transport opened = openTransport();
         log.info("SMTP connection to {}:{} open and authenticated", getHost(), getPort());
         transport = opened;
+        openedAt = System.currentTimeMillis();
         return opened;
     }
 
@@ -155,9 +184,6 @@ public class PersistentSmtpMailSender extends JavaMailSenderImpl {
      * Sends, and retries once on a connection that died between the liveness check and the write -
      * a race the stock implementation cannot lose because it never reuses a connection, and this
      * one can.
-     *
-     * <p>A rejection is not a drop. If the server answered, or the connection is still up, the
-     * message is what the server objected to, and sending it again would deliver it twice.
      */
     private void sendOverHeldConnection(MimeMessage mimeMessage) throws MessagingException {
         Address[] recipients = mimeMessage.getAllRecipients();
@@ -165,17 +191,45 @@ public class PersistentSmtpMailSender extends JavaMailSenderImpl {
 
         try {
             connection().sendMessage(mimeMessage, addresses);
-        } catch (SendFailedException rejected) {
-            throw rejected;
         } catch (MessagingException failure) {
-            if (isAlive(transport)) {
+            if (!isWorthRetrying(failure)) {
                 throw failure;
             }
-            log.warn("SMTP connection dropped mid-send; reconnecting and retrying once", failure);
+            log.warn("SMTP connection was gone by the time the message went out; reconnecting and retrying once",
+                    failure);
             closeQuietly(transport);
             transport = null;
             connection().sendMessage(mimeMessage, addresses);
         }
+    }
+
+    /**
+     * Whether the failure was the connection rather than the message - which is the only question
+     * worth asking here, and specifically not "what type is the exception".
+     *
+     * <p>It was the type at first, and that was wrong in production within the hour: Gmail retires
+     * a connection with {@code 421 4.7.0 Connection expired, try reconnecting}, and Angus reports
+     * that as {@code SMTPSendFailedException}, a subclass of {@link SendFailedException}. Reading
+     * the class as "the server rejected this message" turned the one failure this class exists to
+     * absorb into a failed signup, and the {@code try reconnecting} in the server's own words went
+     * unheeded.
+     *
+     * <p>So the liveness of the connection decides. A server that rejects a message stays on the
+     * line to say so, and a rejection answered over a live connection is rethrown untouched - the
+     * message is the problem, and sending it again would deliver it twice. A connection that is
+     * gone carried nothing, with one exception worth checking: a partial send that some recipients
+     * already took is a delivery, not a drop.
+     */
+    private boolean isWorthRetrying(MessagingException failure) {
+        if (failure instanceof SendFailedException sendFailed && reachedSomeone(sendFailed)) {
+            return false;
+        }
+        return !isAlive(transport);
+    }
+
+    private static boolean reachedSomeone(SendFailedException failure) {
+        Address[] delivered = failure.getValidSentAddresses();
+        return delivered != null && delivered.length > 0;
     }
 
     /** For {@code SMTPTransport} this is a {@code NOOP} on the wire, not a local flag. */
