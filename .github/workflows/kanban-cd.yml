@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
@@ -17,14 +17,16 @@ jobs:
       contents: read
       packages: write
       security-events: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-        
+
     - name: Log in to GHCR
       uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
@@ -69,8 +71,49 @@ jobs:
         sarif_file: trivy-results.sarif
         category: trivy-image
 
+  promote:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Check that this commit is still the tip of main
+      id: tip
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        tip=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" --jq .sha)
+        echo "main is at $tip, this run built ${{ github.sha }}"
+        if [ "$tip" = "${{ github.sha }}" ]; then
+          echo "is_tip=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "is_tip=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::A newer commit is on ${{ github.ref_name }}; this image was built and scanned but will not be promoted to :latest."
+        fi
+
+    - name: Log in to GHCR
+      if: steps.tip.outputs.is_tip == 'true'
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Promote the scanned image to :latest
+      if: steps.tip.outputs.is_tip == 'true'
       run: |
         docker buildx imagetools create \
           --tag ghcr.io/${{ github.repository_owner }}/kanbanproject-app:latest \
-          ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ steps.build.outputs.digest }}
+          ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ needs.build-and-push.outputs.digest }}
+
+    - name: Verify main did not move while promoting
+      if: steps.tip.outputs.is_tip == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        tip=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" --jq .sha)
+        if [ "$tip" != "${{ github.sha }}" ]; then
+          echo "::warning::main moved to $tip while this job was promoting; :latest may point at the older ${{ github.sha }} and need promoting by hand."
+        fi
