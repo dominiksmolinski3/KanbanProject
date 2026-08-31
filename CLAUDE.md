@@ -207,9 +207,32 @@ Drag payloads are typed through `dataTransfer` MIME types — `application/task`
 
 ### Auth
 
-JWT bearer tokens, stateless sessions, one-hour expiry (`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend), the health/info actuator endpoints, `/ws/**`, the SPA shell (`/` plus `SpaRoutes.ALL`) and the static bundle are public; everything else — the whole of `/api/**` — requires authentication. Signup goes through an emailed verification code before login works, and login can require a Google reCAPTCHA check.
+JWT bearer tokens, stateless sessions, **fifteen-minute** access-token expiry
+(`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend, forgot-password,
+reset-password, refresh, logout), the health/info actuator endpoints, `/ws/**`, the SPA shell (`/`
+plus `SpaRoutes.ALL`) and the static bundle are public; everything else — the whole of `/api/**` —
+requires authentication. Signup goes through an emailed verification code before login works, and
+login can require a Google reCAPTCHA check.
 
-On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches `window.fetch` at module load to attach `Authorization` from `localStorage`, skipping any URL containing `/auth/` (which still matches the prefixed `/api/auth/...`) and redirecting to `/` on expiry. Because it wraps the global, tests and any code path using `fetch` inherit it.
+**A session is a row, not the JWT.** `RefreshToken` (`refresh_tokens`, `V7`) stores a SHA-256
+digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads
+it. Login answers with both tokens; `POST /api/auth/refresh` exchanges a refresh token for a new
+pair and **spends the one it was given** — presenting an already-rotated token is read as theft and
+withdraws every live token the account holds. `POST /api/auth/logout` withdraws one; changing or
+resetting a password withdraws them all. Both new routes are public (the caller reaching for
+`/refresh` is the one whose access token has just lapsed) and both are on the `CREDENTIALS` rate
+limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
+access token already issued, which is why fifteen minutes rather than an hour.
+
+On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
+`window.fetch` at module load to attach `Authorization`, skipping any URL containing `/auth/` (which
+still matches the prefixed `/api/auth/...`). Because it wraps the global, tests and any code path
+using `fetch` inherit it. An expired access token now renews rather than redirecting, and an
+unexpected 401 is retried once; only a refresh the server refuses ends the session and sends the
+browser to `/`. [session.js](frontend/src/services/session.js) owns the three `localStorage` keys
+and **serialises renewal through one in-flight promise** — rotation means two concurrent refreshes
+would present the same token twice, which the server reads as a stolen chain, so a normal board load
+firing a dozen requests at once must make exactly one refresh call.
 
 CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java). They have already drifted — the WebSocket list additionally allows `http://kanbanproject.pl` and `http://www.kanbanproject.pl`.
 

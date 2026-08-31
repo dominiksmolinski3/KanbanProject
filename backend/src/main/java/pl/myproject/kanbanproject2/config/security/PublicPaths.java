@@ -23,7 +23,9 @@ public final class PublicPaths {
             "/api/auth/resend",
             // Someone who has forgotten their password has, by definition, no token.
             "/api/auth/forgot-password",
-            "/api/auth/reset-password"
+            "/api/auth/reset-password",
+            "/api/auth/refresh",
+            "/api/auth/logout"
     };
 
     public static final String[] INFRA_ENDPOINTS = {
