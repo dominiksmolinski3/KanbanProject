@@ -82,12 +82,19 @@ All backend commands run from `backend/`, all frontend commands from `frontend/`
 ./mvnw verify                           # runs the jacoco `check` gate
 ```
 
-The JaCoCo `check` goal is bound to `verify`, so `package` and `test` skip it. Its per-package LINE
-minimum is currently **`0.0`** ([pom.xml](backend/pom.xml)) — the rule is wired up but passes anything,
-so treat `verify` as a no-op gate rather than a coverage guarantee until that number is raised.
+The JaCoCo `check` goal is bound to `verify`, so `package` and `test` skip it — **CI runs `verify`**,
+which is the phase the check was bound to all along. It is a real ratchet ([pom.xml](backend/pom.xml)):
+every package carries its own LINE floor set just under where it measures, plus a bundle rule and a
+`0.15` catch-all that only an unnamed package can land on, so a brand-new package starts at 0% and
+fails the build. The way past a floor is a test, never a lower number — when raising one, measure
+first (`./mvnw clean test jacoco:report`, then read `target/site/jacoco/index.html`) and set the
+floor a shade under, leaving small packages more slack than large ones because at 20 lines a 0.95
+floor is one line away from a tripwire.
 
-Test sources live under `backend/src/test/java/.../config/` and cover the security filter chain, the
-URL space and the auth rate limiter. There is no service-layer test suite yet.
+Test sources sit beside the code they cover, one package per feature. Everything below `layout`,
+`file` and `task/history` has a service-level suite; `config`, `config/websocket` and `service` are
+what a next round would raise. The suites are all unit tests over mocked collaborators — what that
+cannot see is covered instead by the database-free build guards listed under **Architecture**.
 
 ### Frontend (React 19 / Vite 8 / Jest / Cypress)
 

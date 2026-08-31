@@ -312,29 +312,44 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  file measures 97.7 and task.history 100, both up from the high
+                                  thirties. The floor is 0.90 rather than a shade under each,
+                                  because these are the two smallest packages in the build - 43 and
+                                  17 lines - and at that size a 0.95 floor is one uncovered line
+                                  away from failing, which turns the ratchet into a tripwire.
+                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>pl.myproject.kanbanproject2.file</include>
-                                    </includes>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.38</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                                <rule>
-                                    <element>PACKAGE</element>
-                                    <includes>
                                         <include>pl.myproject.kanbanproject2.task.history</include>
                                     </includes>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.38</minimum>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  The two layout packages were the least covered code in the
+                                  project at 27.5 and 28.2; they measure 77.5 and 78.3 now. What is
+                                  left uncovered in each is the controller, which has no slice test
+                                  yet - that is the next thing to raise this.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.layout.column</include>
+                                        <include>pl.myproject.kanbanproject2.layout.row</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -343,8 +358,6 @@
                                     <includes>
                                         <include>pl.myproject.kanbanproject2.config.websocket</include>
                                         <include>pl.myproject.kanbanproject2.config</include>
-                                        <include>pl.myproject.kanbanproject2.layout.column</include>
-                                        <include>pl.myproject.kanbanproject2.layout.row</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -355,8 +368,10 @@
                                     </limits>
                                 </rule>
                                 <!--
-                                  The catch-all. Every package not named above has to clear this,
-                                  which is where file (16.7) and the two layout packages sit.
+                                  The catch-all, and the reason a brand-new package cannot hide:
+                                  anything not named above starts at 0% and fails the build, so the
+                                  way out is a test or an explicit rule rather than a lower number.
+                                  Nothing sits on it today - every package in the build is named.
                                 -->
                                 <rule>
                                     <element>PACKAGE</element>
@@ -368,13 +383,18 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  The bundle rule catches what per-package floors cannot: a large
+                                  untested addition inside a package that is already well covered.
+                                  78.8 measured, so 0.78.
+                                -->
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.68</minimum>
+                                            <minimum>0.78</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
