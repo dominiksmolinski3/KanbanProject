@@ -248,6 +248,21 @@ resetting a password withdraws them all. Both new routes are public (the caller 
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
 access token already issued, which is why fifteen minutes rather than an hour.
 
+**The rate limiter is a burst then a doubling cooldown, not a quota.** `AuthRateLimiter` keys one
+escalation per (rule, dimension, key): a key gets its free burst, and after that each attempt sets
+the wait for the next one — 15s, 30s, 60s, and so on to a ceiling (5m for `CREDENTIALS`, 15m for
+`EMAIL`). It replaced a bucket4j token bucket whose refill made the *first* refusal the worst one:
+five signup mails an hour meant the sixth attempt was told to come back in eleven minutes, which
+costs an attacker nothing and costs the person who mistyped their address the afternoon. Sustained
+abuse converges on the ceiling, a lower long-run rate than the quota allowed, so the change is
+kinder at the start and stricter at the end. Three invariants hold it together: escalation is
+charged on the way **out**, so a refused attempt changes nothing and hammering neither extends the
+wait nor escapes it; a refused attempt still counts as *activity*, so only real quiet (the
+per-rule window) forgives a key; and the window must be at least the ceiling, or sitting out the
+longest wait would hand the whole burst back. The clock is Caffeine's `Ticker` and readings are
+compared as `now - deadline < 0` — `System.nanoTime` has an arbitrary origin and is routinely
+negative, so a zero-valued deadline is a point in time, not "no cooldown".
+
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
 `window.fetch` at module load to attach `Authorization`, skipping any URL containing `/auth/` (which
 still matches the prefixed `/api/auth/...`). Because it wraps the global, tests and any code path
