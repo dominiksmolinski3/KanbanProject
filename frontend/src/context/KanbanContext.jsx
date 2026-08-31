@@ -16,9 +16,10 @@ import {
   updateRowWipLimit,
   deleteRow,
   updateTaskRow,
-  updateColumnPosition,
-  updateRowPosition,
-  updateTaskPosition,
+  reorderColumns,
+  reorderRows,
+  reorderTasks,
+  ConcurrentModificationError,
   updateTaskName,
   updateRowName,
   updateColumnName,
@@ -373,15 +374,26 @@ export function KanbanProvider({ children }) {
       
       setTasks(updatedTasks);
       
-      const updatePromises = newOrder.map(async (task, index) => {
-        try {
-          await updateTaskPosition(task.id, index);
-        } catch (error) {
-          console.error(`Error updating task position for ${task.id}:`, error);
+      /*
+       * One call for the cell, not one per card. The loop this replaces swallowed each failure on
+       * its own, which was survivable while a lost update was silent; with a version on the task a
+       * card somebody else moved makes one of those calls a 409, and the cards before it in the
+       * loop keep their new positions - a board half in the old order and half in the new, which
+       * is the one state neither person asked for.
+       */
+      try {
+        await reorderTasks(newOrder.map(task => task.id));
+      } catch (err) {
+        if (err instanceof ConcurrentModificationError) {
+          // Nothing was applied - the whole batch rolled back - so there is nothing to undo and
+          // nothing to report as broken. Say what happened and show what the board is now.
+          toast.info(t('notifications.changedBySomeoneElse'));
+          await refreshTasks();
+          return;
         }
-      });
-      
-      await Promise.all(updatePromises);
+        throw err;
+      }
+
       await refreshTasks();
       
     } catch (err) {
@@ -769,15 +781,20 @@ export function KanbanProvider({ children }) {
       newColumns.splice(targetIndex, 0, movedColumn);
       setColumns(newColumns);
       
-      const updatePromises = newColumns.map(async (column, index) => {
-        try {
-          await updateColumnPosition(column.id, index);
-        } catch (error) {
-          console.error(`Error updating column position for ${column.id}:`, error);
+      try {
+        const reordered = await reorderColumns(newColumns.map(column => column.id));
+        // The server's positions rather than the local array order: they are the same thing when
+        // the call succeeds, and taking them back keeps the two from drifting.
+        setColumns(reordered);
+      } catch (err) {
+        if (err instanceof ConcurrentModificationError) {
+          toast.info(t('notifications.changedBySomeoneElse'));
+          await refreshBoard();
+          return;
         }
-      });
-      
-      await Promise.all(updatePromises);
+        throw err;
+      }
+
       toast.success(t('notifications.columnMoved', { name: movedColumn.name }));
     } catch (err) {
       console.error('Error moving column:', err);
@@ -801,15 +818,18 @@ export function KanbanProvider({ children }) {
       
       setRows(newRows);
       
-      const updatePromises = newRows.map(async (row, index) => {
-        try {
-          await updateRowPosition(row.id, index);
-        } catch (error) {
-          console.error(`Error updating row position for ${row.id}:`, error);
+      try {
+        const reordered = await reorderRows(newRows.map(row => row.id));
+        setRows(reordered);
+      } catch (err) {
+        if (err instanceof ConcurrentModificationError) {
+          toast.info(t('notifications.changedBySomeoneElse'));
+          await refreshBoard();
+          return;
         }
-      });
-      
-      await Promise.all(updatePromises);
+        throw err;
+      }
+
       toast.success(t('notifications.rowMoved', { name: movedRow.name }));
     } catch (err) {
       console.error('Error moving row:', err);

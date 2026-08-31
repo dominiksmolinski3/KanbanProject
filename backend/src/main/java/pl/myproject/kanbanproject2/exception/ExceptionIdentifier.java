@@ -59,6 +59,14 @@ public enum ExceptionIdentifier {
     ROW_NOT_FOUND(NOT_FOUND, "Row not found"),
 
     /*
+     * A reorder that cannot mean anything: an empty or duplicated id list, or - for tasks - ids
+     * drawn from more than one cell. A position is an ordinal within one container, so numbering
+     * across two of them produces two tasks at position 0 and no way to say which comes first.
+     * The caller's mistake, so 400, with the specific message passed at each throw site.
+     */
+    INVALID_REORDER(BAD_REQUEST, "The requested order cannot be applied"),
+
+    /*
      * A board, or anything on one, that the caller is not a member of answers BOARD_NOT_FOUND and
      * not a 403. The distinction is the whole point: 403 confirms the object exists, which lets a
      * caller map out somebody else's board by walking ids and reading the status codes. The same

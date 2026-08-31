@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -277,6 +278,65 @@ public class TaskService {
         var task = findTask(caller, id);
         task.setPosition(position);
         return taskMapper.apply(taskRepository.save(task));
+    }
+
+    /**
+     * Renumbers one cell in a single transaction, from the ids in the order they should read.
+     *
+     * <p>The client has always reordered a cell by sending one PATCH per card in it. That was
+     * merely wasteful until the tasks gained a {@code @Version}: now a card somebody else has
+     * moved makes one of those PATCHes a 409, and the ones that already succeeded stay applied -
+     * so a failed reorder leaves the board in an order nobody asked for, half old and half new.
+     * One call is one transaction, and a stale write in it rolls back every position in the batch.
+     *
+     * <p>Positions are the index in the list, over exactly the ids given. A caller who sends part
+     * of a cell renumbers only that part, which is the same thing the per-task route does one call
+     * at a time; the client sends the whole cell.
+     */
+    public List<TaskDto> reorderTasks(User caller, List<Integer> orderedIds) {
+        requireDistinct(orderedIds, "task");
+
+        var tasks = orderedIds.stream().map(id -> findTask(caller, id)).toList();
+        requireOneCell(tasks);
+
+        var reordered = new ArrayList<TaskDto>(tasks.size());
+        for (int position = 0; position < tasks.size(); position++) {
+            var task = tasks.get(position);
+            task.setPosition(position);
+            reordered.add(taskMapper.apply(taskRepository.save(task)));
+        }
+        return reordered;
+    }
+
+    /**
+     * Every task in the batch has to sit in the same column and the same swimlane.
+     *
+     * <p>Both are nullable - a task can be off the board entirely - so this compares ids and treats
+     * "no column" as a cell of its own rather than as a wildcard. Comparing the entities would go
+     * wrong the same way {@code Board.isVisibleTo} did before it compared ids.
+     */
+    private void requireOneCell(List<Task> tasks) {
+        var first = tasks.get(0);
+        Integer columnId = first.getColumn() == null ? null : first.getColumn().getId();
+        Integer rowId = first.getRow() == null ? null : first.getRow().getId();
+
+        for (Task task : tasks) {
+            var taskColumn = task.getColumn() == null ? null : task.getColumn().getId();
+            var taskRow = task.getRow() == null ? null : task.getRow().getId();
+            boardService.requireSameBoard(first.getBoard(), task.getBoard());
+            if (!Objects.equals(columnId, taskColumn) || !Objects.equals(rowId, taskRow)) {
+                throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
+                        "Task " + task.getId() + " is not in the same cell as task " + first.getId()
+                                + "; move it first, then reorder");
+            }
+        }
+    }
+
+    private static void requireDistinct(List<Integer> ids, String what) {
+        if (ids.size() != new HashSet<>(ids).size()) {
+            throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
+                    "The same " + what + " appears more than once in the requested order");
+        }
     }
 
     public TaskDto addLabelToTask(User caller, Integer taskId, String label) {
