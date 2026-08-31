@@ -74,6 +74,7 @@
     "taskMovedToColumnAndRow": "Aufgabe \"{{title}}\" wurde in Spalte \"{{column}}\" und Zeile \"{{row}}\" verschoben",
     "taskMovedToRow": "Aufgabe \"{{title}}\" wurde in Zeile \"{{row}}\" verschoben",
     "columnMoved": "Spalte \"{{name}}\" wurde verschoben",
+    "changedBySomeoneElse": "Jemand anderes hat das Board zuerst geändert - die neueste Version wird angezeigt",
     "rowMoved": "Zeile \"{{name}}\" wurde verschoben",
     "labelsUpdateError": "Beim Aktualisieren der Etiketten ist ein Fehler aufgetreten",
     "subtaskAddError": "Beim Hinzufügen der Teilaufgabe ist ein Fehler aufgetreten",

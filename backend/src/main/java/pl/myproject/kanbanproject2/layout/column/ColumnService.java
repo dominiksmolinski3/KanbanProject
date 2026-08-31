@@ -11,7 +11,9 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskService;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 @Transactional
@@ -99,6 +101,32 @@ public class ColumnService {
         var column = findColumn(caller, id);
         column.setPosition(position);
         return columnMapper.apply(columnRepository.save(column));
+    }
+
+    /**
+     * Renumbers a board's stages in one transaction, from the ids in the order they should read.
+     *
+     * <p>Dragging a stage used to send one PATCH per column and swallow each failure separately,
+     * which since the {@code @Version} landed can leave the board half-reordered: the columns whose
+     * write went through keep their new place and the rest keep their old one. One call is one
+     * transaction, so either the whole order takes or none of it does.
+     */
+    public List<ColumnDto> reorderColumns(User caller, List<Integer> orderedIds) {
+        if (orderedIds.size() != Set.copyOf(orderedIds).size()) {
+            throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
+                    "The same column appears more than once in the requested order");
+        }
+
+        var columns = orderedIds.stream().map(id -> findColumn(caller, id)).toList();
+        columns.forEach(column -> boardService.requireSameBoard(columns.get(0).getBoard(), column.getBoard()));
+
+        var reordered = new ArrayList<ColumnDto>(columns.size());
+        for (int position = 0; position < columns.size(); position++) {
+            var column = columns.get(position);
+            column.setPosition(position);
+            reordered.add(columnMapper.apply(columnRepository.save(column)));
+        }
+        return reordered;
     }
 
     /**

@@ -193,6 +193,11 @@ different board (`BOARD_MISMATCH`).
 
 **WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.jsx](frontend/src/components/Board.jsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API.
 
+`TaskService.reorderTasks` requires every id to name a task in the **same cell** — the same column
+*and* the same swimlane, comparing ids so that "no column" is a cell of its own rather than a
+wildcard — because a position is an ordinal within one container. Column and row reorders require
+one board. Either mistake, and a repeated id, is `400 INVALID_REORDER`.
+
 Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class.
@@ -201,7 +206,15 @@ A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 
 
 Three React contexts, composed in [App.jsx](frontend/src/App.jsx): `AuthProvider` wraps the router; `KanbanProvider` and `ChatProvider` wrap the protected routes.
 
-[KanbanContext.jsx](frontend/src/context/KanbanContext.jsx) is the single source of board state (columns, rows, tasks, users) and owns every mutation plus all HTML5 drag-and-drop handlers. Its pattern throughout: call the API, optimistically update local state, fire a `react-toastify` notification keyed through `t()`, and often follow with `refreshTasks()`/`refreshBoard()` to resync. Reordering issues one `updateTaskPosition` call per item in the affected container. New board behavior belongs here rather than in components.
+[KanbanContext.jsx](frontend/src/context/KanbanContext.jsx) is the single source of board state (columns, rows, tasks, users) and owns every mutation plus all HTML5 drag-and-drop handlers. Its pattern throughout: call the API, optimistically update local state, fire a `react-toastify` notification keyed through `t()`, and often follow with `refreshTasks()`/`refreshBoard()` to resync. Reordering issues **one** call for the whole container — `reorderTasks`, `reorderColumns`,
+`reorderRows`, each a `PATCH /api/{tasks,columns,rows}/positions` carrying `{ orderedIds }` and
+applied in a single transaction. It used to be one `updateTaskPosition` per item, which stopped
+being merely wasteful once the entities gained a `@Version`: a card somebody else moved makes one
+of those calls a 409 and leaves the earlier ones applied, so a failed drag left the board half in
+the old order. A 409 now surfaces as `ConcurrentModificationError` from `api.js`, which the context
+answers with the `notifications.changedBySomeoneElse` toast and a refresh rather than an error —
+nothing was applied, so nothing is broken. New board behavior belongs here rather than in
+components.
 
 Drag payloads are typed through `dataTransfer` MIME types — `application/task`, `application/column`, `application/row` — and `handleDrop` branches on which type is present, with a `taskId`/`columnId` plain-text fallback.
 

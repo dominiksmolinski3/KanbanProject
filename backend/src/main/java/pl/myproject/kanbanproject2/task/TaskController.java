@@ -90,6 +90,20 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateTaskPosition(currentUser, id, position));
     }
 
+    /**
+     * Reorders one cell in a single call, which is what the route above should have been all along.
+     *
+     * <p>Dragging a card sends one PATCH per card in the cell; with a {@code @Version} on the task
+     * a card somebody else moved turns one of those into a 409 and leaves the earlier ones applied.
+     * This is one transaction: the whole order takes, or none of it does and the caller reloads.
+     */
+    @PatchMapping("/positions")
+    public ResponseEntity<List<TaskDto>> reorderTasks(
+            @Valid @RequestBody ReorderTasksRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(taskService.reorderTasks(currentUser, request.orderedIds()));
+    }
+
     @PutMapping("/{taskId}/label/{label}")
     public ResponseEntity<TaskDto> addLabelToTask(@PathVariable Integer taskId,
                                                   @PathVariable String label,

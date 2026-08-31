@@ -74,6 +74,7 @@
     "taskMovedToColumnAndRow": "Task \"{{title}}\" has been moved to column \"{{column}}\" and row \"{{row}}\"",
     "taskMovedToRow": "Task \"{{title}}\" has been moved to row \"{{row}}\"",
     "columnMoved": "Column \"{{name}}\" has been moved",
+    "changedBySomeoneElse": "Someone else changed the board first - showing the latest version",
     "rowMoved": "Row \"{{name}}\" has been moved",
     "labelsUpdateError": "An error occurred while updating the labels",
     "subtaskAddError": "An error occurred while adding the subtask",
