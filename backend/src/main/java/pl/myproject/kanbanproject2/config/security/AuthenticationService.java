@@ -66,8 +66,14 @@ public class AuthenticationService {
     /**
      * An unknown address is reported as an invalid code rather than as an unknown user — the two
      * are the same fact from the caller's side, and only one of them names an account.
+     *
+     * <p>Answers with a session, exactly as {@link #login} does, because the code is a credential:
+     * it was sent to the mailbox and it is spent here. Verifying used to answer {@code 204} and
+     * leave the client to ask for the password again, which is a second credential for a fact the
+     * caller has just proved — and the client had nowhere to go with a body it did not get, so
+     * the person who had just verified sat on the verification screen with a verified account.
      */
-    public void verifyUser(VerifyUserDto input) {
+    public LoginResponse verifyUser(VerifyUserDto input) {
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
 
@@ -82,7 +88,7 @@ public class AuthenticationService {
         user.setEnabled(true);
         user.setVerificationCode(null);
         user.setVerificationCodeExpiresAt(null);
-        userRepository.save(user);
+        return issueSession(userRepository.save(user));
     }
 
     /**

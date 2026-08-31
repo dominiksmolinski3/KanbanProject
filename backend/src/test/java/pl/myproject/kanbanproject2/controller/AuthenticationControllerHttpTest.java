@@ -96,6 +96,33 @@ class AuthenticationControllerHttpTest {
     }
 
     @Test
+    @DisplayName("verify answers 200 with the session, so the client has somewhere to go")
+    void verifyAnswersWithASession() throws Exception {
+        when(authenticationService.verifyUser(any()))
+                .thenReturn(new LoginResponse("signed-access-token", 900000L, "a-refresh-token", 2592000000L));
+
+        mvc.perform(post("/auth/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"111111\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("signed-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("a-refresh-token"));
+    }
+
+    @Test
+    @DisplayName("a code that does not check out is still a 400 with no session in it")
+    void aBadCodeCarriesNoSession() throws Exception {
+        when(authenticationService.verifyUser(any()))
+                .thenThrow(new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
+
+        mvc.perform(post("/auth/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"222222\"}"))
+                .andExpect(jsonPath("$.code").value("INVALID_VERIFICATION_CODE"))
+                .andExpect(jsonPath("$.token").doesNotExist());
+    }
+
+    @Test
     @DisplayName("resend answers 202 with an empty body as well")
     void resendAnswers202() throws Exception {
         mvc.perform(post("/auth/resend").param("email", "anyone@example.test"))

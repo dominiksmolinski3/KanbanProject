@@ -240,6 +240,39 @@ class AuthenticationServiceEnumerationTest {
         }
 
         @Test
+        @DisplayName("the right code signs the account in, rather than sending it back to the login form")
+        void rightCodeReturnsASession() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode("111111");
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+            when(jwtService.generateToken(pending)).thenReturn("signed-access-token");
+            when(jwtService.getExpirationTime()).thenReturn(900000L);
+            when(refreshTokenService.issue(pending)).thenReturn("a-refresh-token");
+            when(refreshTokenService.getExpirationTime()).thenReturn(2592000000L);
+
+            var session = service.verifyUser(verification(KNOWN, "111111"));
+
+            assertThat(session.token()).isEqualTo("signed-access-token");
+            assertThat(session.refreshToken()).isEqualTo("a-refresh-token");
+        }
+
+        @Test
+        @DisplayName("a code that does not check out issues no session")
+        void aFailedVerificationIssuesNothing() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode("111111");
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222")))
+                    .isInstanceOf(GlobalException.class);
+
+            assertThat(pending.isEnabled()).isFalse();
+            verifyNoInteractions(refreshTokenService);
+        }
+
+        @Test
         @DisplayName("an expired code is still reported as expired - the account is already known to the caller")
         void expiredCodeIsStillDistinct() {
             var pending = user(KNOWN, false);

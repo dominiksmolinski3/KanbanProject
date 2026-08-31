@@ -232,7 +232,11 @@ JWT bearer tokens, stateless sessions, **fifteen-minute** access-token expiry
 reset-password, refresh, logout), the health/info actuator endpoints, `/ws/**`, the SPA shell (`/`
 plus `SpaRoutes.ALL`) and the static bundle are public; everything else — the whole of `/api/**` —
 requires authentication. Signup goes through an emailed verification code before login works, and
-login can require a Google reCAPTCHA check.
+login can require a Google reCAPTCHA check. **`POST /api/auth/verify` answers with a session**,
+the same `LoginResponse` login returns: the code came from the mailbox and is spent in redeeming
+it, so asking for the password on the next screen proves nothing new. It answered `204` before,
+and the client — which already read a token out of that response if one was there — had nothing
+to act on, so a verified account was left sitting on the verification form.
 
 **A session is a row, not the JWT.** `RefreshToken` (`refresh_tokens`, `V7`) stores a SHA-256
 digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads
