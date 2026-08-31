@@ -74,6 +74,7 @@
       "taskMovedToColumnAndRow": "La tâche \"{{title}}\" a été déplacée vers la colonne \"{{column}}\" et la ligne \"{{row}}\"",
       "taskMovedToRow": "La tâche \"{{title}}\" a été déplacée vers la ligne \"{{row}}\"",
       "columnMoved": "La colonne \"{{name}}\" a été déplacée",
+      "changedBySomeoneElse": "Quelqu'un d'autre a modifié le tableau en premier - voici la dernière version",
       "rowMoved": "La ligne \"{{name}}\" a été déplacée",
       "labelsUpdateError": "Une erreur s'est produite lors de la mise à jour des étiquettes",
       "subtaskAddError": "Une erreur s'est produite lors de l'ajout de la sous-tâche",

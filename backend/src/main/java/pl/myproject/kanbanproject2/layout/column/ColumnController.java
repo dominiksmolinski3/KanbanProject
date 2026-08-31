@@ -67,4 +67,12 @@ public class ColumnController {
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(columnService.updateColumnPosition(currentUser, id, position));
     }
+
+    /** The whole left-to-right order in one transaction. See {@code TaskController.reorderTasks}. */
+    @PatchMapping("/positions")
+    public ResponseEntity<List<ColumnDto>> reorderColumns(
+            @Valid @RequestBody ReorderColumnsRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(columnService.reorderColumns(currentUser, request.orderedIds()));
+    }
 }

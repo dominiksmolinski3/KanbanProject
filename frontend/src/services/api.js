@@ -310,6 +310,52 @@ export const updateTaskPosition = async (taskId, position) => {
 };
 
 /**
+ * Raised when the server refuses a write because somebody else changed the same thing first.
+ *
+ * The tasks, columns, rows and subtasks carry a `@Version`, so a stale write fails at the database
+ * and comes back as 409 rather than silently overwriting the other person's change. It is not an
+ * error in the usual sense - nothing is broken and nothing needs reporting - so it is its own type,
+ * and the caller answers it by reloading rather than by showing a failure.
+ */
+export class ConcurrentModificationError extends Error {
+  constructor(what = 'item') {
+    super(`The ${what} was changed by someone else`);
+    this.name = 'ConcurrentModificationError';
+  }
+}
+
+/**
+ * One call for a whole cell, replacing one PATCH per card.
+ *
+ * Position is the index in the list, and the server applies the lot in a single transaction: either
+ * the order takes or none of it does. That is the point rather than a nicety - with the version
+ * column in place, the old loop could get a 409 on its fourth call and leave three cards renumbered
+ * against a board nobody had asked to change.
+ */
+const reorder = async (endpoint, orderedIds, what) => {
+  const response = await fetch(`${endpoint}/positions`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ orderedIds })
+  });
+
+  if (response.status === 409) {
+    throw new ConcurrentModificationError(what);
+  }
+  if (!response.ok) {
+    throw new Error(`Error reordering ${what}s: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+export const reorderTasks = (orderedIds) => reorder(API_ENDPOINTS.TASKS, orderedIds, 'task');
+export const reorderColumns = (orderedIds) => reorder(API_ENDPOINTS.COLUMNS, orderedIds, 'column');
+export const reorderRows = (orderedIds) => reorder(API_ENDPOINTS.ROWS, orderedIds, 'swimlane');
+
+/**
  * Raised only when the server refuses an assignment because the user is at their WIP limit, or
  * when the pre-flight status says the same. Carries the status so the caller can name the limit
  * in its own language instead of reading a message written here.

@@ -74,6 +74,7 @@
       "taskMovedToColumnAndRow": "タスク「{{title}}」がカラム「{{column}}」と行「{{row}}」に移動されました",
       "taskMovedToRow": "タスク「{{title}}」が行「{{row}}」に移動されました",
       "columnMoved": "カラム「{{name}}」が移動されました",
+      "changedBySomeoneElse": "他のユーザーが先にボードを変更しました - 最新の状態を表示します",
       "rowMoved": "行「{{name}}」が移動されました",
       "labelsUpdateError": "ラベルの更新中にエラーが発生しました",
       "subtaskAddError": "サブタスクの追加中にエラーが発生しました",
