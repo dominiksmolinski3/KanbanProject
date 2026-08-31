@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.mail.MailProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -23,8 +24,11 @@ public class EmailConfiguration {
     private static final String DEFAULT_TIMEOUT_MS = "10000";
 
     @Bean
-    public PersistentSmtpMailSender javaMailSender(MailProperties properties) {
+    public PersistentSmtpMailSender javaMailSender(
+            MailProperties properties,
+            @Value("${app.mail.max-connection-age-ms:600000}") long maxConnectionAgeMs) {
         PersistentSmtpMailSender mailSender = new PersistentSmtpMailSender();
+        mailSender.setMaxConnectionAgeMs(maxConnectionAgeMs);
         mailSender.setHost(properties.getHost());
         if (properties.getPort() != null) {
             mailSender.setPort(properties.getPort());
