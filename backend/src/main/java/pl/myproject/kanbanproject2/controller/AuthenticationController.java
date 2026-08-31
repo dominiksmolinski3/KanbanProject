@@ -60,10 +60,17 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.login(loginDto));
     }
 
+    /**
+     * Answers {@code 200} with a session, the same body {@code /login} returns.
+     *
+     * <p>It used to be {@code 204}: the account was enabled and the caller was sent back to the
+     * sign-in form to type the password it had typed two screens earlier. The code redeemed here
+     * came from the mailbox and is spent in the redeeming, so it is a credential like any other,
+     * and there is nothing further to prove.
+     */
     @PostMapping("/verify")
-    public ResponseEntity<Void> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto) {
-        authenticationService.verifyUser(verifyUserDto);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<LoginResponse> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto) {
+        return ResponseEntity.ok(authenticationService.verifyUser(verifyUserDto));
     }
 
     /**

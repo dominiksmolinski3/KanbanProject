@@ -156,6 +156,8 @@ const HomePage = () => {
         navigate('/board');
       } else {
         toast.success(t('auth.verifySuccess', 'Account verified successfully! Please sign in.'));
+        setShowVerification(false);
+        setVerificationCode('');
         setActiveTab('login');
         setEmail(verificationEmail);
       }
