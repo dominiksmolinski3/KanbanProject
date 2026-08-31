@@ -48,6 +48,7 @@ class AuthenticationServiceEnumerationTest {
     private AuthenticationManager authenticationManager;
     private EmailService emailService;
     private JwtService jwtService;
+    private RefreshTokenService refreshTokenService;
     private AuthenticationService service;
 
     @BeforeEach
@@ -57,8 +58,9 @@ class AuthenticationServiceEnumerationTest {
         authenticationManager = mock(AuthenticationManager.class);
         emailService = mock(EmailService.class);
         jwtService = mock(JwtService.class);
+        refreshTokenService = mock(RefreshTokenService.class);
         service = new AuthenticationService(userRepository, passwordEncoder,
-                authenticationManager, emailService, jwtService);
+                authenticationManager, emailService, jwtService, refreshTokenService);
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));

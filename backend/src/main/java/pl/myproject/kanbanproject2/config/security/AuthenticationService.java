@@ -33,6 +33,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Registers the address if it is new, and does nothing at all if it is not.
@@ -109,8 +110,36 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS));
 
-        String jwtToken = jwtService.generateToken(user);
-        return new LoginResponse(jwtToken, jwtService.getExpirationTime());
+        return issueSession(user);
+    }
+
+    /**
+     * Exchanges a refresh token for a new pair, without asking for the password again.
+     *
+     * <p>This is the route that makes a short access token affordable. Rotation happens inside
+     * {@link RefreshTokenService#rotate}, which withdraws the presented token as part of the same
+     * transaction that issues its replacement - so the token the client sends here is spent by the
+     * time it reads the answer.
+     */
+    public LoginResponse refresh(String refreshToken) {
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken);
+        return respondWith(rotation.user(), rotation.refreshToken());
+    }
+
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
+    }
+
+    private LoginResponse issueSession(User user) {
+        return respondWith(user, refreshTokenService.issue(user));
+    }
+
+    private LoginResponse respondWith(User user, String refreshToken) {
+        return new LoginResponse(
+                jwtService.generateToken(user),
+                jwtService.getExpirationTime(),
+                refreshToken,
+                refreshTokenService.getExpirationTime());
     }
 
     /**

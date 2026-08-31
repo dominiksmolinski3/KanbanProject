@@ -22,6 +22,8 @@ public enum AuthRateLimitRule {
     static final String RESEND_PATH = "/api/auth/resend";
     static final String FORGOT_PASSWORD_PATH = "/api/auth/forgot-password";
     static final String RESET_PASSWORD_PATH = "/api/auth/reset-password";
+    static final String REFRESH_PATH = "/api/auth/refresh";
+    static final String LOGOUT_PATH = "/api/auth/logout";
 
     private static final Map<String, AuthRateLimitRule> BY_PATH = Map.of(
             LOGIN_PATH, CREDENTIALS,
@@ -32,7 +34,9 @@ public enum AuthRateLimitRule {
             // and it needs no authentication at all - so it belongs on the EMAIL limit, not as an
             // afterthought. Redeeming a code is guessing a six-digit secret, which is CREDENTIALS.
             FORGOT_PASSWORD_PATH, EMAIL,
-            RESET_PASSWORD_PATH, CREDENTIALS
+            RESET_PASSWORD_PATH, CREDENTIALS,
+            REFRESH_PATH, CREDENTIALS,
+            LOGOUT_PATH, CREDENTIALS
     );
 
     /**

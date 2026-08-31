@@ -20,6 +20,7 @@ import pl.myproject.kanbanproject2.config.security.LoginResponse;
 import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
 import pl.myproject.kanbanproject2.user.auth.ForgotPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
+import pl.myproject.kanbanproject2.user.auth.RefreshTokenRequest;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
@@ -82,6 +83,32 @@ public class AuthenticationController {
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Exchanges a refresh token for a new access token, and rotates the refresh token with it.
+     *
+     * <p>Public, and it has to be: the caller reaching for this route is the one whose access token
+     * has just lapsed, so requiring one would make the route useless exactly when it is needed. The
+     * refresh token in the body is the credential, and it is checked against a row that can be
+     * withdrawn - which is the difference this whole route exists for.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authenticationService.refresh(request.refreshToken()));
+    }
+
+    /**
+     * Ends the session the token names, and answers {@code 204} whether or not it was live.
+     *
+     * <p>Before refresh tokens existed there was nothing for this route to do - a JWT is valid
+     * until it expires no matter what the server thinks - so signing out was a client-side gesture
+     * that deleted a token the server would still have accepted. Now it withdraws a row.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authenticationService.logout(request.refreshToken());
         return ResponseEntity.noContent().build();
     }
 

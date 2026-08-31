@@ -122,6 +122,44 @@ export const authService = {
     }
   },
 
+  /**
+   * Exchanges a refresh token for a new pair. The old one is spent by the time this returns, so
+   * every caller has to go through `session.refreshSession`, which serialises them - presenting a
+   * spent token is what the server reads as theft.
+   */
+  refresh: async (refreshToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not renew the session');
+    }
+
+    return await response.json();
+  },
+
+  /** Ends one session on the server. Answers 204 whether or not the token was still live. */
+  logout: async (refreshToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not end the session');
+    }
+  },
+
   resendVerificationCode: async (email) => {
     const response = await fetch(`${API_BASE_URL}/auth/resend?email=${encodeURIComponent(email)}`, {
       method: 'POST',
