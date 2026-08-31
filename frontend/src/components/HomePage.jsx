@@ -108,7 +108,7 @@ const HomePage = () => {
   const payload = { email, password };
   if (isCaptchaRequired && captchaToken) payload.captcha = { token: captchaToken };
   const response = await authService.login(payload);
-      login(response.token, response.expiresIn);
+      login(response);
       toast.success(t('auth.loginSuccess', 'Successfully signed in!'));
       navigate('/board');
     } catch (error) {
@@ -151,7 +151,7 @@ const HomePage = () => {
       const response = await authService.verifyAccount({ email: verificationEmail, verificationCode });
       
       if (response && response.token) {
-        login(response.token, response.expiresIn);
+        login(response);
         toast.success(t('auth.verifyAndLoginSuccess', 'Account verified and signed in successfully!'));
         navigate('/board');
       } else {

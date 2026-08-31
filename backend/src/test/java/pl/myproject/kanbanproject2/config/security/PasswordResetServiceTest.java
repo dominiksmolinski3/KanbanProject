@@ -48,6 +48,7 @@ class PasswordResetServiceTest {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private EmailService emailService;
+    private RefreshTokenService refreshTokenService;
     private PasswordResetService service;
 
     @BeforeEach
@@ -55,7 +56,8 @@ class PasswordResetServiceTest {
         userRepository = mock(UserRepository.class);
         passwordEncoder = new BCryptPasswordEncoder();
         emailService = mock(EmailService.class);
-        service = new PasswordResetService(userRepository, passwordEncoder, emailService);
+        refreshTokenService = mock(RefreshTokenService.class);
+        service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService);
 
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
     }
@@ -285,6 +287,63 @@ class PasswordResetServiceTest {
 
             assertThat(existing.getPasswordResetCode()).isNull();
             assertThat(existing.getPasswordResetExpiresAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("changing a password ends every session the account had, including this one")
+        void changingWithdrawsEverySession() {
+            var existing = user(KNOWN, true);
+            when(userRepository.findById(1)).thenReturn(Optional.of(existing));
+
+            service.changePassword(existing, new ChangePasswordRequest("old-password", "a-new-password"));
+
+            // The reason someone changes a password they have not forgotten is that somebody else
+            // knows it. Leaving that person's sessions running would mean the change did nothing
+            // to the thing it was for.
+            verify(refreshTokenService).revokeAllFor(existing);
+        }
+
+        @Test
+        @DisplayName("a refused change withdraws nothing - a wrong guess is not a logout button")
+        void arefusedChangeWithdrawsNothing() {
+            var existing = user(KNOWN, true);
+
+            assertThatThrownBy(() -> service.changePassword(existing,
+                    new ChangePasswordRequest("not-the-password", "a-new-password")))
+                    .isInstanceOf(GlobalException.class);
+
+            verifyNoInteractions(refreshTokenService);
+        }
+    }
+
+    @Nested
+    @DisplayName("what a reset does to sessions already running")
+    class SessionsAfterAReset {
+
+        @Test
+        @DisplayName("redeeming a code withdraws every session, which is the point of resetting")
+        void redeemingWithdrawsEverySession() throws MessagingException {
+            var existing = user(KNOWN, true);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
+            service.requestReset(KNOWN);
+
+            service.resetPassword(new ResetPasswordRequest(KNOWN, mailedCode(), "a-new-password"));
+
+            verify(refreshTokenService).revokeAllFor(existing);
+        }
+
+        @Test
+        @DisplayName("a wrong code withdraws nothing")
+        void aWrongCodeWithdrawsNothing() throws MessagingException {
+            var existing = user(KNOWN, true);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
+            service.requestReset(KNOWN);
+
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest(KNOWN, "000000", "a-new-password")))
+                    .isInstanceOf(GlobalException.class);
+
+            verifyNoInteractions(refreshTokenService);
         }
     }
 }
