@@ -503,7 +503,7 @@ public class TaskService {
      * of the deployment rather than of a user, and every board's deadlines have to be swept.
      *
      * <p>Every flag is written first and the mail goes out afterwards, so a slow or unreachable
-     * SMTP server cannot leave the {@code expired} column half-updated. Only the crossing into
+     * mail provider cannot leave the {@code expired} column half-updated. Only the crossing into
      * expired is notified; a task whose deadline was pushed back goes quiet without a second mail.
      */
     @Scheduled(fixedRate = 1800000)

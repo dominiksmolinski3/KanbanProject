@@ -1,6 +1,5 @@
 package pl.myproject.kanbanproject2.config.security;
 
-import jakarta.mail.MessagingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -70,7 +69,7 @@ class PasswordResetServiceTest {
     }
 
     /** The plaintext code as it went out by mail, recovered from the message body. */
-    private String mailedCode() throws MessagingException {
+    private String mailedCode() {
         var body = ArgumentCaptor.forClass(String.class);
         verify(emailService).sendVerificationEmail(any(), any(), body.capture());
         var matcher = SIX_DIGITS.matcher(body.getValue());
@@ -84,7 +83,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("an address with an account is mailed a code")
-        void knownAddressIsMailed() throws MessagingException {
+        void knownAddressIsMailed() {
             var existing = user(KNOWN, true);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
 
@@ -96,7 +95,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("the stored code is a hash, not the code itself")
-        void codeIsStoredHashed() throws MessagingException {
+        void codeIsStoredHashed() {
             var existing = user(KNOWN, true);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
 
@@ -111,7 +110,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("an address with no account is answered the same way, and mails nothing")
-        void unknownAddressIsSilent() throws MessagingException {
+        void unknownAddressIsSilent() {
             when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
 
             assertThatCode(() -> service.requestReset(UNKNOWN)).doesNotThrowAnyException();
@@ -137,7 +136,7 @@ class PasswordResetServiceTest {
     @DisplayName("redeeming a code")
     class Redeeming {
 
-        private User prepared(boolean enabled) throws MessagingException {
+        private User prepared(boolean enabled) {
             var existing = user(KNOWN, enabled);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
             service.requestReset(KNOWN);
@@ -146,7 +145,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("the right code sets the new password and clears the code")
-        void rightCodeResets() throws MessagingException {
+        void rightCodeResets() {
             var existing = prepared(true);
             String code = mailedCode();
 
@@ -159,7 +158,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("a code is single use - the second attempt is refused")
-        void codeIsSingleUse() throws MessagingException {
+        void codeIsSingleUse() {
             prepared(true);
             String code = mailedCode();
 
@@ -174,7 +173,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("a wrong code is refused and leaves the password alone")
-        void wrongCodeIsRefused() throws MessagingException {
+        void wrongCodeIsRefused() {
             var existing = prepared(true);
             String before = existing.getPassword();
 
@@ -189,7 +188,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("an expired code is refused, and cleared so it cannot be ground down")
-        void expiredCodeIsRefusedAndCleared() throws MessagingException {
+        void expiredCodeIsRefusedAndCleared() {
             var existing = prepared(true);
             String code = mailedCode();
             existing.setPasswordResetExpiresAt(LocalDateTime.now().minusMinutes(1));
@@ -229,7 +228,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("redeeming a code on an unverified account enables it - the code proved the same thing")
-        void resettingVerifiesAnUnverifiedAccount() throws MessagingException {
+        void resettingVerifiesAnUnverifiedAccount() {
             var existing = prepared(false);
             existing.setVerificationCode("111111");
             String code = mailedCode();
@@ -276,7 +275,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("changing deliberately cancels a reset already in flight")
-        void changingCancelsAPendingReset() throws MessagingException {
+        void changingCancelsAPendingReset() {
             var existing = user(KNOWN, true);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
             when(userRepository.findById(1)).thenReturn(Optional.of(existing));
@@ -322,7 +321,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("redeeming a code withdraws every session, which is the point of resetting")
-        void redeemingWithdrawsEverySession() throws MessagingException {
+        void redeemingWithdrawsEverySession() {
             var existing = user(KNOWN, true);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
             service.requestReset(KNOWN);
@@ -334,7 +333,7 @@ class PasswordResetServiceTest {
 
         @Test
         @DisplayName("a wrong code withdraws nothing")
-        void aWrongCodeWithdrawsNothing() throws MessagingException {
+        void aWrongCodeWithdrawsNothing() {
             var existing = user(KNOWN, true);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
             service.requestReset(KNOWN);

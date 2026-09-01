@@ -17,8 +17,6 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
-      SPRING_MAIL_USERNAME: ${{ secrets.SPRING_MAIL_USERNAME || 'ci@example.com' }}
-      SPRING_MAIL_PASSWORD: ${{ secrets.SPRING_MAIL_PASSWORD || 'ci' }}
 
     services:
       postgres:
@@ -52,8 +50,6 @@ jobs:
         SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
         SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
         JWT_SECRET_KEY=${JWT_SECRET_KEY}
-        SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME}
-        SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
         EOF
 
     - name: Build and test backend
