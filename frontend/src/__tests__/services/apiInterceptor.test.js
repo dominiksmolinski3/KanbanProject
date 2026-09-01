@@ -103,7 +103,7 @@ describe('apiInterceptor', () => {
     localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
     authService.refresh.mockResolvedValue({
       token: 'fresh-jwt',
-      expiresIn: 900,
+      expiresIn: 900_000,
       refreshToken: 'rotated'
     });
 
@@ -137,7 +137,7 @@ describe('apiInterceptor', () => {
       .mockResolvedValueOnce({ ok: true, status: 200 });
     authService.refresh.mockResolvedValue({
       token: 'fresh-jwt',
-      expiresIn: 900,
+      expiresIn: 900_000,
       refreshToken: 'rotated'
     });
 
@@ -164,7 +164,7 @@ describe('apiInterceptor', () => {
     localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
     authService.refresh.mockResolvedValue({
       token: 'fresh-jwt',
-      expiresIn: 900,
+      expiresIn: 900_000,
       refreshToken: 'rotated'
     });
 

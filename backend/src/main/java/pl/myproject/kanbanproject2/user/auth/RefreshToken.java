@@ -30,6 +30,13 @@ import java.time.Instant;
  * <p>Rows are kept rather than deleted on revocation. {@code revokedAt} being set is what makes
  * replay of an already-rotated token detectable, and detecting it is what turns a stolen token into
  * a signal instead of a silent second session.
+ *
+ * <p>{@code expiresAt} slides: every rotation issues a replacement dated the sliding window from
+ * now, so a chain in use never reaches it. {@code absoluteExpiresAt} does not - it is stamped once,
+ * at the login that starts the chain, and copied forward unchanged on each rotation. The effective
+ * expiry a check reads is the earlier of the two, so once the sliding window catches up to the
+ * absolute deadline the chain is finished no matter how often it rotates. That ceiling is the only
+ * thing that ends a stolen token whose thief refreshes ahead of the real client and is never seen.
  */
 @Entity
 @Table(name = "refresh_tokens")
@@ -57,6 +64,13 @@ public class RefreshToken {
     @jakarta.persistence.Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /**
+     * The chain's hard deadline. Set at first issue, copied forward untouched on every rotation, so
+     * it is the same instant for every token descended from one login.
+     */
+    @jakarta.persistence.Column(name = "absolute_expires_at", nullable = false)
+    private Instant absoluteExpiresAt;
+
     /** Null while the token is live. Set on rotation, on logout, and on a password change. */
     @jakarta.persistence.Column(name = "revoked_at")
     private Instant revokedAt;
@@ -64,11 +78,13 @@ public class RefreshToken {
     protected RefreshToken() {
     }
 
-    public RefreshToken(String tokenHash, User user, Instant issuedAt, Instant expiresAt) {
+    public RefreshToken(String tokenHash, User user, Instant issuedAt, Instant expiresAt,
+                        Instant absoluteExpiresAt) {
         this.tokenHash = tokenHash;
         this.user = user;
         this.issuedAt = issuedAt;
         this.expiresAt = expiresAt;
+        this.absoluteExpiresAt = absoluteExpiresAt;
     }
 
     public String getTokenHash() {
@@ -85,6 +101,10 @@ public class RefreshToken {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public Instant getAbsoluteExpiresAt() {
+        return absoluteExpiresAt;
     }
 
     public Instant getRevokedAt() {
