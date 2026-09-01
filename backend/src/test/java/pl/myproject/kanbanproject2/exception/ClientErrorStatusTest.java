@@ -1,6 +1,8 @@
 package pl.myproject.kanbanproject2.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,6 +167,32 @@ class ClientErrorStatusTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
+    }
+
+    /**
+     * The filter cannot parse an expired or tampered bearer token, so it hands the exception to the
+     * advice rather than to a handler method. Without a mapping for it that lands on the catch-all:
+     * a 500, logged at error, for a token reaching its own expiry with the tab left open.
+     */
+    @Test
+    @DisplayName("an expired bearer token is 401, not the catch-all 500")
+    void expiredJwtIs401() {
+        var response = new GlobalExceptionHandler()
+                .handleInvalidJwt(new ExpiredJwtException(null, null, "JWT expired"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody().code()).isEqualTo("INVALID_CREDENTIALS");
+    }
+
+    @Test
+    @DisplayName("a malformed bearer token is the same 401 and says nothing more")
+    void malformedJwtIs401() {
+        var response = new GlobalExceptionHandler()
+                .handleInvalidJwt(new MalformedJwtException("not a JWT"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody().code()).isEqualTo("INVALID_CREDENTIALS");
+        assertThat(response.getBody().message()).doesNotContain("JWT").doesNotContain("malformed");
     }
 
     @Test
