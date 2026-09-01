@@ -50,22 +50,33 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokens;
     private final Duration refreshExpiration;
+    private final Duration absoluteExpiration;
     private final Clock clock;
 
     @Autowired
     public RefreshTokenService(
             RefreshTokenRepository refreshTokens,
-            @Value("${security.jwt.refresh-expiration-time}") long refreshExpirationMillis
+            @Value("${security.jwt.refresh-expiration-time}") long refreshExpirationMillis,
+            @Value("${security.jwt.refresh-absolute-expiration-time}") long absoluteExpirationMillis
     ) {
-        this(refreshTokens, refreshExpirationMillis, Clock.systemUTC());
+        this(refreshTokens, refreshExpirationMillis, absoluteExpirationMillis, Clock.systemUTC());
     }
 
-    RefreshTokenService(RefreshTokenRepository refreshTokens, long refreshExpirationMillis, Clock clock) {
+    RefreshTokenService(RefreshTokenRepository refreshTokens, long refreshExpirationMillis,
+                        long absoluteExpirationMillis, Clock clock) {
         if (refreshExpirationMillis < 1) {
             throw new IllegalArgumentException("security.jwt.refresh-expiration-time must be positive");
         }
+        if (absoluteExpirationMillis < refreshExpirationMillis) {
+            // A ceiling below the sliding window would mean the window never applied - every token
+            // would be capped at the ceiling from the first issue. Almost certainly a units mistake.
+            throw new IllegalArgumentException(
+                    "security.jwt.refresh-absolute-expiration-time must be at least "
+                            + "security.jwt.refresh-expiration-time");
+        }
         this.refreshTokens = refreshTokens;
         this.refreshExpiration = Duration.ofMillis(refreshExpirationMillis);
+        this.absoluteExpiration = Duration.ofMillis(absoluteExpirationMillis);
         this.clock = clock;
     }
 
@@ -76,14 +87,32 @@ public class RefreshTokenService {
     /**
      * Issues a fresh token for an account that has just proved who it is.
      *
+     * <p>This starts a new chain, so its absolute deadline is set here: {@code now} plus the
+     * configured ceiling. Every rotation after this carries that same instant forward.
+     *
      * <p>Returns the raw token, which is the only moment it exists anywhere outside the caller's
      * hands: what is stored is its digest.
      */
     @Transactional
     public String issue(User user) {
         Instant now = clock.instant();
+        return issueWithin(user, now.plus(absoluteExpiration), now);
+    }
+
+    /**
+     * Writes one token into an existing (or new) chain.
+     *
+     * <p>{@code expiresAt} is the earlier of the sliding window and {@code chainDeadline}: while the
+     * window is the earlier one the token renews normally, and once the chain has run long enough
+     * that the window would reach past its ceiling the token is capped at the ceiling instead. A
+     * token issued at that point expires when the chain does, and the rotation after it is refused
+     * by the same expiry check that rejects any lapsed token.
+     */
+    private String issueWithin(User user, Instant chainDeadline, Instant now) {
         String token = ENCODER.encodeToString(randomBytes());
-        refreshTokens.save(new RefreshToken(hash(token), user, now, now.plus(refreshExpiration)));
+        Instant slidingDeadline = now.plus(refreshExpiration);
+        Instant expiresAt = slidingDeadline.isBefore(chainDeadline) ? slidingDeadline : chainDeadline;
+        refreshTokens.save(new RefreshToken(hash(token), user, now, expiresAt, chainDeadline));
         return token;
     }
 
@@ -108,6 +137,8 @@ public class RefreshTokenService {
             throw new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS);
         }
         if (stored.isExpiredAt(now)) {
+            // Covers the chain ceiling too: once the sliding window reaches it, expiresAt is the
+            // ceiling, so a chain past its absolute deadline lands here like any other lapsed token.
             throw new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS);
         }
 
@@ -115,7 +146,7 @@ public class RefreshTokenService {
         refreshTokens.save(stored);
 
         User user = stored.getUser();
-        return new Rotation(user, issue(user));
+        return new Rotation(user, issueWithin(user, stored.getAbsoluteExpiresAt(), now));
     }
 
     /**

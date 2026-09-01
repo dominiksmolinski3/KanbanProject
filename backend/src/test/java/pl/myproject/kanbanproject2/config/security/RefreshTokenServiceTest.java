@@ -46,6 +46,7 @@ class RefreshTokenServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-08-31T10:00:00Z");
     private static final Duration TTL = Duration.ofDays(30);
+    private static final Duration ABSOLUTE_TTL = Duration.ofDays(90);
 
     private RefreshTokenRepository repository;
     private RefreshTokenService service;
@@ -54,7 +55,8 @@ class RefreshTokenServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(RefreshTokenRepository.class);
-        service = new RefreshTokenService(repository, TTL.toMillis(), Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new RefreshTokenService(
+                repository, TTL.toMillis(), ABSOLUTE_TTL.toMillis(), Clock.fixed(NOW, ZoneOffset.UTC));
         user = new User("someone", "someone@example.test", "hashed");
         user.setId(7);
 
@@ -72,7 +74,11 @@ class RefreshTokenServiceTest {
     }
 
     private RefreshToken stored(String token, Instant issuedAt, Instant expiresAt) {
-        return new RefreshToken(digestOf(token), user, issuedAt, expiresAt);
+        return stored(token, issuedAt, expiresAt, issuedAt.plus(ABSOLUTE_TTL));
+    }
+
+    private RefreshToken stored(String token, Instant issuedAt, Instant expiresAt, Instant absoluteExpiresAt) {
+        return new RefreshToken(digestOf(token), user, issuedAt, expiresAt, absoluteExpiresAt);
     }
 
     private RefreshToken lastSaved() {
@@ -122,11 +128,32 @@ class RefreshTokenServiceTest {
         }
 
         @Test
+        @DisplayName("a fresh token starts a chain whose ceiling is the absolute lifetime from now")
+        void issueStampsTheChainCeiling() {
+            service.issue(user);
+
+            // The sliding window is the earlier of the two here, so it is what expires_at reads;
+            // the ceiling sits behind it, waiting for the window to catch up over repeated rotations.
+            assertThat(lastSaved().getExpiresAt()).isEqualTo(NOW.plus(TTL));
+            assertThat(lastSaved().getAbsoluteExpiresAt()).isEqualTo(NOW.plus(ABSOLUTE_TTL));
+        }
+
+        @Test
         @DisplayName("a non-positive lifetime is refused at construction rather than at midnight")
         void refusesANonPositiveLifetime() {
-            assertThatThrownBy(() -> new RefreshTokenService(repository, 0, Clock.systemUTC()))
+            assertThatThrownBy(() ->
+                    new RefreshTokenService(repository, 0, ABSOLUTE_TTL.toMillis(), Clock.systemUTC()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("refresh-expiration-time");
+        }
+
+        @Test
+        @DisplayName("a ceiling below the sliding window is refused - it would make the window dead config")
+        void refusesACeilingBelowTheWindow() {
+            assertThatThrownBy(() -> new RefreshTokenService(
+                    repository, TTL.toMillis(), TTL.toMillis() - 1, Clock.systemUTC()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("refresh-absolute-expiration-time");
         }
     }
 
@@ -201,6 +228,60 @@ class RefreshTokenServiceTest {
             // The point of the whole design: a second holder of the chain ends both sessions, not
             // just its own, because there is no way to tell the thief from the owner.
             verify(repository).revokeAllForUser(user, NOW);
+            verify(repository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("the absolute ceiling")
+    class AbsoluteCeiling {
+
+        @Test
+        @DisplayName("rotation carries the chain ceiling forward without pushing it out")
+        void rotationDoesNotExtendTheCeiling() {
+            // Chain started forty days ago; its ceiling is fifty days from now (ninety from the start).
+            Instant ceiling = NOW.plus(Duration.ofDays(50));
+            RefreshToken live = stored("presented", NOW.minus(Duration.ofDays(40)), NOW.plus(TTL), ceiling);
+            when(repository.findByTokenHash(digestOf("presented"))).thenReturn(Optional.of(live));
+
+            service.rotate("presented");
+
+            // Not NOW.plus(ABSOLUTE_TTL): a rotation is not a new login and does not reset the ceiling.
+            assertThat(lastSaved().getAbsoluteExpiresAt()).isEqualTo(ceiling);
+            assertThat(lastSaved().getExpiresAt())
+                    .as("the sliding window is still the earlier deadline this far from the ceiling")
+                    .isEqualTo(NOW.plus(TTL));
+        }
+
+        @Test
+        @DisplayName("near the ceiling the replacement is capped at it, not given a full window")
+        void theWindowCannotSlidePastTheCeiling() {
+            Instant ceiling = NOW.plus(Duration.ofDays(10));
+            RefreshToken live = stored("presented", NOW.minus(Duration.ofDays(80)), NOW.plus(TTL), ceiling);
+            when(repository.findByTokenHash(digestOf("presented"))).thenReturn(Optional.of(live));
+
+            service.rotate("presented");
+
+            assertThat(lastSaved().getExpiresAt())
+                    .as("ten days left on the chain, not thirty")
+                    .isEqualTo(ceiling);
+            assertThat(lastSaved().getAbsoluteExpiresAt()).isEqualTo(ceiling);
+        }
+
+        @Test
+        @DisplayName("once the ceiling has passed the chain is finished, however often it rotated")
+        void aChainPastItsCeilingCannotRotate() {
+            // A token issued right at the ceiling: capped, so expires_at and the ceiling coincide,
+            // and both are now in the past.
+            Instant ceiling = NOW.minus(Duration.ofSeconds(1));
+            RefreshToken done = stored("done", NOW.minus(ABSOLUTE_TTL), ceiling, ceiling);
+            when(repository.findByTokenHash(digestOf("done"))).thenReturn(Optional.of(done));
+
+            assertThatThrownBy(() -> service.rotate("done"))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_CREDENTIALS);
+
             verify(repository, never()).save(any());
         }
     }

@@ -248,6 +248,17 @@ resetting a password withdraws them all. Both new routes are public (the caller 
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
 access token already issued, which is why fifteen minutes rather than an hour.
 
+**The refresh token has two deadlines (`V8`).** `expires_at` slides — each rotation issues a
+replacement `refresh-expiration-time` (30 days) out, so an account in regular use is never signed
+out by it — and `absolute_expires_at` does not: it is stamped at the login that starts the chain
+and copied forward unchanged through every rotation, and the effective expiry a check reads is the
+earlier of the two. `refresh-absolute-expiration-time` (90 days, and validated at startup to be
+≥ the sliding window) is the ceiling the window cannot slide past. It exists for the one theft
+revocation cannot catch: a stolen refresh token whose holder rotates it ahead of the real client
+is never flagged as reuse, and without a hard ceiling that chain lasts forever. Once the ceiling
+passes, `RefreshTokenService.rotate` rejects the chain through the same expiry check that rejects
+any lapsed token, and the account signs in again.
+
 **The rate limiter is a burst then a doubling cooldown, not a quota.** `AuthRateLimiter` keys one
 escalation per (rule, dimension, key): a key gets its free burst, and after that each attempt sets
 the wait for the next one — 15s, 30s, 60s, and so on to a ceiling (5m for `CREDENTIALS`, 15m for
