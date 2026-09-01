@@ -131,8 +131,8 @@ cp .env.example .env
    | `SPRING_DATASOURCE_USERNAME` | PostgreSQL user |
    | `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password |
    | `JWT_SECRET_KEY` | JWT signing key -- generate one, e.g. `openssl rand -base64 32` |
-   | `SPRING_MAIL_USERNAME` | SMTP account that sends the signup verification codes |
-   | `SPRING_MAIL_PASSWORD` | SMTP password or app token |
+   | `ACS_EMAIL_CONNECTION_STRING` | Azure Communication Services connection string (portal -> your resource -> Keys). Empty turns mail off |
+   | `ACS_EMAIL_SENDER_ADDRESS` | MailFrom address on the linked domain, e.g. `DoNotReply@<guid>.azurecomm.net` |
 
    `.env` is gitignored. Docker Compose uses its own `.env` in the repository root -- see
    [Using Docker](#-using-docker).
