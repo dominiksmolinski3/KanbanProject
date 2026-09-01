@@ -30,7 +30,26 @@
         <java.version>21</java.version>
         <postgresql.version>42.7.13</postgresql.version>
         <jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
+        <azure-sdk-bom.version>1.3.8</azure-sdk-bom.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!--
+              The Azure SDK ships azure-core, the Email client and the HTTP transport as separate
+              artifacts on separate release trains, and only the combinations the BOM names are
+              tested together. Picking versions by hand is how you end up with a NoSuchMethodError
+              between azure-core and a transport built against a different one.
+            -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>${azure-sdk-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -46,9 +65,30 @@
             <artifactId>dotenv-java</artifactId>
             <version>3.2.0</version>
         </dependency>
+        <!--
+          Mail goes out over the Azure Communication Services REST API, not SMTP, so there is no
+          spring-boot-starter-mail here and no jakarta.mail on the classpath.
+
+          The client defaults to the Netty transport, which drags Netty and Reactor Netty into a
+          Tomcat application that has no other use for them. Excluding it and putting
+          azure-core-http-jdk-httpclient on the classpath instead leaves the SDK to find the JDK's
+          own HttpClient through the ServiceLoader - AcsEmailSenderTest exercises the whole
+          pipeline against a stub server, so a mis-wired transport fails the build rather than
+          the first signup.
+        -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-communication-email</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core-http-netty</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core-http-jdk-httpclient</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -295,7 +335,6 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>pl.myproject.kanbanproject2.service</include>
                                         <include>pl.myproject.kanbanproject2.config.security</include>
                                     </includes>
                                     <limits>
@@ -303,6 +342,26 @@
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.45</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  service measures 59.7, up from the low forties: EmailService lost
+                                  the MimeMessage assembly to the Azure client and gained a test.
+                                  It shared the 0.45 rule with config.security, which measures 83
+                                  and is held back by it; splitting them is what lets this one move
+                                  without claiming credit for the other.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.service</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.55</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -351,13 +410,31 @@
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>pl.myproject.kanbanproject2.config.websocket</include>
-                                        <include>pl.myproject.kanbanproject2.config</include>
                                     </includes>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.25</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  config measures 74.6 and no longer belongs on the websocket floor
+                                  it was sharing. 0.70 rather than a shade under, because the
+                                  package is 63 lines: at that size the gap between 0.746 and 0.70
+                                  is three lines, which is as tight as this ratchet should get.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.config</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -380,7 +457,7 @@
                                 <!--
                                   The bundle rule catches what per-package floors cannot: a large
                                   untested addition inside a package that is already well covered.
-                                  78.8 measured, so 0.78.
+                                  81.3 measured, so 0.80.
                                 -->
                                 <rule>
                                     <element>BUNDLE</element>
@@ -388,7 +465,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.78</minimum>
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

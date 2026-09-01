@@ -1,9 +1,9 @@
 package pl.myproject.kanbanproject2.task;
 
-import jakarta.mail.MessagingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.service.EmailDeliveryException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 
@@ -46,7 +46,7 @@ class DeadlineNotifierTest {
 
     @Test
     @DisplayName("every assignee with an address is mailed once, with the title in the subject")
-    void mailsEachAssignee() throws MessagingException {
+    void mailsEachAssignee() {
         notifier.notifyExpired(overdueTask(user("a@example.com")));
 
         verify(emailService).sendEmail(eq("a@example.com"), contains("Ship the release"), contains("Delivery"));
@@ -54,7 +54,7 @@ class DeadlineNotifierTest {
 
     @Test
     @DisplayName("an assignee with no address is skipped rather than sent a blank message")
-    void skipsAddresslessAssignees() throws MessagingException {
+    void skipsAddresslessAssignees() {
         notifier.notifyExpired(overdueTask(user(null), user("  "), user("real@example.com")));
 
         verify(emailService).sendEmail(eq("real@example.com"), any(), any());
@@ -63,8 +63,8 @@ class DeadlineNotifierTest {
 
     @Test
     @DisplayName("a failed send is swallowed so the rest of the batch still goes out")
-    void oneFailedSendDoesNotStopTheOthers() throws MessagingException {
-        doThrow(new MessagingException("smtp down"))
+    void oneFailedSendDoesNotStopTheOthers() {
+        doThrow(new EmailDeliveryException("the provider refused it", new RuntimeException("400")))
                 .when(emailService).sendEmail(eq("broken@example.com"), any(), any());
 
         assertThatCode(() -> notifier.notifyExpired(
