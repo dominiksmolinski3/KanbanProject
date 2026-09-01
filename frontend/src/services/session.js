@@ -23,9 +23,16 @@ export const REFRESH_TOKEN_KEY = 'refreshToken';
  */
 const EXPIRY_SKEW_MS = 10_000;
 
+/**
+ * `expiresIn` is **milliseconds**, as `LoginResponse` sends it and every `/auth` test asserts it —
+ * it is `jwtService.getExpirationTime()` passed straight through. Multiplying it by 1000 (reading it
+ * as seconds) put the stored expiry ten days out, so `isAccessTokenExpired` never tripped and the
+ * proactive renewal in the interceptor never ran: the fifteen-minute token only ever failed by
+ * reaching the server dead, which is a 401 to recover from at best and a 500 at worst.
+ */
 export function storeSession({ token, expiresIn, refreshToken }) {
   localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + expiresIn * 1000));
+  localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + expiresIn));
   if (refreshToken) {
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }

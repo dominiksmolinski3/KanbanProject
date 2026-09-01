@@ -248,6 +248,17 @@ resetting a password withdraws them all. Both new routes are public (the caller 
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
 access token already issued, which is why fifteen minutes rather than an hour.
 
+**The refresh token has two deadlines (`V8`).** `expires_at` slides — each rotation issues a
+replacement `refresh-expiration-time` (30 days) out, so an account in regular use is never signed
+out by it — and `absolute_expires_at` does not: it is stamped at the login that starts the chain
+and copied forward unchanged through every rotation, and the effective expiry a check reads is the
+earlier of the two. `refresh-absolute-expiration-time` (90 days, and validated at startup to be
+≥ the sliding window) is the ceiling the window cannot slide past. It exists for the one theft
+revocation cannot catch: a stolen refresh token whose holder rotates it ahead of the real client
+is never flagged as reuse, and without a hard ceiling that chain lasts forever. Once the ceiling
+passes, `RefreshTokenService.rotate` rejects the chain through the same expiry check that rejects
+any lapsed token, and the account signs in again.
+
 **The rate limiter is a burst then a doubling cooldown, not a quota.** `AuthRateLimiter` keys one
 escalation per (rule, dimension, key): a key gets its free burst, and after that each attempt sets
 the wait for the next one — 15s, 30s, 60s, and so on to a ceiling (5m for `CREDENTIALS`, 15m for
@@ -272,6 +283,19 @@ browser to `/`. [session.js](frontend/src/services/session.js) owns the three `l
 and **serialises renewal through one in-flight promise** — rotation means two concurrent refreshes
 would present the same token twice, which the server reads as a stolen chain, so a normal board load
 firing a dozen requests at once must make exactly one refresh call.
+
+The renewal has to happen **before** the token reaches the server, which is what makes an idle tab
+survive: `storeSession` reads `LoginResponse.expiresIn` as the milliseconds it is (it is
+`jwtService.getExpirationTime()` unchanged), so `isAccessTokenExpired` trips ~10s early and the
+interceptor renews on the next request rather than sending a dead token. Reading it as seconds put
+the stored expiry ten days out, so that check never fired and the fifteen-minute token only ever
+failed by arriving expired. The reactive path is the backstop for when it still does: a bearer
+token the filter cannot parse or verify — expired, tampered, signed with a retired key — is a
+`401 INVALID_CREDENTIALS` via `GlobalExceptionHandler.handleInvalidJwt`, not the catch-all 500 it
+used to be, so the interceptor's one retry can catch it and `handleGeneric`'s error-level log does
+not fire on every lapsed session. Kicking an idle-but-present user to the sign-in screen buys
+nothing here — the refresh token is in the same `localStorage` either way — so the client never
+does it while a renewal is possible.
 
 CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java). They have already drifted — the WebSocket list additionally allows `http://kanbanproject.pl` and `http://www.kanbanproject.pl`.
 
