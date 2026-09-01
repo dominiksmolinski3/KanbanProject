@@ -273,6 +273,19 @@ and **serialises renewal through one in-flight promise** — rotation means two 
 would present the same token twice, which the server reads as a stolen chain, so a normal board load
 firing a dozen requests at once must make exactly one refresh call.
 
+The renewal has to happen **before** the token reaches the server, which is what makes an idle tab
+survive: `storeSession` reads `LoginResponse.expiresIn` as the milliseconds it is (it is
+`jwtService.getExpirationTime()` unchanged), so `isAccessTokenExpired` trips ~10s early and the
+interceptor renews on the next request rather than sending a dead token. Reading it as seconds put
+the stored expiry ten days out, so that check never fired and the fifteen-minute token only ever
+failed by arriving expired. The reactive path is the backstop for when it still does: a bearer
+token the filter cannot parse or verify — expired, tampered, signed with a retired key — is a
+`401 INVALID_CREDENTIALS` via `GlobalExceptionHandler.handleInvalidJwt`, not the catch-all 500 it
+used to be, so the interceptor's one retry can catch it and `handleGeneric`'s error-level log does
+not fire on every lapsed session. Kicking an idle-but-present user to the sign-in screen buys
+nothing here — the refresh token is in the same `localStorage` either way — so the client never
+does it while a renewal is possible.
+
 CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java). They have already drifted — the WebSocket list additionally allows `http://kanbanproject.pl` and `http://www.kanbanproject.pl`.
 
 ### Chat

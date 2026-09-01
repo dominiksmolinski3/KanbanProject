@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.exception;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -130,6 +131,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ErrorResponse.of("NOT_FOUND", ex.getMessage()));
+    }
+
+    /**
+     * A bearer token that will not parse or verify — expired, tampered, signed with a key we no
+     * longer hold. {@code JwtAuthenticationFilter} catches these and hands them here through the
+     * {@code HandlerExceptionResolver}, where without this they fell to {@link #handleGeneric}: a
+     * 500, logged at {@code error}, for the single most routine event in the system — a token
+     * reaching its fifteen-minute expiry while the tab sat open. It is a 401 like any other
+     * rejected credential, and the client renews on it and retries; the reason is not the caller's
+     * to know, so every JWT failure is the one status and the one message.
+     */
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJwt(JwtException ex) {
+        log.debug("Rejected a bearer token: {}", ex.getClass().getSimpleName());
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(
+                        ExceptionIdentifier.INVALID_CREDENTIALS.name(),
+                        ExceptionIdentifier.INVALID_CREDENTIALS.getDefaultMessage()));
     }
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})

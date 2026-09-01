@@ -30,7 +30,9 @@ jest.mock('../../services/authService', () => ({
  * only delays the sign-in screen while every request in between fails on its own.
  */
 describe('session', () => {
-  const session = { token: 'access', expiresIn: 900, refreshToken: 'rotated' };
+  // expiresIn is milliseconds — jwtService.getExpirationTime() passed straight through, the same
+  // 900_000 every /auth test on the server asserts.
+  const session = { token: 'access', expiresIn: 900_000, refreshToken: 'rotated' };
 
   beforeEach(() => {
     localStorage.clear();
@@ -38,18 +40,23 @@ describe('session', () => {
     jest.clearAllMocks();
   });
 
-  test('stores both tokens and an absolute expiry', () => {
-    storeSession({ token: 'a', expiresIn: 900, refreshToken: 'r' });
+  test('stores both tokens and an absolute expiry the server-sent milliseconds out', () => {
+    const before = Date.now();
+    storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r' });
 
     expect(localStorage.getItem(TOKEN_KEY)).toBe('a');
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('r');
-    expect(Number(localStorage.getItem(TOKEN_EXPIRY_KEY))).toBeGreaterThan(Date.now());
+    // Fifteen minutes, not fifteen thousand: reading expiresIn as seconds put this ten days out
+    // and left isAccessTokenExpired permanently false.
+    const stored = Number(localStorage.getItem(TOKEN_EXPIRY_KEY));
+    expect(stored).toBeGreaterThanOrEqual(before + 900_000);
+    expect(stored).toBeLessThanOrEqual(Date.now() + 900_000);
   });
 
   test('a response with no refresh token still signs in and keeps the one already held', () => {
     localStorage.setItem(REFRESH_TOKEN_KEY, 'existing');
 
-    storeSession({ token: 'a', expiresIn: 900 });
+    storeSession({ token: 'a', expiresIn: 900_000 });
 
     expect(localStorage.getItem(TOKEN_KEY)).toBe('a');
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('existing');
