@@ -1,6 +1,5 @@
 package pl.myproject.kanbanproject2.config.security;
 
-import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import pl.myproject.kanbanproject2.service.EmailDeliveryException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -178,7 +178,7 @@ public class PasswordResetService {
 
         try {
             emailService.sendVerificationEmail(user.getEmail(), subject, htmlMessage);
-        } catch (MessagingException e) {
+        } catch (EmailDeliveryException e) {
             log.error("Failed to send password reset email to {}", user.getEmail(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);
         }

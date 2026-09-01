@@ -1,53 +1,66 @@
 package pl.myproject.kanbanproject2.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.mail.MailProperties;
+import com.azure.communication.email.EmailClient;
+import com.azure.communication.email.EmailClientBuilder;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.policy.ExponentialBackoffOptions;
+import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.HttpClientOptions;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.Properties;
+import pl.myproject.kanbanproject2.service.EmailSender;
 
 /**
- * The mail sender, built from {@code spring.mail.*} rather than from a second copy of it.
+ * Builds the mail transport from {@link AcsMailProperties}.
  *
- * <p>Declaring this bean is what makes Boot's own mail auto-configuration back off, so the host,
- * port, credentials and {@code spring.mail.properties.*} in {@code application.properties} were
- * being read by nothing at all: the host and port were hardcoded here, and {@code mail.debug} was
- * pinned on, which put the whole SMTP dialogue - recipients included - in the application log.
- * {@link MailProperties} is bound explicitly so the properties file is the one place to look.
+ * <p>Mail leaves this application through the Azure Communication Services Email API. It used to
+ * leave over SMTP to Gmail, on a connection this package held open and nursed - see the history of
+ * {@code PersistentSmtpMailSender} for how much of it there was. The reasons for the change are
+ * that the deployment is already on Azure, that a personal Gmail account is not a sending quota
+ * anyone should build on, and that an HTTPS request has no session to keep alive in the first
+ * place.
+ *
+ * <p>With no credentials the bean is a {@link DisabledEmailSender} rather than an absence, so
+ * nothing downstream needs to know whether mail is configured. That is a deliberate trade: a
+ * deployment that forgets the connection string starts up and silently sends nothing. The startup
+ * warning below is the only thing standing between that and a mystery, so it names the properties.
  */
+@Slf4j
 @Configuration
-@EnableConfigurationProperties(MailProperties.class)
+@EnableConfigurationProperties(AcsMailProperties.class)
 public class EmailConfiguration {
 
-    private static final String DEFAULT_TIMEOUT_MS = "10000";
-
     @Bean
-    public PersistentSmtpMailSender javaMailSender(
-            MailProperties properties,
-            @Value("${app.mail.max-connection-age-ms:600000}") long maxConnectionAgeMs) {
-        PersistentSmtpMailSender mailSender = new PersistentSmtpMailSender();
-        mailSender.setMaxConnectionAgeMs(maxConnectionAgeMs);
-        mailSender.setHost(properties.getHost());
-        if (properties.getPort() != null) {
-            mailSender.setPort(properties.getPort());
+    public EmailSender emailSender(AcsMailProperties properties) {
+        if (!properties.isConfigured()) {
+            log.warn("app.mail.connection-string and app.mail.sender-address are not both set; "
+                    + "verification, password-reset and deadline mail will be dropped rather than sent");
+            return new DisabledEmailSender();
         }
-        mailSender.setUsername(properties.getUsername());
-        mailSender.setPassword(properties.getPassword());
-        if (properties.getProtocol() != null) {
-            mailSender.setProtocol(properties.getProtocol());
-        }
-        if (properties.getDefaultEncoding() != null) {
-            mailSender.setDefaultEncoding(properties.getDefaultEncoding().name());
-        }
+        log.info("Sending mail through Azure Communication Services as {}", properties.senderAddress());
+        return new AcsEmailSender(emailClient(properties), properties.senderAddress());
+    }
 
-        Properties javaMailProperties = mailSender.getJavaMailProperties();
-        javaMailProperties.setProperty("mail.smtp.connectiontimeout", DEFAULT_TIMEOUT_MS);
-        javaMailProperties.setProperty("mail.smtp.timeout", DEFAULT_TIMEOUT_MS);
-        javaMailProperties.setProperty("mail.smtp.writetimeout", DEFAULT_TIMEOUT_MS);
-        javaMailProperties.putAll(properties.getProperties());
+    /**
+     * The SDK finds its HTTP transport through the {@code ServiceLoader}, and the Netty one it
+     * reaches for by default is excluded in the POM - the JDK's own client is on the classpath
+     * instead. {@link HttpClient#createDefault(HttpClientOptions)} goes through that same lookup,
+     * so the timeouts below apply to whichever transport is present rather than to a named one.
+     */
+    static EmailClient emailClient(AcsMailProperties properties) {
+        HttpClientOptions httpClientOptions = new HttpClientOptions()
+                .setConnectTimeout(properties.requestTimeout())
+                .setResponseTimeout(properties.requestTimeout())
+                .setReadTimeout(properties.requestTimeout())
+                .setWriteTimeout(properties.requestTimeout());
 
-        return mailSender;
+        return new EmailClientBuilder()
+                .connectionString(properties.connectionString())
+                .httpClient(HttpClient.createDefault(httpClientOptions))
+                .retryOptions(new RetryOptions(
+                        new ExponentialBackoffOptions().setMaxRetries(properties.maxRetries())))
+                .buildClient();
     }
 }
