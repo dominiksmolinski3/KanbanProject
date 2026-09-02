@@ -122,16 +122,17 @@ variable "allowed_ingress_cidrs" {
   default     = []
 }
 
-variable "spring_mail_username" {
-  description = "SMTP username for Spring Mail."
+variable "acs_email_connection_string" {
+  description = "Connection string for the Azure Communication Services resource that carries mail (portal -> the resource -> Keys). Empty turns mail off: the app starts and drops messages instead of refusing to boot."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
-variable "spring_mail_password" {
-  description = "SMTP password for Spring Mail."
+variable "acs_email_sender_address" {
+  description = "MailFrom address on a domain linked to the Communication Services resource, e.g. \"DoNotReply@<guid>.azurecomm.net\". Not a secret."
   type        = string
-  sensitive   = true
+  default     = ""
 }
 
 variable "captcha_enabled" {

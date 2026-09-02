@@ -88,24 +88,24 @@ module "postgres" {
 }
 
 module "container_app" {
-  source                  = "./modules/container_app"
-  resource_group_name     = azurerm_resource_group.main.name
-  location                = azurerm_resource_group.main.location
-  env                     = var.env
-  container_app_env_id    = module.vnet.container_app_env_id
-  app_image_tag           = var.app_image_tag
-  max_replicas            = var.max_replicas
-  allowed_ingress_cidrs   = var.allowed_ingress_cidrs
-  key_vault_uri           = module.key_vault.uri
-  key_vault_id            = module.key_vault.id
-  github_repository_owner = var.github_repository_owner
-  ghcr_username           = var.ghcr_username
-  ghcr_token              = var.ghcr_token
-  spring_mail_username    = var.spring_mail_username
-  spring_mail_password    = var.spring_mail_password
-  captcha_enabled         = var.captcha_enabled
-  captcha_secret          = var.captcha_secret
-  tags                    = local.tags
+  source                      = "./modules/container_app"
+  resource_group_name         = azurerm_resource_group.main.name
+  location                    = azurerm_resource_group.main.location
+  env                         = var.env
+  container_app_env_id        = module.vnet.container_app_env_id
+  app_image_tag               = var.app_image_tag
+  max_replicas                = var.max_replicas
+  allowed_ingress_cidrs       = var.allowed_ingress_cidrs
+  key_vault_uri               = module.key_vault.uri
+  key_vault_id                = module.key_vault.id
+  github_repository_owner     = var.github_repository_owner
+  ghcr_username               = var.ghcr_username
+  ghcr_token                  = var.ghcr_token
+  acs_email_connection_string = var.acs_email_connection_string
+  acs_email_sender_address    = var.acs_email_sender_address
+  captcha_enabled             = var.captcha_enabled
+  captcha_secret              = var.captcha_secret
+  tags                        = local.tags
 
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
