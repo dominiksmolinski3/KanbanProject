@@ -9,11 +9,11 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -41,6 +41,7 @@ class DeadlineNotifierTest {
     private static User user(String email) {
         var user = new User();
         user.setEmail(email);
+        user.setLocale("en");
         return user;
     }
 
@@ -49,7 +50,8 @@ class DeadlineNotifierTest {
     void mailsEachAssignee() {
         notifier.notifyExpired(overdueTask(user("a@example.com")));
 
-        verify(emailService).sendTaskOverdue(eq("a@example.com"), eq("Ship the release"), eq("Delivery"), contains("deadline"));
+        verify(emailService).sendTaskOverdue(
+                eq("a@example.com"), eq("Ship the release"), eq("Delivery"), any(), eq(Locale.ENGLISH));
     }
 
     @Test
@@ -57,21 +59,21 @@ class DeadlineNotifierTest {
     void skipsAddresslessAssignees() {
         notifier.notifyExpired(overdueTask(user(null), user("  "), user("real@example.com")));
 
-        verify(emailService).sendTaskOverdue(eq("real@example.com"), any(), any(), any());
-        verify(emailService, never()).sendTaskOverdue(eq(null), any(), any(), any());
+        verify(emailService).sendTaskOverdue(eq("real@example.com"), any(), any(), any(), any());
+        verify(emailService, never()).sendTaskOverdue(eq(null), any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("a failed send is swallowed so the rest of the batch still goes out")
     void oneFailedSendDoesNotStopTheOthers() {
         doThrow(new EmailDeliveryException("the provider refused it", new RuntimeException("400")))
-                .when(emailService).sendTaskOverdue(eq("broken@example.com"), any(), any(), any());
+                .when(emailService).sendTaskOverdue(eq("broken@example.com"), any(), any(), any(), any());
 
         assertThatCode(() -> notifier.notifyExpired(
                 overdueTask(user("broken@example.com"), user("ok@example.com"))))
                 .doesNotThrowAnyException();
 
-        verify(emailService).sendTaskOverdue(eq("ok@example.com"), any(), any(), any());
+        verify(emailService).sendTaskOverdue(eq("ok@example.com"), any(), any(), any(), any());
     }
 
     @Test

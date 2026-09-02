@@ -54,6 +54,18 @@ public class User implements UserDetails {
     @Column(name = "password_reset_expiration")
     private LocalDateTime passwordResetExpiresAt;
     private Integer wipLimit;
+    /*
+     * The language this account is mailed in. Not nullable, because a message has to be written in
+     * something and a null here would make every call site choose - which is three places choosing
+     * independently, and the shape the wording itself was in before MailTemplates.
+     *
+     * A guess at signup, from the browser that happened to be used, and an explicit setting after
+     * that. It is not read for anything on screen: the client picks its own language from the
+     * browser and its own store, and this exists for the two moments the client is not there -
+     * the verification mail and the deadline sweep.
+     */
+    @Column(name = "locale", nullable = false, length = 8)
+    private String locale = SupportedLocales.DEFAULT;
     @ManyToMany(mappedBy = "users")
     @JsonIgnore
     private Set<Task> tasks = new HashSet<>();

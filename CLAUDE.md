@@ -330,7 +330,7 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 
 Three things about it are load-bearing:
 
-- **`EmailService` composes, `EmailSender` transports.** Callers name a message — `sendVerificationCode`, `sendPasswordResetCode`, `sendTaskOverdue` — and `MailTemplates` writes it; they no longer assemble HTML themselves, which is what three near-identical copies of the same markup used to mean. Every message is an `EmailMessage` carrying **both** an HTML and a plain-text body, because a `text/plain` alternative part that is optional is one that gets left out; everything interpolated goes through one escape, including values that cannot currently contain markup. The messages are **English only** — a locale would have to be stored against the account, since the deadline sweep has no request to read `Accept-Language` from. Callers see `EmailService` and an `EmailDeliveryException`; which provider carries the message is behind the interface. That seam is where the queue went: `OutboxEmailSender` is `@Primary` and writes a row, `EmailConfiguration` now builds the transport under the bean name `mailTransport`, and `OutboxRelay` is the only thing that asks for it by name. `OutboxWiringTest` fails the build if either annotation goes — two `EmailSender` beans with no primary is a context that does not start, and a swap would have the relay posting rows into the queue it is meant to drain.
+- **`EmailService` composes, `EmailSender` transports.** Callers name a message — `sendVerificationCode`, `sendPasswordResetCode`, `sendTaskOverdue` — and `MailTemplates` writes it; they no longer assemble HTML themselves, which is what three near-identical copies of the same markup used to mean. Every message is an `EmailMessage` carrying **both** an HTML and a plain-text body, because a `text/plain` alternative part that is optional is one that gets left out; everything interpolated goes through one escape, including values that cannot currently contain markup. The wording lives in `backend/src/main/resources/mail/messages*.properties`, **one bundle per locale**, and every method on `EmailService` takes the recipient's `Locale` — see the i18n section. Callers see `EmailService` and an `EmailDeliveryException`; which provider carries the message is behind the interface. That seam is where the queue went: `OutboxEmailSender` is `@Primary` and writes a row, `EmailConfiguration` now builds the transport under the bean name `mailTransport`, and `OutboxRelay` is the only thing that asks for it by name. `OutboxWiringTest` fails the build if either annotation goes — two `EmailSender` beans with no primary is a context that does not start, and a swap would have the relay posting rows into the queue it is meant to drain.
 - **`beginSend` has already posted by the time it returns.** The returned `SyncPoller` is dropped on purpose: `SyncOverAsyncPoller` runs its activation — the POST — inside its own constructor, so the message is with Azure and anything it objected to has already been thrown. Polling further would wait on *delivery*, which no request has any use for. The cost is that a message accepted and bounced later is reported nowhere; a delivery-report subscription on the resource is what would surface it, and there is not one yet. `AcsEmailSenderTest` drives the real SDK over a fake transport and fails if activation ever stops being eager.
 - **The Netty transport is excluded in favour of `azure-core-http-jdk-httpclient`.** The SDK finds its HTTP client through a `ServiceLoader` at runtime, so nothing about that choice is visible to the compiler — `AzureTransportTest` asserts the resolved client is the JDK one and that Netty is not on the classpath at all. Versions come from the `azure-sdk-bom`; do not pin the Azure artifacts by hand.
 
@@ -409,3 +409,29 @@ Captcha is currently frontend-only: the widget renders if `VITE_RECAPTCHA_SITE_K
 ### i18n
 
 Nine locales live in [frontend/public/locales/](frontend/public/locales/) (`ar`, `de`, `en`, `es`, `fr`, `it`, `ja`, `pl`, `ru`), loaded at runtime by `i18next-http-backend` with browser language detection. User-facing strings — including every toast raised from `KanbanContext` — go through `t()` with a translation key, so a new message means adding the key to all locale files.
+
+**Mail is the tenth bundle set, and it is on the server (`V11`).** The client picks its own language;
+the two moments mail is composed have no client to ask — a verification code is written by a route
+whose browser may never be seen again, and an overdue notice by a scheduler with no request at all —
+so the account carries a `locale` column and `MailTemplates` reads
+`backend/src/main/resources/mail/messages*.properties` through a `ResourceBundleMessageSource`.
+`messages.properties` **is** the English one, which is why there is no `messages_en`, and
+`fallbackToSystemLocale` is off so an unmatched language falls back to that file rather than to
+whatever locale the JVM was started in.
+
+`SupportedLocales` is the single list of what counts as a language here, and
+`SupportedLocalesMatchClientTest` fails the build when it stops matching the directories under
+`frontend/public/locales` — **adding a tenth language means a client bundle, a `messages_<tag>.properties`
+and an entry in `SupportedLocales.TAGS`**, and nothing but that test connects the three. Tags are
+stored as the language subtag only (`de-AT` is `de`), because no bundle here has a regional variant.
+Signup guesses — the client sends `i18n.language`, the controller falls back to `Accept-Language`,
+and an unrecognised tag becomes English without complaint. `PATCH /api/users/{id}` with a `locale`
+does not guess: an unsupported tag is `400 UNSUPPORTED_LOCALE`, because that one is a choice rather
+than a header. The language switcher writes it whenever somebody is signed in, so the mail follows
+the screen without a second control to find.
+
+One trap in the bundles, and it is invisible to every compiler involved: Spring runs a message
+through `MessageFormat` only when it is given arguments, so a lone apostrophe is harmless in a
+message with no `{0}` and **swallows the rest of the pattern** in one that has them.
+`MailTemplatesTest` renders all three messages in all nine locales and fails on a surviving brace,
+which is what that mistake produces.
