@@ -1,0 +1,113 @@
+/*
+ * The device list borrows the card and grid shapes Users.css already uses; what is specific to it
+ * is the current-session row, which has to be distinguishable at a glance because it is the one
+ * whose "sign out" button also signs you out of the page you are looking at.
+ */
+
+.devices-intro {
+  color: var(--text-muted, #5b6b8c);
+  margin: 0 0 1.5rem;
+  max-width: 60ch;
+}
+
+.devices-container {
+  background: var(--surface-light);
+  border-radius: 0.75rem;
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 4px 6px -1px rgba(14, 27, 54, 0.1), 0 2px 4px -1px rgba(14, 27, 54, 0.06);
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.devices-header,
+.device-item {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+}
+
+.devices-header {
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #5b6b8c);
+}
+
+.device-item {
+  border-bottom: 1px solid var(--gray-100, #eef1f6);
+}
+
+.device-item:last-child {
+  border-bottom: none;
+}
+
+.device-current {
+  background: rgba(134, 214, 255, 0.12);
+}
+
+.device-agent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.device-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  background: var(--primary, #86d6ff);
+  color: var(--text-dark, #0e1b36);
+}
+
+.device-address,
+.device-moment {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted, #5b6b8c);
+  overflow-wrap: anywhere;
+}
+
+.device-end-btn {
+  border: 1px solid var(--gray-300);
+  background: transparent;
+  border-radius: 0.375rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.device-end-btn:hover:not(:disabled) {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.device-end-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.devices-empty {
+  padding: 1.5rem 1.25rem;
+  color: var(--text-muted, #5b6b8c);
+}
+
+@media (max-width: 720px) {
+  .devices-header {
+    display: none;
+  }
+
+  .device-item {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+}

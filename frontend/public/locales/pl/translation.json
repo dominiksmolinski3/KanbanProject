@@ -151,6 +151,7 @@
     "add": "Dodaj wiersz"
   },
   "header": {
+    "sessions": "Sesje",
     "addTask": "Dodaj zadanie",
     "wipLimit": "Limit WIP",
     "addBoardItem": "Dodaj wiersz/kolumnę",
@@ -349,5 +350,31 @@
     "help": "Pomoc",
     "about": "O nas",
     "contact": "Kontakt"
+  },
+  "devices": {
+    "title": "Zalogowane urządzenia",
+    "intro": "Każda sesja, którą można jeszcze odnowić na tym koncie. Zakończenie sesji wylogowuje tę przeglądarkę; nie zmienia hasła.",
+    "fields": {
+      "device": "Urządzenie",
+      "address": "Adres",
+      "signedIn": "Zalogowano",
+      "lastSeen": "Ostatnie odnowienie",
+      "actions": "Akcje",
+      "thisDevice": "To urządzenie",
+      "unknownDevice": "Nieznane urządzenie"
+    },
+    "buttons": {
+      "end": "Wyloguj",
+      "back": "Powrót do tablicy Kanban"
+    },
+    "messages": {
+      "loading": "Wczytywanie sesji…",
+      "none": "Żadna inna sesja nie jest zalogowana.",
+      "endConfirm": "Wylogować to urządzenie?",
+      "endCurrentConfirm": "To urządzenie, z którego korzystasz. Wylogowanie zakończy tę sesję — kontynuować?",
+      "ended": "Sesja została zakończona",
+      "endError": "Nie udało się zakończyć tej sesji",
+      "loadError": "Nie udało się wczytać sesji"
+    }
   }
 }
