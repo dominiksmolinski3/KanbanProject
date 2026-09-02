@@ -88,8 +88,8 @@ az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv
 3) Provide required secrets/variables
 
 Values supplied through variables:
-- `spring_mail_username`
-- `spring_mail_password`
+- `acs_email_connection_string` - Azure Communication Services connection string; empty (the default) turns mail off
+- `acs_email_sender_address` - MailFrom address on a domain linked to that resource
 - `captcha_enabled`
 - `captcha_secret`
 
@@ -204,9 +204,10 @@ sees them. The JWT key is stored base64-encoded, because `JwtService.getSignInKe
 runs `Decoders.BASE64.decode(...)` then `Keys.hmacShaKeyFor(...)` and throws on
 anything under 32 decoded bytes.
 
-**Supplied.** `spring_mail_password` and `captcha_secret` are issued by Gmail and
-Google, so they cannot be generated. They come in as variables, which means they sit
-in your tfvars file and in Terraform state in plaintext.
+**Supplied.** `acs_email_connection_string` and `captcha_secret` are issued by Azure
+Communication Services and Google, so they cannot be generated. They come in as
+variables, which means they sit in your tfvars file and in Terraform state in
+plaintext.
 
 That is a deliberate acceptance, not an oversight. The identity running
 `terraform apply` is granted `Key Vault Secrets Officer` on the vault (it has to be --
@@ -214,6 +215,13 @@ Terraform writes the Postgres secrets), so an applier can already read every sec
 the vault with one `az keyvault secret show`. Keeping these two out of tfvars would not
 deny them anything they don't already hold. Both are also revocable from a console in
 seconds with no downtime and no data loss, so the cost of exposure is a rotation.
+
+The Communication Services resource itself, and an email domain linked to it, are not
+provisioned here -- the same way the Gmail account this replaced was created by hand.
+Create the resource, link a domain (an Azure-managed `*.azurecomm.net` subdomain needs
+no DNS), and paste its connection string and a MailFrom address on that domain into
+`acs_email_connection_string` / `acs_email_sender_address`. Left empty, the app boots
+with mail disabled rather than failing.
 
 What follows from that: **the state blob is as sensitive as the vault**, and the
 control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
@@ -418,8 +426,9 @@ an environment that should not be publicly reachable -- note that this only filt
 at the subnet edge, so it is a blunt instrument rather than a substitute for a WAF.
 
 **Outbound is deliberately left on the Azure defaults.** The app's egress does not
-reduce to service tags: it pulls its image from `ghcr.io`, sends mail over SMTP to an
-external provider and verifies captchas against `google.com`, on top of what the
+reduce to service tags: it pulls its image from `ghcr.io`, sends mail over HTTPS to
+the Azure Communication Services Email API and verifies captchas against
+`google.com`, on top of what the
 consumption environment itself needs (MCR, Entra ID, Azure Monitor, Azure Files on
 445, NTP on UDP 123). A default-deny egress rule that misses one of those surfaces as
 a revision that never becomes healthy rather than as a clear error, so egress

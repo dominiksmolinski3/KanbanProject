@@ -90,14 +90,13 @@ variable "max_replicas" {
   }
 }
 
-variable "spring_mail_username" {
+variable "acs_email_connection_string" {
   type      = string
   sensitive = true
 }
 
-variable "spring_mail_password" {
-  type      = string
-  sensitive = true
+variable "acs_email_sender_address" {
+  type = string
 }
 
 variable "captcha_enabled" {
