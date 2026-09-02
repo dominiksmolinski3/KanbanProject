@@ -41,8 +41,8 @@ class OutboxWiringTest {
     }
 
     @Test
-    @DisplayName("the transport bean is named, and the relay is the one thing that asks for it by name")
-    void theRelayTakesTheTransportByName() {
+    @DisplayName("the transport bean is named, and the two classes below the queue ask for it by name")
+    void theTransportIsTakenByName() {
         Method transportBean = Arrays.stream(EmailConfiguration.class.getMethods())
                 .filter(method -> method.isAnnotationPresent(Bean.class))
                 .filter(method -> EmailSender.class.equals(method.getReturnType()))
@@ -50,14 +50,24 @@ class OutboxWiringTest {
                 .orElseThrow(() -> new AssertionError("no EmailSender bean is declared any more"));
         assertThat(transportBean.getAnnotation(Bean.class).value()).containsExactly("mailTransport");
 
-        Constructor<?> injected = Arrays.stream(OutboxRelay.class.getConstructors())
+        assertTakesTheTransportByName(OutboxRelay.class);
+        // The indicator asks the transport whether mail is configured at all. Handed the primary
+        // sender instead it would be asking the outbox, which always answers yes because writing a
+        // row always works - and the one status that says "this deployment sends nothing" would
+        // never be reported.
+        assertTakesTheTransportByName(MailHealthIndicator.class);
+    }
+
+    private static void assertTakesTheTransportByName(Class<?> type) {
+        Constructor<?> injected = Arrays.stream(type.getConstructors())
                 .filter(constructor -> constructor.isAnnotationPresent(Autowired.class))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("the relay has no @Autowired constructor"));
+                .orElseThrow(() -> new AssertionError(type.getSimpleName() + " has no @Autowired constructor"));
 
         assertThat(Arrays.stream(injected.getParameters())
                 .filter(parameter -> parameter.getType().equals(EmailSender.class))
                 .map(Parameter::getAnnotations))
+                .as("%s takes the transport rather than whichever EmailSender is primary", type.getSimpleName())
                 .anySatisfy(annotations -> assertThat(annotations)
                         .anyMatch(annotation -> annotation instanceof Qualifier qualifier
                                 && "mailTransport".equals(qualifier.value())));
