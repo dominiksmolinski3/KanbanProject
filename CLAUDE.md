@@ -301,7 +301,7 @@ CORS allowed origins are hardcoded in two places that must stay in sync: [Securi
 
 ### Chat
 
-STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`; `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not `useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which **hardcodes `http://localhost:8080` as `serverUrl`** — that is a real limitation to be aware of when touching chat, not something the proxy fixes.
+STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`; `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not `useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat server on a separate host would need a configured URL rather than the page's.
 
 ### Configuration and secrets
 
