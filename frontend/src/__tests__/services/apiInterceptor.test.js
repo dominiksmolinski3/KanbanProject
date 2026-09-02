@@ -41,6 +41,31 @@ describe('apiInterceptor', () => {
     expect(originalFetch).toHaveBeenCalledWith('/api/auth/login', { method: 'POST' });
   });
 
+  test('every unauthenticated auth route goes through untouched, not just login', async () => {
+    localStorage.setItem('token', 'jwt');
+    localStorage.setItem('tokenExpiration', futureExpiry());
+
+    for (const path of ['/api/auth/signup', '/api/auth/verify', '/api/auth/resend?email=a%40b.test',
+      '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/refresh',
+      '/api/auth/logout']) {
+      await window.fetch(path, { method: 'POST' });
+      expect(originalFetch).toHaveBeenLastCalledWith(path, { method: 'POST' });
+    }
+  });
+
+  test('the device routes are under /auth and still carry a token - they are not public', async () => {
+    localStorage.setItem('token', 'jwt');
+    localStorage.setItem('tokenExpiration', futureExpiry());
+
+    await window.fetch('/api/auth/devices');
+
+    // The blanket `/auth/` skip this replaced sent these out bare, which the server answered with
+    // a 401 that looked like an expired session rather than a missing header.
+    expect(originalFetch).toHaveBeenCalledWith('/api/auth/devices', {
+      headers: expect.objectContaining({ Authorization: 'Bearer jwt' })
+    });
+  });
+
   test('attaches the bearer token to everything else', async () => {
     localStorage.setItem('token', 'jwt');
     localStorage.setItem('tokenExpiration', futureExpiry());

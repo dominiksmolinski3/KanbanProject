@@ -151,6 +151,7 @@
     "add": "Zeile hinzufügen"
   },
   "header": {
+    "sessions": "Sitzungen",
     "addTask": "Aufgabe hinzufügen",
     "wipLimit": "WIP-Limit",
     "addBoardItem": "Zeile/Spalte hinzufügen",
@@ -349,5 +350,31 @@
     "help": "Hilfe",
     "about": "Über uns",
     "contact": "Kontakt"
+  },
+  "devices": {
+    "title": "Angemeldete Geräte",
+    "intro": "Jede Sitzung, die für dieses Konto noch erneuert werden kann. Das Beenden meldet diesen Browser ab; das Passwort bleibt unverändert.",
+    "fields": {
+      "device": "Gerät",
+      "address": "Adresse",
+      "signedIn": "Angemeldet",
+      "lastSeen": "Zuletzt erneuert",
+      "actions": "Aktionen",
+      "thisDevice": "Dieses Gerät",
+      "unknownDevice": "Unbekanntes Gerät"
+    },
+    "buttons": {
+      "end": "Abmelden",
+      "back": "Zurück zum Kanban-Board"
+    },
+    "messages": {
+      "loading": "Sitzungen werden geladen…",
+      "none": "Keine weitere Sitzung ist angemeldet.",
+      "endConfirm": "Dieses Gerät abmelden?",
+      "endCurrentConfirm": "Das ist das Gerät, das Sie gerade verwenden. Beim Abmelden endet diese Sitzung — fortfahren?",
+      "ended": "Die Sitzung wurde beendet",
+      "endError": "Die Sitzung konnte nicht beendet werden",
+      "loadError": "Die Sitzungen konnten nicht geladen werden"
+    }
   }
 }
