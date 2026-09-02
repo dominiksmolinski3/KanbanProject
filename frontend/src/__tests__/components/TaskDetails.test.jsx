@@ -175,6 +175,52 @@ describe('TaskDetails Component', () => {
     expect(screen.queryByText('notifications.taskUpdated')).not.toBeInTheDocument();
   });
 
+  test('sends the version it loaded with when saving a field', async () => {
+    api.fetchTask.mockResolvedValue({ ...mockTask, version: 3 });
+    api.updateTask.mockResolvedValue({ ...mockTask, version: 4 });
+
+    renderTaskDetails();
+
+    await waitFor(() => {
+      expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(await screen.findByTitle('taskActions.editTaskDescription'));
+    fireEvent.change(screen.getByPlaceholderText('taskActions.description'), {
+      target: { value: 'Reworked' }
+    });
+    fireEvent.click(screen.getByText('taskActions.save'));
+
+    expect(api.updateTask).toHaveBeenCalledWith(mockTask.id, { description: 'Reworked', version: 3 });
+  });
+
+  test('a stale save shows the conflict notice and reloads rather than reporting a failure', async () => {
+    api.fetchTask.mockResolvedValue({ ...mockTask, version: 3 });
+    api.updateTask.mockRejectedValueOnce(new api.ConcurrentModificationError('task'));
+
+    renderTaskDetails();
+
+    await waitFor(() => {
+      expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    });
+
+    api.fetchTask.mockClear();
+
+    fireEvent.click(await screen.findByTitle('taskActions.editTaskDescription'));
+    fireEvent.change(screen.getByPlaceholderText('taskActions.description'), {
+      target: { value: 'Reworked' }
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('taskActions.save'));
+    });
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('notifications.taskChangedElsewhere');
+    });
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(api.fetchTask).toHaveBeenCalledWith(mockTask.id);
+  });
+
   test('allows canceling task description editing', async () => {
     renderTaskDetails();
     

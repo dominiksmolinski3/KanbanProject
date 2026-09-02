@@ -251,7 +251,7 @@ class TenantIsolationTest {
         private static PatchTaskRequest patchRow(Integer rowId) {
             return new PatchTaskRequest(JsonNullable.undefined(), JsonNullable.undefined(),
                     JsonNullable.undefined(), JsonNullable.undefined(), JsonNullable.undefined(),
-                    JsonNullable.undefined(), JsonNullable.of(new IdRef(rowId)));
+                    JsonNullable.undefined(), JsonNullable.of(new IdRef(rowId)), null);
         }
     }
 

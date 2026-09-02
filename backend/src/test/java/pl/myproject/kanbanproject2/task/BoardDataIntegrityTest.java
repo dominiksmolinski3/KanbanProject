@@ -260,7 +260,8 @@ class BoardDataIntegrityTest {
                 JsonNullable.undefined(),
                 JsonNullable.undefined(),
                 JsonNullable.of(columnId == null ? null : new IdRef(columnId)),
-                JsonNullable.undefined());
+                JsonNullable.undefined(),
+                null);
     }
 
     private Task existingTask(Integer id) {

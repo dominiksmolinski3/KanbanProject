@@ -60,6 +60,7 @@ public class TaskMapper implements Function<Task, TaskDto> {
 
         return new TaskDto(
                 task.getId(),
+                task.getVersion(),
                 task.getTitle(),
                 task.getPosition(),
                 columnId,

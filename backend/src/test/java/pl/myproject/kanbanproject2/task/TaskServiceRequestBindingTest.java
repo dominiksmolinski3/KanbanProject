@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -144,6 +145,42 @@ class TaskServiceRequestBindingTest {
         assertThat(created.labels()).containsExactly("bug");
     }
 
+    @Test
+    @DisplayName("a patch carrying the version it was based on is applied")
+    void appliesWhenTheVersionStillMatches() {
+        Task task = existingTask(1);
+        task.setVersion(4);
+
+        TaskDto patched = taskService.patchTask(caller, 1,
+                patch(b -> { b.title = JsonNullable.of("renamed"); b.version = 4; }));
+
+        assertThat(patched.title()).isEqualTo("renamed");
+    }
+
+    @Test
+    @DisplayName("a patch whose version is behind the task is refused as a conflict, not applied")
+    void refusesAStaleVersion() {
+        Task task = existingTask(1);
+        task.setVersion(5);
+
+        assertThatThrownBy(() -> taskService.patchTask(caller, 1,
+                patch(b -> { b.title = JsonNullable.of("renamed"); b.version = 3; })))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+        assertThat(task.getTitle()).isEqualTo("original");
+    }
+
+    @Test
+    @DisplayName("a patch with no version skips the check, so a drag is unaffected")
+    void skipsTheCheckWhenNoVersionIsSent() {
+        Task task = existingTask(1);
+        task.setVersion(7);
+
+        TaskDto patched = taskService.patchTask(caller, 1, patch(b -> b.position = JsonNullable.of(2)));
+
+        assertThat(patched.position()).isEqualTo(2);
+        assertThat(patched.version()).isEqualTo(7);
+    }
+
     private Task existingTask(int id) {
         Task task = new Task();
         task.setId(id);
@@ -175,7 +212,7 @@ class TaskServiceRequestBindingTest {
         PatchBuilder builder = new PatchBuilder();
         customiser.accept(builder);
         return new PatchTaskRequest(builder.title, builder.description, builder.position,
-                builder.deadline, builder.labels, builder.column, builder.row);
+                builder.deadline, builder.labels, builder.column, builder.row, builder.version);
     }
 
     private static final class PatchBuilder {
@@ -186,5 +223,6 @@ class TaskServiceRequestBindingTest {
         JsonNullable<Set<String>> labels = JsonNullable.undefined();
         JsonNullable<IdRef> column = JsonNullable.undefined();
         JsonNullable<IdRef> row = JsonNullable.undefined();
+        Integer version = null;
     }
 }

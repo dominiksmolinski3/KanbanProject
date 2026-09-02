@@ -654,8 +654,17 @@ describe('API Services', () => {
         ok: false,
         status: 400
       });
-    
+
       await expect(api.updateTask('task1', { title: 'Updated' })).rejects.toThrow('Error updating task: 400');
+    });
+
+    test('updateTask should raise ConcurrentModificationError on a 409', async () => {
+      fetch.mockResolvedValue({ ok: false, status: 409 });
+
+      await expect(api.updateTask('1', { title: 'x', version: 2 }))
+        .rejects.toBeInstanceOf(api.ConcurrentModificationError);
+      await expect(api.updateTask('1', { title: 'x', version: 2 }))
+        .rejects.toThrow('changed by someone else');
     });
 
     test('updateTaskName should handle error responses', async () => {

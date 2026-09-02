@@ -53,6 +53,13 @@ class PatchTaskRequestJsonTest {
     }
 
     @Test
+    @DisplayName("version is read straight off the body, and is null when the client omits it")
+    void readsTheVersionWhenPresent() throws Exception {
+        assertThat(mapper.readValue("{\"title\":\"x\"}", PatchTaskRequest.class).version()).isNull();
+        assertThat(mapper.readValue("{\"title\":\"x\",\"version\":6}", PatchTaskRequest.class).version()).isEqualTo(6);
+    }
+
+    @Test
     @DisplayName("Boot's ObjectMapper picks the module up, so this holds for real requests too")
     void theApplicationMapperUnderstandsJsonNullable() {
         // Boot does not load Jackson modules off the service loader by default, so the module has to

@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
@@ -131,6 +132,7 @@ public class TaskService {
 
     public TaskDto patchTask(User caller, Integer id, PatchTaskRequest request) {
         var existingTask = findTask(caller, id);
+        requireCurrentVersion(existingTask, request.version());
         var board = existingTask.getBoard();
 
         if (request.title().isPresent()) {
@@ -174,6 +176,27 @@ public class TaskService {
         }
 
         return taskMapper.apply(taskRepository.save(existingTask));
+    }
+
+    /**
+     * Refuses a PATCH that was based on a stale copy of the task.
+     *
+     * <p>The {@code @Version} column stops two overlapping transactions from silently overwriting
+     * each other, but it cannot see the slower race: a task read into an editing form, changed and
+     * saved by another member, and then saved from the still-open form. By the time this request's
+     * transaction loads the task the other write has already committed, so its version is current
+     * and Hibernate has nothing to object to. Comparing the version the caller last saw against the
+     * one on the row closes that window - and a caller that sends no version keeps the old
+     * behaviour, so a drag, which is never stale in this sense, is untouched.
+     *
+     * <p>The exception is the same one Hibernate raises for the transaction-level conflict, so it
+     * lands on the existing 409 {@code CONCURRENT_MODIFICATION} handler and the client answers it
+     * the same way: reload and reapply.
+     */
+    private void requireCurrentVersion(Task task, Integer seenVersion) {
+        if (seenVersion != null && !seenVersion.equals(task.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Task.class, task.getId());
+        }
     }
 
     /**

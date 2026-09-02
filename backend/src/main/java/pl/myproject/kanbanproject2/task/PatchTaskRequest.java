@@ -17,6 +17,12 @@ import java.util.Set;
  *
  * <p>{@code completed} is not here on purpose: completion goes through
  * {@code PATCH /tasks/{id}/complete/{status}}, the one route that enforces the parent-task rule.
+ *
+ * <p>{@code version} is the one plain field rather than a {@link JsonNullable}: for the others,
+ * "sent as null" and "left out" are different requests, and for the version they are the same one -
+ * no version means "do not check", so absent deserialising to {@code null} is exactly right. When it
+ * is present, {@code TaskService} refuses the write if the task has moved on since the caller last
+ * read it.
  */
 public record PatchTaskRequest(
         JsonNullable<@Size(max = 255) String> title,
@@ -25,7 +31,8 @@ public record PatchTaskRequest(
         JsonNullable<LocalDateTime> deadline,
         JsonNullable<Set<String>> labels,
         JsonNullable<@Valid IdRef> column,
-        JsonNullable<@Valid IdRef> row) {
+        JsonNullable<@Valid IdRef> row,
+        Integer version) {
 
     public PatchTaskRequest {
         title = undefinedIfNull(title);
