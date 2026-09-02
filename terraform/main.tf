@@ -116,6 +116,7 @@ module "diagnostics" {
   source = "./modules/diagnostics"
 
   env                        = var.env
+  location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   container_app_id           = module.container_app.container_app_id
   container_app_env_id       = module.vnet.container_app_env_id
