@@ -136,7 +136,7 @@ In local development the two run separately (`:5173` and `:8080`) and [vite.conf
 
 **Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch` + `HandlerTypePredicate.forAnnotation(RestController.class)`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
-The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board` and `/users`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh. Client routes are listed once in [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java), which both `WebConfig` (forwards them to `index.html`) and `SecurityConfiguration` (permits them) read. **Adding a `<Route>` to `App.jsx` means adding it to `SpaRoutes.ALL`**, or the deep link 403s.
+The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users` and `/sessions`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh. Client routes are listed once in [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java), which both `WebConfig` (forwards them to `index.html`) and `SecurityConfiguration` (permits them) read. **Adding a `<Route>` to `App.jsx` means adding it to `SpaRoutes.ALL`**, or the deep link 403s.
 
 ### Backend layering
 
@@ -290,8 +290,12 @@ compared as `now - deadline < 0` — `System.nanoTime` has an arbitrary origin a
 negative, so a zero-valued deadline is a point in time, not "no cooldown".
 
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
-`window.fetch` at module load to attach `Authorization`, skipping any URL containing `/auth/` (which
-still matches the prefixed `/api/auth/...`). Because it wraps the global, tests and any code path
+`window.fetch` at module load to attach `Authorization`, skipping the URLs that name an
+unauthenticated auth route. That skip used to be any URL containing `/auth/`, on the assumption that
+everything under the prefix is pre-authentication; `/api/auth/devices` is not, and a blanket skip
+sent it out bare. `PUBLIC_AUTH_PATHS` is the client's copy of `PublicPaths.AUTH_ENDPOINTS` and has
+to be kept in step with it by hand — the cost of forgetting is a 401 on one route, not a token
+attached to a public one. Because it wraps the global, tests and any code path
 using `fetch` inherit it. An expired access token now renews rather than redirecting, and an
 unexpected 401 is retried once; only a refresh the server refuses ends the session and sends the
 browser to `/`. [session.js](frontend/src/services/session.js) owns the three `localStorage` keys

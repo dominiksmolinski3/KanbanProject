@@ -13,6 +13,17 @@ import { authService } from './authService';
 export const TOKEN_KEY = 'token';
 export const TOKEN_EXPIRY_KEY = 'tokenExpiration';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
+/**
+ * Which row on the server this browser's session is.
+ *
+ * It exists so the device list can say "this device". The server could mark it instead, but
+ * only by putting the chain in the access token and looking it up on every request; the client
+ * was handed the id at login and is handed a new one on every rotation, so it already knows.
+ * Rotation is what makes storing it necessary rather than optional - the id changes roughly
+ * every fifteen minutes of use, and localStorage is shared across tabs, so whichever tab
+ * renewed last leaves the current answer here for all of them.
+ */
+export const SESSION_ID_KEY = 'sessionId';
 
 /**
  * Renew this long before the access token actually lapses.
@@ -30,11 +41,16 @@ const EXPIRY_SKEW_MS = 10_000;
  * proactive renewal in the interceptor never ran: the fifteen-minute token only ever failed by
  * reaching the server dead, which is a 401 to recover from at best and a 500 at worst.
  */
-export function storeSession({ token, expiresIn, refreshToken }) {
+export function storeSession({ token, expiresIn, refreshToken, sessionId }) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + expiresIn));
   if (refreshToken) {
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
+  // Absent from a response issued before the server sent one; leaving the stored value alone is
+  // better than clearing it, because the alternative is a list where nothing is "this device".
+  if (sessionId !== undefined && sessionId !== null) {
+    localStorage.setItem(SESSION_ID_KEY, String(sessionId));
   }
 }
 
@@ -42,10 +58,12 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(SESSION_ID_KEY);
 }
 
 export const getAccessToken = () => localStorage.getItem(TOKEN_KEY);
 export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
+export const getSessionId = () => localStorage.getItem(SESSION_ID_KEY);
 
 export function isAccessTokenExpired() {
   const expiration = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY), 10);

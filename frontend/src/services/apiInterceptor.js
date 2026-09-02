@@ -21,6 +21,32 @@ export class SessionExpiredError extends Error {
 }
 
 /**
+ * The auth routes that are reachable without a token, and so must not carry one.
+ *
+ * This used to be `url.includes('/auth/')` - every route under the prefix, on the assumption that
+ * everything there is pre-authentication. `/auth/devices` is not: it lists an account's sessions,
+ * so proving whose account it is is the entire precondition, and a blanket skip sent it out with
+ * no `Authorization` header and no way to tell why the server refused.
+ *
+ * It is the same list `PublicPaths` holds on the server, and the same failure the server-side
+ * version was written to end - one copy of the rule drifting away from the other. Keeping them in
+ * step is a manual job across two languages; what makes that survivable is that the cost of
+ * forgetting is now a 401 on one route rather than a token attached to a public one.
+ */
+const PUBLIC_AUTH_PATHS = [
+  '/auth/signup',
+  '/auth/login',
+  '/auth/verify',
+  '/auth/resend',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/refresh',
+  '/auth/logout'
+];
+
+const isPublicAuthPath = (url) => PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+
+/**
  * `fetch` accepts a string, a `URL` or a `Request`; only the first has `.includes`.
  */
 function urlOf(input) {
@@ -63,7 +89,7 @@ export function setupApiInterceptors() {
   };
 
   window.fetch = async (input, options = {}) => {
-    if (urlOf(input).includes('/auth/')) {
+    if (isPublicAuthPath(urlOf(input))) {
       return originalFetch(input, options);
     }
 

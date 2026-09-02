@@ -160,6 +160,36 @@ export const authService = {
     }
   },
 
+  /**
+   * Every session the account can still use. Authenticated, unlike its neighbours here, so the
+   * interceptor has to attach a token - see `PUBLIC_AUTH_PATHS` in `apiInterceptor.js`.
+   */
+  listDevices: async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/devices`);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not load the active sessions');
+    }
+
+    return await response.json();
+  },
+
+  /**
+   * Ends one session by id. A 404 covers every reason it could not be ended - it was somebody
+   * else's, or it had already lapsed - because the server refuses to say which.
+   */
+  endDevice: async (sessionId) => {
+    const response = await fetch(`${API_BASE_URL}/auth/devices/${sessionId}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Could not end that session');
+    }
+  },
+
   resendVerificationCode: async (email) => {
     const response = await fetch(`${API_BASE_URL}/auth/resend?email=${encodeURIComponent(email)}`, {
       method: 'POST',
