@@ -254,6 +254,26 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  mail is new this branch and measures 93.6 over 94 lines. A new
+                                  package with no rule of its own lands on the 0.15 catch-all,
+                                  which is the pressure that makes one get written; 0.85 is a
+                                  shade under with room for the relay to grow a branch, and the
+                                  same ratio config.security.captcha carries at a similar size.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.mail</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>

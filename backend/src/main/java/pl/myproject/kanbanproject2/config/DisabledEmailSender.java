@@ -25,4 +25,9 @@ public class DisabledEmailSender implements EmailSender {
     public void send(EmailMessage message) {
         log.warn("Mail is not configured; a message was dropped rather than sent");
     }
+
+    @Override
+    public boolean deliversMessages() {
+        return false;
+    }
 }

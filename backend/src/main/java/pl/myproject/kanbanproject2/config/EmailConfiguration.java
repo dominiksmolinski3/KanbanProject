@@ -32,8 +32,13 @@ import pl.myproject.kanbanproject2.service.EmailSender;
 @EnableConfigurationProperties(AcsMailProperties.class)
 public class EmailConfiguration {
 
-    @Bean
-    public EmailSender emailSender(AcsMailProperties properties) {
+    /**
+     * Named, because it is no longer the {@code EmailSender} the application injects. That one is
+     * {@code OutboxEmailSender}, which is {@code @Primary} and writes a row; this is what the
+     * relay posts with, and the only bean that asks for it asks by name.
+     */
+    @Bean("mailTransport")
+    public EmailSender mailTransport(AcsMailProperties properties) {
         if (!properties.isConfigured()) {
             log.warn("app.mail.connection-string and app.mail.sender-address are not both set; "
                     + "verification, password-reset and deadline mail will be dropped rather than sent");

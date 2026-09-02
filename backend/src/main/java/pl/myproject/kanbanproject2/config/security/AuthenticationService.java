@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.security;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -52,6 +53,7 @@ public class AuthenticationService {
      * flow exists to point them at. Until then the client's wording carries it, and the branch
      * below is logged so the collision is at least visible from the server side.
      */
+    @Transactional
     public void signup(RegisterUserDto input) {
         if (userRepository.findByEmail(input.getEmail()).isPresent()) {
             log.info("Signup for an address that already has an account; answering as if it were new");
@@ -62,8 +64,8 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
         user.setEnabled(false);
-        sendVerificationEmail(user);
         userRepository.save(user);
+        sendVerificationEmail(user);
     }
 
     /**
@@ -173,6 +175,7 @@ public class AuthenticationService {
      * already verified — were a 404 and a 400, so between them they partitioned every address in
      * the world into three answerable states. Now they are one.
      */
+    @Transactional
     public void resendVerificationCode(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
 
@@ -183,8 +186,8 @@ public class AuthenticationService {
 
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
-        sendVerificationEmail(user);
         userRepository.save(user);
+        sendVerificationEmail(user);
     }
 
     private void sendVerificationEmail(User user) {
