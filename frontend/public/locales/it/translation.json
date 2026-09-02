@@ -75,6 +75,7 @@
       "taskMovedToRow": "Attività \"{{title}}\" è stata spostata nella riga \"{{row}}\"",
       "columnMoved": "Colonna \"{{name}}\" è stata spostata",
       "changedBySomeoneElse": "Qualcun altro ha modificato la bacheca per primo: viene mostrata l'ultima versione",
+      "taskChangedElsewhere": "Questa attività è appena stata modificata da qualcun altro: viene ricaricata l'ultima versione",
       "rowMoved": "Riga \"{{name}}\" è stata spostata",
       "labelsUpdateError": "Si è verificato un errore durante l'aggiornamento delle etichette",
       "subtaskAddError": "Si è verificato un errore durante l'aggiunta della sottoattività",
