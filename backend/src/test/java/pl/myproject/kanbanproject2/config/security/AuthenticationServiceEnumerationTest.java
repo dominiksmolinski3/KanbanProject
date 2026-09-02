@@ -106,7 +106,7 @@ class AuthenticationServiceEnumerationTest {
             service.signup(registration(UNKNOWN));
 
             verify(userRepository).save(any(User.class));
-            verify(emailService).sendVerificationCode(any(), any(), anyLong());
+            verify(emailService).sendVerificationCode(any(), any(), anyLong(), any());
         }
 
         @Test
@@ -117,7 +117,7 @@ class AuthenticationServiceEnumerationTest {
             assertThatCode(() -> service.signup(registration(KNOWN))).doesNotThrowAnyException();
 
             verify(userRepository, never()).save(any());
-            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong(), any());
         }
 
         @Test
@@ -160,7 +160,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThat(pending.getVerificationCode()).isNotEqualTo("111111");
             assertThat(pending.getVerificationCodeExpiresAt()).isAfter(LocalDateTime.now());
-            verify(emailService).sendVerificationCode(any(), any(), anyLong());
+            verify(emailService).sendVerificationCode(any(), any(), anyLong(), any());
         }
 
         @Test
@@ -170,7 +170,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThatCode(() -> service.resendVerificationCode(UNKNOWN)).doesNotThrowAnyException();
 
-            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong(), any());
             verify(userRepository, never()).save(any());
         }
 
@@ -181,7 +181,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThatCode(() -> service.resendVerificationCode(KNOWN)).doesNotThrowAnyException();
 
-            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong(), any());
             verify(userRepository, never()).save(any());
         }
 

@@ -109,6 +109,16 @@ public class UserService {
         if (userDto.wipLimit() != null) {
             existingUser.setWipLimit(userDto.wipLimit());
         }
+        if (userDto.locale() != null) {
+            // Rejected rather than normalised to English. Signup guesses from a browser header and
+            // falls back quietly, because a guess that misses costs nothing; this is somebody
+            // choosing, and silently storing a different answer than the one they gave is worse
+            // than telling them the language is not one of the nine.
+            if (!SupportedLocales.isSupported(userDto.locale())) {
+                throw new GlobalException(ExceptionIdentifier.UNSUPPORTED_LOCALE);
+            }
+            existingUser.setLocale(SupportedLocales.normalise(userDto.locale()));
+        }
         return userMapper.apply(userRepository.save(existingUser));
     }
 

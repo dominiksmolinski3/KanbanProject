@@ -34,7 +34,7 @@ const HomePage = () => {
   const [captchaKey, setCaptchaKey] = useState(0);
   const [captchaWarn, setCaptchaWarn] = useState(false);
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { login, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -127,7 +127,11 @@ const HomePage = () => {
     setLoading(true);
     
     try {
-  const payload = { username, email, password };
+  // The language this form is being read in. It is the only evidence available at the one moment
+  // the account has no setting of its own, and it decides which language the verification mail
+  // arrives in. The server falls back to Accept-Language and then to English, so a caller that
+  // sends nothing still gets a sensible answer rather than a refusal.
+  const payload = { username, email, password, locale: (i18n.language || 'en').split('-')[0] };
   if (isCaptchaRequired && captchaToken) payload.captcha = { token: captchaToken };
   await authService.register(payload);
       toast.success(t('auth.registerSuccess', 'If that address is new here, a verification code is on its way to it.'));
