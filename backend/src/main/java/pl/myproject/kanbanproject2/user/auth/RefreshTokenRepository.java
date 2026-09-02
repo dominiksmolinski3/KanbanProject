@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,6 +19,20 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * it finds is the only place the token's state is written down.
      */
     Optional<RefreshToken> findByTokenHash(String tokenHash);
+
+    /**
+     * Every session an account can still use, newest renewal first.
+     *
+     * <p>Live means both halves: not withdrawn, and not past its expiry. A revoked row is kept so
+     * that replaying the token it stands for is detectable, and an expired one is kept until the
+     * daily sweep drops it - neither is a session anybody is holding, and showing either in a
+     * device list would offer a "sign out" button for something already signed out.
+     *
+     * <p>There is exactly one live row per chain, because rotation withdraws the row it replaces.
+     * So this is a list of sessions even though it is a query over tokens.
+     */
+    List<RefreshToken> findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(
+            User user, Instant now);
 
     /**
      * Withdraws every live token an account holds, in one statement.

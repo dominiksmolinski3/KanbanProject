@@ -11,6 +11,7 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
+import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -64,6 +66,10 @@ class AuthenticationServiceEnumerationTest {
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        // Issuing is somebody else's contract; every path that reaches a session needs one back,
+        // and the cases below that care about its contents restub it.
+        when(refreshTokenService.issue(any(), any()))
+                .thenReturn(new RefreshTokenService.Issued("a-refresh-token", 12L));
     }
 
     private static User user(String email, boolean enabled) {
@@ -204,7 +210,7 @@ class AuthenticationServiceEnumerationTest {
         void unknownAddressReportsAnInvalidCode() {
             when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.verifyUser(verification(UNKNOWN, "123456")))
+            assertThatThrownBy(() -> service.verifyUser(verification(UNKNOWN, "123456"), DeviceContext.unknown()))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
@@ -218,7 +224,7 @@ class AuthenticationServiceEnumerationTest {
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
-            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222")))
+            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222"), DeviceContext.unknown()))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
@@ -232,7 +238,7 @@ class AuthenticationServiceEnumerationTest {
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
-            service.verifyUser(verification(KNOWN, "111111"));
+            service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown());
 
             assertThat(pending.isEnabled()).isTrue();
             assertThat(pending.getVerificationCode()).isNull();
@@ -248,10 +254,9 @@ class AuthenticationServiceEnumerationTest {
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
             when(jwtService.generateToken(pending)).thenReturn("signed-access-token");
             when(jwtService.getExpirationTime()).thenReturn(900000L);
-            when(refreshTokenService.issue(pending)).thenReturn("a-refresh-token");
             when(refreshTokenService.getExpirationTime()).thenReturn(2592000000L);
 
-            var session = service.verifyUser(verification(KNOWN, "111111"));
+            var session = service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown());
 
             assertThat(session.token()).isEqualTo("signed-access-token");
             assertThat(session.refreshToken()).isEqualTo("a-refresh-token");
@@ -265,7 +270,7 @@ class AuthenticationServiceEnumerationTest {
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
-            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222")))
+            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222"), DeviceContext.unknown()))
                     .isInstanceOf(GlobalException.class);
 
             assertThat(pending.isEnabled()).isFalse();
@@ -280,7 +285,7 @@ class AuthenticationServiceEnumerationTest {
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().minusMinutes(1));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
-            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "111111")))
+            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown()))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
@@ -315,7 +320,7 @@ class AuthenticationServiceEnumerationTest {
             login.setPassword("correct-horse");
             when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.login(login))
+            assertThatThrownBy(() -> service.login(login, DeviceContext.unknown()))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.INVALID_CREDENTIALS);

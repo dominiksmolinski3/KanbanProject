@@ -248,6 +248,21 @@ resetting a password withdraws them all. Both new routes are public (the caller 
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
 access token already issued, which is why fifteen minutes rather than an hour.
 
+**A session is also something its owner can see and end (`V9`).** `GET /api/auth/devices` lists
+every live token the caller holds and `DELETE /api/auth/devices/{id}` withdraws one — the case
+between logout (the session you are holding) and a password change (all of them), which is a device
+you no longer have. Both are **authenticated**, the only routes under `/auth` that are, and
+`SessionRoutesTest` fails the build if either appears in `PublicPaths`; the rate limiter covers the
+unauthenticated routes, so neither is on it. A row that is not the caller's live session — unknown
+id, somebody else's, already revoked, expired — is one `404 SESSION_NOT_FOUND`, because ids here are
+sequential. `V9` adds `ip_address`, `user_agent` (stamped on every issue, so they say where the
+session is *now*) and `chain_started_at` (stamped at login and carried forward like
+`absolute_expires_at`, because rotation rewrites `issued_at` and "signed in since" is the thing a
+person scanning the list is checking). **Which row is "this device" is answered on the client**:
+`LoginResponse` carries a `sessionId`, refreshed on every rotation, and the list is matched against
+it — marking it server-side would mean the access token carrying its chain, a filter change and a
+lookup on every request, for a fact the client was already handed.
+
 **The refresh token has two deadlines (`V8`).** `expires_at` slides — each rotation issues a
 replacement `refresh-expiration-time` (30 days) out, so an account in regular use is never signed
 out by it — and `absolute_expires_at` does not: it is stamped at the login that starts the chain
