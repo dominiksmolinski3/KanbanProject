@@ -1,11 +1,13 @@
 import {
   REFRESH_TOKEN_KEY,
+  SESSION_ID_KEY,
   TOKEN_EXPIRY_KEY,
   TOKEN_KEY,
   clearSession,
   endSession,
   isAccessTokenExpired,
   refreshSession,
+  getSessionId,
   resetRefreshState,
   storeSession
 } from '../../services/session';
@@ -51,6 +53,36 @@ describe('session', () => {
     const stored = Number(localStorage.getItem(TOKEN_EXPIRY_KEY));
     expect(stored).toBeGreaterThanOrEqual(before + 900_000);
     expect(stored).toBeLessThanOrEqual(Date.now() + 900_000);
+  });
+
+  test('remembers which session row this browser is, so the device list can say "this device"', () => {
+    storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r', sessionId: 12 });
+
+    expect(getSessionId()).toBe('12');
+    expect(localStorage.getItem(SESSION_ID_KEY)).toBe('12');
+  });
+
+  test('a rotation replaces the stored session id, because rotation writes a new row', () => {
+    storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r', sessionId: 12 });
+    storeSession({ token: 'b', expiresIn: 900_000, refreshToken: 'r2', sessionId: 13 });
+
+    expect(getSessionId()).toBe('13');
+  });
+
+  test('a response with no session id leaves the stored one alone rather than blanking it', () => {
+    localStorage.setItem(SESSION_ID_KEY, '12');
+
+    storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r' });
+
+    expect(getSessionId()).toBe('12');
+  });
+
+  test('clearing a session forgets the id with everything else', () => {
+    storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r', sessionId: 12 });
+
+    clearSession();
+
+    expect(getSessionId()).toBeNull();
   });
 
   test('a response with no refresh token still signs in and keeps the one already held', () => {

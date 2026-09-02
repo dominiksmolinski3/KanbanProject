@@ -151,6 +151,7 @@
       "add": "Ajouter une ligne"
     },
     "header": {
+      "sessions": "Sessions",
       "addTask": "Ajouter une tâche",
       "wipLimit": "Limite WIP",
       "addBoardItem": "Ajouter ligne/colonne",
@@ -349,5 +350,31 @@
       "help": "Aide",
       "about": "À propos",
       "contact": "Contact"
+    },
+    "devices": {
+      "title": "Appareils connectés",
+      "intro": "Toutes les sessions encore renouvelables sur ce compte. En terminer une déconnecte ce navigateur ; cela ne change pas le mot de passe.",
+      "fields": {
+        "device": "Appareil",
+        "address": "Adresse",
+        "signedIn": "Connexion",
+        "lastSeen": "Dernier renouvellement",
+        "actions": "Actions",
+        "thisDevice": "Cet appareil",
+        "unknownDevice": "Appareil inconnu"
+      },
+      "buttons": {
+        "end": "Déconnecter",
+        "back": "Retour au tableau Kanban"
+      },
+      "messages": {
+        "loading": "Chargement des sessions…",
+        "none": "Aucune autre session n’est connectée.",
+        "endConfirm": "Déconnecter cet appareil ?",
+        "endCurrentConfirm": "C’est l’appareil que vous utilisez. Le déconnecter mettra fin à cette session — continuer ?",
+        "ended": "La session a été fermée",
+        "endError": "Cette session n’a pas pu être fermée",
+        "loadError": "Les sessions n’ont pas pu être chargées"
+      }
     }
   }

@@ -151,6 +151,7 @@
       "add": "Aggiungi riga"
     },
     "header": {
+      "sessions": "Sessioni",
       "addTask": "Aggiungi attività",
       "wipLimit": "Limite WIP",
       "addBoardItem": "Aggiungi riga/colonna",
@@ -349,5 +350,31 @@
       "help": "Guida",
       "about": "Chi siamo",
       "contact": "Contatto"
+    },
+    "devices": {
+      "title": "Dispositivi connessi",
+      "intro": "Tutte le sessioni ancora rinnovabili su questo account. Chiuderne una disconnette quel browser; non cambia la password.",
+      "fields": {
+        "device": "Dispositivo",
+        "address": "Indirizzo",
+        "signedIn": "Accesso",
+        "lastSeen": "Ultimo rinnovo",
+        "actions": "Azioni",
+        "thisDevice": "Questo dispositivo",
+        "unknownDevice": "Dispositivo sconosciuto"
+      },
+      "buttons": {
+        "end": "Disconnetti",
+        "back": "Torna alla bacheca Kanban"
+      },
+      "messages": {
+        "loading": "Caricamento delle sessioni…",
+        "none": "Nessun’altra sessione è connessa.",
+        "endConfirm": "Disconnettere questo dispositivo?",
+        "endCurrentConfirm": "È il dispositivo che stai usando. Disconnetterlo terminerà questa sessione: continuare?",
+        "ended": "La sessione è stata chiusa",
+        "endError": "Non è stato possibile chiudere quella sessione",
+        "loadError": "Non è stato possibile caricare le sessioni"
+      }
     }
   }

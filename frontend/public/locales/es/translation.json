@@ -151,6 +151,7 @@
       "add": "Añadir fila"
     },
     "header": {
+      "sessions": "Sesiones",
       "addTask": "Añadir tarea",
       "wipLimit": "Límite WIP",
       "addBoardItem": "Añadir fila/columna",
@@ -349,5 +350,31 @@
       "help": "Ayuda",
       "about": "Sobre nosotros",
       "contact": "Contacto"
+    },
+    "devices": {
+      "title": "Dispositivos con sesión iniciada",
+      "intro": "Todas las sesiones que aún pueden renovarse en esta cuenta. Cerrar una desconecta ese navegador; no cambia la contraseña.",
+      "fields": {
+        "device": "Dispositivo",
+        "address": "Dirección",
+        "signedIn": "Inicio de sesión",
+        "lastSeen": "Última renovación",
+        "actions": "Acciones",
+        "thisDevice": "Este dispositivo",
+        "unknownDevice": "Dispositivo desconocido"
+      },
+      "buttons": {
+        "end": "Cerrar sesión",
+        "back": "Volver al tablero Kanban"
+      },
+      "messages": {
+        "loading": "Cargando sesiones…",
+        "none": "No hay ninguna otra sesión iniciada.",
+        "endConfirm": "¿Cerrar la sesión de este dispositivo?",
+        "endCurrentConfirm": "Es el dispositivo que está usando. Al cerrarlo terminará esta sesión, ¿continuar?",
+        "ended": "La sesión se ha cerrado",
+        "endError": "No se pudo cerrar esa sesión",
+        "loadError": "No se pudieron cargar las sesiones"
+      }
     }
   }

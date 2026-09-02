@@ -7,6 +7,7 @@ import { ChatProvider } from './context/ChatContext'
 import HomePage from './components/HomePage';
 import Board from './components/Board';
 import UsersManagement from './components/UsersManagement';
+import Devices from './components/Devices';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Bench from './components/Bench';
@@ -81,6 +82,25 @@ function App() {
                 </KanbanProvider>
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/sessions"
+            element={
+              <ProtectedRoute>
+                <KanbanProvider>
+                <ChatProvider>
+                  <div className="app-container">
+                    <Header />
+                    <div className="content-container">
+                      <Devices />
+                    </div>
+                    <Footer />
+                    <Chat />
+                  </div>
+                </ChatProvider>
+                </KanbanProvider>
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </Router>

@@ -151,6 +151,7 @@
     "add": "Add row"
   },
   "header": {
+    "sessions": "Sessions",
     "addTask": "Add task",
     "wipLimit": "WIP Limit",
     "addBoardItem": "Add row/column",
@@ -349,5 +350,31 @@
     "help": "Help",
     "about": "About",
     "contact": "Contact"
+  },
+  "devices": {
+    "title": "Signed-in devices",
+    "intro": "Every session that can still be renewed on this account. Ending one signs that browser out; it does not change your password.",
+    "fields": {
+      "device": "Device",
+      "address": "Address",
+      "signedIn": "Signed in",
+      "lastSeen": "Last renewed",
+      "actions": "Actions",
+      "thisDevice": "This device",
+      "unknownDevice": "Unknown device"
+    },
+    "buttons": {
+      "end": "Sign out",
+      "back": "Back to Kanban Board"
+    },
+    "messages": {
+      "loading": "Loading sessions…",
+      "none": "No other session is signed in.",
+      "endConfirm": "Sign this device out?",
+      "endCurrentConfirm": "This is the device you are using. Signing it out will end this session — continue?",
+      "ended": "That session has been signed out",
+      "endError": "That session could not be signed out",
+      "loadError": "The sessions could not be loaded"
+    }
   }
 }
