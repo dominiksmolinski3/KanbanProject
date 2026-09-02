@@ -351,13 +351,32 @@ dies in between; the outbox is what makes a later Service Bus hop safe rather th
 posts them one at a time. It is deliberately **not** transactional: a transaction around the loop
 would hold a connection across fifty HTTPS round trips and roll back the record of forty-nine sent
 messages because the fiftieth was refused. A refusal waits — one minute, doubling — and after five
-attempts the row is `FAILED`, which is the dead letter. **Nothing watches `FAILED` rows**, so that
-alert is what MAIL-01 leaves open now: the failure a person used to see as a 500 is now a row. With
+attempts the row is `FAILED`, which is the dead letter. With
 no mail account configured the relay marks rows `DROPPED` rather than `SENT`, via
 `EmailSender.deliversMessages()` — the one table whose job is to be truthful about mail must not
 claim a fresh clone sent anything. **Nothing claims a row**, so a second replica would post every
 message twice; replicas are already pinned to 1 for the in-memory broker and rate limiter, and a
 `FOR UPDATE SKIP LOCKED` claim is the change that lands with the second one.
+
+**Two things watch the dead letters, because moving the send off the request thread moved the
+signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert
+already fires on; it is now a row, and a dead-letter queue nobody watches is a silently dropped
+mail with extra steps. `MailHealthIndicator` answers on `/actuator/health` under the key `mail`:
+`OUT_OF_SERVICE` when no mail account is configured (with the `DROPPED` count, which is what that
+costs), `DOWN` when the relay has given up on a message in the last 24 hours, `UP` otherwise, with
+the queue depth as a detail. **It cannot take the deployment down** — the Dockerfile and all three
+Container Apps probes address `/actuator/health/readiness` and `/actuator/health/liveness`, the two
+*groups*, and a plain indicator joins neither; mail being off is a reason to tell somebody and not
+a reason to restart the container. Details are hidden from anonymous callers by
+`management.endpoint.health.show-details=when_authorized`, and nothing loads a row, because a
+pending row's body is a live verification code.
+
+For the far commoner case of nobody asking, `OutboxRelay` logs `DEAD_LETTER_MARKER` —
+`MAIL_DEAD_LETTER` — on the give-up line, and a Log Analytics rule in
+`terraform/modules/diagnostics/main.tf` matches it and mails the alert address, next to the 5xx and
+restart alerts. It is a token rather than a phrase from the sentence because a reworded log line is
+an alert that stops firing without anything failing; `DeadLetterAlertTest` reads the Terraform and
+fails the build if the two stop agreeing, which is the only thing that can see that coupling.
 
 What a caller sees change: `POST /api/auth/register` no longer waits for Azure and no longer answers
 `500 EMAIL_SEND_FAILED` when the provider refuses. `EmailDeliveryException` still exists and still

@@ -278,3 +278,56 @@ resource "azurerm_monitor_metric_alert" "postgres_connections" {
     action_group_id = azurerm_monitor_action_group.main[0].id
   }
 }
+
+#
+# The one alert here that reads a log line rather than a metric, because the failure it watches for
+# does not have a metric.
+#
+# A message the mail provider refuses five times ends up as an `email_outbox` row with
+# status = 'FAILED', and before the outbox landed that same refusal was a 500 on /api/auth/register
+# - which the http_5xx alert above already fires on. Moving the send off the request thread moved
+# that signal with it, so this puts it back. What it costs a person who cannot verify their account
+# is identical either way; only the thing that notices changed.
+#
+# It matches OutboxRelay.DEAD_LETTER_MARKER, a token the relay logs precisely so that something
+# outside the process can find the line. Matching a phrase from the sentence would work until
+# somebody reworded the sentence, at which point the alert would stop firing and nothing would
+# fail. DeadLetterAlertTest reads this file and fails the build if the two strings stop agreeing.
+#
+# ContainerAppConsoleLogs_CL is the app's own stdout: the environment ships it here because
+# azurerm_container_app_environment.main sets log_analytics_workspace_id, and this workspace has
+# one application writing to it.
+#
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
+  count               = var.alert_email != "" ? 1 : 0
+  tags                = var.tags
+  name                = "kanban-${var.env}-mail-dead-letters"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  scopes              = [var.log_analytics_workspace_id]
+  description         = "The mail relay gave up on a message. Nobody is being told their verification code."
+  severity            = 1
+  enabled             = true
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT15M"
+
+  criteria {
+    query                   = <<-KQL
+      ContainerAppConsoleLogs_CL
+      | where Log_s contains "MAIL_DEAD_LETTER"
+    KQL
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.main[0].id]
+  }
+}

@@ -25,4 +25,23 @@ public interface OutboxEmailRepository extends JpaRepository<OutboxEmail, Long> 
      */
     List<OutboxEmail> findTop50ByStatusAndNextAttemptAtLessThanEqualOrderByIdAsc(
             OutboxStatus status, Instant now);
+
+    /**
+     * How many rows are in one state, for {@link MailHealthIndicator}.
+     *
+     * <p>Counted rather than fetched: the caller wants a number, and these rows carry live
+     * verification codes in their bodies. A health endpoint has no business loading one.
+     */
+    long countByStatus(OutboxStatus status);
+
+    /**
+     * The same count, narrowed to rows written since some instant.
+     *
+     * <p>It exists so the health status can clear. A message the relay gave up on last spring is
+     * worth keeping in the total and is not worth holding a status red over, and an alarm that
+     * cannot go quiet stops being read. Keyed on {@code created_at} rather than on the last
+     * attempt because that is the column the row is ordered by everywhere else, and for a row that
+     * has run out of attempts the two are about a quarter of an hour apart.
+     */
+    long countByStatusAndCreatedAtGreaterThanEqual(OutboxStatus status, Instant since);
 }
