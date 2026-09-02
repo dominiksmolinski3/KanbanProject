@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
+import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
+import pl.myproject.kanbanproject2.user.auth.ActiveDeviceMapper;
+import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RefreshToken;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
 
@@ -21,6 +24,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 
 /**
  * Issues, rotates and withdraws refresh tokens - the half of the session an access token cannot be.
@@ -49,6 +53,7 @@ public class RefreshTokenService {
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
 
     private final RefreshTokenRepository refreshTokens;
+    private final ActiveDeviceMapper deviceMapper;
     private final Duration refreshExpiration;
     private final Duration absoluteExpiration;
     private final Clock clock;
@@ -56,14 +61,16 @@ public class RefreshTokenService {
     @Autowired
     public RefreshTokenService(
             RefreshTokenRepository refreshTokens,
+            ActiveDeviceMapper deviceMapper,
             @Value("${security.jwt.refresh-expiration-time}") long refreshExpirationMillis,
             @Value("${security.jwt.refresh-absolute-expiration-time}") long absoluteExpirationMillis
     ) {
-        this(refreshTokens, refreshExpirationMillis, absoluteExpirationMillis, Clock.systemUTC());
+        this(refreshTokens, deviceMapper, refreshExpirationMillis, absoluteExpirationMillis,
+                Clock.systemUTC());
     }
 
-    RefreshTokenService(RefreshTokenRepository refreshTokens, long refreshExpirationMillis,
-                        long absoluteExpirationMillis, Clock clock) {
+    RefreshTokenService(RefreshTokenRepository refreshTokens, ActiveDeviceMapper deviceMapper,
+                        long refreshExpirationMillis, long absoluteExpirationMillis, Clock clock) {
         if (refreshExpirationMillis < 1) {
             throw new IllegalArgumentException("security.jwt.refresh-expiration-time must be positive");
         }
@@ -75,6 +82,7 @@ public class RefreshTokenService {
                             + "security.jwt.refresh-expiration-time");
         }
         this.refreshTokens = refreshTokens;
+        this.deviceMapper = deviceMapper;
         this.refreshExpiration = Duration.ofMillis(refreshExpirationMillis);
         this.absoluteExpiration = Duration.ofMillis(absoluteExpirationMillis);
         this.clock = clock;
@@ -87,16 +95,63 @@ public class RefreshTokenService {
     /**
      * Issues a fresh token for an account that has just proved who it is.
      *
-     * <p>This starts a new chain, so its absolute deadline is set here: {@code now} plus the
-     * configured ceiling. Every rotation after this carries that same instant forward.
+     * <p>This starts a new chain, so both of the instants a chain carries are set here: the
+     * absolute deadline at {@code now} plus the configured ceiling, and the sign-in at {@code now}.
+     * Every rotation after this carries the same two forward.
      *
      * <p>Returns the raw token, which is the only moment it exists anywhere outside the caller's
-     * hands: what is stored is its digest.
+     * hands - what is stored is its digest - alongside the id of the row it was written to, which
+     * is the client's answer to which of these sessions is mine. The id names a row, not a
+     * credential: it is worth nothing to anyone not already signed in as this account.
      */
     @Transactional
-    public String issue(User user) {
+    public Issued issue(User user, DeviceContext device) {
         Instant now = clock.instant();
-        return issueWithin(user, now.plus(absoluteExpiration), now);
+        return issueWithin(user, now.plus(absoluteExpiration), now, now, device);
+    }
+
+    /**
+     * Every session the account can still use, as something a person can read.
+     *
+     * <p>Lives here rather than in a service of its own because this class is the only thing in the
+     * application that reads {@code refresh_tokens}, and that is worth keeping true: a second
+     * reader is a second place where "live" could come to mean something slightly different.
+     */
+    @Transactional
+    public List<ActiveDeviceDto> listSessionsFor(User user) {
+        return refreshTokens
+                .findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(user, clock.instant())
+                .stream()
+                .map(deviceMapper::apply)
+                .toList();
+    }
+
+    /**
+     * Ends one named session, and refuses to say anything about a row that is not the caller's.
+     *
+     * <p>{@code SESSION_NOT_FOUND} covers three cases on purpose: no such row, somebody else's row,
+     * and a row already withdrawn or expired. Separating them would turn sequential ids into a way
+     * to count other people's sessions - the reasoning the board routes already follow. A caller
+     * can only act on what the list handed them.
+     *
+     * <p>Unlike {@code /auth/logout}, this one does report failure. Logging out asks to end the
+     * session you are holding, and a caller who is already signed out has what they asked for;
+     * pressing "sign out" beside a device in a list asks about one specific session, and answering
+     * 204 for a row nothing touched would tell somebody their lost phone had been signed out when
+     * it had not.
+     */
+    @Transactional
+    public void revokeSession(User user, Long sessionId) {
+        Instant now = clock.instant();
+        RefreshToken session = refreshTokens.findById(sessionId)
+                .filter(token -> token.getUser().getId().equals(user.getId()))
+                .filter(token -> !token.isRevoked())
+                .filter(token -> !token.isExpiredAt(now))
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.SESSION_NOT_FOUND));
+
+        session.revokeAt(now);
+        refreshTokens.save(session);
+        log.info("Withdrew session {} for user {} on request", sessionId, user.getId());
     }
 
     /**
@@ -108,12 +163,14 @@ public class RefreshTokenService {
      * token issued at that point expires when the chain does, and the rotation after it is refused
      * by the same expiry check that rejects any lapsed token.
      */
-    private String issueWithin(User user, Instant chainDeadline, Instant now) {
+    private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, Instant now,
+                               DeviceContext device) {
         String token = ENCODER.encodeToString(randomBytes());
         Instant slidingDeadline = now.plus(refreshExpiration);
         Instant expiresAt = slidingDeadline.isBefore(chainDeadline) ? slidingDeadline : chainDeadline;
-        refreshTokens.save(new RefreshToken(hash(token), user, now, expiresAt, chainDeadline));
-        return token;
+        RefreshToken saved = refreshTokens.save(new RefreshToken(
+                hash(token), user, now, expiresAt, chainDeadline, chainStartedAt, device));
+        return new Issued(token, saved.getId());
     }
 
     /**
@@ -125,7 +182,7 @@ public class RefreshTokenService {
      * tokens have ever existed.
      */
     @Transactional
-    public Rotation rotate(String presented) {
+    public Rotation rotate(String presented, DeviceContext device) {
         Instant now = clock.instant();
         RefreshToken stored = refreshTokens.findByTokenHash(hash(presented))
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS));
@@ -146,7 +203,11 @@ public class RefreshTokenService {
         refreshTokens.save(stored);
 
         User user = stored.getUser();
-        return new Rotation(user, issueWithin(user, stored.getAbsoluteExpiresAt(), now));
+        // The chain's two fixed points - its ceiling and its sign-in - travel with it untouched;
+        // the device details do not, because they describe where the session is being used now.
+        Issued issued = issueWithin(
+                user, stored.getAbsoluteExpiresAt(), stored.getChainStartedAt(), now, device);
+        return new Rotation(user, issued.token(), issued.sessionId());
     }
 
     /**
@@ -198,7 +259,11 @@ public class RefreshTokenService {
         }
     }
 
-    public record Rotation(User user, String refreshToken) {
+    public record Rotation(User user, String refreshToken, Long sessionId) {
+    }
+
+    /** A raw token and the id of the row it was written to. The token exists only here. */
+    public record Issued(String token, Long sessionId) {
     }
 
     private static byte[] randomBytes() {
