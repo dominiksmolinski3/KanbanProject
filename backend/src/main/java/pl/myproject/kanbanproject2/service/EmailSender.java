@@ -12,9 +12,9 @@ package pl.myproject.kanbanproject2.service;
 public interface EmailSender {
 
     /**
-     * Hands one message to the provider.
+     * Hands one composed message to the provider.
      *
      * @throws EmailDeliveryException if the provider would not take it.
      */
-    void send(String to, String subject, String htmlBody);
+    void send(EmailMessage message);
 }

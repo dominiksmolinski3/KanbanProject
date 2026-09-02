@@ -12,6 +12,7 @@ import com.azure.core.http.policy.RetryOptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.service.EmailDeliveryException;
+import pl.myproject.kanbanproject2.service.EmailMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -111,6 +112,10 @@ class AcsEmailSenderTest {
         };
     }
 
+    private EmailMessage message() {
+        return new EmailMessage("someone@example.test", "Subject", "<p>body</p>", "body");
+    }
+
     private AcsEmailSender senderOver(HttpClient transport, int maxRetries) {
         EmailClient client = new EmailClientBuilder()
                 .connectionString(CONNECTION_STRING)
@@ -127,7 +132,7 @@ class AcsEmailSenderTest {
     @DisplayName("the message the service receives carries the sender, the recipient, the subject and the html")
     void theMessageIsAssembledInFull() {
         senderOver(transportAnswering(202), 1)
-                .send("someone@example.test", "Account Verification", "<p>123456</p>");
+                .send(new EmailMessage("someone@example.test", "Account Verification", "<p>123456</p>", "123456"));
 
         assertThat(requests).hasSize(1);
         Recorded posted = requests.get(0);
@@ -137,13 +142,17 @@ class AcsEmailSenderTest {
                 .contains("DoNotReply@stub.azurecomm.net")
                 .contains("someone@example.test")
                 .contains("Account Verification")
-                .contains("<p>123456</p>");
+                .contains("<p>123456</p>")
+                // The alternative part is a field on the provider's message, so the only way to
+                // know it left is to read it off the wire. A message that reaches Azure with an
+                // html body and no plain one renders correctly everywhere anybody would notice.
+                .contains("plainText");
     }
 
     @Test
     @DisplayName("the request is signed from the connection string, so a wrong key fails here and not at the mailbox")
     void theRequestIsAuthenticated() {
-        senderOver(transportAnswering(202), 1).send("someone@example.test", "Subject", "<p>body</p>");
+        senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests.get(0).authorization()).startsWith("HMAC-SHA256");
     }
@@ -155,7 +164,7 @@ class AcsEmailSenderTest {
         // Were it lazy instead, every verification mail would be composed, handed over and never
         // sent, and nothing else in this suite would notice. Exactly one request also says the
         // poller is not being walked to completion on the request thread.
-        senderOver(transportAnswering(202), 1).send("someone@example.test", "Subject", "<p>body</p>");
+        senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests).hasSize(1);
     }
@@ -164,7 +173,7 @@ class AcsEmailSenderTest {
     @DisplayName("a message the service rejects is reported as a delivery failure rather than swallowed")
     void aRejectedMessageIsReported() {
         assertThatThrownBy(() -> senderOver(transportAnswering(400), 1)
-                .send("someone@example.test", "Subject", "<p>body</p>"))
+                .send(message()))
                 .isInstanceOf(EmailDeliveryException.class)
                 .hasMessageContaining("would not accept");
     }
@@ -175,7 +184,7 @@ class AcsEmailSenderTest {
         // Retries are for failures that might go away. A 400 replayed is three identical
         // rejections, and on a provider that answers 5xx after accepting, three copies of the mail.
         assertThatThrownBy(() -> senderOver(transportAnswering(400), 3)
-                .send("someone@example.test", "Subject", "<p>body</p>"))
+                .send(message()))
                 .isInstanceOf(EmailDeliveryException.class);
 
         assertThat(requests).hasSize(1);
@@ -187,7 +196,7 @@ class AcsEmailSenderTest {
         // Two retries on top of the first attempt. Bounded matters more than the number: every
         // attempt is time a signup spends waiting, which is the argument for the queue.
         assertThatThrownBy(() -> senderOver(transportAnswering(503), 2)
-                .send("someone@example.test", "Subject", "<p>body</p>"))
+                .send(message()))
                 .isInstanceOf(EmailDeliveryException.class);
 
         assertThat(requests).hasSize(3);
@@ -200,7 +209,7 @@ class AcsEmailSenderTest {
 
         assertThat(unconfigured.isConfigured()).isFalse();
         assertThat(new EmailConfiguration().emailSender(unconfigured)).isInstanceOf(DisabledEmailSender.class);
-        assertThatCode(() -> new DisabledEmailSender().send("someone@example.test", "Subject", "<p>body</p>"))
+        assertThatCode(() -> new DisabledEmailSender().send(message()))
                 .doesNotThrowAnyException();
     }
 

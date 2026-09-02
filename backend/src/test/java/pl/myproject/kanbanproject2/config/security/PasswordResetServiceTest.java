@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -68,13 +69,13 @@ class PasswordResetServiceTest {
         return user;
     }
 
-    /** The plaintext code as it went out by mail, recovered from the message body. */
+    /** The plaintext code as it went out by mail. */
     private String mailedCode() {
-        var body = ArgumentCaptor.forClass(String.class);
-        verify(emailService).sendVerificationEmail(any(), any(), body.capture());
-        var matcher = SIX_DIGITS.matcher(body.getValue());
-        assertThat(matcher.find()).as("the mail carries a six-digit code").isTrue();
-        return matcher.group();
+        var code = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendPasswordResetCode(any(), code.capture(), anyLong());
+        assertThat(SIX_DIGITS.matcher(code.getValue()).matches())
+                .as("the mail carries a six-digit code").isTrue();
+        return code.getValue();
     }
 
     @Nested
