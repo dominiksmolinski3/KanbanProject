@@ -12,9 +12,22 @@ package pl.myproject.kanbanproject2.service;
 public interface EmailSender {
 
     /**
-     * Hands one message to the provider.
+     * Hands one composed message to the provider.
      *
      * @throws EmailDeliveryException if the provider would not take it.
      */
-    void send(String to, String subject, String htmlBody);
+    void send(EmailMessage message);
+
+    /**
+     * Whether this transport actually posts what it is given.
+     *
+     * <p>Only the outbox relay asks. Everything else has no use for the answer - a caller that
+     * behaved differently when mail was unconfigured would be a caller that fails on a fresh
+     * clone, which is the thing {@code DisabledEmailSender} exists to prevent. The relay asks
+     * because it has a row to update either way, and recording a dropped message as sent would
+     * put a lie in the one table whose job is to be truthful about mail.
+     */
+    default boolean deliversMessages() {
+        return true;
+    }
 }
