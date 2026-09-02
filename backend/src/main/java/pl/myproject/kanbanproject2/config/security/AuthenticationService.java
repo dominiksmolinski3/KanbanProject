@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.security;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -52,6 +53,7 @@ public class AuthenticationService {
      * flow exists to point them at. Until then the client's wording carries it, and the branch
      * below is logged so the collision is at least visible from the server side.
      */
+    @Transactional
     public void signup(RegisterUserDto input) {
         if (userRepository.findByEmail(input.getEmail()).isPresent()) {
             log.info("Signup for an address that already has an account; answering as if it were new");
@@ -62,8 +64,8 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
         user.setEnabled(false);
-        sendVerificationEmail(user);
         userRepository.save(user);
+        sendVerificationEmail(user);
     }
 
     /**
@@ -173,6 +175,7 @@ public class AuthenticationService {
      * already verified — were a 404 and a 400, so between them they partitioned every address in
      * the world into three answerable states. Now they are one.
      */
+    @Transactional
     public void resendVerificationCode(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
 
@@ -183,27 +186,14 @@ public class AuthenticationService {
 
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
-        sendVerificationEmail(user);
         userRepository.save(user);
+        sendVerificationEmail(user);
     }
 
     private void sendVerificationEmail(User user) {
-        String subject = "Account Verification";
-        String htmlMessage = "<html>"
-                + "<body style=\"font-family: Arial, sans-serif;\">"
-                + "<div style=\"background-color: #f5f5f5; padding: 20px;\">"
-                + "<h2 style=\"color: #333;\">Welcome to our app!</h2>"
-                + "<p style=\"font-size: 16px;\">Please enter the verification code below to continue:</p>"
-                + "<div style=\"background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);\">"
-                + "<h3 style=\"color: #333;\">Verification Code:</h3>"
-                + "<p style=\"font-size: 18px; font-weight: bold; color: #007bff;\"> " + user.getVerificationCode() + "</p>"
-                + "</div>"
-                + "</div>"
-                + "</body>"
-                + "</html>";
-
         try {
-            emailService.sendVerificationEmail(user.getEmail(), subject, htmlMessage);
+            emailService.sendVerificationCode(
+                    user.getEmail(), user.getVerificationCode(), VERIFICATION_CODE_TTL_MINUTES);
         } catch (EmailDeliveryException e) {
             log.error("Failed to send verification email to {}", user.getEmail(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);

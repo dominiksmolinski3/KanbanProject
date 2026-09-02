@@ -254,6 +254,26 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  mail is new this branch and measures 93.6 over 94 lines. A new
+                                  package with no rule of its own lands on the 0.15 catch-all,
+                                  which is the pressure that makes one get written; 0.85 is a
+                                  shade under with room for the relay to grow a branch, and the
+                                  same ratio config.security.captcha carries at a similar size.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.mail</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -346,11 +366,17 @@
                                     </limits>
                                 </rule>
                                 <!--
-                                  service measures 59.7, up from the low forties: EmailService lost
-                                  the MimeMessage assembly to the Azure client and gained a test.
-                                  It shared the 0.45 rule with config.security, which measures 83
-                                  and is held back by it; splitting them is what lets this one move
-                                  without claiming credit for the other.
+                                  service measures 77.5, up from 59.7 and from the low forties
+                                  before that: EmailService lost the MimeMessage assembly to the
+                                  Azure client, then lost the message bodies to MailTemplates,
+                                  which arrived with a test per message. It shared the 0.45 rule
+                                  with config.security, which measures 83 and was held back by it;
+                                  splitting them is what let this one start moving at all.
+
+                                  0.70 rather than a shade under 77.5, because the package is 111
+                                  lines and the two smallest packages get the same kind of slack
+                                  for the same reason - at this size a floor set three lines away
+                                  is a tripwire, not a ratchet.
                                 -->
                                 <rule>
                                     <element>PACKAGE</element>
@@ -361,7 +387,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.55</minimum>
+                                            <minimum>0.70</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

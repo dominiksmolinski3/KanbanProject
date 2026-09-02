@@ -159,25 +159,8 @@ public class PasswordResetService {
     }
 
     private void sendResetEmail(User user, String code) {
-        String subject = "Password Reset";
-        String htmlMessage = "<html>"
-                + "<body style=\"font-family: Arial, sans-serif;\">"
-                + "<div style=\"background-color: #f5f5f5; padding: 20px;\">"
-                + "<h2 style=\"color: #333;\">Reset your password</h2>"
-                + "<p style=\"font-size: 16px;\">Enter the code below to choose a new password. "
-                + "It expires in " + RESET_CODE_TTL_MINUTES + " minutes.</p>"
-                + "<div style=\"background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);\">"
-                + "<h3 style=\"color: #333;\">Reset Code:</h3>"
-                + "<p style=\"font-size: 18px; font-weight: bold; color: #007bff;\"> " + code + "</p>"
-                + "</div>"
-                + "<p style=\"font-size: 14px; color: #666;\">If you did not ask for this, nothing has "
-                + "changed on your account and you can ignore this message.</p>"
-                + "</div>"
-                + "</body>"
-                + "</html>";
-
         try {
-            emailService.sendVerificationEmail(user.getEmail(), subject, htmlMessage);
+            emailService.sendPasswordResetCode(user.getEmail(), code, RESET_CODE_TTL_MINUTES);
         } catch (EmailDeliveryException e) {
             log.error("Failed to send password reset email to {}", user.getEmail(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);

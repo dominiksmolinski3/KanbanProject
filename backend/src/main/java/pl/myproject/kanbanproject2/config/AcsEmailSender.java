@@ -1,10 +1,10 @@
 package pl.myproject.kanbanproject2.config;
 
 import com.azure.communication.email.EmailClient;
-import com.azure.communication.email.models.EmailMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pl.myproject.kanbanproject2.service.EmailDeliveryException;
+import pl.myproject.kanbanproject2.service.EmailMessage;
 import pl.myproject.kanbanproject2.service.EmailSender;
 
 /**
@@ -39,16 +39,23 @@ public class AcsEmailSender implements EmailSender {
     private final EmailClient client;
     private final String senderAddress;
 
+    /**
+     * The provider's own {@code EmailMessage} is written out in full because this application has
+     * one of its own, and the domain type is the one that belongs in the signature - the same
+     * choice the entity package makes between {@code Column} and {@code jakarta.persistence.Column}.
+     */
     @Override
-    public void send(String to, String subject, String htmlBody) {
-        EmailMessage message = new EmailMessage()
-                .setSenderAddress(senderAddress)
-                .setToRecipients(to)
-                .setSubject(subject)
-                .setBodyHtml(htmlBody);
+    public void send(EmailMessage message) {
+        com.azure.communication.email.models.EmailMessage posted =
+                new com.azure.communication.email.models.EmailMessage()
+                        .setSenderAddress(senderAddress)
+                        .setToRecipients(message.to())
+                        .setSubject(message.subject())
+                        .setBodyHtml(message.htmlBody())
+                        .setBodyPlainText(message.textBody());
 
         try {
-            client.beginSend(message);
+            client.beginSend(posted);
         } catch (RuntimeException failure) {
             // Deliberately not logged here: both callers that care log it with the context that
             // makes it useful, and the one that does not is swallowing it on purpose.

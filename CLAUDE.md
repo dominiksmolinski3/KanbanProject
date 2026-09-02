@@ -207,7 +207,7 @@ one board. Either mistake, and a repeated id, is `400 INVALID_REORDER`.
 
 Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
 
-A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class.
+A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 
 ### Frontend state
 
@@ -330,13 +330,39 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 
 Three things about it are load-bearing:
 
-- **`EmailService` composes, `EmailSender` transports.** Callers see `EmailService` and a `EmailDeliveryException`; which provider carries the message is behind the interface. That seam is also where a queue would go — an `EmailSender` that writes to Service Bus and returns, with a worker holding the real one, changes nothing above it. Sends are still **synchronous on the request thread**, so a slow provider is still a slow signup; that is the open item, not an oversight.
+- **`EmailService` composes, `EmailSender` transports.** Callers name a message — `sendVerificationCode`, `sendPasswordResetCode`, `sendTaskOverdue` — and `MailTemplates` writes it; they no longer assemble HTML themselves, which is what three near-identical copies of the same markup used to mean. Every message is an `EmailMessage` carrying **both** an HTML and a plain-text body, because a `text/plain` alternative part that is optional is one that gets left out; everything interpolated goes through one escape, including values that cannot currently contain markup. The messages are **English only** — a locale would have to be stored against the account, since the deadline sweep has no request to read `Accept-Language` from. Callers see `EmailService` and an `EmailDeliveryException`; which provider carries the message is behind the interface. That seam is where the queue went: `OutboxEmailSender` is `@Primary` and writes a row, `EmailConfiguration` now builds the transport under the bean name `mailTransport`, and `OutboxRelay` is the only thing that asks for it by name. `OutboxWiringTest` fails the build if either annotation goes — two `EmailSender` beans with no primary is a context that does not start, and a swap would have the relay posting rows into the queue it is meant to drain.
 - **`beginSend` has already posted by the time it returns.** The returned `SyncPoller` is dropped on purpose: `SyncOverAsyncPoller` runs its activation — the POST — inside its own constructor, so the message is with Azure and anything it objected to has already been thrown. Polling further would wait on *delivery*, which no request has any use for. The cost is that a message accepted and bounced later is reported nowhere; a delivery-report subscription on the resource is what would surface it, and there is not one yet. `AcsEmailSenderTest` drives the real SDK over a fake transport and fails if activation ever stops being eager.
 - **The Netty transport is excluded in favour of `azure-core-http-jdk-httpclient`.** The SDK finds its HTTP client through a `ServiceLoader` at runtime, so nothing about that choice is visible to the compiler — `AzureTransportTest` asserts the resolved client is the JDK one and that Netty is not on the classpath at all. Versions come from the `azure-sdk-bom`; do not pin the Azure artifacts by hand.
 
 With no connection string the bean is a `DisabledEmailSender`: the app starts and drops messages instead of refusing to boot, which is what lets CI and a fresh clone run without an Azure account. Nothing about a dropped message is logged — subjects carry task titles and bodies carry live verification codes, and the last rewrite of this configuration happened because `mail.debug` had been left on and was writing the SMTP dialogue to the application log. The startup warning naming the missing properties is the only signal, deliberately.
 
 **Terraform provisions the ACS secret, not the ACS resource.** `terraform/` now writes an `ACS-EMAIL-CONNECTION-STRING` Key Vault secret (from `acs_email_connection_string`, empty by default) and passes `ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app — the `SPRING-MAIL-*` secrets are gone. What Terraform still does **not** create is the Communication Services resource itself or the email domain linked to it; those are made by hand in Azure (an Azure-managed `*.azurecomm.net` domain needs no DNS), exactly as the Gmail account this replaced was. Left empty, the app boots with mail disabled rather than failing.
+
+**Mail is enqueued, not sent, on the request thread (`V10`).** `email_outbox` holds one composed
+message per row — both bodies, exactly as `MailTemplates` built them, because re-running the template
+at send time would mail a wording change to somebody who was queued before it. The row is written in
+the caller's transaction, which is why `signup` and `resendVerificationCode` are now `@Transactional`
+and save the account **before** the message rather than after: an account and the mail announcing it
+either commit together or neither happens. Writing to Service Bus instead would not have that
+property — a queue is a second system too, and an enqueue after the commit is lost if the process
+dies in between; the outbox is what makes a later Service Bus hop safe rather than what it replaces.
+
+`OutboxRelay` runs every 60 seconds beside the deadline sweep, takes the 50 oldest due rows, and
+posts them one at a time. It is deliberately **not** transactional: a transaction around the loop
+would hold a connection across fifty HTTPS round trips and roll back the record of forty-nine sent
+messages because the fiftieth was refused. A refusal waits — one minute, doubling — and after five
+attempts the row is `FAILED`, which is the dead letter. **Nothing watches `FAILED` rows**, so that
+alert is what MAIL-01 leaves open now: the failure a person used to see as a 500 is now a row. With
+no mail account configured the relay marks rows `DROPPED` rather than `SENT`, via
+`EmailSender.deliversMessages()` — the one table whose job is to be truthful about mail must not
+claim a fresh clone sent anything. **Nothing claims a row**, so a second replica would post every
+message twice; replicas are already pinned to 1 for the in-memory broker and rate limiter, and a
+`FOR UPDATE SKIP LOCKED` claim is the change that lands with the second one.
+
+What a caller sees change: `POST /api/auth/register` no longer waits for Azure and no longer answers
+`500 EMAIL_SEND_FAILED` when the provider refuses. `EmailDeliveryException` still exists and still
+reaches the caller, but only when the *row* cannot be written — a database that will not take it is
+a signup that was not going to work anyway.
 
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
 
