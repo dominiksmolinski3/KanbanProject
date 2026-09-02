@@ -322,7 +322,12 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum>
+                                            <!-- 0.80, up from 0.70: measures 83.8, having been 73.5
+                                                 for four rounds. SupportedLocales arrived with a
+                                                 suite of its own and the locale patch added cases
+                                                 to a service that had none, so the package got
+                                                 larger in the tested direction. -->
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -387,7 +392,12 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum>
+                                            <!-- 0.75, up from 0.70: measures 81.2, having been 77.7
+                                                 last round. The nine bundles are exercised through
+                                                 MailTemplates rather than read, so every message in
+                                                 every language is rendered by a test. Not 0.80: at
+                                                 133 lines a floor that close is a tripwire. -->
+                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

@@ -9,6 +9,7 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.service.EmailDeliveryException;
 import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
@@ -160,7 +161,8 @@ public class PasswordResetService {
 
     private void sendResetEmail(User user, String code) {
         try {
-            emailService.sendPasswordResetCode(user.getEmail(), code, RESET_CODE_TTL_MINUTES);
+            emailService.sendPasswordResetCode(user.getEmail(), code, RESET_CODE_TTL_MINUTES,
+                    SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
             log.error("Failed to send password reset email to {}", user.getEmail(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);

@@ -445,6 +445,31 @@ export async function updateUserWipLimit(userId, wipLimit) {
   }
 }
 
+/**
+ * Stores the language this account is mailed in.
+ *
+ * Deliberately quiet about failing. It is called from the language switcher, where the thing the
+ * person asked for - the screen changing language - has already happened by the time this runs, and
+ * a toast about a preference they did not know they were setting would be noise. What is at stake
+ * is which language the next verification or overdue mail arrives in, and the switcher tries again
+ * the next time it is used.
+ */
+export async function updateUserLocale(userId, locale) {
+  const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ locale }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update the account language');
+  }
+
+  return await response.json();
+}
+
 export const removeUserFromTask = async (taskId, userId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/user/${userId}`, {

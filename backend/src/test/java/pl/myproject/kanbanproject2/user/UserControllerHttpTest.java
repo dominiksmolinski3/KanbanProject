@@ -94,7 +94,7 @@ class UserControllerHttpTest {
     @DisplayName("the listing answers 200 and never exposes the password field")
     void listAnswers200() throws Exception {
         when(userService.getVisibleUsers(caller))
-                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3)));
+                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3, "en")));
 
         mvc.perform(get("/users"))
                 .andExpect(status().isOk())
@@ -187,7 +187,7 @@ class UserControllerHttpTest {
     @DisplayName("the WIP limit route reaches the service with the parsed body")
     void wipLimitRoute() throws Exception {
         when(userService.updateWipLimit(eq(caller), eq(CALLER_ID), eq(5)))
-                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5));
+                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5, "en"));
 
         mvc.perform(patch("/users/" + CALLER_ID + "/wip-limit")
                         .contentType(MediaType.APPLICATION_JSON)

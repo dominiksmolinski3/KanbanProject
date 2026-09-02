@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -21,6 +22,7 @@ import pl.myproject.kanbanproject2.config.security.captcha.CaptchaVerifier;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
+import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
 import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
@@ -58,6 +60,15 @@ public class AuthenticationController {
     public ResponseEntity<Void> register(@Valid @RequestBody RegisterUserDto registerUserDto,
                                          HttpServletRequest request) {
         verifyCaptcha(registerUserDto.getCaptcha(), request);
+        if (registerUserDto.getLocale() == null) {
+            // The client sends its own i18next language, which is the better answer because it is
+            // what the person is actually reading. Accept-Language is the fallback for a caller
+            // that sends no locale at all - an older bundle, or anything reaching this route
+            // without a browser - and reading it here rather than in the service keeps the header
+            // in the one layer that has a request to read it from.
+            registerUserDto.setLocale(SupportedLocales.fromAcceptLanguage(
+                    request.getHeader(HttpHeaders.ACCEPT_LANGUAGE)));
+        }
         authenticationService.signup(registerUserDto);
         return ResponseEntity.accepted().build();
     }

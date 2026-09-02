@@ -16,7 +16,8 @@ public class UserMapper implements Function<User, UserDto> {
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getWipLimit()
+                user.getWipLimit(),
+                user.getLocale()
         );
     }
 }

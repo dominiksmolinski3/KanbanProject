@@ -12,6 +12,7 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.service.EmailDeliveryException;
 import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
@@ -61,6 +62,11 @@ public class AuthenticationService {
         }
 
         User user = new User(input.getUsername(), input.getEmail(), passwordEncoder.encode(input.getPassword()));
+        // A guess, and the only one available: the browser signing up is the best evidence there
+        // is of what language this person reads, and it is wrong the moment they sign up from
+        // somebody else's machine. SupportedLocales.normalise falls back to English rather than
+        // refusing, because a signup is not the place to argue about a header.
+        user.setLocale(SupportedLocales.normalise(input.getLocale()));
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
         user.setEnabled(false);
@@ -193,7 +199,8 @@ public class AuthenticationService {
     private void sendVerificationEmail(User user) {
         try {
             emailService.sendVerificationCode(
-                    user.getEmail(), user.getVerificationCode(), VERIFICATION_CODE_TTL_MINUTES);
+                    user.getEmail(), user.getVerificationCode(), VERIFICATION_CODE_TTL_MINUTES,
+                    SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
             log.error("Failed to send verification email to {}", user.getEmail(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);
