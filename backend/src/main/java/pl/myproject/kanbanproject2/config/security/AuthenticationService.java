@@ -13,12 +13,15 @@ import pl.myproject.kanbanproject2.service.EmailDeliveryException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
+import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
+import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -73,7 +76,7 @@ public class AuthenticationService {
      * caller has just proved — and the client had nowhere to go with a body it did not get, so
      * the person who had just verified sat on the verification screen with a verified account.
      */
-    public LoginResponse verifyUser(VerifyUserDto input) {
+    public LoginResponse verifyUser(VerifyUserDto input, DeviceContext device) {
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
 
@@ -88,7 +91,7 @@ public class AuthenticationService {
         user.setEnabled(true);
         user.setVerificationCode(null);
         user.setVerificationCodeExpiresAt(null);
-        return issueSession(userRepository.save(user));
+        return issueSession(userRepository.save(user), device);
     }
 
     /**
@@ -104,7 +107,7 @@ public class AuthenticationService {
      * {@code authenticate()} could never run for that same reason, and is gone rather than left
      * looking like a control.
      */
-    public LoginResponse login(LoginUserDto input) {
+    public LoginResponse login(LoginUserDto input, DeviceContext device) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(input.getEmail(), input.getPassword())
@@ -116,7 +119,7 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS));
 
-        return issueSession(user);
+        return issueSession(user, device);
     }
 
     /**
@@ -127,25 +130,41 @@ public class AuthenticationService {
      * transaction that issues its replacement - so the token the client sends here is spent by the
      * time it reads the answer.
      */
-    public LoginResponse refresh(String refreshToken) {
-        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken);
-        return respondWith(rotation.user(), rotation.refreshToken());
+    public LoginResponse refresh(String refreshToken, DeviceContext device) {
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken, device);
+        return respondWith(rotation.user(), rotation.refreshToken(), rotation.sessionId());
     }
 
     public void logout(String refreshToken) {
         refreshTokenService.revoke(refreshToken);
     }
 
-    private LoginResponse issueSession(User user) {
-        return respondWith(user, refreshTokenService.issue(user));
+    /**
+     * The sessions this account can still use. A pass-through, deliberately: the controller already
+     * holds this service and nothing else, and {@link RefreshTokenService} stays the only reader of
+     * the table.
+     */
+    public List<ActiveDeviceDto> listSessions(User user) {
+        return refreshTokenService.listSessionsFor(user);
     }
 
-    private LoginResponse respondWith(User user, String refreshToken) {
+    /** Ends one of them by id, or answers 404 if it is not this account's to end. */
+    public void revokeSession(User user, Long sessionId) {
+        refreshTokenService.revokeSession(user, sessionId);
+    }
+
+    private LoginResponse issueSession(User user, DeviceContext device) {
+        RefreshTokenService.Issued issued = refreshTokenService.issue(user, device);
+        return respondWith(user, issued.token(), issued.sessionId());
+    }
+
+    private LoginResponse respondWith(User user, String refreshToken, Long sessionId) {
         return new LoginResponse(
                 jwtService.generateToken(user),
                 jwtService.getExpirationTime(),
                 refreshToken,
-                refreshTokenService.getExpirationTime());
+                refreshTokenService.getExpirationTime(),
+                sessionId);
     }
 
     /**
