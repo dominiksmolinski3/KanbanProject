@@ -2,8 +2,11 @@ package pl.myproject.kanbanproject2.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -11,9 +14,9 @@ import static org.mockito.Mockito.verify;
 /**
  * Two things are worth pinning here, and neither is that mail gets sent.
  *
- * <p>The first is that {@code sendVerificationEmail} and {@code sendEmail} really are the same
- * call - the name is the only difference, and a reader who assumes otherwise will look for a
- * template that does not exist. The second is that a refusal from the transport reaches the caller:
+ * <p>The first is that each named send composes its own message and posts exactly one of them -
+ * this class is the composing half of the seam, and a caller that produced two mails from one call
+ * would find out from a user. The second is that a refusal from the transport reaches the caller:
  * {@code AuthenticationService} and {@code PasswordResetService} both turn it into {@code
  * EMAIL_SEND_FAILED}, which they can only do if it gets past this class.
  */
@@ -22,30 +25,44 @@ class EmailServiceTest {
     private final EmailSender sender = mock(EmailSender.class);
     private final EmailService service = new EmailService(sender);
 
-    @Test
-    @DisplayName("a verification mail is an ordinary mail - same recipient, subject and body, one transport call")
-    void verificationMailIsJustAnHtmlMail() {
-        service.sendVerificationEmail("someone@example.test", "Account Verification", "<p>123456</p>");
-
-        verify(sender).send("someone@example.test", "Account Verification", "<p>123456</p>");
+    private EmailMessage posted() {
+        ArgumentCaptor<EmailMessage> message = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(sender).send(message.capture());
+        return message.getValue();
     }
 
     @Test
-    @DisplayName("an html mail goes to the transport unchanged")
-    void htmlMailIsPassedThrough() {
-        service.sendEmail("someone@example.test", "Task overdue", "<p>hurry up</p>");
+    @DisplayName("a verification send composes the verification message and posts it once")
+    void verificationIsComposedAndPostedOnce() {
+        service.sendVerificationCode("someone@example.test", "123456", 15);
 
-        verify(sender).send("someone@example.test", "Task overdue", "<p>hurry up</p>");
+        assertThat(posted()).isEqualTo(MailTemplates.verification("someone@example.test", "123456", 15));
+    }
+
+    @Test
+    @DisplayName("a reset send composes the reset message and posts it once")
+    void resetIsComposedAndPostedOnce() {
+        service.sendPasswordResetCode("someone@example.test", "654321", 10);
+
+        assertThat(posted()).isEqualTo(MailTemplates.passwordReset("someone@example.test", "654321", 10));
+    }
+
+    @Test
+    @DisplayName("an overdue send composes the overdue message and posts it once")
+    void overdueIsComposedAndPostedOnce() {
+        service.sendTaskOverdue("someone@example.test", "Ship it", "Delivery", "its deadline");
+
+        assertThat(posted())
+                .isEqualTo(MailTemplates.taskOverdue("someone@example.test", "Ship it", "Delivery", "its deadline"));
     }
 
     @Test
     @DisplayName("a transport that refuses the message is not swallowed on the way out")
     void aRefusalReachesTheCaller() {
         EmailDeliveryException refusal = new EmailDeliveryException("refused", new RuntimeException());
-        doThrow(refusal).when(sender).send("someone@example.test", "Account Verification", "<p>123456</p>");
+        doThrow(refusal).when(sender).send(any());
 
-        assertThatThrownBy(() ->
-                service.sendVerificationEmail("someone@example.test", "Account Verification", "<p>123456</p>"))
+        assertThatThrownBy(() -> service.sendVerificationCode("someone@example.test", "123456", 15))
                 .isSameAs(refusal);
     }
 }

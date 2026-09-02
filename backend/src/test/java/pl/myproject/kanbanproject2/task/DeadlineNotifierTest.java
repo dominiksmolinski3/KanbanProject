@@ -49,7 +49,7 @@ class DeadlineNotifierTest {
     void mailsEachAssignee() {
         notifier.notifyExpired(overdueTask(user("a@example.com")));
 
-        verify(emailService).sendEmail(eq("a@example.com"), contains("Ship the release"), contains("Delivery"));
+        verify(emailService).sendTaskOverdue(eq("a@example.com"), eq("Ship the release"), eq("Delivery"), contains("deadline"));
     }
 
     @Test
@@ -57,21 +57,21 @@ class DeadlineNotifierTest {
     void skipsAddresslessAssignees() {
         notifier.notifyExpired(overdueTask(user(null), user("  "), user("real@example.com")));
 
-        verify(emailService).sendEmail(eq("real@example.com"), any(), any());
-        verify(emailService, never()).sendEmail(eq(null), any(), any());
+        verify(emailService).sendTaskOverdue(eq("real@example.com"), any(), any(), any());
+        verify(emailService, never()).sendTaskOverdue(eq(null), any(), any(), any());
     }
 
     @Test
     @DisplayName("a failed send is swallowed so the rest of the batch still goes out")
     void oneFailedSendDoesNotStopTheOthers() {
         doThrow(new EmailDeliveryException("the provider refused it", new RuntimeException("400")))
-                .when(emailService).sendEmail(eq("broken@example.com"), any(), any());
+                .when(emailService).sendTaskOverdue(eq("broken@example.com"), any(), any(), any());
 
         assertThatCode(() -> notifier.notifyExpired(
                 overdueTask(user("broken@example.com"), user("ok@example.com"))))
                 .doesNotThrowAnyException();
 
-        verify(emailService).sendEmail(eq("ok@example.com"), any(), any());
+        verify(emailService).sendTaskOverdue(eq("ok@example.com"), any(), any(), any());
     }
 
     @Test

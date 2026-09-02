@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -105,7 +106,7 @@ class AuthenticationServiceEnumerationTest {
             service.signup(registration(UNKNOWN));
 
             verify(userRepository).save(any(User.class));
-            verify(emailService).sendVerificationEmail(any(), any(), any());
+            verify(emailService).sendVerificationCode(any(), any(), anyLong());
         }
 
         @Test
@@ -116,7 +117,7 @@ class AuthenticationServiceEnumerationTest {
             assertThatCode(() -> service.signup(registration(KNOWN))).doesNotThrowAnyException();
 
             verify(userRepository, never()).save(any());
-            verify(emailService, never()).sendVerificationEmail(any(), any(), any());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
         }
 
         @Test
@@ -159,7 +160,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThat(pending.getVerificationCode()).isNotEqualTo("111111");
             assertThat(pending.getVerificationCodeExpiresAt()).isAfter(LocalDateTime.now());
-            verify(emailService).sendVerificationEmail(any(), any(), any());
+            verify(emailService).sendVerificationCode(any(), any(), anyLong());
         }
 
         @Test
@@ -169,7 +170,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThatCode(() -> service.resendVerificationCode(UNKNOWN)).doesNotThrowAnyException();
 
-            verify(emailService, never()).sendVerificationEmail(any(), any(), any());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
             verify(userRepository, never()).save(any());
         }
 
@@ -180,7 +181,7 @@ class AuthenticationServiceEnumerationTest {
 
             assertThatCode(() -> service.resendVerificationCode(KNOWN)).doesNotThrowAnyException();
 
-            verify(emailService, never()).sendVerificationEmail(any(), any(), any());
+            verify(emailService, never()).sendVerificationCode(any(), any(), anyLong());
             verify(userRepository, never()).save(any());
         }
 

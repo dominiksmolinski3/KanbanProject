@@ -39,7 +39,7 @@ public class DeadlineNotifier {
                 continue;
             }
             try {
-                emailService.sendEmail(address, subjectFor(task), bodyFor(task));
+                emailService.sendTaskOverdue(address, safeTitle(task), boardOf(task), deadlineOf(task));
             } catch (Exception e) {
                 log.error("Failed to send the deadline notification for task {} to {}",
                         task.getId(), address, e);
@@ -47,29 +47,17 @@ public class DeadlineNotifier {
         }
     }
 
-    private static String subjectFor(Task task) {
-        return "Task overdue: " + safeTitle(task);
+    private static String deadlineOf(Task task) {
+        return task.getDeadline() == null ? "its deadline"
+                : "its deadline of " + task.getDeadline().format(DEADLINE_FORMAT);
     }
 
-    private static String bodyFor(Task task) {
-        String deadline = task.getDeadline() == null ? "its deadline"
-                : "its deadline of " + task.getDeadline().format(DEADLINE_FORMAT);
-        String board = task.getBoard() == null || task.getBoard().getName() == null
+    private static String boardOf(Task task) {
+        return task.getBoard() == null || task.getBoard().getName() == null
                 ? "your board" : task.getBoard().getName();
-        return "<html><body style=\"font-family: Arial, sans-serif;\">"
-                + "<div style=\"background-color: #f5f5f5; padding: 20px;\">"
-                + "<h2 style=\"color: #333;\">A task has passed its deadline</h2>"
-                + "<p style=\"font-size: 16px;\"><strong>" + escape(safeTitle(task)) + "</strong> on "
-                + escape(board) + " has passed " + escape(deadline) + ".</p>"
-                + "<p style=\"font-size: 14px; color: #666;\">Open the board to reschedule it or move it on.</p>"
-                + "</div></body></html>";
     }
 
     private static String safeTitle(Task task) {
         return task.getTitle() == null || task.getTitle().isBlank() ? "Untitled task" : task.getTitle();
-    }
-
-    private static String escape(String value) {
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 }
