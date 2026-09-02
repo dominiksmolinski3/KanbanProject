@@ -240,11 +240,17 @@ export const updateTask = async (taskId, taskData) => {
       },
       body: JSON.stringify(taskData)
     });
-    
+
+    // A `version` in the body means "apply this only if the task has not changed since I read it".
+    // The server answers 409 when it has - nothing is broken, the caller is holding a stale copy -
+    // so it is its own type, reloaded rather than reported as a failure.
+    if (response.status === 409) {
+      throw new ConcurrentModificationError('task');
+    }
     if (!response.ok) {
       throw new Error(`Error updating task: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error updating task ${taskId}:`, error);
