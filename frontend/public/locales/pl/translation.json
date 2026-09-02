@@ -75,6 +75,7 @@
     "taskMovedToRow": "Zadanie \"{{title}}\" zostało przeniesione do wiersza \"{{row}}\"",
     "columnMoved": "Kolumna \"{{name}}\" została przesunięta",
     "changedBySomeoneElse": "Ktoś inny zmienił tablicę pierwszy - pokazujemy najnowszą wersję",
+    "taskChangedElsewhere": "Ten element został przed chwilą zmieniony przez kogoś innego - wczytuję najnowszą wersję",
     "rowMoved": "Wiersz \"{{name}}\" został przesunięty",
     "labelsUpdateError": "Wystąpił błąd podczas aktualizacji etykiet",
     "subtaskAddError": "Wystąpił błąd podczas dodawania podzadania",

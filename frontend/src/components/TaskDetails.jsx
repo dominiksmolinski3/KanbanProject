@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { createPortal } from 'react-dom';
-import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary } from '../services/api';
+import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary, ConcurrentModificationError } from '../services/api';
 import '../styles/components/TaskDetails.css';
 import TaskLabels from './TaskLabels';
 import { toast } from 'react-toastify';
@@ -41,6 +41,9 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   const [deadlineValue, setDeadlineValue] = useState('');
   const [originalDeadline, setOriginalDeadline] = useState('');
   const [columnHistory, setColumnHistory] = useState([]);
+  // The task's @Version as it was when this panel loaded it. Sent back on every save so the server
+  // can refuse a write built on a copy someone else has since changed; refreshed from each response.
+  const [taskVersion, setTaskVersion] = useState(null);
   const [currentView, setCurrentView] = useState('main');
   const [columnHistoryPage, setColumnHistoryPage] = useState(0);
   const [columnTimeSpent, setColumnTimeSpent] = useState([]);
@@ -111,6 +114,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     try {
       setLoading(true);
       const taskData = await fetchTask(task.id);
+      setTaskVersion(typeof taskData.version === 'number' ? taskData.version : null);
       let assignedData = [];
       
       if (taskData.userIds && taskData.userIds.length > 0) {
@@ -218,6 +222,34 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   };
 
+  /**
+   * Every save from this panel goes through here so the write carries the version the panel loaded
+   * with. The server answers 409 - surfaced as a ConcurrentModificationError - when the task has
+   * changed since, and each successful response carries the new version to send next time.
+   */
+  const persistTaskFields = async (fields) => {
+    const payload = typeof taskVersion === 'number' ? { ...fields, version: taskVersion } : fields;
+    const updated = await updateTask(task.id, payload);
+    if (updated && typeof updated.version === 'number') {
+      setTaskVersion(updated.version);
+    }
+    return updated;
+  };
+
+  /**
+   * A stale save is not a failure to report - nothing is broken, the panel is just behind - so it
+   * says what happened and reloads. Anything else keeps the existing error toast.
+   */
+  const reportSaveError = (error, logLabel) => {
+    if (error instanceof ConcurrentModificationError) {
+      toast.info(t('notifications.taskChangedElsewhere'));
+      loadTaskData();
+      return;
+    }
+    console.error(logLabel, error);
+    toast.error(t('notifications.errorOccurred', { message: error.message }));
+  };
+
   const startEditingTaskTitle = () => {
     setOriginalTaskTitle(taskTitle);
     setEditingTaskTitle(true);
@@ -230,20 +262,19 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   
   const saveTaskTitle = async () => {
     try {
-      await updateTask(task.id, { title: taskTitle });
-      
+      await persistTaskFields({ title: taskTitle });
+
       setOriginalTaskTitle(taskTitle);
       setEditingTaskTitle(false);
-      
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
-      
+
       refreshTasks();
     } catch (error) {
-      console.error('Error saving task title:', error);
-      toast.error(t('notifications.errorOccurred', { message: error.message }));
+      reportSaveError(error, 'Error saving task title:');
     }
   };
   
@@ -254,7 +285,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
   const saveTaskDescription = async () => {
     try {
-      await updateTask(task.id, { description: taskDescription });
+      await persistTaskFields({ description: taskDescription });
 
       setOriginalTaskDescription(taskDescription);
       setEditingTaskDescription(false);
@@ -264,8 +295,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         setSuccess(false);
       }, 3000);
     } catch (error) {
-      console.error('Error saving task description:', error);
-      toast.error(t('notifications.errorOccurred', { message: error.message }));
+      reportSaveError(error, 'Error saving task description:');
     }
   };
   
@@ -300,7 +330,12 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       
     if (uniqueLabels.length === labelsArray.length) {
       setTaskLabels(uniqueLabels);
-      updateTask(task.id, { labels: uniqueLabels }).catch(error => {
+      persistTaskFields({ labels: uniqueLabels }).catch(error => {
+        if (error instanceof ConcurrentModificationError) {
+          toast.info(t('notifications.taskChangedElsewhere'));
+          loadTaskData();
+          return;
+        }
         console.error('Error updating task labels:', error);
         toast.error(t('notifications.labelsUpdateError'));
       });
@@ -618,20 +653,19 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     try {
       // An emptied field means "remove the deadline". The API distinguishes an explicit null from an
       // omitted field, so send null rather than '' — which is not a date and would be rejected.
-      await updateTask(task.id, { deadline: deadlineValue || null });
-      
+      await persistTaskFields({ deadline: deadlineValue || null });
+
       setOriginalDeadline(deadlineValue);
       setEditingDeadline(false);
-      
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
-      
+
       refreshTasks();
     } catch (error) {
-      console.error('Error saving task deadline:', error);
-      toast.error(t('notifications.errorOccurred', { message: error.message }));
+      reportSaveError(error, 'Error saving task deadline:');
     }
   };
   

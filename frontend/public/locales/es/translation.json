@@ -75,6 +75,7 @@
       "taskMovedToRow": "Tarea \"{{title}}\" ha sido movida a la fila \"{{row}}\"",
       "columnMoved": "Columna \"{{name}}\" ha sido movida",
       "changedBySomeoneElse": "Otra persona cambió el tablero primero: se muestra la versión más reciente",
+      "taskChangedElsewhere": "Otra persona acaba de cambiar esta tarea: se vuelve a cargar la versión más reciente",
       "rowMoved": "Fila \"{{name}}\" ha sido movida",
       "labelsUpdateError": "Se produjo un error al actualizar las etiquetas",
       "subtaskAddError": "Se produjo un error al añadir la subtarea",
