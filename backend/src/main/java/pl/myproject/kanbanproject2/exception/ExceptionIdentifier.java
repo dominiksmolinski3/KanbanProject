@@ -89,6 +89,15 @@ public enum ExceptionIdentifier {
     BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board"),
 
     /*
+     * A language the mail templates have no bundle for. The caller's mistake, so 400 - and a
+     * refusal rather than a fallback, because this is only ever reached by somebody setting the
+     * language explicitly. Signup, which guesses from a browser header, falls back to English
+     * without complaining; a guess that misses costs nothing, and quietly storing English over
+     * a choice does.
+     */
+    UNSUPPORTED_LOCALE(BAD_REQUEST, "That language is not one this application can write mail in"),
+
+    /*
      * Someone else changed the same task, column, row or subtask between the caller reading it and
      * saving it back. A 409 rather than a 500: nothing is broken, the caller just has a stale copy
      * and the fix is to reload and reapply. Raised from Hibernate's optimistic lock, not thrown by

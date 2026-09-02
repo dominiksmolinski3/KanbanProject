@@ -72,7 +72,7 @@ class PasswordResetServiceTest {
     /** The plaintext code as it went out by mail. */
     private String mailedCode() {
         var code = ArgumentCaptor.forClass(String.class);
-        verify(emailService).sendPasswordResetCode(any(), code.capture(), anyLong());
+        verify(emailService).sendPasswordResetCode(any(), code.capture(), anyLong(), any());
         assertThat(SIX_DIGITS.matcher(code.getValue()).matches())
                 .as("the mail carries a six-digit code").isTrue();
         return code.getValue();
