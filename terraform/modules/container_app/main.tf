@@ -13,8 +13,7 @@ resource "azurerm_container_app" "main" {
   depends_on = [
     time_sleep.wait_for_secrets_user,
     azurerm_key_vault_secret.jwt_secret,
-    azurerm_key_vault_secret.spring_mail_username,
-    azurerm_key_vault_secret.spring_mail_password,
+    azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.captcha_secret,
     azurerm_key_vault_secret.ghcr_token,
   ]
@@ -40,13 +39,8 @@ resource "azurerm_container_app" "main" {
     identity            = azurerm_user_assigned_identity.main.id
   }
   secret {
-    name                = "spring-mail-username"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "SPRING-MAIL-USERNAME")
-    identity            = azurerm_user_assigned_identity.main.id
-  }
-  secret {
-    name                = "spring-mail-password"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "SPRING-MAIL-PASSWORD")
+    name                = "acs-email-connection-string"
+    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "ACS-EMAIL-CONNECTION-STRING")
     identity            = azurerm_user_assigned_identity.main.id
   }
   secret {
@@ -99,12 +93,12 @@ resource "azurerm_container_app" "main" {
         secret_name = "jwt-secret-key"
       }
       env {
-        name        = "SPRING_MAIL_USERNAME"
-        secret_name = "spring-mail-username"
+        name        = "ACS_EMAIL_CONNECTION_STRING"
+        secret_name = "acs-email-connection-string"
       }
       env {
-        name        = "SPRING_MAIL_PASSWORD"
-        secret_name = "spring-mail-password"
+        name  = "ACS_EMAIL_SENDER_ADDRESS"
+        value = var.acs_email_sender_address
       }
       env {
         name  = "CAPTCHA_ENABLED"
@@ -230,17 +224,14 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   }
 }
 
-resource "azurerm_key_vault_secret" "spring_mail_username" {
+# The connection string is issued by Azure Communication Services, so it cannot be generated - it
+# comes in as a variable and sits in tfvars and state in plaintext, the same deliberate acceptance
+# as captcha_secret (see terraform/README.md, Secrets). Empty is allowed: the app reads a blank
+# ACS_EMAIL_CONNECTION_STRING as "mail off" rather than failing to boot.
+resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   tags         = var.tags
-  name         = "SPRING-MAIL-USERNAME"
-  value        = var.spring_mail_username
-  key_vault_id = var.key_vault_id
-}
-
-resource "azurerm_key_vault_secret" "spring_mail_password" {
-  tags         = var.tags
-  name         = "SPRING-MAIL-PASSWORD"
-  value        = var.spring_mail_password
+  name         = "ACS-EMAIL-CONNECTION-STRING"
+  value        = var.acs_email_connection_string
   key_vault_id = var.key_vault_id
 }
 
