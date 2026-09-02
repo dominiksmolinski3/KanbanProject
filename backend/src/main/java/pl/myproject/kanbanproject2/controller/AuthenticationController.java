@@ -6,7 +6,11 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,13 +21,18 @@ import pl.myproject.kanbanproject2.config.security.captcha.CaptchaVerifier;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
+import pl.myproject.kanbanproject2.user.User;
+import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
 import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
+import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.ForgotPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRequest;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
+
+import java.util.List;
 
 @RequestMapping("/auth")
 @RestController
@@ -57,7 +66,7 @@ public class AuthenticationController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginUserDto loginDto,
                                                HttpServletRequest request) {
         verifyCaptcha(loginDto.getCaptcha(), request);
-        return ResponseEntity.ok(authenticationService.login(loginDto));
+        return ResponseEntity.ok(authenticationService.login(loginDto, deviceOf(request)));
     }
 
     /**
@@ -69,8 +78,9 @@ public class AuthenticationController {
      * and there is nothing further to prove.
      */
     @PostMapping("/verify")
-    public ResponseEntity<LoginResponse> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto) {
-        return ResponseEntity.ok(authenticationService.verifyUser(verifyUserDto));
+    public ResponseEntity<LoginResponse> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto,
+                                                    HttpServletRequest request) {
+        return ResponseEntity.ok(authenticationService.verifyUser(verifyUserDto, deviceOf(request)));
     }
 
     /**
@@ -102,8 +112,10 @@ public class AuthenticationController {
      * withdrawn - which is the difference this whole route exists for.
      */
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(authenticationService.refresh(request.refreshToken()));
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest body,
+                                                 HttpServletRequest request) {
+        return ResponseEntity.ok(
+                authenticationService.refresh(body.refreshToken(), deviceOf(request)));
     }
 
     /**
@@ -116,6 +128,40 @@ public class AuthenticationController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         authenticationService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Every session the caller can still use, newest renewal first.
+     *
+     * <p>Not public, unlike everything above it, and it is the first route under {@code /auth} that
+     * is not. The routes around it exist for someone who cannot prove who they are yet; this one
+     * lists an account's sessions, so proving it is the entire precondition. It is absent from
+     * {@code PublicPaths} for that reason and takes the caller like every other guarded route -
+     * {@code BoardScopedRoutesTest} fails the build if it stops doing either.
+     *
+     * <p>Rate limiting follows the same split: the limiter covers the unauthenticated routes, where
+     * the caller is an unknown address guessing at credentials. A caller here has already presented
+     * a valid access token, and the thing they could hammer is a list of their own rows.
+     */
+    @GetMapping("/devices")
+    public ResponseEntity<List<ActiveDeviceDto>> listDevices(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(authenticationService.listSessions(currentUser));
+    }
+
+    /**
+     * Ends one session and answers {@code 204}; anything that is not a live session of the caller's
+     * is {@code 404 SESSION_NOT_FOUND}, including somebody else's.
+     *
+     * <p>This is what the refresh-token table was built to make possible and what it still could
+     * not do: a password change withdrew everything, and logout withdrew the session doing the
+     * asking, so the one case a person actually has - a device they no longer have, and a session
+     * they would rather keep - had no answer that did not sign them out everywhere.
+     */
+    @DeleteMapping("/devices/{id}")
+    public ResponseEntity<Void> revokeDevice(@PathVariable Long id,
+                                             @AuthenticationPrincipal User currentUser) {
+        authenticationService.revokeSession(currentUser, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -137,5 +183,19 @@ public class AuthenticationController {
      */
     private void verifyCaptcha(CaptchaDto captcha, HttpServletRequest request) {
         captchaVerifier.verify(captcha, clientIpResolver.resolve(request));
+    }
+
+    /**
+     * What gets written onto the session row so its owner can recognise it later.
+     *
+     * <p>The address comes from {@link ClientIpResolver} rather than {@code getRemoteAddr} for the
+     * same reason the captcha check above uses it: behind a proxy the socket address is the proxy's,
+     * and the number of hops to trust is a deployment fact this application already has one answer
+     * for. Using a second answer here would show one address in the session list and bill another
+     * on the rate limit.
+     */
+    private DeviceContext deviceOf(HttpServletRequest request) {
+        return new DeviceContext(
+                clientIpResolver.resolve(request), request.getHeader("User-Agent"));
     }
 }
