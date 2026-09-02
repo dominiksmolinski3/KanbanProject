@@ -19,10 +19,11 @@ import java.util.List;
  * <p>Everything the request thread used to wait for happens here instead - the HTTPS call, the
  * timeout, the retry, and the decision that a message is not going to be delivered. That is the
  * whole trade of the pattern, and it has a cost worth naming: a refused message used to be a 500
- * somebody saw, and is now a row nobody is looking at. A {@code FAILED} row is the dead letter, and
- * a dead-letter queue nobody watches is a silently dropped mail with extra steps - so an alert on
- * {@code FAILED} rows is the piece of this that is still missing, and it is a query rather than
- * code.
+ * somebody saw, and is now a row. A {@code FAILED} row is the dead letter, and a dead-letter queue
+ * nobody watches is a silently dropped mail with extra steps - so two things watch it now.
+ * {@link MailHealthIndicator} answers for anyone who asks, and the {@link #DEAD_LETTER_MARKER} on
+ * the give-up line below is what the Log Analytics rule matches for the far more common case of
+ * nobody asking.
  *
  * <p><b>Not transactional, deliberately.</b> The batch is read, then each row is posted and saved
  * on its own. Wrapping the loop in a transaction would hold one open across up to fifty HTTPS
@@ -46,6 +47,21 @@ public class OutboxRelay {
      * being attempted.
      */
     static final Duration FIRST_BACKOFF = Duration.ofMinutes(1);
+
+    /**
+     * The token the give-up line carries so that something outside this process can find it.
+     *
+     * <p>{@code MailHealthIndicator} answers "is mail working" to anyone who asks; this is the
+     * other half, for the far more common case of nobody asking. The Log Analytics rule in {@code
+     * terraform/modules/diagnostics/main.tf} matches console log lines containing this string and
+     * mails whoever the alert address names, which is where the 5xx and restart alerts already go.
+     *
+     * <p>A marker rather than a phrase from the sentence because the sentence is prose and prose
+     * gets reworded, and a reworded log line is an alert that stops firing without anything
+     * failing. {@code DeadLetterAlertTest} reads the Terraform and fails the build if the two stop
+     * agreeing - the coupling is real and nothing else can see it.
+     */
+    static final String DEAD_LETTER_MARKER = "MAIL_DEAD_LETTER";
 
     private final OutboxEmailRepository outbox;
     private final EmailSender transport;
@@ -96,7 +112,8 @@ public class OutboxRelay {
         } catch (EmailDeliveryException refusal) {
             row.refused(reasonOf(refusal), now, FIRST_BACKOFF);
             if (row.getStatus() == OutboxStatus.FAILED) {
-                log.error("Outbox message {} refused {} times; giving up", row.getId(), row.getAttempts(), refusal);
+                log.error("{}: outbox message {} refused {} times; giving up",
+                        DEAD_LETTER_MARKER, row.getId(), row.getAttempts(), refusal);
             } else {
                 log.warn("Outbox message {} refused on attempt {}; retrying at {}",
                         row.getId(), row.getAttempts(), row.getNextAttemptAt());
