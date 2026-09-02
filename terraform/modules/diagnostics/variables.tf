@@ -42,3 +42,8 @@ variable "postgres_server_id" {
   type        = string
   description = "Resource ID of the PostgreSQL Flexible Server."
 }
+
+variable "location" {
+  type        = string
+  description = "Azure region. Scheduled query rules are regional resources, unlike the metric alerts above them."
+}
