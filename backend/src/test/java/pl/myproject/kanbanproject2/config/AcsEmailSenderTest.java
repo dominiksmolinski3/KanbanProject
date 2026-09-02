@@ -208,7 +208,7 @@ class AcsEmailSenderTest {
         AcsMailProperties unconfigured = new AcsMailProperties("", "", Duration.ofSeconds(10), 1);
 
         assertThat(unconfigured.isConfigured()).isFalse();
-        assertThat(new EmailConfiguration().emailSender(unconfigured)).isInstanceOf(DisabledEmailSender.class);
+        assertThat(new EmailConfiguration().mailTransport(unconfigured)).isInstanceOf(DisabledEmailSender.class);
         assertThatCode(() -> new DisabledEmailSender().send(message()))
                 .doesNotThrowAnyException();
     }
@@ -220,7 +220,17 @@ class AcsEmailSenderTest {
                 new AcsMailProperties(CONNECTION_STRING, "  ", Duration.ofSeconds(10), 1);
 
         assertThat(halfConfigured.isConfigured()).isFalse();
-        assertThat(new EmailConfiguration().emailSender(halfConfigured)).isInstanceOf(DisabledEmailSender.class);
+        assertThat(new EmailConfiguration().mailTransport(halfConfigured)).isInstanceOf(DisabledEmailSender.class);
+    }
+
+    @Test
+    @DisplayName("only the real transport says it delivers - the disabled one is what the relay asks about")
+    void onlyTheRealTransportClaimsToDeliver() {
+        // The relay reads this to decide between posting a row and marking it DROPPED, so a
+        // disabled sender that answered true would fill the outbox with rows claiming to have been
+        // sent by an account that does not exist.
+        assertThat(new DisabledEmailSender().deliversMessages()).isFalse();
+        assertThat(senderOver(transportAnswering(202), 1).deliversMessages()).isTrue();
     }
 
     @Test
@@ -229,6 +239,6 @@ class AcsEmailSenderTest {
         AcsMailProperties configured = new AcsMailProperties(
                 CONNECTION_STRING, "DoNotReply@stub.azurecomm.net", Duration.ofSeconds(10), 1);
 
-        assertThat(new EmailConfiguration().emailSender(configured)).isInstanceOf(AcsEmailSender.class);
+        assertThat(new EmailConfiguration().mailTransport(configured)).isInstanceOf(AcsEmailSender.class);
     }
 }
