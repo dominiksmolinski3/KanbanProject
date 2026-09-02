@@ -636,28 +636,22 @@ export const getTaskColumnTimeSpentSummary = async (taskId) => {
     if (!columnHistory || columnHistory.length === 0) {
       return [];
     }
-    
-    const allColumns = await fetchColumns().catch(() => []);
-    const columnNameMap = {};
-    if (allColumns && allColumns.length) {
-      allColumns.forEach(column => {
-        columnNameMap[column.id] = column.name;
-      });
-    }
-    
+
+    // Each history row already carries the column's name as it was at the move, so this does not
+    // need a second call to fetchColumns() (which pulls the whole board) just to label the bars.
     const timeSpentByColumn = {};
-    
-    const sortedHistory = [...columnHistory].sort((a, b) => 
+
+    const sortedHistory = [...columnHistory].sort((a, b) =>
       new Date(a.changedAt) - new Date(b.changedAt)
     );
-    
+
     for (let i = 0; i < sortedHistory.length - 1; i++) {
       const entry = sortedHistory[i];
       const nextEntry = sortedHistory[i + 1];
       const columnId = entry.columnId;
-      
-      const columnName = columnNameMap[columnId] || entry.column_name || `Column ${columnId}`;
-      
+
+      const columnName = entry.columnName || `Column ${columnId}`;
+
       const startTime = new Date(entry.changedAt);
       const endTime = new Date(nextEntry.changedAt);
       const timeSpentMs = Math.max(0, endTime - startTime);
@@ -676,15 +670,15 @@ export const getTaskColumnTimeSpentSummary = async (taskId) => {
     const lastEntry = sortedHistory[sortedHistory.length - 1];
     if (!timeSpentByColumn[lastEntry.columnId]) {
       const columnId = lastEntry.columnId;
-      const columnName = columnNameMap[columnId] || lastEntry.columnName || lastEntry.column_name || `Column ${columnId}`;
-      
+      const columnName = lastEntry.columnName || `Column ${columnId}`;
+
       timeSpentByColumn[columnId] = {
         columnId,
         columnName,
         totalTimeMs: 0
       };
     }
-    
+
     const lastEntryTime = new Date(lastEntry.changedAt);
     const now = new Date();
     const currentTimeMs = Math.max(0, now - lastEntryTime);
