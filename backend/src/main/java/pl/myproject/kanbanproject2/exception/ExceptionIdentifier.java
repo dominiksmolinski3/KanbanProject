@@ -27,6 +27,13 @@ public enum ExceptionIdentifier {
      * constant is an invitation to reach for it.
      */
     INVALID_CREDENTIALS(UNAUTHORIZED, "Invalid email or password"),
+    /*
+     * A session the caller asked to end and cannot: no such row, somebody else's row, or one that
+     * is already withdrawn or expired. One answer for the three, and 404 rather than 403, for the
+     * reason BOARD_NOT_FOUND spells out below - ids here are sequential, so a status that told a
+     * caller their neighbour's id was real would let anyone count everybody's live sessions.
+     */
+    SESSION_NOT_FOUND(NOT_FOUND, "Session not found"),
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),
     /*
