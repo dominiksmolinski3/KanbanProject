@@ -404,6 +404,16 @@ Captcha is currently frontend-only: the widget renders if `VITE_RECAPTCHA_SITE_K
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean test jacoco:report` against a Postgres service container (writing a `.env` from secrets first); frontend job builds, lints (`continue-on-error: true`, so lint failures don't block), and runs Jest with coverage. Cypress is not run in CI.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile and pushes to `ghcr.io/<owner>/kanbanproject-app` tagged `latest` and the commit SHA.
 - `codeql.yml` — CodeQL analysis of the Java backend.
+- `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
+  `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
+  which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
+  exactly — worth having now that a failure stops the build. Three checks are skipped and each
+  says why at the point of the skip: `CKV_AZURE_41` in the config file (an expiry on a secret
+  nothing rotates is a scheduled outage), `CKV_AZURE_136` and `CKV2_AZURE_57` inline on the
+  Postgres server (geo-redundancy is set per environment in tfvars Checkov cannot read; the server
+  uses VNet integration, which is the alternative to a private endpoint rather than the absence of
+  one). **Checkov's version is pinned** — an unpinned scanner on a blocking step goes red on
+  somebody else's release day, and the first response to that is always to put the escape back.
 - [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, Log Analytics) split into `modules/{vnet,key_vault,postgres,container_app}`. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
