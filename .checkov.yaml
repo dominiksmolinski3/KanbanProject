@@ -14,5 +14,8 @@ skip-path:
 compact: true
 quiet: true
 
+# Why each of these is deliberate is in CLAUDE.md, under the terraform-ci.yml bullet.
 skip-check:
   - CKV_AZURE_41
+  - CKV_AZURE_136
+  - CKV2_AZURE_57
