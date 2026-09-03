@@ -90,6 +90,7 @@ resource "azurerm_key_vault_secret" "postgres_user" {
   tags         = var.tags
   name         = "POSTGRES-USER"
   value        = azurerm_postgresql_flexible_server.main.administrator_login
+  content_type = "PostgreSQL administrator login"
   key_vault_id = var.key_vault_id
 }
 
@@ -97,6 +98,7 @@ resource "azurerm_key_vault_secret" "postgres_password" {
   tags         = var.tags
   name         = "POSTGRES-PASSWORD"
   value        = random_password.password.result
+  content_type = "PostgreSQL administrator password"
   key_vault_id = var.key_vault_id
 }
 
@@ -104,5 +106,6 @@ resource "azurerm_key_vault_secret" "postgres_connection_string" {
   tags         = var.tags
   name         = "POSTGRES-CONNECTION-STRING"
   value        = format("jdbc:postgresql://%s:5432/%s?sslmode=require", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
+  content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }
