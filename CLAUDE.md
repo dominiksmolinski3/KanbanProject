@@ -326,6 +326,27 @@ STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, ap
 
 `application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
 
+**Configuration is audited at build time, in both directions (`ConfigurationTest`).** Environment
+variables are the one coupling in this repo with no compiler on either side: a variable the
+application requires and an environment never sets is a container that will not start, and a secret
+an environment supplies that nothing reads is a lie that survives every build. Both have happened
+here - the `SPRING-MAIL-*` Key Vault secrets outlived the code that read them by two revisions
+(MAIL-02), and `CAPTCHA_SECRET` reached a verifier that did not exist (SEC-06). The test reads four
+files and compares them: the `${VAR}` placeholders in `application.properties`, the
+`@ConfigurationProperties` records, `docker-compose.yml` and
+`terraform/modules/container_app/main.tf`.
+
+Two things about it are worth knowing before adding a variable:
+
+- **A variable can be read without appearing in `application.properties`.** Relaxed binding means
+  `SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT` reaches `AuthRateLimitProperties.trustedProxyCount`
+  with nothing in between, which is how Terraform sets it. The test derives those names by
+  reflection over the four records in `BOUND_PROPERTIES`; a record that is added and not listed
+  there has its variables reported as dead configuration.
+- **The `env` blocks in the container-app module are the audited list, not the Key Vault secret
+  names.** A secret may exist in the vault without being passed to the app - that is what a rename
+  in flight looks like - so the check is on what the container is handed.
+
 **Mail goes out over the Azure Communication Services Email API, not SMTP.** [EmailConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/EmailConfiguration.java) builds an `AcsEmailSender` from `app.mail.*` — a connection string and a MailFrom address the linked domain actually has. There is no `spring-boot-starter-mail` and no `jakarta.mail` on the classpath; the `PersistentSmtpMailSender` that used to hold one Gmail connection open, ping it every four minutes and tell a dropped link from a rejected message is gone, and so is every knob that tuned it. The deployment is on Azure, a personal Gmail account is not a sending quota to build on, and an HTTPS request has no session to keep alive.
 
 Three things about it are load-bearing:
@@ -397,11 +418,25 @@ A schema change is therefore two edits, not one: the entity, **and** a new `V<n>
 
 `backend/db.sql` is gone. The default columns it seeded are `V3__seed_default_columns.sql`, so local development gets them by the same route as every other environment — and an init script would have left the volume non-empty, which is exactly the state `baseline-on-migrate` reads as "already migrated".
 
-Captcha is currently frontend-only: the widget renders if `VITE_RECAPTCHA_SITE_KEY` was baked in at Vite build time (it is a Docker `ARG`), and `authService.js` sends the token as `captcha: { token }`, but no backend code reads it — `CAPTCHA_SECRET` / `CAPTCHA_ENABLED` are plumbed through docker-compose and Terraform to a server-side check that does not exist yet, so the token is silently ignored.
+**Captcha is verified server-side, and it takes two variables that have to be set together.**
+`CaptchaVerifier` checks the token against Google's `siteverify` when `security.captcha.enabled` is
+on; a missing token is a failure rather than a skip, an unanswerable check fails closed, and enabled
+with no secret refuses to start. `CaptchaCoverageTest` fails the build if a credential route accepts
+a token nothing checks.
+
+The pairing is the part worth writing down, because neither half is any use alone and nothing at
+runtime can tell you the other is missing. **`VITE_RECAPTCHA_SITE_KEY` is baked into the bundle at
+Vite build time** (a Docker `ARG`, so it is fixed when the image is built and cannot be changed by
+restarting the container), and **`CAPTCHA_SECRET` is read by the server at startup**. Set the secret
+and enable the check with no site key and the widget never renders, so every login arrives with no
+token and fails closed - the control locks everybody out instead of protecting anything. Set the
+site key with `CAPTCHA_ENABLED=false` and the widget renders and is decorative, which is what
+SEC-06 was. `ConfigurationTest` audits which environments supply what; that the two agree in
+*meaning* is not something any test here can see, so it is written here instead.
 
 ### CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean test jacoco:report` against a Postgres service container (writing a `.env` from secrets first); frontend job builds, lints (`continue-on-error: true`, so lint failures don't block), and runs Jest with coverage. Cypress is not run in CI.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage. Cypress is not run in CI.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile and pushes to `ghcr.io/<owner>/kanbanproject-app` tagged `latest` and the commit SHA.
 - `codeql.yml` — CodeQL analysis of the Java backend.
 - [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, Log Analytics) split into `modules/{vnet,key_vault,postgres,container_app}`. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
