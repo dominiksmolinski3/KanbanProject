@@ -46,9 +46,7 @@ jobs:
         python-version: '3.13'
 
     - name: Scan with Checkov
-      continue-on-error: true
       working-directory: .
       run: |
-        pip install checkov
-        checkov --directory terraform --framework terraform \
-          --skip-path '\.terraform' --compact --quiet --soft-fail
+        pip install checkov==3.3.16
+        checkov --config-file .checkov.yaml

@@ -439,6 +439,23 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage. Cypress is not run in CI.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile and pushes to `ghcr.io/<owner>/kanbanproject-app` tagged `latest` and the commit SHA.
 - `codeql.yml` — CodeQL analysis of the Java backend.
+- `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
+  `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
+  which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
+  exactly — worth having now that a failure stops the build. **All three skips live in that file**,
+  one line each, and the reasoning is here rather than beside them: `CKV_AZURE_41`, because an
+  expiry on a secret nothing rotates is a scheduled outage and the honest fix is rotation;
+  `CKV_AZURE_136`, because geo-redundancy is `true` in `prod.tfvars` and deliberately false in dev
+  and uat, which a scan reading the module default cannot see; and `CKV2_AZURE_57`, because the
+  Postgres server is reached by VNet integration (a delegated subnet and a private DNS zone, with
+  `public_network_access_enabled = false`), which is the alternative to a private endpoint rather
+  than the absence of one. They were briefly `# checkov:skip=` comments on the resource, which is
+  the more precise home and the more fragile one: bundled with their justification they read as
+  prose, and trimming the prose silently deleted the directive and turned CI red. A `skip-check`
+  entry cannot be lost that way. What it costs is breadth — the skip applies to any future
+  resource of that kind, and there is one Postgres server. **Checkov's version is pinned** — an
+  unpinned scanner on a blocking step goes red on somebody else's release day, and the first
+  response to that is always to put the escape back.
 - [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, Log Analytics) split into `modules/{vnet,key_vault,postgres,container_app}`. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n

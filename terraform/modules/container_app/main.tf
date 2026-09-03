@@ -214,6 +214,7 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   tags         = var.tags
   name         = "JWT-SECRET-KEY"
   value        = base64encode(random_password.jwt_secret_key.result)
+  content_type = "base64 HMAC signing key"
   key_vault_id = var.key_vault_id
 
   # Rotating the JWT key signs out every user, so it is done deliberately and
@@ -232,6 +233,7 @@ resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   tags         = var.tags
   name         = "ACS-EMAIL-CONNECTION-STRING"
   value        = var.acs_email_connection_string
+  content_type = "endpoint=...;accesskey=..."
   key_vault_id = var.key_vault_id
 }
 
@@ -239,6 +241,7 @@ resource "azurerm_key_vault_secret" "captcha_secret" {
   tags         = var.tags
   name         = "CAPTCHA-SECRET"
   value        = var.captcha_secret
+  content_type = "reCAPTCHA shared secret"
   key_vault_id = var.key_vault_id
 }
 
@@ -248,5 +251,6 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
 
   name         = "GHCR-TOKEN"
   value        = var.ghcr_token
+  content_type = "GitHub PAT, read:packages"
   key_vault_id = var.key_vault_id
 }

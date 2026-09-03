@@ -1,0 +1,21 @@
+# Checkov's invocation, in one place, so a local run and CI cannot disagree.
+#
+#   checkov --config-file .checkov.yaml
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+skip-path:
+  - '\.terraform'
+
+compact: true
+quiet: true
+
+# Why each of these is deliberate is in CLAUDE.md, under the terraform-ci.yml bullet.
+skip-check:
+  - CKV_AZURE_41
+  - CKV_AZURE_136
+  - CKV2_AZURE_57
