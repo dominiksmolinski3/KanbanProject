@@ -1,5 +1,5 @@
 # Stage 1: Build frontend
-FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe AS frontend-build
+FROM dhi.io/node:26-dev@sha256:76e72cc05096a00fa7a0b6797b13f47bb01df8655bebd4172562fcc5c52913c9 AS frontend-build
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
