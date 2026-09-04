@@ -3,6 +3,7 @@ locals {
   backend_subnet_cidr = "10.0.0.0/23"
   db_subnet_cidr      = "10.0.2.0/24"
   pe_subnet_cidr      = "10.0.3.0/28"
+  storage_subnet_cidr = "10.0.3.16/28"
 }
 
 resource "azurerm_virtual_network" "main" {
@@ -26,6 +27,17 @@ resource "azurerm_subnet" "private_endpoints" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [local.pe_subnet_cidr]
+
+  private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
+}
+
+# The blob private endpoint, kept apart from snet-pe so each service's reachability is its own NSG
+# rule rather than one rule covering both.
+resource "azurerm_subnet" "storage" {
+  name                 = "snet-storage-${var.env}"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [local.storage_subnet_cidr]
 
   private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
 }

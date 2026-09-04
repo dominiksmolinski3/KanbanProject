@@ -19,3 +19,8 @@ output "id" {
   description = "The ID of the virtual network."
   value       = azurerm_virtual_network.main.id
 }
+
+output "storage_subnet_id" {
+  description = "Subnet holding the blob private endpoint NIC."
+  value       = azurerm_subnet.storage.id
+}

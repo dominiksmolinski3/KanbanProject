@@ -39,7 +39,20 @@
       "complete": "وضع علامة كمكتملة",
       "reopen": "إعادة فتح المهمة",
       "addToDailyFocus": "إضافة إلى تركيز اليوم",
-      "removeFromDailyFocus": "إزالة من تركيز اليوم"
+      "removeFromDailyFocus": "إزالة من تركيز اليوم",
+      "attachments": "المرفقات",
+      "addAttachment": "إضافة ملف",
+      "attachmentHint": "أو أفلت الملفات هنا (10 ميغابايت كحد أقصى لكل ملف)",
+      "attachmentUploading": "جارٍ الرفع…",
+      "noAttachments": "لا توجد مرفقات.",
+      "downloadAttachment": "تنزيل الملف",
+      "deleteAttachment": "حذف الملف",
+      "confirmDeleteAttachment": "هل تريد حذف هذا الملف؟",
+      "attachmentDeleted": "تم حذف الملف",
+      "attachmentTooLarge": "{{name}} أكبر من {{size}}",
+      "attachmentUploadFailed": "تعذر رفع {{name}}",
+      "attachmentDownloadFailed": "تعذر تنزيل {{name}}",
+      "attachmentStorageUnavailable": "تخزين الملفات غير مهيأ، لذا لا يمكن حفظ المرفقات"
     },
     "board": {
       "loading": "جاري تحميل لوحة كانبان...",

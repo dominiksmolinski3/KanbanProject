@@ -10,6 +10,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      azurite:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -19,10 +21,33 @@ services:
       ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS}
       CAPTCHA_SECRET: ${CAPTCHA_SECRET}
       CAPTCHA_ENABLED: ${CAPTCHA_ENABLED}
+      # Attachments go to the azurite service below rather than to Azure. The key in that default
+      # is Azurite's published development account - documented, identical on every machine that has
+      # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
+      # else, or set it empty, to change or switch off local attachment storage.
+      AZURE_STORAGE_CONNECTION_STRING: '${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}'
     deploy:
       resources:
         limits:
           memory: 512M
+
+  # The Blob Storage emulator, so `docker-compose up` gives you attachments as well as a board.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    restart: unless-stopped
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
+    volumes:
+      - azurite_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   postgres:
     image: postgres:17
@@ -52,3 +77,4 @@ services:
 
 volumes:
   postgres_data:
+  azurite_data:

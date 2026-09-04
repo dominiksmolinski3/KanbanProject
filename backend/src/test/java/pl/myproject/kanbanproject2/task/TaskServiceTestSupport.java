@@ -4,6 +4,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
+import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -50,6 +51,7 @@ final class TaskServiceTestSupport {
                 mock(ColumnRepository.class),
                 mock(RowRepository.class),
                 TenancyFixtures.boardServiceReturning(TENANT.board()),
-                mock(DeadlineNotifier.class));
+                mock(DeadlineNotifier.class),
+                mock(TaskAttachmentService.class));
     }
 }

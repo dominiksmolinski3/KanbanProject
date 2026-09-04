@@ -11,3 +11,6 @@ postgres_geo_redundant_backup_enabled = false
 
 key_vault_purge_protection_enabled     = false
 key_vault_purge_soft_delete_on_destroy = true
+
+# Attachments are throwaway here; the paired-region copies are not worth paying for.
+storage_replication_type = "LRS"

@@ -39,7 +39,20 @@
       "complete": "Marquer comme terminée",
       "reopen": "Rouvrir la tâche",
       "addToDailyFocus": "Ajouter au focus du jour",
-      "removeFromDailyFocus": "Retirer du focus du jour"
+      "removeFromDailyFocus": "Retirer du focus du jour",
+      "attachments": "Pièces jointes",
+      "addAttachment": "Ajouter un fichier",
+      "attachmentHint": "ou déposez des fichiers ici (10 Mo maximum par fichier)",
+      "attachmentUploading": "Envoi en cours…",
+      "noAttachments": "Aucune pièce jointe.",
+      "downloadAttachment": "Télécharger le fichier",
+      "deleteAttachment": "Supprimer le fichier",
+      "confirmDeleteAttachment": "Voulez-vous supprimer ce fichier ?",
+      "attachmentDeleted": "Fichier supprimé",
+      "attachmentTooLarge": "{{name}} dépasse {{size}}",
+      "attachmentUploadFailed": "Impossible d'envoyer {{name}}",
+      "attachmentDownloadFailed": "Impossible de télécharger {{name}}",
+      "attachmentStorageUnavailable": "Le stockage de fichiers n'est pas configuré, les pièces jointes ne peuvent pas être enregistrées"
     },
     "board": {
       "loading": "Chargement du tableau kanban...",

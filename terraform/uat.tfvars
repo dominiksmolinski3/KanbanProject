@@ -13,3 +13,6 @@ postgres_geo_redundant_backup_enabled = false
 key_vault_purge_protection_enabled     = true
 key_vault_soft_delete_retention_days   = 90
 key_vault_purge_soft_delete_on_destroy = false
+
+# Same reasoning as dev: nothing here is worth restoring from another region.
+storage_replication_type = "LRS"

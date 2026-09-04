@@ -1221,3 +1221,114 @@ export const deleteSubTask = async (subTaskId) => {
     throw error;
   }
 };
+
+// ====== TASK ATTACHMENTS ======
+//
+// Both directions go through this API, which is what lets the storage account be closed to the
+// internet entirely. An upload is posted here so the server can check who is asking and how big it
+// is before anything is written; a download is streamed back from storage through the app, because
+// the account answers nobody but the application's own VNet.
+
+const attachmentsOf = (taskId) => `${API_ENDPOINTS.TASKS}/${taskId}/attachments`;
+
+/** Matches TaskAttachmentService.MAX_ATTACHMENT_SIZE, so the refusal is instant and local. */
+export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+
+/**
+ * Raised when the server will not take a file, carrying which of the reasons it was.
+ *
+ * The caller needs to tell them apart because only one of them is the person's fault: a file that
+ * is too big is something they can act on, and storage not being configured is something only an
+ * operator can. A single "upload failed" would send them to retry the one that will never work.
+ */
+export class AttachmentUploadError extends Error {
+  constructor(reason, status) {
+    super(`Attachment upload failed: ${reason}`);
+    this.name = 'AttachmentUploadError';
+    this.reason = reason;
+    this.status = status;
+  }
+}
+
+export const fetchTaskAttachments = async (taskId) => {
+  const response = await fetch(attachmentsOf(taskId));
+
+  if (!response.ok) {
+    throw new Error(`Error fetching attachments: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+export const uploadTaskAttachment = async (taskId, file) => {
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    throw new AttachmentUploadError('tooLarge', 413);
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // No Content-Type header: the browser has to set it, because only the browser knows the
+  // multipart boundary it is about to write.
+  const response = await fetch(attachmentsOf(taskId), {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+
+    if (response.status === 413 || body.code === 'ATTACHMENT_TOO_LARGE') {
+      throw new AttachmentUploadError('tooLarge', response.status);
+    }
+    if (response.status === 503 || body.code === 'ATTACHMENT_STORAGE_UNAVAILABLE') {
+      throw new AttachmentUploadError('storageUnavailable', response.status);
+    }
+    throw new AttachmentUploadError('failed', response.status);
+  }
+
+  return await response.json();
+};
+
+/**
+ * Fetches the bytes and hands them to the browser as a download.
+ *
+ * A plain `<a href>` would be simpler and does not work: the route is authenticated and a link
+ * click carries no `Authorization` header, so the fetch has to happen here where the interceptor
+ * can attach the token. That is the same reason `getUserAvatar` reads its image this way.
+ *
+ * The object URL is revoked immediately after the click. The browser has already taken the blob by
+ * then, and leaving it unrevoked pins the whole file in memory for the life of the tab.
+ */
+export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => {
+  const response = await fetch(`${attachmentsOf(taskId)}/${attachmentId}/content`);
+
+  if (!response.ok) {
+    throw new Error(`Error downloading the attachment: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName || 'attachment';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
+
+  return true;
+};
+
+export const deleteTaskAttachment = async (taskId, attachmentId) => {
+  const response = await fetch(`${attachmentsOf(taskId)}/${attachmentId}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Error deleting attachment: ${response.status}`);
+  }
+
+  return true;
+};

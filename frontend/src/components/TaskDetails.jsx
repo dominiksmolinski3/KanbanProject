@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { createPortal } from 'react-dom';
-import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary, ConcurrentModificationError } from '../services/api';
+import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary, ConcurrentModificationError, fetchTaskAttachments, uploadTaskAttachment, downloadTaskAttachment, deleteTaskAttachment, AttachmentUploadError, MAX_ATTACHMENT_SIZE } from '../services/api';
 import '../styles/components/TaskDetails.css';
 import TaskLabels from './TaskLabels';
 import { toast } from 'react-toastify';
@@ -26,6 +26,10 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   const [editingDescription, setEditingDescription] = useState(false);
   const [subtaskDescription, setSubtaskDescription] = useState('');
   const [taskLabels, setTaskLabels] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+  const [draggingFileOver, setDraggingFileOver] = useState(false);
   const [originalTaskDescription, setOriginalTaskDescription] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [editingTaskDescription, setEditingTaskDescription] = useState(false);
@@ -58,6 +62,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   const descriptionInputRef = useRef(null);
   const taskDescriptionInputRef = useRef(null);
   const taskTitleInputRef = useRef(null);
+  const attachmentInputRef = useRef(null);
 
   useEffect(() => {
     const handleEscapeKeyForPanel = (event) => {
@@ -185,6 +190,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setUsers(usersData || []);
       const subtasksData = await fetchSubTasksByTaskId(task.id);
       setSubtasks(subtasksData || []);
+      await loadAttachments();
       const description = taskData.description || '';
       setTaskDescription(description);
       setOriginalTaskDescription(description);
@@ -220,6 +226,145 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       console.error('Error loading task data:', error);
       setLoading(false);
     }
+  };
+
+  /**
+   * The attachment list, kept out of loadTaskData's error handling on purpose.
+   *
+   * A deployment with no storage account configured still has boards, tasks and subtasks; failing
+   * to read attachments should cost the panel its attachment list and nothing else, so this
+   * swallows rather than throws. The empty-array fallback also covers a mocked api module, where
+   * every call answers undefined.
+   */
+  const loadAttachments = async () => {
+    try {
+      const files = await fetchTaskAttachments(task.id);
+      setAttachments(Array.isArray(files) ? files : []);
+    } catch (error) {
+      console.error('Error fetching task attachments:', error);
+      setAttachments([]);
+    }
+  };
+
+  /**
+   * Uploads one file at a time and reloads the list.
+   *
+   * One at a time rather than in parallel because the limit is per file and the panel has one
+   * progress state: two failures at once would leave the person unable to tell which file the
+   * message was about.
+   */
+  const handleAttachmentUpload = async (files) => {
+    const chosen = Array.from(files || []);
+    if (chosen.length === 0) {
+      return;
+    }
+
+    setUploadingAttachment(true);
+    try {
+      for (const file of chosen) {
+        try {
+          await uploadTaskAttachment(task.id, file);
+        } catch (error) {
+          reportAttachmentError(error, file.name);
+        }
+      }
+      await loadAttachments();
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  /**
+   * Which refusal it was decides what the person can do about it, so they are not one message.
+   * A file over the limit is theirs to fix; storage not being configured is not.
+   */
+  const reportAttachmentError = (error, fileName) => {
+    if (error instanceof AttachmentUploadError && error.reason === 'tooLarge') {
+      toast.error(t('taskActions.attachmentTooLarge', {
+        name: fileName,
+        size: formatFileSize(MAX_ATTACHMENT_SIZE)
+      }));
+      return;
+    }
+    if (error instanceof AttachmentUploadError && error.reason === 'storageUnavailable') {
+      toast.error(t('taskActions.attachmentStorageUnavailable'));
+      return;
+    }
+    console.error('Error uploading attachment:', error);
+    toast.error(t('taskActions.attachmentUploadFailed', { name: fileName }));
+  };
+
+  const handleAttachmentInputChange = (event) => {
+    handleAttachmentUpload(event.target.files);
+    // Clearing it is what lets the same file be picked twice in a row; without this the input
+    // holds the old value and the change event never fires again.
+    event.target.value = '';
+  };
+
+  const handleAttachmentDragOver = (event) => {
+    event.preventDefault();
+    setDraggingFileOver(true);
+  };
+
+  const handleAttachmentDragLeave = () => setDraggingFileOver(false);
+
+  /**
+   * The board's own drag-and-drop moves cards through typed `dataTransfer` payloads, so a drop
+   * carrying files is unambiguous - but the event still has to be stopped here, or it bubbles up
+   * to the board's handler and to the browser, which would navigate away to the dropped file.
+   */
+  const handleAttachmentDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDraggingFileOver(false);
+    handleAttachmentUpload(event.dataTransfer?.files);
+  };
+
+  const handleAttachmentDownload = async (attachment) => {
+    try {
+      await downloadTaskAttachment(task.id, attachment.id, attachment.fileName);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      toast.error(t('taskActions.attachmentDownloadFailed', { name: attachment.fileName }));
+    }
+  };
+
+  const confirmDeleteAttachment = (attachment) => setAttachmentToDelete(attachment);
+
+  const cancelDeleteAttachment = () => setAttachmentToDelete(null);
+
+  const handleDeleteAttachment = async () => {
+    if (!attachmentToDelete) {
+      return;
+    }
+    try {
+      await deleteTaskAttachment(task.id, attachmentToDelete.id);
+      setAttachments(current => current.filter(item => item.id !== attachmentToDelete.id));
+      toast.success(t('taskActions.attachmentDeleted'));
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+      toast.error(t('notifications.errorOccurred', { message: error.message }));
+    } finally {
+      setAttachmentToDelete(null);
+    }
+  };
+
+  /** Bytes are what the API stores; nobody reads them. Binary units, so 10 MB is the 10 MB limit. */
+  const formatFileSize = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes < 0) {
+      return '';
+    }
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    const units = ['KB', 'MB', 'GB'];
+    let size = bytes / 1024;
+    let unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    return `${size < 10 ? size.toFixed(1) : Math.round(size)} ${units[unit]}`;
   };
 
   /**
@@ -994,6 +1139,73 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
               )}
             </div>
 
+            {/* Attachments Section
+                The files live in Azure Blob Storage; this list is the rows that name them, and a
+                download is a fresh signed link the browser follows straight to storage. */}
+            <div
+              className={`attachments-section${draggingFileOver ? ' drop-target' : ''}`}
+              onDragOver={handleAttachmentDragOver}
+              onDragLeave={handleAttachmentDragLeave}
+              onDrop={handleAttachmentDrop}
+            >
+              <h4>{t('taskActions.attachments')}</h4>
+
+              <div className="add-attachment-form">
+                <input
+                  ref={attachmentInputRef}
+                  type="file"
+                  multiple
+                  className="attachment-file-input"
+                  onChange={handleAttachmentInputChange}
+                  disabled={uploadingAttachment}
+                  data-testid="attachment-input"
+                />
+                <button
+                  type="button"
+                  className="add-attachment-btn"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  disabled={uploadingAttachment}
+                >
+                  {uploadingAttachment ? t('taskActions.attachmentUploading') : t('taskActions.addAttachment')}
+                </button>
+                <span className="attachment-hint">{t('taskActions.attachmentHint')}</span>
+              </div>
+
+              {attachments.length > 0 ? (
+                <div className="attachments-list">
+                  {attachments.map(attachment => (
+                    <div key={attachment.id} className="attachment-item">
+                      <button
+                        type="button"
+                        className="attachment-name"
+                        onClick={() => handleAttachmentDownload(attachment)}
+                        title={t('taskActions.downloadAttachment')}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span className="attachment-file-name">{attachment.fileName}</span>
+                      </button>
+                      <span className="attachment-meta">
+                        {formatFileSize(attachment.sizeBytes)}
+                        {attachment.uploadedByName ? ` · ${attachment.uploadedByName}` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        className="delete-attachment-btn"
+                        onClick={() => confirmDeleteAttachment(attachment)}
+                        title={t('taskActions.deleteAttachment')}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-attachments">{t('taskActions.noAttachments')}</p>
+              )}
+            </div>
+
           </>
         ) : currentView === 'relationships' ? (
           /* Parent & Child Tasks Management View */
@@ -1493,6 +1705,35 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           </div>
         )}
         
+        {/* Delete attachment confirmation dialog
+            A deletion here takes the row and the blob, and nothing brings the file back from the
+            panel - so it asks, the way removing a subtask or an assignee does. */}
+        {attachmentToDelete && (
+          <div
+            className="delete-confirmation-overlay"
+            onClick={cancelDeleteAttachment}
+          >
+            <div className="delete-confirmation-dialog" onClick={(event) => event.stopPropagation()}>
+              <h4>{t('taskActions.confirmDeleteAttachment')}</h4>
+              <p>{t('taskActions.confirmDeleteAttachment')} <strong>{attachmentToDelete.fileName}</strong>?</p>
+              <div className="confirmation-actions">
+                <button
+                  onClick={handleDeleteAttachment}
+                  className="confirm-btn"
+                >
+                  {t('taskActions.yes')}
+                </button>
+                <button
+                  onClick={cancelDeleteAttachment}
+                  className="cancel-btn"
+                >
+                  {t('taskActions.no')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Delete user confirmation dialog */}
         {showUserDeleteConfirmation && userToDelete && (
           <div

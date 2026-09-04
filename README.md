@@ -51,6 +51,7 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 - ⚠️ Work In Progress (WIP) limits for columns, rows, and users
 - 👤 User assignments to tasks
 - 🏷️ Labels for task categorization
+- 📎 File attachments on tasks, streamed to and from Azure Blob Storage
 - 🌙 Dark mode support
 
 ## 🛠️ Technologies
@@ -99,6 +100,14 @@ docker-compose up -d
 ```
 
 4. The application will be available at [http://localhost:8080](http://localhost:8080)
+
+   The stack also brings up [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite),
+   the Blob Storage emulator, so task attachments work locally without an Azure subscription. It
+   publishes no port -- only the app talks to it, the same way a deployed storage account answers
+   nobody but the application's own VNet. Set `AZURE_STORAGE_CONNECTION_STRING` in `.env` to point
+   somewhere else; with storage unconfigured entirely the app still starts and refuses uploads with
+   a clear 503.
+
 5. To stop the application:
 
 ```bash
@@ -207,8 +216,9 @@ scan passes.
 
 The Azure environment behind it -- Container Apps running under a user-assigned managed identity, a
 PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, a Key
-Vault reached over a private endpoint, plus the VNet/NSGs and Log Analytics -- is defined as Terraform
-in [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the
+Vault reached over a private endpoint, a Storage account holding task attachments, closed to the
+internet and reached over a private endpoint with that same identity and no account key, plus the
+VNet/NSGs and Log Analytics -- is defined as Terraform in [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the
 Azure RBAC prerequisites and the per-environment state layout.
 
 Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
