@@ -2217,3 +2217,165 @@ label {
     gap: var(--spacing-sm);
   }
 }
+/* ==========================================================================
+   Attachments
+   The list of files on a task. The bytes live in Azure Blob Storage; a click
+   on a name asks the API for a signed link and the browser follows it there.
+   ========================================================================== */
+
+.attachments-section {
+  /* Positioned so the visually-hidden file input below is contained by this section rather than
+     escaping to whichever ancestor happens to be positioned. */
+  position: relative;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-md);
+  border: var(--border-thin) solid transparent;
+  transition: all var(--transition-fast);
+}
+
+/* The whole section is a drop zone, so a file dragged anywhere over it lands. */
+.attachments-section.drop-target {
+  border-color: var(--border-color-focus);
+  background-color: var(--bg-accent);
+}
+
+.attachments-section h4 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.add-attachment-form {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xl);
+}
+
+/* The real input is replaced by the button beside it, which is the only way to
+   style a file picker consistently across browsers. It stays in the DOM and
+   focusable rather than display:none, so keyboard and screen readers keep it. */
+.attachment-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.add-attachment-btn {
+  background-color: var(--bg-accent-hover);
+  color: var(--text-dark);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-xl);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.add-attachment-btn:hover {
+  background-color: var(--bg-accent);
+}
+
+.add-attachment-btn:disabled {
+  background-color: var(--gray-500);
+  color: var(--surface-light);
+  cursor: not-allowed;
+}
+
+.attachment-hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.attachments-list {
+  margin-top: var(--spacing-sm);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--bg-accent);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.attachment-item:hover {
+  background-color: var(--bg-accent-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.attachment-name {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-dark);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.attachment-name:hover .attachment-file-name {
+  text-decoration: underline;
+}
+
+/* A file name is arbitrary length and must not push the size and the delete
+   button off the panel, so it is the one thing that truncates. */
+.attachment-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-meta {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.delete-attachment-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-dark);
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.delete-attachment-btn:hover {
+  background-color: var(--bg-hover-light);
+  color: var(--delete-color);
+  transform: scale(1.1);
+}
+
+.no-attachments {
+  padding: 30px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  background-color: var(--bg-accent);
+  border-radius: var(--radius-md);
+  border: var(--border-thin) dashed var(--text-muted);
+}

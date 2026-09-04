@@ -7,6 +7,7 @@ import org.mockito.Mockito;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
+import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -49,7 +50,8 @@ class TaskServiceDeadlineSweepTest {
                 mock(ColumnRepository.class),
                 mock(RowRepository.class),
                 mock(BoardService.class),
-                deadlineNotifier);
+                deadlineNotifier,
+                mock(TaskAttachmentService.class));
     }
 
     private static Task task(LocalDateTime deadline, boolean expired) {

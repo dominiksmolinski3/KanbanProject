@@ -39,7 +39,20 @@
     "complete": "Oznacz jako ukończone",
     "reopen": "Otwórz ponownie",
     "addToDailyFocus": "Dodaj do dziennego skupienia",
-    "removeFromDailyFocus": "Usuń z dziennego skupienia"
+    "removeFromDailyFocus": "Usuń z dziennego skupienia",
+    "attachments": "Załączniki",
+    "addAttachment": "Dodaj plik",
+    "attachmentHint": "lub upuść pliki tutaj (maksymalnie 10 MB każdy)",
+    "attachmentUploading": "Wysyłanie…",
+    "noAttachments": "Brak załączników.",
+    "downloadAttachment": "Pobierz plik",
+    "deleteAttachment": "Usuń plik",
+    "confirmDeleteAttachment": "Czy chcesz usunąć ten plik?",
+    "attachmentDeleted": "Plik usunięty",
+    "attachmentTooLarge": "{{name}} jest większy niż {{size}}",
+    "attachmentUploadFailed": "Nie udało się wysłać pliku {{name}}",
+    "attachmentDownloadFailed": "Nie udało się pobrać pliku {{name}}",
+    "attachmentStorageUnavailable": "Magazyn plików nie jest skonfigurowany, więc nie można zapisać załączników"
   },
   "board": {
     "loading": "Ładowanie tablicy kanban...",

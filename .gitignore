@@ -42,3 +42,4 @@ terraform/dev.local.auto.tfvars
 terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
 /.claude
+docker-compose.override.yml

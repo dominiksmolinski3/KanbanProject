@@ -12,6 +12,7 @@ resource "azurerm_container_app" "main" {
   revision_mode                = "Single"
   depends_on = [
     time_sleep.wait_for_secrets_user,
+    time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
     azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.captcha_secret,
@@ -112,6 +113,18 @@ resource "azurerm_container_app" "main" {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
         value = tostring(var.ingress_trusted_proxy_count)
       }
+      # Task attachments. Neither of these is a secret and neither goes through Key Vault: the
+      # endpoint is a public address and the client id names an identity rather than proving
+      # anything. What authorises the app is the role assignment below, held by the identity the
+      # container already runs as - there is no storage key anywhere in this deployment.
+      env {
+        name  = "AZURE_STORAGE_BLOB_ENDPOINT"
+        value = var.storage_blob_endpoint
+      }
+      env {
+        name  = "AZURE_STORAGE_IDENTITY_CLIENT_ID"
+        value = azurerm_user_assigned_identity.main.client_id
+      }
 
 
       startup_probe {
@@ -196,6 +209,25 @@ resource "azurerm_role_assignment" "key_vault_secrets_user" {
 
 resource "time_sleep" "wait_for_secrets_user" {
   depends_on      = [azurerm_role_assignment.key_vault_secrets_user]
+  create_duration = "60s"
+}
+
+# Read and write the attachment blobs, and - because the application creates its own container on
+# first start - make the container to put them in. Contributor rather than the narrower Storage Blob
+# Data Reader/Writer pair for exactly that reason: creating a container is a container-level
+# operation that Writer does not carry.
+#
+# This role is also what makes a download link possible at all. A user delegation SAS is signed with
+# a key the service will only issue to an identity that could read the blob itself, which is what
+# lets the storage account keep shared_access_key_enabled = false.
+resource "azurerm_role_assignment" "storage_blob_contributor" {
+  scope                = var.storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.main.principal_id
+}
+
+resource "time_sleep" "wait_for_blob_contributor" {
+  depends_on      = [azurerm_role_assignment.storage_blob_contributor]
   create_duration = "60s"
 }
 

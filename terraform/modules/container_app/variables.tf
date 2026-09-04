@@ -137,3 +137,13 @@ variable "tags" {
   description = "Tags applied to every resource this module creates. Set once at the root."
   type        = map(string)
 }
+
+variable "storage_account_id" {
+  description = "Resource id of the attachment storage account. The role assignment that lets the app read and write blobs is made here rather than in the storage module, because the identity it is granted to is created here - and the storage module would otherwise have to depend on this one while this one depends on it for the endpoint."
+  type        = string
+}
+
+variable "storage_blob_endpoint" {
+  description = "Blob service endpoint the app stores task attachments in, e.g. \"https://stkanbanprod123456.blob.core.windows.net/\". Not a secret: it is reached with a token, and the account allows no anonymous access."
+  type        = string
+}
