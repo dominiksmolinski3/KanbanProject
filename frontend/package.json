@@ -29,6 +29,11 @@
     "react-xarrows": "^2.0.2",
     "sockjs-client": "^1.6.1"
   },
+  "overrides": {
+    "ws@>=8.0.0 <8.21.0": "^8.21.0",
+    "js-yaml@^3.0.0": "^3.15.2",
+    "js-yaml@^4.0.0": "^4.3.2"
+  },
   "devDependencies": {
     "@babel/preset-env": "^7.26.9",
     "@babel/preset-react": "^7.26.3",
