@@ -45,3 +45,11 @@ updates:
     commit-message:
       prefix: build
       include: scope
+
+  - package-ecosystem: terraform
+    directory: /terraform
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ops
+      include: scope
