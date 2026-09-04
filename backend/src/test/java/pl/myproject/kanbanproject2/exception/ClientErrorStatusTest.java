@@ -163,7 +163,7 @@ class ClientErrorStatusTest {
     @DisplayName("an unmapped API path is 404")
     void noResourceIs404() {
         var response = new GlobalExceptionHandler()
-                .handleNoResource(new NoResourceFoundException(HttpMethod.GET, "/api/nope"));
+                .handleNoResource(new NoResourceFoundException(HttpMethod.GET, "/api/nope", "/api/nope"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
