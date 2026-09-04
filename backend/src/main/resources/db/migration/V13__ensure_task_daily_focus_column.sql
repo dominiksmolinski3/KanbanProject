@@ -1,0 +1,13 @@
+--
+-- baseline-on-migrate marks a non-empty database at V1 without ever running it, on the assumption
+-- that ddl-auto=update already left it holding the V1 schema. That assumption fails for a database
+-- created by a jar older than the one V1 was generated from: task.daily_focus was added to the
+-- entity, and to V1's create table task (...) block, before Flyway existed, so a database seeded by
+-- an earlier jar and only later baselined never gets the column - V1 never runs against it, and
+-- V2..V12 do not touch task. ddl-auto=validate then fails every startup with
+-- "missing column [daily_focus] in table [task]", observed against a real docker-compose volume.
+--
+-- A no-op everywhere else: a fresh database gets the column from V1 itself, and any database that
+-- was genuinely baselined at the true V1 schema already has it.
+--
+alter table if exists task add column if not exists daily_focus boolean;
