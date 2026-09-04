@@ -519,6 +519,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage. Cypress is not run in CI.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile and pushes to `ghcr.io/<owner>/kanbanproject-app` tagged `latest` and the commit SHA.
+- `hadolint.yml` — lints the root `Dockerfile` on changes to it.
 - `codeql.yml` — CodeQL analysis of the Java backend.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
