@@ -64,7 +64,7 @@ class QueryStringsResolveTest {
                 // There is no database here, and asking for one is what logs a stack trace.
                 .applySetting(AvailableSettings.ALLOW_METADATA_ON_BOOT, "false")
                 .applySetting(AvailableSettings.IMPLICIT_NAMING_STRATEGY,
-                        "org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy")
+                        "org.springframework.boot.hibernate.SpringImplicitNamingStrategy")
                 .applySetting(AvailableSettings.PHYSICAL_NAMING_STRATEGY,
                         "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy")
                 .build();

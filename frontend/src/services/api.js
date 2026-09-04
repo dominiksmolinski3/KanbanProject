@@ -281,9 +281,9 @@ export const updateTaskColumn = async (taskId, columnId) => {
         console.warn("Failed to parse error response:", parseError.message);
         
         if (response.status === 400) {
-          throw new Error(`Error updating task column: ${response.status} - Column WIP limit exceeded`);
+          throw new Error(`Error updating task column: ${response.status} - Column WIP limit exceeded`, { cause: parseError });
         } else {
-          throw new Error(`Error updating task column: ${response.status} - Unknown error`);
+          throw new Error(`Error updating task column: ${response.status} - Unknown error`, { cause: parseError });
         }
       }
     }
@@ -609,13 +609,13 @@ export const updateTaskRow = async (taskId, rowId) => {
         
         // In case of JSON parsing error, check test expectations
         if (response.status === 404) {
-          throw new Error(`Error updating task row: ${response.status} - Row not found`);
+          throw new Error(`Error updating task row: ${response.status} - Row not found`, { cause: parseError });
         } else {
-          throw new Error(`Error updating task row: ${response.status} - Unknown error`);
+          throw new Error(`Error updating task row: ${response.status} - Unknown error`, { cause: parseError });
         }
       }
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Error updating task ${taskId} row:`, error);
