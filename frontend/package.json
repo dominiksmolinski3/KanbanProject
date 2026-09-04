@@ -25,7 +25,7 @@
     "react-dom": "^19.0.0",
     "react-i18next": "^15.5.1",
     "react-router-dom": "^7.18.2",
-    "react-toastify": "^11.0.5",
+    "react-toastify": "^11.1.0",
     "react-xarrows": "^2.0.2",
     "sockjs-client": "^1.6.1"
   },
