@@ -1,0 +1,84 @@
+name: External attack-surface scan
+
+# Checkov checks what Terraform *declares* (public_network_access_enabled = false,
+# and so on) - this checks what the deployment actually answers to from the
+# internet, which is the only way to catch the two from drifting apart. No Azure
+# credentials involved: this only ever talks to the public hostname, the same as
+# any other visitor.
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Hostname to scan (defaults to the PROD_HOSTNAME repository variable)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve target
+        id: target
+        env:
+          INPUT_TARGET: ${{ inputs.target }}
+          VAR_TARGET: ${{ vars.PROD_HOSTNAME }}
+        run: |
+          target="${INPUT_TARGET:-$VAR_TARGET}"
+          if [ -z "$target" ]; then
+            echo "::notice::No target configured - set the PROD_HOSTNAME repository variable (Settings > Secrets and variables > Actions > Variables) or pass one via workflow_dispatch. Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "host=$target" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Port scan
+        if: steps.target.outputs.skip == 'false'
+        env:
+          HOST: ${{ steps.target.outputs.host }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq nmap
+          # Top 1000 ports, not the full 65535 - a sampling pass, not exhaustive.
+          nmap -Pn --top-ports 1000 -oN nmap-report.txt "$HOST"
+          cat nmap-report.txt
+          # Container Apps ingress only ever answers on 80/443; anything else open
+          # (5432, 6379, 22, ...) means something is reachable that shouldn't be.
+          if grep -E '^[0-9]+/tcp[[:space:]]+open' nmap-report.txt | grep -vE '^(80|443)/tcp'; then
+            echo "::error::unexpected open port on $HOST"
+            exit 1
+          fi
+
+      - name: TLS configuration scan
+        if: steps.target.outputs.skip == 'false'
+        env:
+          HOST: ${{ steps.target.outputs.host }}
+        run: |
+          docker run --rm drwetter/testssl.sh@sha256:1abaabba5905a25feab459c444407b2ec04f6d9096b22c933a9ae88194183ee2 \
+            --quiet --color 0 "https://$HOST" | tee testssl-report.txt
+
+      - name: Security headers check
+        if: steps.target.outputs.skip == 'false'
+        env:
+          HOST: ${{ steps.target.outputs.host }}
+        run: |
+          curl -s -D headers.txt -o /dev/null "https://$HOST"
+          cat headers.txt
+          for header in "Strict-Transport-Security" "X-Content-Type-Options" "X-Frame-Options" "Content-Security-Policy"; do
+            grep -qi "^$header:" headers.txt || echo "::warning::missing security header: $header"
+          done
+
+      - name: Upload reports
+        if: steps.target.outputs.skip == 'false'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: external-scan-reports
+          path: |
+            nmap-report.txt
+            testssl-report.txt
+            headers.txt
+          if-no-files-found: warn
