@@ -19,7 +19,10 @@ resource "azurerm_subnet" "backend" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [local.backend_subnet_cidr]
-  service_endpoints    = ["Microsoft.KeyVault"]
+
+  service_endpoint {
+    service = "Microsoft.KeyVault"
+  }
 }
 
 resource "azurerm_subnet" "private_endpoints" {
@@ -47,7 +50,11 @@ resource "azurerm_subnet" "db" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [local.db_subnet_cidr]
-  service_endpoints    = ["Microsoft.Storage"]
+
+  service_endpoint {
+    service = "Microsoft.Storage"
+  }
+
   delegation {
     name = "fs"
     service_delegation {
