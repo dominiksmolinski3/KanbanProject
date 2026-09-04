@@ -35,6 +35,21 @@ public enum ExceptionIdentifier {
     INVALID_ATTACHMENT(BAD_REQUEST, "The uploaded file cannot be attached"),
     ATTACHMENT_STORAGE_UNAVAILABLE(SERVICE_UNAVAILABLE,
             "File storage is not configured, so attachments cannot be stored"),
+    /*
+     * A container pinned to one replica has no second process to absorb a burst of streaming
+     * uploads or downloads, so both routes are held behind a bounded semaphore sized by
+     * app.storage.max-concurrent-transfers. tryAcquire fails fast rather than queuing - a caller
+     * gets an honest "try again" instead of a connection that hangs until a slot frees up.
+     */
+    ATTACHMENT_TRANSFER_BUSY(SERVICE_UNAVAILABLE,
+            "Too many attachment transfers are in progress, please try again shortly"),
+    /*
+     * A board-wide ceiling on attachments - count and total bytes, app.storage.max-attachments
+     * -per-board and app.storage.max-total-bytes-per-board - checked before the blob is written so
+     * a rejected upload never leaves an orphaned blob behind. 413 rather than a 400: the request
+     * itself is fine, it is what the board already holds that makes it too much.
+     */
+    ATTACHMENT_QUOTA_EXCEEDED(PAYLOAD_TOO_LARGE, "This board has reached its attachment quota"),
 
     /*
      * The unauthenticated routes answer three statuses between them and no more: 202 for signup

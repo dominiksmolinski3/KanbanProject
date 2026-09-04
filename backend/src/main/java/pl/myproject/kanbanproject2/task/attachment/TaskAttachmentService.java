@@ -8,6 +8,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.storage.BlobStore;
@@ -16,12 +18,15 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntConsumer;
 
 /**
@@ -40,6 +45,14 @@ import java.util.function.IntConsumer;
  * no row, if the process dies in the window - and rule out the other one, a row whose bytes are
  * gone. That is deliberate: an orphaned blob costs a fraction of a cent and is invisible, while a
  * row pointing at nothing is an attachment in the list that fails every time somebody clicks it.
+ *
+ * <p><b>Two guardrails sit around the streaming itself.</b> {@link #transferPermits} bounds how
+ * many uploads and downloads may be moving bytes through this application at once - a container
+ * pinned to one replica has no second process to absorb a burst, so past the limit a caller gets a
+ * fast {@code 503} rather than a hung connection. {@link #requireQuota} bounds what a board may
+ * accumulate in total, checked before the blob is written for the same reason every other check
+ * here runs first: writing the bytes only to reject the row would leak an orphaned blob for
+ * nothing.
  */
 @Slf4j
 @Transactional
@@ -72,24 +85,34 @@ public class TaskAttachmentService {
     private final BlobStore blobStore;
     private final Clock clock;
 
+    /** Bounds concurrent uploads and downloads; sized by {@code app.storage.max-concurrent-transfers}. */
+    private final Semaphore transferPermits;
+    private final long maxAttachmentsPerBoard;
+    private final long maxTotalBytesPerBoard;
+
     @Autowired
     public TaskAttachmentService(TaskAttachmentRepository attachments,
                                  TaskRepository tasks,
                                  TaskAttachmentMapper mapper,
-                                 BlobStore blobStore) {
-        this(attachments, tasks, mapper, blobStore, Clock.systemUTC());
+                                 BlobStore blobStore,
+                                 BlobStorageProperties storageProperties) {
+        this(attachments, tasks, mapper, blobStore, storageProperties, Clock.systemUTC());
     }
 
     TaskAttachmentService(TaskAttachmentRepository attachments,
                           TaskRepository tasks,
                           TaskAttachmentMapper mapper,
                           BlobStore blobStore,
+                          BlobStorageProperties storageProperties,
                           Clock clock) {
         this.attachments = attachments;
         this.tasks = tasks;
         this.mapper = mapper;
         this.blobStore = blobStore;
         this.clock = clock;
+        this.transferPermits = new Semaphore(storageProperties.maxConcurrentTransfers());
+        this.maxAttachmentsPerBoard = storageProperties.maxAttachmentsPerBoard();
+        this.maxTotalBytesPerBoard = storageProperties.maxTotalBytesPerBoard();
     }
 
     public List<TaskAttachmentDto> list(User caller, Integer taskId) {
@@ -109,15 +132,21 @@ public class TaskAttachmentService {
         var task = findTask(caller, taskId);
         requireStorage();
         validate(file);
+        requireQuota(task.getBoard(), file.getSize());
 
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         String contentType = contentTypeOf(file);
         String blobName = blobNameFor(task);
 
+        if (!transferPermits.tryAcquire()) {
+            throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+        }
         try (InputStream data = file.getInputStream()) {
             blobStore.put(blobName, contentType, data, file.getSize());
         } catch (IOException | BlobStoreException e) {
             throw new GlobalException(ExceptionIdentifier.FILE_UPLOAD_FAILED, e);
+        } finally {
+            transferPermits.release();
         }
         // The blob exists and the row does not yet. If this transaction never commits, that blob
         // is unreachable for good, so undo it on the way out rather than leaving it there.
@@ -149,18 +178,53 @@ public class TaskAttachmentService {
      *
      * <p>The stream is returned open. Reading it here to check it would mean holding the file,
      * which is the one thing this path must not do.
+     *
+     * <p>The transfer permit acquired below is <b>not</b> released when this method returns - the
+     * download is not done at that point, it has barely started. Spring copies the returned stream
+     * to the response after this call, so the permit is handed off to the stream itself and released
+     * from its {@code close()}, whenever that turns out to be. Only the failure path still releases
+     * here, because a stream that was never handed out has no {@code close()} coming.
      */
     public TaskAttachmentContent content(User caller, Integer taskId, Long attachmentId) {
         var attachment = findAttachment(caller, taskId, attachmentId);
+        if (!transferPermits.tryAcquire()) {
+            throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+        }
+        boolean handedOff = false;
         try {
-            return new TaskAttachmentContent(
-                    blobStore.read(attachment.getBlobName()),
+            InputStream stream = blobStore.read(attachment.getBlobName());
+            TaskAttachmentContent content = new TaskAttachmentContent(
+                    releasingOnClose(stream),
                     attachment.getFileName(),
                     attachment.getContentType(),
                     attachment.getSizeBytes());
+            handedOff = true;
+            return content;
         } catch (BlobStoreException e) {
             throw new GlobalException(ExceptionIdentifier.FILE_UPLOAD_FAILED, e);
+        } finally {
+            if (!handedOff) {
+                transferPermits.release();
+            }
         }
+    }
+
+    /** Releases one transfer permit the first time the stream is closed, and never again. */
+    private InputStream releasingOnClose(InputStream in) {
+        return new FilterInputStream(in) {
+            private final AtomicBoolean released = new AtomicBoolean(false);
+
+            @Override
+            public void close() throws IOException {
+                try {
+                    super.close();
+                } finally {
+                    if (released.compareAndSet(false, true)) {
+                        transferPermits.release();
+                    }
+                }
+            }
+        };
     }
 
     public void delete(User caller, Integer taskId, Long attachmentId) {
@@ -231,6 +295,23 @@ public class TaskAttachmentService {
     private void requireStorage() {
         if (!blobStore.isConfigured()) {
             throw new GlobalException(ExceptionIdentifier.ATTACHMENT_STORAGE_UNAVAILABLE);
+        }
+    }
+
+    /**
+     * A board-wide ceiling on attachments - count and total bytes, both enforced - checked before
+     * the blob is written so a rejected upload never leaves an orphaned blob behind. The count is
+     * "this upload plus what is already there", the same way {@link #MAX_ATTACHMENT_SIZE} treats
+     * one file: at the limit is full, and the next one is refused.
+     */
+    private void requireQuota(Board board, long incomingBytes) {
+        if (attachments.countByTaskBoard(board) + 1 > maxAttachmentsPerBoard) {
+            throw new GlobalException(ExceptionIdentifier.ATTACHMENT_QUOTA_EXCEEDED,
+                    "This board already has the maximum number of attachments allowed");
+        }
+        if (attachments.totalSizeBytesByTaskBoard(board) + incomingBytes > maxTotalBytesPerBoard) {
+            throw new GlobalException(ExceptionIdentifier.ATTACHMENT_QUOTA_EXCEEDED,
+                    "This board has reached its total attachment storage quota");
         }
     }
 
