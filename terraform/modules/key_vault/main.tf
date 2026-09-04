@@ -20,7 +20,7 @@ resource "azurerm_key_vault" "main" {
   enabled_for_disk_encryption     = false
   enabled_for_template_deployment = false
 
-  enable_rbac_authorization = true
+  rbac_authorization_enabled = true
 
   purge_protection_enabled   = var.purge_protection_enabled
   soft_delete_retention_days = var.soft_delete_retention_days
@@ -51,11 +51,10 @@ resource "azurerm_private_dns_zone" "kv" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "kv" {
-  tags                  = var.tags
-  name                  = "${var.env}-kv-vnet-link"
-  resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.kv.name
-  virtual_network_id    = var.vnet_id
+  tags                = var.tags
+  name                = "${var.env}-kv-vnet-link"
+  private_dns_zone_id = azurerm_private_dns_zone.kv.id
+  virtual_network_id  = var.vnet_id
 }
 
 resource "azurerm_private_endpoint" "kv" {
