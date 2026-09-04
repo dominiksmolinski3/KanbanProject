@@ -90,6 +90,38 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-core-http-jdk-httpclient</artifactId>
         </dependency>
+        <!--
+          Task attachments live in Azure Blob Storage, not in Postgres.
+
+          The two artifacts are separate on purpose. azure-storage-blob puts the bytes there;
+          azure-identity is what signs the download links without an account key existing at all -
+          the container app authenticates as its managed identity, asks the service for a user
+          delegation key, and signs a five-minute read SAS with it. See AzureBlobStore.
+
+          Both exclude Netty for the reason the Email client does: AzureTransportTest asserts it is
+          not on the classpath, so one artifact dragging it back in fails the build rather than
+          quietly deciding the transport lookup.
+        -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core-http-netty</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core-http-netty</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
@@ -265,6 +297,44 @@
                                     <element>PACKAGE</element>
                                     <includes>
                                         <include>pl.myproject.kanbanproject2.mail</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  storage and task.attachment arrive together with this branch and
+                                  measure 100 over 36 lines and 94.3 over 140. storage is small
+                                  because closing the storage account deleted the SAS machinery -
+                                  delegation keys, signed response headers, the public-endpoint
+                                  rewrite - so the floor stays at 0.90 rather than a shade under
+                                  100: at 36 lines a 0.95 floor is two lines from a tripwire, which
+                                  is the same reasoning the file rule below states. What
+                                  task.attachment still does not cover is the after-commit branch
+                                  of the transaction hook, which needs a real transaction manager
+                                  to reach.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.storage</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.task.attachment</include>
                                     </includes>
                                     <limits>
                                         <limit>

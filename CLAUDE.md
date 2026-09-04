@@ -122,7 +122,7 @@ docker-compose up -d      # app on :8080, postgres on :5432
 docker-compose down
 ```
 
-Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`.
+Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
 
 ## Architecture
 
@@ -140,7 +140,7 @@ The prefix exists to keep the API off the paths React Router owns. `App.jsx` ser
 
 ### Backend layering
 
-Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/` and `exception/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
+Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
@@ -189,7 +189,7 @@ anything uploaded before that column existed, other than an avatar, whose owner 
 
 ### The board model
 
-`Task` sits at the intersection of a `Column` (workflow stage, horizontal) and an optional `Row` (swimlane, vertical). Both `Column` and `Row` carry `position` and `wipLimit`; `Task` carries `position` within its cell. Tasks also support self-referencing parent/child links, a `SubTask` list, a `Set<String> labels` element collection, many-to-many `users`, and a `deadline`/`expired` pair.
+`Task` sits at the intersection of a `Column` (workflow stage, horizontal) and an optional `Row` (swimlane, vertical). Both `Column` and `Row` carry `position` and `wipLimit`; `Task` carries `position` within its cell. Tasks also support self-referencing parent/child links, a `SubTask` list, a `Set<String> labels` element collection, many-to-many `users`, a `deadline`/`expired` pair, and **attachments** — files that live in Azure Blob Storage with a `task_attachments` row naming them (see **Attachments**).
 
 Because the entity is named `Column`, `jakarta.persistence.Column` cannot be imported — entity field annotations are written fully qualified as `@jakarta.persistence.Column(...)`. Keep that pattern when adding fields.
 
@@ -208,6 +208,85 @@ one board. Either mistake, and a repeated id, is `400 INVALID_REORDER`.
 Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
+
+### Attachments
+
+A task carries files, and **the bytes are not in the database and never pass through the
+application on the way out**. `task/attachment/` holds the feature; `storage/` holds the seam it
+goes through — `BlobStore`, with `AzureBlobStore` and a `DisabledBlobStore`, exactly the shape
+`EmailSender` has and for the same reason.
+
+The existing `files` table is the counter-example rather than the model. It stores an upload as a
+`@Lob` in Postgres, which puts every attachment into the database's storage, its backups, its
+point-in-time window and its restore time, for data no query ever looks inside. At the 10 MB per
+file this allows and 32 GB of provisioned storage, a team attaching a mock a day fills the server in
+a year. `V12` stores metadata only: an opaque `blob_name`, the name a person typed, the type, the
+size, who uploaded it and when.
+
+Four decisions carry the feature:
+
+- **The storage account answers nobody but the application.** `public_network_access_enabled =
+  false`, a `network_rules` default of `Deny`, and a private endpoint in `snet-storage` that the
+  `privatelink.blob.core.windows.net` zone resolves to. That is the constraint the rest of the
+  design follows from, and it was a deliberate reversal: the first cut handed the browser a
+  five-minute SAS and let it fetch from Azure directly, which is cheaper and requires the account
+  to answer every address a browser might arrive from. An account holding every file on every board
+  should not be reachable from there, so the bytes came back onto the request path and the SAS
+  machinery — delegation keys, signed response headers, the public-endpoint rewrite — was deleted
+  rather than kept unused.
+- **Nothing on either path holds a file.** Upload hands `MultipartFile.getInputStream()` straight to
+  the store; download returns the store's own stream as an `InputStreamResource`, which Spring
+  copies through a buffer and closes. Nothing calls `getBytes()`. On a 512 MB container that is the
+  difference between a buffer per transfer and 10 MB per concurrent one, and it is the only reason
+  proxying the bytes is affordable at all. `Content-Length` comes from `size_bytes` on the row
+  rather than from the stream, which is why that column is stored.
+- **`Content-Disposition: attachment`, never `inline`.** The bytes are now served from the app's own
+  origin, so an HTML or SVG upload rendered instead of downloaded would be same-origin with the
+  board and every token in it. Forcing the download is what makes it safe to echo back whatever
+  type was uploaded. The name comes from Postgres — the blob is `tasks/<taskId>/<uuid>`, no
+  extension, nothing a person typed, so the storage account never carries a chosen name.
+- **There is no account key.** `shared_access_key_enabled = false`; the container app authenticates
+  as its managed identity. There is no storage secret in Key Vault, in the container template, or in
+  Terraform state. A connection string is accepted too, and is only ever local development against
+  Azurite, whose key is a published constant.
+- **A blob and a row are two systems, and the order chooses which failure is possible.** Upload
+  writes the blob first and the row second, removing the blob if the transaction does not commit;
+  delete removes the row and the blob *after* the commit. Both orders leave the same failure
+  available — an orphaned blob, invisible and costing a fraction of a cent — and rule out the other
+  one, a row whose bytes are gone, which is an attachment that fails every time somebody clicks it.
+  `TaskService.deleteTask` calls `TaskAttachmentService.deleteAllFor` rather than relying on a
+  cascade, because a foreign-key cascade takes the rows and leaves every blob behind with nothing
+  left that knows its name.
+
+Scoping is the task's, entirely: an attachment has no board of its own, which is why the routes are
+nested under `/api/tasks/{taskId}/attachments` and the service checks the task before it looks at
+anything else. An attachment id from another board presented under a task the caller *does* own is a
+404, or the task in the path would be decoration.
+
+With no storage configured the bean is a `DisabledBlobStore`: the app starts, `StorageHealthIndicator`
+reports `attachments` as `OUT_OF_SERVICE` on `/actuator/health`, and an upload is a
+`503 ATTACHMENT_STORAGE_UNAVAILABLE`. That is the opposite of what `DisabledEmailSender` does, on
+purpose — a dropped mail has nobody standing in front of it and there is nothing useful to say,
+while an upload has somebody watching a progress bar. `docker-compose` runs an **Azurite** service so
+the local stack has working attachments without an Azure subscription.
+
+**Nothing joins the two stores but a string.** `task_attachments.blob_name` is written by the
+application; there is no foreign key, no shared transaction, and no network path between Postgres
+and Blob Storage at all — Postgres is VNet-only and the blob service is a separate endpoint. Two
+consequences are load-bearing. The write ordering above is the only thing keeping a row from
+outliving its bytes. And the two recovery windows have to be the same length: `retention_days` on
+the storage module comes from `postgres_backup_retention_days` rather than a number of its own,
+because a database restored further back than blob soft-delete reaches comes up holding rows whose
+blobs were already purged. `attachment_retention_days` unties them deliberately.
+
+If attachment traffic ever outgrows one container, the way out is Front Door with a private origin —
+`terraform/front-door-private-origin.md` has the design and the traps, and the first of them is that
+there are cheaper things to try first. Reopening the account is not on that list.
+
+Terraform provisions the account and the role assignment but **not the container** — the app creates
+its own on first start, because creating one is a data-plane call and keeping Terraform off the data
+plane is what lets the account refuse shared-key access. See `terraform/README.md`, *Attachment
+storage*.
 
 ### Frontend state
 
@@ -404,6 +483,8 @@ What a caller sees change: `POST /api/auth/register` no longer waits for Azure a
 reaches the caller, but only when the *row* cannot be written — a database that will not take it is
 a signup that was not going to work anyway.
 
+**Attachment storage takes one of two ways in, never both.** `app.storage.endpoint` with no key is production — a managed identity against an account with shared-key access off — and `app.storage.connection-string` is a local Azurite container. Neither set turns attachments off rather than failing to boot. `AZURE_STORAGE_IDENTITY_CLIENT_ID` is read as a property rather than left to the SDK's own `AZURE_CLIENT_ID`, because a variable Terraform passes and nothing in this repo binds is one `ConfigurationTest` reports as dead configuration — and it would be right to.
+
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
 
 `V5__add_boards.sql` is the one to read before adding another: it adds a column, backfills it, and
@@ -442,21 +523,28 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
-  exactly — worth having now that a failure stops the build. **All three skips live in that file**,
+  exactly — worth having now that a failure stops the build. **Every skip lives in that file**,
   one line each, and the reasoning is here rather than beside them: `CKV_AZURE_41`, because an
   expiry on a secret nothing rotates is a scheduled outage and the honest fix is rotation;
   `CKV_AZURE_136`, because geo-redundancy is `true` in `prod.tfvars` and deliberately false in dev
   and uat, which a scan reading the module default cannot see; and `CKV2_AZURE_57`, because the
   Postgres server is reached by VNet integration (a delegated subnet and a private DNS zone, with
   `public_network_access_enabled = false`), which is the alternative to a private endpoint rather
-  than the absence of one. They were briefly `# checkov:skip=` comments on the resource, which is
+  than the absence of one. The attachment storage account adds two: `CKV_AZURE_33`, because
+  there is no queue service on that account to log, and `CKV2_AZURE_1`, customer-managed encryption
+  keys, which is the same trade `CKV_AZURE_41` names — a key nothing rotates buys the appearance of
+  control and a scheduled outage. **It briefly needed two more and earned both back**, which is the
+  shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
+  traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
+  closed to the internet outright. If either fires again, the account has been reopened somewhere —
+  see `terraform/front-door-private-origin.md`, which exists to stop that being the fix. They were briefly `# checkov:skip=` comments on the resource, which is
   the more precise home and the more fragile one: bundled with their justification they read as
   prose, and trimming the prose silently deleted the directive and turned CI red. A `skip-check`
   entry cannot be lost that way. What it costs is breadth — the skip applies to any future
   resource of that kind, and there is one Postgres server. **Checkov's version is pinned** — an
   unpinned scanner on a blocking step goes red on somebody else's release day, and the first
   response to that is always to put the escape back.
-- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, Log Analytics) split into `modules/{vnet,key_vault,postgres,container_app}`. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
+- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,container_app}`. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `container_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
 

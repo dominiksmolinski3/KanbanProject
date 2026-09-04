@@ -130,6 +130,44 @@ resource "azurerm_network_security_group" "private_endpoints" {
   }
 }
 
+# Only the app reaches the blob private endpoint. The browser reaches the same account by its
+# public address, which no rule here touches.
+resource "azurerm_network_security_group" "storage" {
+  tags                = var.tags
+  name                = "nsg-storage-${var.env}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  security_rule {
+    name                       = "AllowBlobFromBackend"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    source_address_prefix      = local.backend_subnet_cidr
+    destination_port_range     = "443"
+    destination_address_prefix = local.storage_subnet_cidr
+  }
+
+  security_rule {
+    name                       = "DenyVnetInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "storage" {
+  subnet_id                 = azurerm_subnet.storage.id
+  network_security_group_id = azurerm_network_security_group.storage.id
+}
+
 resource "azurerm_subnet_network_security_group_association" "backend" {
   subnet_id                 = azurerm_subnet.backend.id
   network_security_group_id = azurerm_network_security_group.backend.id

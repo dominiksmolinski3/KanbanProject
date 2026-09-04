@@ -73,8 +73,9 @@ table output silently drops a column whose value is null.)
 
 2c) Permission to create role assignments
 
-Terraform creates two Azure RBAC role assignments on the Key Vault (see
-[Key Vault authorization](#key-vault-authorization) below), so the identity running
+Terraform creates Azure RBAC role assignments on the Key Vault (see
+[Key Vault authorization](#key-vault-authorization) below) and on the attachment storage
+account (see [Attachment storage](#attachment-storage)), so the identity running
 `terraform apply` needs `Microsoft.Authorization/roleAssignments/write` -- i.e.
 **Owner** or **User Access Administrator** on the subscription or on the target
 resource group. `Contributor` alone is not enough and fails at apply time with
@@ -163,13 +164,14 @@ The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds
 
 ### Network layout
 
-The VNet is `10.0.0.0/16` and is carved into three subnets, each with one job.
+The VNet is `10.0.0.0/16` and is carved into four subnets, each with one job.
 
 | Subnet | Prefix | Holds |
 |---|---|---|
 | `snet-backend-<env>` | `10.0.0.0/23` | the Container Apps environment (`infrastructure_subnet_id`) |
 | `snet-db-<env>` | `10.0.2.0/24` | Postgres Flexible Server, delegated to `Microsoft.DBforPostgreSQL/flexibleServers` |
-| `snet-pe-<env>` | `10.0.3.0/28` | private endpoint NICs -- today just the Key Vault one |
+| `snet-pe-<env>` | `10.0.3.0/28` | the Key Vault private endpoint NIC |
+| `snet-storage-<env>` | `10.0.3.16/28` | the attachment blob private endpoint NIC |
 
 **The backend subnet is dedicated to the Container Apps environment.** Azure treats an
 infrastructure subnet as platform-managed and requires that nothing else live in it,
@@ -177,6 +179,13 @@ so the Key Vault private endpoint gets its own subnet rather than sharing that o
 Keeping the two apart also means `nsg-pe-${env}` (see
 [Network security groups](#network-security-groups)) does not have to be written
 around whatever the Container Apps platform needs.
+
+**The two private endpoints get a subnet each** rather than sharing `snet-pe`. One
+subnet means one NSG, and the rule covering both would have to read "anything in the
+backend subnet may reach 443 anywhere in here" -- which is what
+`AllowKeyVaultFromBackend` already says, so the storage endpoint would inherit its
+reachability from a rule named after something else. Separate subnets keep each
+service's reachability written as its own rule.
 
 The backend subnet keeps its `Microsoft.KeyVault` service endpoint, and that subnet --
 not the private endpoint subnet -- is what the vault's `network_acls` allow. Those are
@@ -387,9 +396,10 @@ Two one-way doors in that table:
   default and its maximum) everywhere so no environment ever plans that replacement.
 ### Network security groups
 
-All three subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
-`nsg-pe-${env}`), defined in [modules/vnet/nsg.tf](modules/vnet/nsg.tf) alongside the
-subnets whose CIDRs they reference.
+All four subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
+`nsg-pe-${env}`, `nsg-storage-${env}`), defined in
+[modules/vnet/nsg.tf](modules/vnet/nsg.tf) alongside the subnets whose CIDRs they
+reference.
 
 The reason they exist is the last of Azure's built-in rules: `AllowVnetInBound` at
 priority 65000 permits any address in the vnet to reach any port in any other subnet.
@@ -397,28 +407,34 @@ Without an NSG, a foothold anywhere in `snet-backend` reaches Postgres on 5432
 directly. Each NSG therefore re-denies inbound `VirtualNetwork` traffic at priority
 4096 and re-allows only the documented flows:
 
-| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) |
-|---|---|---|---|
-| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` |
-| 110 | anything within the subnet | anything within the subnet | -- |
-| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- |
-| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
+| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) | `snet-storage` (10.0.3.16/28) |
+|---|---|---|---|---|
+| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` |
+| 110 | anything within the subnet | anything within the subnet | -- | -- |
+| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- | -- |
+| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
 
 The deny is sourced on `VirtualNetwork` rather than `*` so the platform's
 `AllowAzureLoadBalancerInBound` at 65001 still applies. Rule 110 is not optional in
 either subnet: the Container Apps consumption environment's own components talk
 across the infrastructure subnet on unpublished ports, and flexible server replicates
-to its standby inside the delegated subnet. `snet-pe` needs no such rule -- it holds
-private endpoint NICs and nothing that talks to a neighbour.
+to its standby inside the delegated subnet. Neither endpoint subnet needs such a rule
+-- they hold private endpoint NICs and nothing that talks to a neighbour.
 
-**`snet-pe` only gets an NSG because its network policies are switched on for it.**
-Azure does not apply NSGs to private endpoint NICs by default, which is why
-`private_endpoint_network_policies` on that subnet is `NetworkSecurityGroupEnabled`
-rather than the `Disabled` that private endpoints ship with. Set it back to
-`Disabled` and `nsg-pe-${env}` stays associated and stops being enforced, silently.
-The one allow rule is 443 from `snet-backend`, because reaching the vault over the
-private endpoint is the only reason anything in the vnet talks to that subnet; a
-second private endpoint landing there later needs its own rule and its own port.
+**The endpoint subnets only get an NSG because their network policies are switched
+on.** Azure does not apply NSGs to private endpoint NICs by default, which is why
+`private_endpoint_network_policies` on `snet-pe` and `snet-storage` is
+`NetworkSecurityGroupEnabled` rather than the `Disabled` that private endpoints ship
+with. Set either back to `Disabled` and its NSG stays associated and stops being
+enforced, silently. Each carries one allow rule -- 443 from `snet-backend` -- because
+reaching the vault, or the blob service, over its endpoint is the only reason anything
+in the vnet talks to that subnet.
+
+They are two subnets rather than one for the sake of those rules. Sharing a subnet
+would mean one NSG and one rule reading "anything in `snet-backend` may reach 443
+anywhere in here", so the blob endpoint would take its reachability from a rule named
+`AllowKeyVaultFromBackend`. Splitting them costs a /28 out of a /16 and keeps each
+service's reachability its own line.
 
 `ingress_source_address_prefixes` defaults to `["Internet"]`, which is what the
 container app's `external_enabled = true` needs. Narrow it in a `*.tfvars` file for
@@ -433,6 +449,84 @@ consumption environment itself needs (MCR, Entra ID, Azure Monitor, Azure Files 
 445, NTP on UDP 123). A default-deny egress rule that misses one of those surfaces as
 a revision that never becomes healthy rather than as a clear error, so egress
 filtering belongs behind a NAT gateway or firewall, not here.
+
+### Attachment storage
+
+Task attachments are files somebody uploaded to a card. They go to a Storage account
+(`modules/storage`) rather than into Postgres, and the arrangement is worth reading before
+changing any of it, because three settings depend on each other.
+
+**Nothing outside the VNet can reach it.** `public_network_access_enabled = false`, a
+`network_rules` default of `Deny`, and a private endpoint in `snet-storage` (`10.0.3.16/28`, its own
+NSG allowing 443 from the backend subnet only). The `privatelink.blob.core.windows.net` zone linked
+to the VNet is what makes the application resolve the account to that endpoint. The only thing that
+ever talks to this account is the app, over that endpoint, as its own managed identity.
+
+**That is what the download route costs, and it is worth stating plainly.** The first cut of this
+feature signed a five-minute read-only SAS over one blob and let the browser fetch from Azure
+directly -- cheaper, and it keeps ten-megabyte transfers off a container sized at a quarter of a
+CPU. It also requires the account to answer every address a browser might arrive from, because that
+is where browsers are. Closing the account means the bytes come back through the application:
+`GET /api/tasks/{id}/attachments/{aid}/content` streams from storage to the response. Streamed, not
+buffered -- nothing on that path holds a whole file -- but it is the app's CPU and its bandwidth
+now, and a replica cap of 1 means one process carries all of it. If attachment traffic ever
+outgrows that, the way out is Front Door with a private origin, not reopening the account:
+[front-door-private-origin.md](front-door-private-origin.md) has the design, the cheaper things to
+try first, and the four traps -- including why turning on CDN caching in front of a SAS is a
+security bug rather than a tuning decision.
+
+Two Checkov rules stopped needing skips when this changed: `CKV2_AZURE_33` (private endpoint) and
+`CKV_AZURE_59` (public network access). What remains skipped for this account is `CKV_AZURE_33`
+(queue logging, on an account with no queue service) and `CKV2_AZURE_1` (customer-managed keys).
+
+**There is no account key, and no connection string could exist.** `shared_access_key_enabled
+= false`, so the only way in is Entra ID: the Container App authenticates as its user-assigned
+identity and reads and writes blobs as itself. Nothing about the storage account is a secret --
+no Key Vault entry, nothing in the container template, nothing in Terraform state. The blob
+endpoint and the identity's client id are passed as plain environment variables because neither of
+them proves anything, and both come from Terraform's own outputs rather than from anybody's
+tfvars.
+
+That is worth contrasting with mail. `acs_email_connection_string` is a value somebody pastes,
+because Terraform does not create the Communication Services resource; it has been half of MAIL-02
+for five revisions for exactly that reason. Storage has no equivalent, because Terraform creates
+the account and the identity that reaches it -- there is nothing to carry between two systems, so
+there is nothing to drift.
+
+| Principal | Role | Why |
+|---|---|---|
+| The Container App's user-assigned identity | `Storage Blob Data Contributor` | Reads and writes the attachment blobs, and creates the container on first start |
+
+`Contributor` rather than the narrower reader/writer pair, because **Terraform does not create the
+blob container** -- the application does, on first start. Creating a container is a data-plane call,
+which from Terraform would need either the account key back or a blob data role for whoever runs
+`apply`; the identity that writes the blobs can make the container it writes them into, and doing so
+is idempotent. That role assignment gets the same 60-second `time_sleep` the Key Vault one does, for
+the same reason.
+
+Two things to know when operating it:
+
+- **The account name carries a random suffix and the resource is `prevent_destroy`.** The storage
+  namespace is global, so the name cannot be derived from the environment alone -- and a replaced
+  account is a new, empty one, while every `task_attachments` row still points at the old blobs.
+- **Replication is a variable, unlike the Postgres geo-redundancy flag next door.** `GRS` is the
+  module default and what prod uses; dev and uat set `LRS` in their tfvars. Azure lets this be
+  changed after the fact, so it is not a decision that has to be right before the account holds
+  anything.
+- **Blob soft delete is tied to the database's restore window, on purpose.** `retention_days` comes
+  from `postgres_backup_retention_days` (7 in dev, 14 in uat, 35 in prod) rather than a number of
+  its own. An attachment is half a row in Postgres and half a blob here, with no foreign key and no
+  transaction across the two; the only thing that lets both be rolled back to the same instant is
+  that their recovery windows are the same length. A shorter window here means a database restored
+  three weeks back comes up holding `task_attachments` rows whose blobs were purged a fortnight
+  earlier -- rows pointing at nothing, which is precisely the failure the write ordering in
+  `TaskAttachmentService` was arranged to make impossible. `attachment_retention_days` unties them
+  when that is what you want; Azure allows 1-365 days here against a Postgres maximum of 35.
+
+An environment that sets no storage endpoint at all still runs: the app starts, reports
+`OUT_OF_SERVICE` for `attachments` on `/actuator/health`, and refuses uploads with a `503` that says
+storage is not configured. That is the same allowance mail makes, and it is what lets CI and a fresh
+clone run without an Azure subscription.
 
 ### Key Vault authorization
 

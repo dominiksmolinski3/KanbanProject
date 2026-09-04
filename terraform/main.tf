@@ -87,6 +87,22 @@ module "postgres" {
   depends_on = [module.key_vault]
 }
 
+module "storage" {
+  source                     = "./modules/storage"
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  env                        = var.env
+  replication_type           = var.storage_replication_type
+  vnet_id                    = module.vnet.id
+  private_endpoint_subnet_id = module.vnet.storage_subnet_id
+  tags                       = local.tags
+
+  # The two stores hold halves of the same attachment and nothing joins them, so the windows in
+  # which each can be rolled back have to be the same length or a restore produces rows with no
+  # bytes. Tied by default; attachment_retention_days unties it deliberately.
+  retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
+}
+
 module "container_app" {
   source                      = "./modules/container_app"
   resource_group_name         = azurerm_resource_group.main.name
@@ -105,11 +121,13 @@ module "container_app" {
   acs_email_sender_address    = var.acs_email_sender_address
   captcha_enabled             = var.captcha_enabled
   captcha_secret              = var.captcha_secret
+  storage_account_id          = module.storage.id
+  storage_blob_endpoint       = module.storage.blob_endpoint
   tags                        = local.tags
 
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
-  depends_on = [module.key_vault, module.postgres]
+  depends_on = [module.key_vault, module.postgres, module.storage]
 }
 
 module "diagnostics" {

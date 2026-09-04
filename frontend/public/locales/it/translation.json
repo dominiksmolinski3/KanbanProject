@@ -39,7 +39,20 @@
       "complete": "Segna come completata",
       "reopen": "Riapri attività",
       "addToDailyFocus": "Aggiungi al focus giornaliero",
-      "removeFromDailyFocus": "Rimuovi dal focus giornaliero"
+      "removeFromDailyFocus": "Rimuovi dal focus giornaliero",
+      "attachments": "Allegati",
+      "addAttachment": "Aggiungi file",
+      "attachmentHint": "oppure trascina qui i file (al massimo 10 MB ciascuno)",
+      "attachmentUploading": "Caricamento…",
+      "noAttachments": "Nessun allegato.",
+      "downloadAttachment": "Scarica il file",
+      "deleteAttachment": "Elimina il file",
+      "confirmDeleteAttachment": "Vuoi eliminare questo file?",
+      "attachmentDeleted": "File eliminato",
+      "attachmentTooLarge": "{{name}} supera {{size}}",
+      "attachmentUploadFailed": "Impossibile caricare {{name}}",
+      "attachmentDownloadFailed": "Impossibile scaricare {{name}}",
+      "attachmentStorageUnavailable": "L'archiviazione dei file non è configurata, gli allegati non possono essere salvati"
     },
     "board": {
       "loading": "Caricamento bacheca kanban...",

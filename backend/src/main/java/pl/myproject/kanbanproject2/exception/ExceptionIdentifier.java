@@ -18,6 +18,25 @@ public enum ExceptionIdentifier {
     FILE_NOT_FOUND(NOT_FOUND, "File not found"),
 
     /*
+     * Task attachments. The bytes live in Azure Blob Storage and the row that names them lives
+     * here, so there are two ways for one to go wrong and they are not the same kind of mistake.
+     *
+     * ATTACHMENT_NOT_FOUND is 404 for the reason BOARD_NOT_FOUND is: an attachment on somebody
+     * else's task must answer exactly as one that was never uploaded, or the ids - which are small
+     * and sequential - map out every board in the deployment.
+     *
+     * ATTACHMENT_STORAGE_UNAVAILABLE is 503 and is the deployment's fault rather than the caller's.
+     * It means no storage account is configured, which is the state a fresh clone and CI run in;
+     * saying so plainly is better than a 500, because the file was fine and trying again will not
+     * help until somebody sets the properties.
+     */
+    ATTACHMENT_NOT_FOUND(NOT_FOUND, "Attachment not found"),
+    ATTACHMENT_TOO_LARGE(PAYLOAD_TOO_LARGE, "The maximum attachment size is 10 MB"),
+    INVALID_ATTACHMENT(BAD_REQUEST, "The uploaded file cannot be attached"),
+    ATTACHMENT_STORAGE_UNAVAILABLE(SERVICE_UNAVAILABLE,
+            "File storage is not configured, so attachments cannot be stored"),
+
+    /*
      * The unauthenticated routes answer three statuses between them and no more: 202 for signup
      * and resend whatever the address turns out to be, 401 for every login failure including an
      * unverified account, and 400 for a verification code that is wrong, expired, or attached to
