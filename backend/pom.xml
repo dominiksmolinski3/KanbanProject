@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>pl.myproject</groupId>
@@ -159,6 +159,18 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!--
+          Boot 4 defaults its auto-configured ObjectMapper to Jackson 3 (tools.jackson) instead of
+          classic com.fasterxml.jackson.databind. This app's DTOs, mappers and the JsonNullableModule
+          that gives PATCH bodies their present/null/absent distinction are all built on the classic
+          API, so this module opts back into the Jackson 2 autoconfiguration Boot 3.5 always had,
+          rather than migrating the whole app to Jackson 3 as a side effect of a parent bump.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+
         <!-- Validation API (jakarta) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -199,6 +211,15 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!--
+          Boot 4 split FlywayAutoConfiguration into its own module rather than pulling it in with
+          flyway-core; without it Hibernate validates against whatever the database already has
+          (nothing, on a fresh one) instead of migrating first.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
