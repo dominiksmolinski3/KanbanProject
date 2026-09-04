@@ -39,7 +39,20 @@
     "complete": "Als erledigt markieren",
     "reopen": "Aufgabe wieder öffnen",
     "addToDailyFocus": "Zum Tagesfokus hinzufügen",
-    "removeFromDailyFocus": "Aus dem Tagesfokus entfernen"
+    "removeFromDailyFocus": "Aus dem Tagesfokus entfernen",
+    "attachments": "Anhänge",
+    "addAttachment": "Datei hinzufügen",
+    "attachmentHint": "oder Dateien hier ablegen (höchstens 10 MB pro Datei)",
+    "attachmentUploading": "Wird hochgeladen…",
+    "noAttachments": "Keine Anhänge.",
+    "downloadAttachment": "Datei herunterladen",
+    "deleteAttachment": "Datei löschen",
+    "confirmDeleteAttachment": "Möchtest du diese Datei löschen?",
+    "attachmentDeleted": "Datei gelöscht",
+    "attachmentTooLarge": "{{name}} ist größer als {{size}}",
+    "attachmentUploadFailed": "{{name}} konnte nicht hochgeladen werden",
+    "attachmentDownloadFailed": "{{name}} konnte nicht heruntergeladen werden",
+    "attachmentStorageUnavailable": "Der Dateispeicher ist nicht konfiguriert, Anhänge können nicht gespeichert werden"
   },
   "board": {
     "loading": "Kanban-Board wird geladen...",

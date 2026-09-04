@@ -16,6 +16,7 @@ import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryDto;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
+import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -50,6 +51,7 @@ public class TaskService {
     private final RowRepository rowRepository;
     private final BoardService boardService;
     private final DeadlineNotifier deadlineNotifier;
+    private final TaskAttachmentService attachmentService;
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
@@ -114,6 +116,14 @@ public class TaskService {
         var task = findTask(caller, id);
 
         taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task));
+
+        /*
+         * The attachment rows go with the task, and so do their blobs. This is a service call
+         * rather than a cascade for exactly that reason: the database can take the rows, and only
+         * this can take the bytes - a foreign key cascade would leave every blob behind with
+         * nothing left anywhere that knows its name.
+         */
+        attachmentService.deleteAllFor(task);
 
         if (task.getChildTasks() != null && !task.getChildTasks().isEmpty()) {
             for (Task child : task.getChildTasks()) {

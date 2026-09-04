@@ -39,7 +39,20 @@
       "complete": "Marcar como completada",
       "reopen": "Reabrir tarea",
       "addToDailyFocus": "Añadir al foco diario",
-      "removeFromDailyFocus": "Quitar del foco diario"
+      "removeFromDailyFocus": "Quitar del foco diario",
+      "attachments": "Archivos adjuntos",
+      "addAttachment": "Añadir archivo",
+      "attachmentHint": "o suelta archivos aquí (10 MB como máximo cada uno)",
+      "attachmentUploading": "Subiendo…",
+      "noAttachments": "Sin archivos adjuntos.",
+      "downloadAttachment": "Descargar archivo",
+      "deleteAttachment": "Eliminar archivo",
+      "confirmDeleteAttachment": "¿Quieres eliminar este archivo?",
+      "attachmentDeleted": "Archivo eliminado",
+      "attachmentTooLarge": "{{name}} supera {{size}}",
+      "attachmentUploadFailed": "No se pudo subir {{name}}",
+      "attachmentDownloadFailed": "No se pudo descargar {{name}}",
+      "attachmentStorageUnavailable": "El almacenamiento de archivos no está configurado, no se pueden guardar los adjuntos"
     },
     "board": {
       "loading": "Cargando tablero kanban...",

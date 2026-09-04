@@ -39,7 +39,20 @@
       "complete": "Отметить выполненной",
       "reopen": "Открыть задачу заново",
       "addToDailyFocus": "Добавить в фокус дня",
-      "removeFromDailyFocus": "Убрать из фокуса дня"
+      "removeFromDailyFocus": "Убрать из фокуса дня",
+      "attachments": "Вложения",
+      "addAttachment": "Добавить файл",
+      "attachmentHint": "или перетащите файлы сюда (не более 10 МБ каждый)",
+      "attachmentUploading": "Загрузка…",
+      "noAttachments": "Вложений нет.",
+      "downloadAttachment": "Скачать файл",
+      "deleteAttachment": "Удалить файл",
+      "confirmDeleteAttachment": "Удалить этот файл?",
+      "attachmentDeleted": "Файл удалён",
+      "attachmentTooLarge": "{{name}} больше, чем {{size}}",
+      "attachmentUploadFailed": "Не удалось загрузить {{name}}",
+      "attachmentDownloadFailed": "Не удалось скачать {{name}}",
+      "attachmentStorageUnavailable": "Хранилище файлов не настроено, поэтому вложения нельзя сохранить"
     },
     "board": {
       "loading": "Загрузка канбан-доски...",

@@ -16,6 +16,7 @@ import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.subtask.SubTask;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
+import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
@@ -76,7 +77,8 @@ class BoardDataIntegrityTest {
                 columnRepository,
                 rowRepository,
                 tenant.boardService(),
-                Mockito.mock(DeadlineNotifier.class));
+                Mockito.mock(DeadlineNotifier.class),
+                Mockito.mock(TaskAttachmentService.class));
     }
 
     @Nested

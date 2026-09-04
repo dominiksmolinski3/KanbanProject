@@ -148,6 +148,18 @@ variable "captcha_secret" {
   default     = ""
 }
 
+variable "attachment_retention_days" {
+  description = "How long a deleted attachment blob stays recoverable. Null - the default - ties it to postgres_backup_retention_days, so the database and the blobs can be restored to the same instant; there is no foreign key between the two stores and nothing else keeps their recovery windows aligned. Set a number only to break that tie on purpose. Azure allows 1-365 here, against a Postgres maximum of 35."
+  type        = number
+  default     = null
+}
+
+variable "storage_replication_type" {
+  description = "Replication for the task-attachment storage account. GRS keeps a copy in the paired region and is what an environment holding somebody's files should have; dev and uat set LRS. Unlike the Postgres geo-redundancy flag, Azure lets this be changed later."
+  type        = string
+  default     = "GRS"
+}
+
 variable "alert_email" {
   description = "Optional email address to receive Azure Monitor alerts. If empty, alerts are not created."
   type        = string

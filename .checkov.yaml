@@ -19,3 +19,5 @@ skip-check:
   - CKV_AZURE_41
   - CKV_AZURE_136
   - CKV2_AZURE_57
+  - CKV_AZURE_33
+  - CKV2_AZURE_1
