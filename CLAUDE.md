@@ -518,14 +518,14 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 ### CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage. Cypress is not run in CI.
-- `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile and pushes to `ghcr.io/<owner>/kanbanproject-app` tagged `latest` and the commit SHA.
-- `external-scan.yml` — weekly nmap + testssl.sh + security-header check against the deployed
-  hostname (the `PROD_HOSTNAME` repository variable; a no-op until that's set). Checks what the
-  deployment actually answers to from the internet, which is what would show `public_network_access
-  = false` drifting from reality — Checkov only checks what Terraform declares. `testssl.sh` is
-  pulled by digest from Docker Hub rather than built from this repo, so it's outside what
-  Dependabot's `docker` ecosystem entry watches (that only reads Dockerfiles and compose files) —
-  the pin in the workflow has to be bumped by hand.
+- `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile, pushes the image to
+  `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
+  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
+  a scan failure or a commit that's no longer the tip of `main` blocks promotion, so `latest` is
+  always a SHA that both built clean and passed the scan. The build job also emits a CycloneDX SBOM
+  (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs the image
+  and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
+  later build of the same tag.
 - `codeql.yml` — CodeQL analysis of the Java backend.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
