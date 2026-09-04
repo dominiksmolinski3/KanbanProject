@@ -9,6 +9,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.storage.BlobStore;
@@ -25,6 +26,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,9 +35,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,11 +95,24 @@ class TaskAttachmentServiceTest {
         task = taskOn(tenant.board(), 42);
         when(tasks.findById(42)).thenReturn(Optional.of(task));
 
-        service = new TaskAttachmentService(
+        service = serviceWith(properties(8, 500, 1_073_741_824L));
+    }
+
+    /** Defaults generous enough that no existing test trips the concurrency cap or the quota. */
+    private static BlobStorageProperties properties(int maxConcurrentTransfers,
+                                                     long maxAttachmentsPerBoard,
+                                                     long maxTotalBytesPerBoard) {
+        return new BlobStorageProperties("https://example.blob.core.windows.net", "",
+                "task-attachments", "", maxConcurrentTransfers, maxAttachmentsPerBoard, maxTotalBytesPerBoard);
+    }
+
+    private TaskAttachmentService serviceWith(BlobStorageProperties storageProperties) {
+        return new TaskAttachmentService(
                 attachments,
                 tasks,
                 new TaskAttachmentMapper(),
                 blobStore,
+                storageProperties,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -481,6 +499,154 @@ class TaskAttachmentServiceTest {
 
             verify(attachments, never()).deleteAll(any());
             verify(blobStore, never()).remove(anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("the concurrency cap")
+    class ConcurrencyCap {
+
+        @Test
+        @DisplayName("a second upload is refused while the first is mid-stream, and only one blob is written")
+        void refusesASecondUploadWhileOneIsStreaming() throws Exception {
+            var singleSlot = serviceWith(properties(1, 500, 1_073_741_824L));
+
+            CountDownLatch uploadStarted = new CountDownLatch(1);
+            CountDownLatch releaseUpload = new CountDownLatch(1);
+            doAnswer(invocation -> {
+                uploadStarted.countDown();
+                releaseUpload.await();
+                return null;
+            }).when(blobStore).put(anyString(), anyString(), any(InputStream.class), anyLong());
+
+            Thread first = new Thread(() ->
+                    singleSlot.upload(caller, 42, upload("a.txt", "text/plain", CONTENT)));
+            first.start();
+            assertThat(uploadStarted.await(5, TimeUnit.SECONDS))
+                    .as("the first upload never reached the store")
+                    .isTrue();
+
+            assertThatThrownBy(() -> singleSlot.upload(caller, 42, upload("b.txt", "text/plain", CONTENT)))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+
+            releaseUpload.countDown();
+            first.join(5000);
+
+            verify(blobStore, times(1)).put(anyString(), anyString(), any(InputStream.class), anyLong());
+        }
+
+        @Test
+        @DisplayName("a second upload succeeds once the first has released its permit")
+        void allowsAnUploadAfterThePermitIsReleased() {
+            var singleSlot = serviceWith(properties(1, 500, 1_073_741_824L));
+
+            singleSlot.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
+            singleSlot.upload(caller, 42, upload("b.txt", "text/plain", CONTENT));
+
+            verify(blobStore, times(2)).put(anyString(), anyString(), any(InputStream.class), anyLong());
+        }
+
+        @Test
+        @DisplayName("a download holds its permit until the stream is closed, not until content() returns")
+        void releasesTheDownloadPermitOnlyWhenTheStreamCloses() throws IOException {
+            var singleSlot = serviceWith(properties(1, 500, 1_073_741_824L));
+            when(attachments.findById(1L)).thenReturn(Optional.of(stored(task, 1L)));
+            when(blobStore.read(anyString()))
+                    .thenReturn(new ByteArrayInputStream(CONTENT))
+                    .thenReturn(new ByteArrayInputStream(CONTENT));
+
+            var first = singleSlot.content(caller, 42, 1L);
+
+            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L))
+                    .as("content() returning is not the same as the download finishing")
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+
+            first.stream().close();
+
+            var second = singleSlot.content(caller, 42, 1L);
+            assertThat(second.stream().readAllBytes())
+                    .as("the permit freed by the first close() let this one through")
+                    .isEqualTo(CONTENT);
+        }
+
+        @Test
+        @DisplayName("a download that fails to open the blob releases its permit immediately")
+        void releasesTheDownloadPermitWhenOpeningFails() throws IOException {
+            var singleSlot = serviceWith(properties(1, 500, 1_073_741_824L));
+            when(attachments.findById(1L)).thenReturn(Optional.of(stored(task, 1L)));
+            when(blobStore.read(anyString()))
+                    .thenThrow(new BlobStoreException("gone", new IllegalStateException()))
+                    .thenReturn(new ByteArrayInputStream(CONTENT));
+
+            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L))
+                    .isInstanceOf(GlobalException.class);
+
+            // Nothing was handed a stream to close, so the permit must already be free.
+            var content = singleSlot.content(caller, 42, 1L);
+            assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
+        }
+    }
+
+    @Nested
+    @DisplayName("the board quota")
+    class Quota {
+
+        @Test
+        @DisplayName("an upload is refused once the board already holds the maximum number of attachments")
+        void refusesAtTheAttachmentCountLimit() {
+            var capped = serviceWith(properties(8, 1, 1_073_741_824L));
+            when(attachments.countByTaskBoard(tenant.board())).thenReturn(1L);
+
+            assertThatThrownBy(() -> attemptUpload(capped))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.ATTACHMENT_QUOTA_EXCEEDED);
+
+            verify(blobStore, never()).put(anyString(), anyString(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("an upload is allowed while the board is under the attachment count limit")
+        void allowsUnderTheAttachmentCountLimit() {
+            var capped = serviceWith(properties(8, 2, 1_073_741_824L));
+            when(attachments.countByTaskBoard(tenant.board())).thenReturn(1L);
+
+            capped.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
+
+            verify(blobStore).put(anyString(), anyString(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("an upload that would push the board over its byte quota is refused before the blob is written")
+        void refusesOverTheByteQuota() {
+            var capped = serviceWith(properties(8, 500, CONTENT.length - 1L));
+            when(attachments.totalSizeBytesByTaskBoard(tenant.board())).thenReturn(0L);
+
+            assertThatThrownBy(() -> attemptUpload(capped))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.ATTACHMENT_QUOTA_EXCEEDED);
+
+            verify(blobStore, never()).put(anyString(), anyString(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("an upload landing exactly on the byte quota is allowed")
+        void allowsExactlyAtTheByteQuota() {
+            var capped = serviceWith(properties(8, 500, (long) CONTENT.length));
+            when(attachments.totalSizeBytesByTaskBoard(tenant.board())).thenReturn(0L);
+
+            capped.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
+
+            verify(blobStore).put(anyString(), anyString(), any(), anyLong());
+        }
+
+        private void attemptUpload(TaskAttachmentService capped) {
+            capped.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
         }
     }
 
