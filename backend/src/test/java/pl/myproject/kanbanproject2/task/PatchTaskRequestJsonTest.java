@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import pl.myproject.kanbanproject2.config.JsonNullableConfiguration;
 
@@ -66,7 +66,7 @@ class PatchTaskRequestJsonTest {
         // be a bean — without JsonNullableConfiguration every field above would deserialize to null.
         new ApplicationContextRunner()
                 .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations
-                        .of(JacksonAutoConfiguration.class))
+                        .of(Jackson2AutoConfiguration.class))
                 .withUserConfiguration(JsonNullableConfiguration.class)
                 .run(context -> {
                     ObjectMapper applicationMapper = context.getBean(ObjectMapper.class);

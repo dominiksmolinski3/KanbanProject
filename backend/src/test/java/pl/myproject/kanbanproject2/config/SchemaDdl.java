@@ -80,7 +80,7 @@ public final class SchemaDdl {
         // `recipientId` and `wipLimit` where the running application says `recipient_id` and
         // `wip_limit`, and a baseline written from it fails ddl-auto=validate on the first start.
         settings.put(AvailableSettings.IMPLICIT_NAMING_STRATEGY,
-                "org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy");
+                "org.springframework.boot.hibernate.SpringImplicitNamingStrategy");
         settings.put(AvailableSettings.PHYSICAL_NAMING_STRATEGY,
                 "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
 
