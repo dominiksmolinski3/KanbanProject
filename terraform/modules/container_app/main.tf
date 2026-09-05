@@ -2,13 +2,28 @@ locals {
   app_port = 8080
 
   ghcr_credentials_configured = var.ghcr_token != ""
+
+  # The Container Apps FQDN pattern (<app-name>.<environment-default-domain>) is fixed once the
+  # environment exists, so this is knowable before azurerm_container_app.main is created -
+  # referencing its own ingress fqdn here would be a dependency cycle.
+  app_name    = "kanban-app-${var.env}"
+  self_origin = "https://${local.app_name}.${var.container_app_env_default_domain}"
+
+  # Browsers send an Origin header - and Spring's CORS filter runs - even for a same-origin
+  # request, whenever a <script>/<link> carries crossorigin (Vite sets it on every module script
+  # and its preloaded stylesheets). SecurityConfiguration's default allow-list only ever knew
+  # about the production domain and localhost, so it 403'd the app's own generated URL outright.
+  # Setting this always, rather than only when extra_cors_origins is non-empty, is what keeps
+  # every environment's own origin covered without anyone having to remember to.
+  cors_allowed_origins = join(",", concat([local.self_origin], var.extra_cors_origins))
 }
 
 resource "azurerm_container_app" "main" {
   tags                         = var.tags
-  name                         = "kanban-app-${var.env}"
+  name                         = local.app_name
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_env_id
+  workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   depends_on = [
     time_sleep.wait_for_secrets_user,
@@ -112,6 +127,10 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
         value = tostring(var.ingress_trusted_proxy_count)
+      }
+      env {
+        name  = "SECURITY_CORS_ALLOWED_ORIGINS"
+        value = local.cors_allowed_origins
       }
       # Task attachments. Neither of these is a secret and neither goes through Key Vault: the
       # endpoint is a public address and the client id names an identity rather than proving
