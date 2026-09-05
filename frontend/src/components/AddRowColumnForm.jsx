@@ -66,17 +66,19 @@ function AddRowColumnForm({ onClose, defaultTab = 'column' }) {
         </div>
         
         <div className="tab-container">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`tab-btn ${activeTab === 'column' ? 'active' : ''}`}
             onClick={() => switchTab('column')}
+            data-testid="add-row-column-tab-column"
           >
             {t('forms.addRowColumn.tabs.columns')}
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`tab-btn ${activeTab === 'row' ? 'active' : ''}`}
             onClick={() => switchTab('row')}
+            data-testid="add-row-column-tab-row"
           >
             {t('forms.addRowColumn.tabs.rows')}
           </button>

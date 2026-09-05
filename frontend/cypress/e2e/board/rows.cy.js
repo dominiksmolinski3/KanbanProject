@@ -1,6 +1,6 @@
 beforeEach(() => {
   cy.wait(500);
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
 });
 
 afterEach(() => {
@@ -14,8 +14,8 @@ afterEach(() => {
 
 describe('Row Management', () => {
   it('allows creating a new row', () => {
-    cy.contains('button', 'Dodaj wiersz/kolumnę').click();
-    cy.contains('button', 'Wiersze').click();
+    cy.get('[data-testid="open-add-board-item-form"]').click();
+    cy.get('[data-testid="add-row-column-tab-row"]').click();
     cy.get('#item-name').type('New Test Row');
     cy.get('#wip-limit').type('5');
     cy.get('[type="submit"]').click();
@@ -25,7 +25,11 @@ describe('Row Management', () => {
   it('allows deleting a row', () => {
     cy.createRow('Delete Me Row', 0);
     cy.wait(300);
+    // Deletion is confirmed through a react-toastify toast (Board.jsx's
+    // handleDeleteRowClick), not a native window.confirm() - the delete button alone only
+    // opens it, so the toast's own `.confirm-button` has to be clicked too.
     cy.contains('.grid-row-header', 'Delete Me Row').find('.delete-row-btn').click();
+    cy.get('.confirm-button').click();
     cy.contains('.grid-row-header', 'Delete Me Row').should('not.exist');
   });
 

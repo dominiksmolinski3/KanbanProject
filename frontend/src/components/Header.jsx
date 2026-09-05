@@ -51,9 +51,10 @@ function Header() {
           <BoardSwitcher />
           
           <div className="header-nav">
-            <button 
+            <button
               className="nav-link"
               onClick={() => handleFormToggle('task')}
+              data-testid="open-add-task-form"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -71,9 +72,10 @@ function Header() {
               {t('header.wipLimit')}
             </button>
 
-            <button 
+            <button
               className="nav-link"
               onClick={() => handleFormToggle('boardItem')}
+              data-testid="open-add-board-item-form"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
