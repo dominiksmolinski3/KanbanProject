@@ -564,6 +564,70 @@ export const getAllLabels = async () => {
   }
 };
 
+/** Matches TaskSearchCriteria.MAX_PAGE_SIZE, so an over-large page is refused here first. */
+export const MAX_SEARCH_PAGE_SIZE = 100;
+
+/** Matches TaskSearchCriteria.DEFAULT_PAGE_SIZE. */
+export const SEARCH_PAGE_SIZE = 25;
+
+/**
+ * Finds tasks on the active board.
+ *
+ * Everything is optional and an absent filter is not a filter, so calling this with nothing set
+ * returns the board a page at a time. Collections are repeated parameters — `?label=bug&label=ux` —
+ * which is what `Set<String>` binding on the server expects; a comma-joined string would arrive as
+ * one label named "bug,ux".
+ *
+ * The server refuses a page size over its own ceiling rather than clamping it, so the ceiling is
+ * mirrored here and the refusal happens before the request. That is the same arrangement
+ * MAX_ATTACHMENT_SIZE has, and for the same reason: a limit the client cannot see is a limit the
+ * user meets as a failed request.
+ */
+export const searchTasks = async (filters = {}) => {
+  const {
+    q = '',
+    labels = [],
+    assignees = [],
+    completed = null,
+    deadlineFrom = null,
+    deadlineTo = null,
+    page = 0,
+    size = SEARCH_PAGE_SIZE
+  } = filters;
+
+  if (size < 1 || size > MAX_SEARCH_PAGE_SIZE) {
+    throw new Error(`Search page size must be between 1 and ${MAX_SEARCH_PAGE_SIZE}`);
+  }
+
+  const params = new URLSearchParams();
+  if (q && q.trim()) {
+    params.set('q', q.trim());
+  }
+  labels.forEach((label) => params.append('label', label));
+  assignees.forEach((userId) => params.append('assignee', String(userId)));
+  if (completed !== null && completed !== undefined) {
+    params.set('completed', String(completed));
+  }
+  if (deadlineFrom) {
+    params.set('deadlineFrom', deadlineFrom);
+  }
+  if (deadlineTo) {
+    params.set('deadlineTo', deadlineTo);
+  }
+  params.set('page', String(page));
+  params.set('size', String(size));
+
+  const response = await fetch(
+    onActiveBoard(`${API_ENDPOINTS.TASKS}/search?${params.toString()}`)
+  );
+
+  if (!response.ok) {
+    throw new Error(`Error searching tasks: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
 export const deleteTask = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}`, {

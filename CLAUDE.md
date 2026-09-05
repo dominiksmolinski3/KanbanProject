@@ -205,6 +205,39 @@ different board (`BOARD_MISMATCH`).
 wildcard — because a position is an ordinal within one container. Column and row reorders require
 one board. Either mistake, and a repeated id, is `400 INVALID_REORDER`.
 
+**Search is the one route that is paginated, and the board listing deliberately is not.**
+`GET /api/tasks/search` takes the same optional `?boardId=` every listing does, plus free text
+(`q`, over title and description), repeatable `label` and `assignee` facets, `completed`, and a
+`deadlineFrom`/`deadlineTo` window. Facets are **AND across kinds, OR within one** — two labels and
+one assignee finds tasks carrying *either* label *and* having that person on them, which is how a
+row of filter chips reads. Paging is `page`/`size`, default 25, **maximum 100, and asking for more
+is a `400 INVALID_SEARCH` rather than a silent 100** — a caller handed fewer rows than it asked for
+cannot tell that from a short last page, and will page past rows it never saw. That ceiling is
+PERF-02's "decide what large enough means", answered where the unbounded thing actually is: a board
+renders every card it has and is bounded by what a team will put on one, while a search returns
+whatever the query selects and an empty query selects the whole board.
+
+Three details in the query are load-bearing and none of them is visible from the route. It is
+**two queries and a count**: `findMatchingIds` pages the ids in SQL, `findByIdIn` then fetches that
+page with the association graph, and the service **puts the rows back into the id order** — a
+second lookup makes no promise about ordering, and getting it wrong shuffles results between pages.
+An **unused collection facet is switched off by a boolean parameter** and its list bound to a
+placeholder, because a bare `IN` against an empty list is not a clause that is skipped, it is a
+clause that matches nothing. And the free-text pattern is built with `ESCAPE '!'` and the wildcards
+a person typed are escaped rather than honoured — without that, searching for `100%` matches every
+task on the board, which reads as a search that has quietly stopped working. Ordering is by id
+because it is total: any order with ties makes paging skip and repeat rows, silently, and only on
+boards big enough to page.
+
+On the client, `TaskSearch.jsx` sits in the board toolbar and **asks the server rather than
+filtering the board already in memory** — one predicate, on the side that owns the data, instead of
+a second copy in JavaScript that can drift from it. Requests are debounced to one per pause in
+typing and guarded by a sequence number, because a slow answer to `de` landing after a fast answer
+to `deploy` leaves the list showing results for a query nobody can see. Changing any filter resets
+to page 0. Results are **a list, not a filtered board**: hiding cards would answer "which tasks
+match" by destroying the layout that says where they are, so each result names its cell and
+"show on board" scrolls to the real card and flashes it.
+
 Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.

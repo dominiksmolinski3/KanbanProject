@@ -1,0 +1,271 @@
+/*
+ * The search panel sits in the board toolbar and pushes the grid down rather than floating over it.
+ * A popover would cover the very cards "show on board" scrolls to, which is the one thing this
+ * panel exists to do.
+ */
+
+.task-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: var(--border-thin) solid var(--gray-500);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.task-search-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.task-search {
+  flex: 1 1 100%;
+  background: var(--surface-light);
+  border: var(--border-thin) solid var(--gray-200);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.task-search-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.task-search-head h3 {
+  margin: 0;
+  font-size: var(--text-base, 1rem);
+}
+
+.task-search-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.task-search-term {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: var(--border-thin) solid var(--gray-300, #cbd5e1);
+  border-radius: var(--radius-sm, 0.25rem);
+  font-size: var(--text-sm);
+}
+
+.task-search-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.task-search-facet {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.task-search-facet legend {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.task-search-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.task-search-chip {
+  background: none;
+  border: var(--border-thin) solid var(--gray-300, #cbd5e1);
+  border-radius: var(--radius-full);
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.task-search-chip.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.task-search-status,
+.task-search-date input {
+  border: var(--border-thin) solid var(--gray-300, #cbd5e1);
+  border-radius: var(--radius-sm, 0.25rem);
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
+}
+
+.task-search-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.task-search-clear {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: var(--spacing-xs);
+}
+
+.task-search-summary {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-sm);
+}
+
+.task-search-failed {
+  color: var(--danger, #b91c1c);
+}
+
+.task-search-empty,
+.task-search-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: var(--spacing-xs) 0 0;
+}
+
+.task-search-results {
+  list-style: none;
+  margin: var(--spacing-xs) 0 0;
+  padding: 0;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.task-search-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+  padding: 0.4rem 0;
+  border-top: var(--border-thin) solid var(--gray-200);
+}
+
+.task-search-result-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  flex: 1 1 auto;
+}
+
+.task-search-result-title {
+  font-size: 0.9rem;
+}
+
+.task-search-result-title.completed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-search-result-cell {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.task-search-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.task-search-result-label,
+.task-search-result-user,
+.task-search-result-deadline {
+  font-size: 0.7rem;
+  border-radius: var(--radius-full);
+  padding: 0.05rem 0.5rem;
+  background: var(--gray-100, #f1f5f9);
+  color: var(--text-muted);
+}
+
+.task-search-result-deadline.expired {
+  background: var(--danger-soft, #fee2e2);
+  color: var(--danger, #b91c1c);
+}
+
+.task-search-locate {
+  background: none;
+  border: var(--border-thin) solid var(--gray-300, #cbd5e1);
+  border-radius: var(--radius-sm, 0.25rem);
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.task-search-locate:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.task-search-missing {
+  font-size: 0.72rem;
+  color: var(--danger, #b91c1c);
+  flex-basis: 100%;
+}
+
+.task-search-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.task-search-pager button {
+  background: none;
+  border: var(--border-thin) solid var(--gray-300, #cbd5e1);
+  border-radius: var(--radius-sm, 0.25rem);
+  padding: 0.1rem 0.6rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.task-search-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * The flash on a located card. Two seconds and then removed by the component, because a highlight
+ * that stays is indistinguishable from a card that is genuinely marked.
+ */
+.task-search-hit {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  transition: outline-color var(--transition-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-search-hit {
+    transition: none;
+  }
+}

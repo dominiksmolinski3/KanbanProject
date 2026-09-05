@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.task;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +11,8 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.row.Row;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -62,6 +66,90 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
      */
     @Query("SELECT DISTINCT label FROM Task task JOIN task.labels label WHERE task.board = :board")
     Set<String> findDistinctLabels(Board board);
+
+
+    /**
+     * The ids of the tasks on one board that match a search, one page at a time.
+     *
+     * <p><b>Ids, and then a second query for the rows.</b> A single paged query that also fetched
+     * the to-one associations would be pagination over a join whose rows multiply - the label and
+     * assignee joins below are what the facets filter on, and a task with three labels is three
+     * rows before {@code DISTINCT}. Hibernate answers that by paginating in memory and says so in a
+     * warning, which means reading the whole matching set to hand back twenty-five of them. Two
+     * queries keep the {@code LIMIT} in SQL where it belongs, and the second one is
+     * {@link #findByIdIn} with the same entity graph every other listing here uses.
+     *
+     * <p><b>Every filter is optional, and each is a flag plus a value rather than a nullable
+     * one.</b> The obvious form - {@code :param IS NULL OR ...}, which {@link #findMaxPosition}
+     * uses - does not work here. A parameter whose only appearance is {@code ? IS NULL} gives
+     * PostgreSQL nothing to infer a type from, and the query fails at runtime with
+     * {@code could not determine data type of parameter}; {@code findMaxPosition} escapes it only
+     * because each of its parameters is also compared against a typed column. <b>Nothing in this
+     * repository could have caught that</b> - {@code QueryStringsResolveTest} compiles HQL rather
+     * than executing SQL, and every service test mocks this interface - so it was found by running
+     * a search against a real database, and the shape below is what it left behind. The collection
+     * facets needed a flag anyway, for a different reason: a bare {@code IN} against an empty list
+     * is not a clause that is skipped, it is a clause that matches nothing.
+     *
+     * <p><b>{@code ESCAPE '!'} is not decoration.</b> The pattern is built from something a person
+     * typed, and without it a search for {@code 100%} is a pattern that matches the whole board.
+     * {@code TaskSearchCriteria.likePattern()} does the escaping; this is the half of that
+     * agreement the database has to be told about.
+     *
+     * <p>Ordered by id, which is creation order and is stable. Any order that ties would make
+     * paging skip and repeat rows across pages, silently, and only on boards big enough to page.
+     */
+    @Query(value = """
+            SELECT DISTINCT task.id FROM Task task
+            LEFT JOIN task.labels label
+            LEFT JOIN task.users assignee
+            WHERE task.board = :board
+              AND (:ignoreText = TRUE OR LOWER(task.title) LIKE :text ESCAPE '!'
+                                      OR LOWER(task.description) LIKE :text ESCAPE '!')
+              AND (:ignoreCompleted = TRUE OR task.completed = :completed)
+              AND (:ignoreDeadlineFrom = TRUE OR task.deadline >= :deadlineFrom)
+              AND (:ignoreDeadlineTo = TRUE OR task.deadline <= :deadlineTo)
+              AND (:ignoreLabels = TRUE OR label IN :labels)
+              AND (:ignoreAssignees = TRUE OR assignee.id IN :assignees)
+            ORDER BY task.id ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT task.id) FROM Task task
+            LEFT JOIN task.labels label
+            LEFT JOIN task.users assignee
+            WHERE task.board = :board
+              AND (:ignoreText = TRUE OR LOWER(task.title) LIKE :text ESCAPE '!'
+                                      OR LOWER(task.description) LIKE :text ESCAPE '!')
+              AND (:ignoreCompleted = TRUE OR task.completed = :completed)
+              AND (:ignoreDeadlineFrom = TRUE OR task.deadline >= :deadlineFrom)
+              AND (:ignoreDeadlineTo = TRUE OR task.deadline <= :deadlineTo)
+              AND (:ignoreLabels = TRUE OR label IN :labels)
+              AND (:ignoreAssignees = TRUE OR assignee.id IN :assignees)
+            """)
+    Page<Integer> findMatchingIds(@Param("board") Board board,
+                                  @Param("ignoreText") boolean ignoreText,
+                                  @Param("text") String text,
+                                  @Param("ignoreCompleted") boolean ignoreCompleted,
+                                  @Param("completed") boolean completed,
+                                  @Param("ignoreDeadlineFrom") boolean ignoreDeadlineFrom,
+                                  @Param("deadlineFrom") LocalDateTime deadlineFrom,
+                                  @Param("ignoreDeadlineTo") boolean ignoreDeadlineTo,
+                                  @Param("deadlineTo") LocalDateTime deadlineTo,
+                                  @Param("ignoreLabels") boolean ignoreLabels,
+                                  @Param("labels") Collection<String> labels,
+                                  @Param("ignoreAssignees") boolean ignoreAssignees,
+                                  @Param("assignees") Collection<Integer> assignees,
+                                  Pageable pageable);
+
+    /**
+     * The rows behind one page of {@link #findMatchingIds}, with the associations the mapper reads.
+     *
+     * <p>Not board-scoped, and that is safe only because of how it is called: the ids come from
+     * {@link #findMatchingIds}, which is scoped, so this never widens what the caller can see. It
+     * is deliberately not a route's entry point for that reason.
+     */
+    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
+    List<Task> findByIdIn(Collection<Integer> ids);
 
     /**
      * The highest position in use in one cell, or empty when the cell is empty.
