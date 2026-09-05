@@ -1,5 +1,11 @@
 beforeEach(() => {
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
+  // Every test here creates a task with no column of its own, which the app refuses when the
+  // board has none at all (notifications.noColumnError) - it isn't optional the way a task's own
+  // column is. The suite's own cleanup (deleteColumns) now genuinely empties the board after
+  // every test, so each test that needs one has to create it, rather than relying on a column
+  // left behind by whichever spec happened to run before this one.
+  cy.createColumn('Backlog', 0);
 });
 
 afterEach(() => {
@@ -26,7 +32,7 @@ describe('Task Creation', () => {
   });
   
   it('creates a task with description', () => {
-    cy.contains('button', 'Dodaj zadanie').click();
+    cy.get('[data-testid="open-add-task-form"]').click();
     cy.get('#task-title').type('Task with Description');
     cy.get('[type="submit"]').click();
 
@@ -43,7 +49,7 @@ describe('Task Creation', () => {
   });
   
   it('creates a task with label', () => {
-    cy.contains('button', 'Dodaj zadanie').click();
+    cy.get('[data-testid="open-add-task-form"]').click();
     cy.get('#task-title').type('High Priority Task');
         
     cy.get('[type="submit"]').click();

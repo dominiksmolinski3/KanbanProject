@@ -296,19 +296,44 @@ describe('Board Component', () => {
     expect(mockContextValue.deleteRow).not.toHaveBeenCalled();
   });
         
-  test('shows loading state correctly', () => {
+  test('shows loading state correctly on the initial load', () => {
     const loadingContext = {
       ...mockContextValue,
+      columns: [],
+      rows: [],
+      tasks: [],
       loading: true
     };
-            
+
     render(
       <KanbanContext.Provider value={loadingContext}>
         <Board />
       </KanbanContext.Provider>
     );
-            
+
     expect(screen.getByText('board.loading')).toBeInTheDocument();
+  });
+
+  // A background refresh (adding a subtask, reordering, anything that resyncs via
+  // refreshTasks()/refreshBoard()) sets the same `loading` flag the initial load does. Gating the
+  // whole board on it would unmount every Task - and any TaskDetails panel a person has open -
+  // for the length of that refresh, which is exactly the failure a live run of this suite found:
+  // typing a second subtask lost the panel mid-keystroke because adding the first one refreshed
+  // the board underneath it.
+  test('does not show the loading spinner for a background refresh once the board has data', () => {
+    const refreshingContext = {
+      ...mockContextValue,
+      loading: true
+    };
+
+    render(
+      <KanbanContext.Provider value={refreshingContext}>
+        <Board />
+      </KanbanContext.Provider>
+    );
+
+    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    expect(screen.getByText('To Do')).toBeInTheDocument();
   });
         
   test('shows error state correctly', () => {

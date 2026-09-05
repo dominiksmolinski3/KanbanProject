@@ -1,6 +1,9 @@
 beforeEach(() => {
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
   cy.wait(300);
+  // cy.setupTaskWithSubtasks creates a task with no column of its own, which the app refuses
+  // when the board has none at all - see task-creation.cy.js for the same fix and why.
+  cy.createColumn('Backlog', 0);
 });
 
 afterEach(() => {

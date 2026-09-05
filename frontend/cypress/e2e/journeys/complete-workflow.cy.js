@@ -12,7 +12,7 @@ describe('Complete User Journey', () => {
   it('allows a user to set up and use a kanban board', () => {
     cy.visit('/');
     cy.wait(1000);
-    cy.login('rlb97355@jioso.com', 'qwer123');
+    cy.loginAsTestUser();
     cy.wait(1000);
     cy.createColumn('Backlog', 0);
     cy.createColumn('In Progress', 3);
@@ -29,10 +29,10 @@ describe('Complete User Journey', () => {
     cy.contains('.task', 'Implement login').drag('th:contains("In Progress")');
     cy.wait(300);
     cy.contains('.task', 'Implement login').click();
-    cy.get('input[placeholder="Nazwa podzadania"]').type('Create UI{enter}');
+    cy.get('.subtask-input').type('Create UI{enter}');
     cy.wait(300);
     cy.get('.add-subtask-btn').click();
-    cy.get('input[placeholder="Nazwa podzadania"]').type('Validate inputs{enter}');
+    cy.get('.subtask-input').type('Validate inputs{enter}');
     cy.wait(300);
     cy.get('.add-subtask-btn').click();
 

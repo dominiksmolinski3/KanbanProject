@@ -1,6 +1,9 @@
 beforeEach(() => {
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
   cy.wait(300);
+  // cy.createTask needs a column to exist on the board - see task-creation.cy.js for the same
+  // fix and why.
+  cy.createColumn('Backlog', 0);
 });
 
 afterEach(() => {
@@ -22,7 +25,9 @@ afterEach(() => {
 describe('Editing a task that changed underneath you', () => {
   const bump = (title, changes) =>
     cy.window().then((win) =>
-      cy.request('GET', '/api/tasks', null, {
+      cy.request({
+        method: 'GET',
+        url: '/api/tasks',
         headers: { Authorization: `Bearer ${win.localStorage.getItem('token')}` }
       }).then(({ body }) => {
         const task = body.find((t) => t.title === title);
