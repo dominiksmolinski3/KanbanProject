@@ -331,3 +331,65 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
     action_groups = [azurerm_monitor_action_group.main[0].id]
   }
 }
+
+data "azurerm_monitor_diagnostic_categories" "acs" {
+  count       = var.acs_communication_service_id != "" ? 1 : 0
+  resource_id = var.acs_communication_service_id
+}
+
+resource "azurerm_monitor_diagnostic_setting" "acs" {
+  count                      = var.acs_communication_service_id != "" ? 1 : 0
+  name                       = "diag-kanban-acs-${var.env}"
+  target_resource_id         = var.acs_communication_service_id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  dynamic "enabled_log" {
+    for_each = toset(data.azurerm_monitor_diagnostic_categories.acs[0].log_category_types)
+    content {
+      category = enabled_log.value
+    }
+  }
+
+  dynamic "enabled_metric" {
+    for_each = toset(try(data.azurerm_monitor_diagnostic_categories.acs[0].metrics, []))
+    content {
+      category = enabled_metric.value
+    }
+  }
+}
+
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
+  count               = var.alert_email != "" && var.acs_communication_service_id != "" ? 1 : 0
+  tags                = var.tags
+  name                = "kanban-${var.env}-mail-bounces"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  scopes              = [var.log_analytics_workspace_id]
+  description         = "ACS is reporting a message it accepted did not reach a recipient - a hard bounce, a spam rejection, or an address that does not exist. The application never learns this on its own."
+  severity            = 2
+  enabled             = true
+
+  evaluation_frequency = "PT15M"
+  window_duration      = "PT1H"
+
+  criteria {
+    query                   = <<-KQL
+      ACSEmailStatusUpdateOperational
+      | where DeliveryStatus in ("Bounced", "Failed", "Quarantined", "FilteredSpam", "Suppressed")
+    KQL
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.main[0].id]
+  }
+
+  depends_on = [azurerm_monitor_diagnostic_setting.acs]
+}
