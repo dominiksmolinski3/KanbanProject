@@ -135,11 +135,17 @@ Cypress.Commands.add('drag', { prevSubject: 'element' }, (subject, targetSelecto
   // optimistically re-renders the column/row it left, and if that happens before dragend fires,
   // `subject` (captured once, at the top of this command) is a detached element. dragend is
   // native drag-and-drop cleanup on the *source*, and a source that is no longer in the document
-  // has nothing left to clean up, so it is only fired when the node is still attached - doing
-  // that unconditionally is what "the page updated while this command was executing" means.
+  // has nothing left to clean up, so it is only fired when the node is still attached.
+  //
+  // `{ force: true }` matters as much as the check above: without it, `.trigger()` still spends
+  // up to its own command timeout *waiting* for the element to become actionable before firing,
+  // and the same re-render can detach it during that wait - the isAttached check above passing
+  // proves nothing about what happens a moment later, inside trigger()'s own retry loop. Forcing
+  // skips that wait and dispatches immediately against the node this command already confirmed
+  // is still there, which is the only way to close the race rather than just narrow it.
   cy.wrap(subject, { log: false }).then($el => {
     if (Cypress.dom.isAttached($el)) {
-      cy.wrap($el, { log: false }).trigger('dragend', { dataTransfer });
+      cy.wrap($el, { log: false }).trigger('dragend', { dataTransfer, force: true });
     }
   });
   cy.wait(300);
