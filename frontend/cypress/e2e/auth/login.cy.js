@@ -4,10 +4,12 @@ beforeEach(() => {
 
 describe('Login Functionality', () => {
   it('logs in with valid credentials', () => {
-    cy.get('input[type="email"]').first().type('rlb97355@jioso.com');
-    cy.get('input[type="password"]').first().type('qwer123');
-    cy.contains('button', 'Sign In').click();
-    cy.url().should('include', '/board');
+    cy.fixture('test-account').then((account) => {
+      cy.get('input[type="email"]').first().type(account.email);
+      cy.get('input[type="password"]').first().type(account.password);
+      cy.contains('button', 'Sign In').click();
+      cy.url().should('include', '/board');
+    });
   });
 
   it('shows error with invalid credentials', () => {

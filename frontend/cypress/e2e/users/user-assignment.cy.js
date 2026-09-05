@@ -1,5 +1,8 @@
 beforeEach(() => {
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
+  // cy.createTask needs a column to exist on the board - see task-creation.cy.js for the same
+  // fix and why.
+  cy.createColumn('Backlog', 0);
 });
 
 afterEach(() => {
