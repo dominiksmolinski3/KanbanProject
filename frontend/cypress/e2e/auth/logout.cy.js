@@ -1,5 +1,5 @@
 beforeEach(() => {
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
 });
 
 describe('Logout Functionality', () => {

@@ -1,6 +1,6 @@
 beforeEach(() => {
   cy.wait(500);
-  cy.login('rlb97355@jioso.com', 'qwer123');
+  cy.loginAsTestUser();
 });
 
 afterEach(() => {
@@ -17,11 +17,11 @@ afterEach(() => {
 
 describe('Column Management', () => {
   it('allows creating a new column', () => {
-    cy.contains('button', 'Dodaj wiersz/kolumnę').click();
-    cy.contains('label', 'Nazwa kolumny:').should('be.visible');
+    cy.get('[data-testid="open-add-board-item-form"]').click();
+    cy.get('[data-testid="add-row-column-tab-column"]').should('be.visible');
     cy.get('#item-name').type('New Test Column');
     cy.get('#wip-limit').type('3');
-    cy.contains('button', 'Dodaj kolumnę').click();
+    cy.get('[type="submit"]').click();
     cy.contains('th', 'New Test Column').should('exist');
   });
   
