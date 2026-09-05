@@ -192,6 +192,30 @@ class TaskAttachmentControllerHttpTest {
     }
 
     @Test
+    @DisplayName("an upload refused by the transfer cap answers 503 rather than a 500")
+    void uploadAnswers503WhenTransfersAreBusy() throws Exception {
+        when(attachmentService.upload(eq(caller), eq(42), any()))
+                .thenThrow(new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY));
+
+        mvc.perform(multipart("/tasks/42/attachments")
+                        .file(new MockMultipartFile("file", "design.pdf", "application/pdf", CONTENT)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("ATTACHMENT_TRANSFER_BUSY"));
+    }
+
+    @Test
+    @DisplayName("an upload that would exceed the board's quota answers 413")
+    void uploadAnswers413WhenTheBoardQuotaIsExceeded() throws Exception {
+        when(attachmentService.upload(eq(caller), eq(42), any()))
+                .thenThrow(new GlobalException(ExceptionIdentifier.ATTACHMENT_QUOTA_EXCEEDED));
+
+        mvc.perform(multipart("/tasks/42/attachments")
+                        .file(new MockMultipartFile("file", "design.pdf", "application/pdf", CONTENT)))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("ATTACHMENT_QUOTA_EXCEEDED"));
+    }
+
+    @Test
     @DisplayName("a delete answers 204 and passes the caller through")
     void deleteAnswers204() throws Exception {
         mvc.perform(delete("/tasks/42/attachments/5"))

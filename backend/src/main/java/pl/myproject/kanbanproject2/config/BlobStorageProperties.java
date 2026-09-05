@@ -51,7 +51,31 @@ public record BlobStorageProperties(
          * the application never reads is one ConfigurationTest reports as dead configuration - and
          * it would be right to: nothing else in this repo would connect that name to this bean.
          */
-        String identityClientId) {
+        String identityClientId,
+
+        /*
+         * How many uploads and downloads may stream through this application at once. Each one
+         * holds a thread and a buffer for as long as the transfer takes, and a replica count pinned
+         * to 1 has no second process to absorb a burst - comfortably under Tomcat's 200-thread
+         * default, with room left for ordinary request serving.
+         */
+        @DefaultValue("8") int maxConcurrentTransfers,
+
+        /*
+         * A per-board ceiling on how many attachments may exist at once, checked alongside {@link
+         * #maxTotalBytesPerBoard} before a blob is written. 500 attachments is fifty of the largest
+         * file this feature allows, which is generous for one board and still a number rather than
+         * nothing.
+         */
+        @DefaultValue("500") long maxAttachmentsPerBoard,
+
+        /*
+         * A per-board ceiling on the combined size of every attachment, in bytes. One gibibyte -
+         * a hundred files at the ten-megabyte per-file limit - is the same kind of small, explicit
+         * number {@link pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService
+         * #MAX_ATTACHMENT_SIZE} is for one file.
+         */
+        @DefaultValue("1073741824") long maxTotalBytesPerBoard) {
 
     /** Whether there is enough here to store anything at all. */
     public boolean isConfigured() {
