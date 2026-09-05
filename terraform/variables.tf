@@ -135,6 +135,12 @@ variable "acs_email_sender_address" {
   default     = ""
 }
 
+variable "acs_communication_service_id" {
+  description = "Resource ID of the Communication Services resource created by hand outside Terraform (portal -> the resource -> JSON view -> id), e.g. \"/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Communication/communicationServices/<name>\". Not a secret. Empty (the default) means no bounce alert - see the diagnostics module."
+  type        = string
+  default     = ""
+}
+
 variable "captcha_enabled" {
   description = "Enable captcha verification in backend."
   type        = bool
