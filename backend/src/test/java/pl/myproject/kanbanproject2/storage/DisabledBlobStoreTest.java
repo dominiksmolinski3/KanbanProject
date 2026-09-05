@@ -49,6 +49,15 @@ class DisabledBlobStoreTest {
     }
 
     @Test
+    @DisplayName("a resumed download is refused too, rather than answering an empty range")
+    void refusesRangedReads() {
+        assertThatThrownBy(() -> store.read("tasks/1/abc", 0, 10))
+                .isInstanceOf(GlobalException.class)
+                .extracting(e -> ((GlobalException) e).getIdentifier())
+                .isEqualTo(ExceptionIdentifier.ATTACHMENT_STORAGE_UNAVAILABLE);
+    }
+
+    @Test
     @DisplayName("removing is a no-op, so deleting a row left over from a configured past still works")
     void removingSucceeds() {
         assertThatCode(() -> store.remove("tasks/1/abc")).doesNotThrowAnyException();

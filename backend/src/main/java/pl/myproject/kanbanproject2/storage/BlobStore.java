@@ -42,6 +42,24 @@ public interface BlobStore {
     InputStream read(String blobName);
 
     /**
+     * Opens part of one blob for reading. The caller closes it.
+     *
+     * <p>The range is asked of the <em>store</em> rather than served by skipping a full stream,
+     * which is the whole point of having this method at all. A {@code ResourceRegion} over
+     * {@link #read(String)} would answer the same 206 and would still pull every byte from
+     * {@code offset} back to zero across the private endpoint first - so a browser resuming at 90%
+     * would cost the same egress as starting again, and a seek into the middle of a large file
+     * would cost more than reading it. The provider can serve a range natively; this is where that
+     * is asked for.
+     *
+     * @param offset the first byte to read, counted from zero.
+     * @param length how many bytes to read. The caller has already clamped this to the blob's own
+     *               length, because the row that knows the size is the one deciding the range.
+     * @throws BlobStoreException if the provider would not open it.
+     */
+    InputStream read(String blobName, long offset, long length);
+
+    /**
      * Removes one blob, and says nothing if it was already gone.
      *
      * <p>Idempotent on purpose: this is called after the row is committed, so the interesting case

@@ -2,6 +2,8 @@ package pl.myproject.kanbanproject2.storage;
 
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.models.BlobRange;
+import com.azure.storage.blob.options.BlobInputStreamOptions;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 import com.azure.storage.blob.specialized.BlobInputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +69,35 @@ class AzureBlobStoreTest {
 
         assertThat(stream).isSameAs(opened);
         verify(container).getBlobClient("tasks/42/abc");
+    }
+
+    @Test
+    @DisplayName("a ranged read asks the account for the range, rather than skipping bytes here")
+    void readsARangeFromTheAccount() {
+        BlobInputStream opened = mock(BlobInputStream.class);
+        var options = ArgumentCaptor.forClass(BlobInputStreamOptions.class);
+        when(blob.openInputStream(any(BlobInputStreamOptions.class))).thenReturn(opened);
+
+        InputStream stream = store.read("tasks/42/abc", 900, 100);
+
+        assertThat(stream).isSameAs(opened);
+        verify(blob).openInputStream(options.capture());
+        BlobRange range = options.getValue().getRange();
+        assertThat(range.getOffset())
+                .as("the offset becomes a Range header on the call to Azure - resolving it here by "
+                        + "skipping would still pull every earlier byte across the private endpoint")
+                .isEqualTo(900);
+        assertThat(range.getCount()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("a ranged read wraps the SDK's exceptions like every other call here")
+    void wrapsProviderFailuresOnARangedRead() {
+        when(blob.openInputStream(any(BlobInputStreamOptions.class)))
+                .thenThrow(new IllegalStateException("service said no"));
+
+        assertThatThrownBy(() -> store.read("tasks/42/abc", 0, 10))
+                .isInstanceOf(BlobStoreException.class);
     }
 
     @Test
