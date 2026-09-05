@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -38,6 +40,37 @@ public class TaskController {
             @RequestParam(required = false) Integer boardId,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(taskService.getAllTasks(currentUser, boardId));
+    }
+
+    /**
+     * Finding a task, rather than reading a board.
+     *
+     * <p>Sits above {@code /{id}} in this file and below it in the URL space, which is fine because
+     * a literal segment beats a template one - the same arrangement {@code /daily-focus} and
+     * {@code /get/all/labels} already rely on here.
+     *
+     * <p>{@code boardId} keeps the convention every other listing uses: absent means the board the
+     * caller works on. The rest are facets, all optional, repeatable where they are collections -
+     * {@code ?label=bug&label=ux} - and combined the way a row of filter chips reads. Paging is
+     * this route's alone; see {@code TaskService.searchTasks} for why the board listing has none.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<TaskSearchResults> searchTasks(
+            @RequestParam(required = false) Integer boardId,
+            @RequestParam(required = false) String q,
+            @RequestParam(name = "label", required = false) Set<String> labels,
+            @RequestParam(name = "assignee", required = false) Set<Integer> assignees,
+            @RequestParam(required = false) Boolean completed,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime deadlineFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime deadlineTo,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(taskService.searchTasks(currentUser, boardId,
+                TaskSearchCriteria.of(q, labels, assignees, completed, deadlineFrom, deadlineTo,
+                        page, size)));
     }
 
     @DeleteMapping("/{id}")

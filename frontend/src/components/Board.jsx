@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import '../styles/components/Board.css';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';
+import TaskSearch from './TaskSearch';
 
 function Board() {
   const [addContext, setAddContext] = useState({ type: null, columnId: null, rowId: null });
@@ -380,6 +381,7 @@ function Board() {
         {dailyFocusOnly && dailyFocusCount === 0 && (
           <span className="daily-focus-empty">{t('board.dailyFocusEmpty')}</span>
         )}
+        <TaskSearch />
       </div>
       <table className="kanban-table">
         <thead>
