@@ -142,6 +142,7 @@ module "diagnostics" {
   alert_email                = var.alert_email
   tags                       = local.tags
 
-  key_vault_id       = module.key_vault.id
-  postgres_server_id = module.postgres.postgres_server_id
+  key_vault_id                 = module.key_vault.id
+  postgres_server_id           = module.postgres.postgres_server_id
+  acs_communication_service_id = var.acs_communication_service_id
 }

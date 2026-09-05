@@ -105,6 +105,7 @@ Optional (network) - see [Container App ingress restrictions](#container-app-ing
 
 Optional (monitoring):
 - `alert_email` - if set, Terraform creates an Azure Monitor action group and basic Container Apps metric alerts (CPU + memory).
+- `acs_communication_service_id` - resource ID of the same Communication Services resource `acs_email_connection_string` points at. Empty (the default) skips the mail bounce alert; set it once the resource exists to turn it on. See [Attachment storage](#attachment-storage)'s sibling paragraph on mail, below, and `terraform/modules/diagnostics/main.tf`.
 
 Optional (database sizing) - see [Postgres sizing and availability](#postgres-sizing-and-availability):
 - `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`
@@ -231,6 +232,15 @@ Create the resource, link a domain (an Azure-managed `*.azurecomm.net` subdomain
 no DNS), and paste its connection string and a MailFrom address on that domain into
 `acs_email_connection_string` / `acs_email_sender_address`. Left empty, the app boots
 with mail disabled rather than failing.
+
+Answering `202` on send only means ACS accepted the message, not that it reached anyone -- a
+hard bounce or a spam rejection surfaces later, on a channel the application never listens to.
+Once the resource exists, paste its resource ID (portal -> the resource -> JSON view -> `id`)
+into `acs_communication_service_id` too: this is the one additional value the diagnostics
+module needs to ship the resource's delivery-status logs to Log Analytics and alert on a bounce.
+Left empty, Terraform skips both -- there is no resource ID to point either at. See
+`terraform/modules/diagnostics/main.tf`, the comment above `mail_bounces`, for why that alert
+reads a log table rather than a metric.
 
 What follows from that: **the state blob is as sensitive as the vault**, and the
 control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
