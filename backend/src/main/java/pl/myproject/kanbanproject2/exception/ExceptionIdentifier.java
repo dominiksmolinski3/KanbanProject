@@ -52,6 +52,14 @@ public enum ExceptionIdentifier {
     ATTACHMENT_QUOTA_EXCEEDED(PAYLOAD_TOO_LARGE, "This board has reached its attachment quota"),
 
     /*
+     * A search this route will not serve: a negative page, a size outside 1..MAX_PAGE_SIZE, or a
+     * deadline window that ends before it starts. 400 rather than a quiet clamp, because a caller
+     * that asked for 500 rows and silently got 100 has no way to tell that from a board with 100
+     * matching tasks, and will page through the same rows believing it has read past them.
+     */
+    INVALID_SEARCH(BAD_REQUEST, "The search request cannot be served as asked"),
+
+    /*
      * The unauthenticated routes answer three statuses between them and no more: 202 for signup
      * and resend whatever the address turns out to be, 401 for every login failure including an
      * unverified account, and 400 for a verification code that is wrong, expired, or attached to

@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Every method here takes the caller, and every lookup goes through {@link #findTask(User, Integer)}
@@ -84,6 +86,63 @@ public class TaskService {
                 .map(taskMapper)
                 .sorted(POSITION_ORDER)
                 .toList();
+    }
+
+    /**
+     * The tasks on one board that match a search, one page at a time.
+     *
+     * <p><b>This is the route that is paginated, and the board listing above deliberately is
+     * not.</b> A board renders every card it has - that is what a board is - and its size is
+     * bounded by what a team will actually put on one, so paging {@code getAllTasks} would break
+     * the only client there is in order to bound something that was already bounded. A search is
+     * the opposite: what it returns is chosen by whoever typed the query, an empty query matches
+     * the whole board by design, and the only bound on the answer is the one put here. That is
+     * PERF-02's "decide what large enough means" answered where the unbounded thing actually is,
+     * rather than everywhere.
+     *
+     * <p>Two queries and a count, not one. The ids come back paged and ordered by the database;
+     * the rows for that page are then fetched with the association graph the mapper needs, and put
+     * back into the id order - a second lookup does not preserve the first one's ordering, and
+     * {@code findByIdIn} makes no promise about it. Reordering in memory over at most
+     * {@code size} ids is cheap; getting it wrong is a result list that shuffles between pages.
+     */
+    public TaskSearchResults searchTasks(User caller, Integer boardId, TaskSearchCriteria criteria) {
+        var board = boardService.resolve(caller, boardId);
+
+        // Each filter arrives as "is it off" and "what it is", never as a null - see
+        // TaskRepository.findMatchingIds for the reason, which only a real database can show you.
+        var matching = taskRepository.findMatchingIds(
+                board,
+                criteria.text() == null,
+                criteria.textOrPlaceholder(),
+                criteria.completed() == null,
+                criteria.completedOrPlaceholder(),
+                criteria.deadlineFrom() == null,
+                criteria.deadlineFromOrPlaceholder(),
+                criteria.deadlineTo() == null,
+                criteria.deadlineToOrPlaceholder(),
+                criteria.labels().isEmpty(),
+                criteria.labelsOrPlaceholder(),
+                criteria.assignees().isEmpty(),
+                criteria.assigneesOrPlaceholder(),
+                PageRequest.of(criteria.page(), criteria.size()));
+
+        var ids = matching.getContent();
+        // Past the last page, or a board with nothing on it. Asking findByIdIn for an empty list
+        // is a query with an empty IN, which is the one thing the criteria go out of their way to
+        // avoid handing the database elsewhere.
+        List<TaskDto> found = ids.isEmpty()
+                ? List.of()
+                : inTheOrderOf(ids, taskRepository.findByIdIn(ids));
+
+        return new TaskSearchResults(found, criteria.page(), criteria.size(),
+                matching.getTotalElements(), matching.getTotalPages());
+    }
+
+    /** Maps the page's rows and puts them back in the order the paged query chose. */
+    private List<TaskDto> inTheOrderOf(List<Integer> ids, List<Task> rows) {
+        var byId = rows.stream().collect(Collectors.toMap(Task::getId, taskMapper));
+        return ids.stream().map(byId::get).filter(Objects::nonNull).toList();
     }
 
     /**

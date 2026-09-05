@@ -445,7 +445,15 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.60</minimum>
+                                            <!--
+                                                Measures 75.1 (289/385) with the search on it, up
+                                                from 72.1: TaskSearchCriteria and the paged lookup
+                                                arrived with suites of their own. 0.70 rather than
+                                                a shade under 75, because 385 lines is large enough
+                                                that a tight floor is a tripwire on the next honest
+                                                refactor rather than a gate on untested code.
+                                            -->
+                                            <minimum>0.70</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
