@@ -3,6 +3,8 @@ package pl.myproject.kanbanproject2.storage;
 import com.azure.core.util.Context;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
+import com.azure.storage.blob.models.BlobRange;
+import com.azure.storage.blob.options.BlobInputStreamOptions;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 
 import java.io.InputStream;
@@ -53,6 +55,22 @@ public class AzureBlobStore implements BlobStore {
     public InputStream read(String blobName) {
         try {
             return container.getBlobClient(blobName).openInputStream();
+        } catch (RuntimeException e) {
+            throw new BlobStoreException("could not open blob " + blobName, e);
+        }
+    }
+
+    /**
+     * A ranged read, served by the storage account rather than by throwing bytes away here.
+     *
+     * <p>{@link BlobRange} becomes an HTTP {@code Range} on the request the SDK makes, so a resume
+     * at 90% transfers ten percent of the file over the private endpoint instead of all of it.
+     */
+    @Override
+    public InputStream read(String blobName, long offset, long length) {
+        try {
+            return container.getBlobClient(blobName).openInputStream(
+                    new BlobInputStreamOptions().setRange(new BlobRange(offset, length)));
         } catch (RuntimeException e) {
             throw new BlobStoreException("could not open blob " + blobName, e);
         }

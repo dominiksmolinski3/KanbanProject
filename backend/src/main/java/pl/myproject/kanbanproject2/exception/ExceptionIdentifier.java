@@ -50,6 +50,16 @@ public enum ExceptionIdentifier {
      * itself is fine, it is what the board already holds that makes it too much.
      */
     ATTACHMENT_QUOTA_EXCEEDED(PAYLOAD_TOO_LARGE, "This board has reached its attachment quota"),
+    /*
+     * A Range header naming bytes the attachment does not have. 416 rather than serving the whole
+     * file anyway, because a client that asks to resume from byte 900 of a file that is 500 bytes
+     * long has a wrong idea of what it is downloading, and handing it the start again would let it
+     * write those bytes at the wrong offset. The controller answers this one itself rather than
+     * through GlobalExceptionHandler, because the useful part of a 416 is the Content-Range header
+     * naming the real length and the handler has no per-exception header plumbing.
+     */
+    ATTACHMENT_RANGE_NOT_SATISFIABLE(REQUESTED_RANGE_NOT_SATISFIABLE,
+            "The requested byte range is outside this attachment"),
 
     /*
      * A search this route will not serve: a negative page, a size outside 1..MAX_PAGE_SIZE, or a

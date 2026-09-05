@@ -134,6 +134,106 @@ describe('task attachments', () => {
       await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toThrow('404');
       expect(URL.createObjectURL).not.toHaveBeenCalled();
     });
+
+    test('a refusal is not retried, because the next answer would be the same one', async () => {
+      fetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toThrow('404');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // The whole reason the server answers 206 at all: this is the only client that ever asks. A
+  // fetch() that dies part way is a rejected promise and the bytes it had already moved are gone,
+  // so the resume has to be built here rather than left to the browser.
+  describe('resuming a download that broke', () => {
+    const streamOf = (...chunks) => {
+      let next = 0;
+      return {
+        getReader: () => ({
+          read: async () => {
+            if (next >= chunks.length) {
+              return { done: true, value: undefined };
+            }
+            const chunk = chunks[next++];
+            if (chunk instanceof Error) {
+              throw chunk;
+            }
+            return { done: false, value: chunk };
+          }
+        })
+      };
+    };
+
+    const bytes = (...values) => new Uint8Array(values);
+
+    beforeEach(() => {
+      jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('asks for the rest from where it stopped, rather than for the file again', async () => {
+      fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          body: streamOf(bytes(1, 2, 3), new Error('network went away'))
+        })
+        .mockResolvedValueOnce({ ok: true, status: 206, body: streamOf(bytes(4, 5)) });
+
+      await api.downloadTaskAttachment(7, 3, 'report.pdf');
+
+      expect(fetch).toHaveBeenNthCalledWith(2, '/api/tasks/7/attachments/3/content', {
+        headers: { Range: 'bytes=3-' }
+      });
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+      expect(URL.createObjectURL.mock.calls[0][0].size)
+        .toBe(5);
+    });
+
+    test('a server that ignores the Range restarts the file rather than doubling it', async () => {
+      fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          body: streamOf(bytes(1, 2, 3), new Error('network went away'))
+        })
+        .mockResolvedValueOnce({ ok: true, status: 200, body: streamOf(bytes(1, 2, 3, 4, 5)) });
+
+      await api.downloadTaskAttachment(7, 3, 'report.pdf');
+
+      expect(URL.createObjectURL.mock.calls[0][0].size)
+        .toBe(5);
+    });
+
+    test('a first request that dies with nothing to show for it is a failure, not a resume', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: streamOf(new Error('network went away'))
+      });
+
+      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf'))
+        .rejects.toThrow('network went away');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('it gives up rather than resuming forever', async () => {
+      // A fresh stream per call: one shared `streamOf` would hand the second attempt a reader
+      // whose cursor is already past the failure, and the retry would succeed for the wrong reason.
+      fetch.mockImplementation(async () => ({
+        ok: true,
+        status: 206,
+        body: streamOf(bytes(9), new Error('network went away'))
+      }));
+
+      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf'))
+        .rejects.toThrow('network went away');
+      expect(fetch).toHaveBeenCalledTimes(4);
+    });
   });
 
   describe('deleting', () => {

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpRange;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
@@ -369,7 +370,7 @@ class TaskAttachmentServiceTest {
         @Test
         @DisplayName("opens the stored blob and labels it with the name and type from the row")
         void opensTheBlob() {
-            var content = service.content(caller, 42, 1L);
+            var content = service.content(caller, 42, 1L, null);
 
             verify(blobStore).read("tasks/42/blob-1");
             assertThat(content.fileName()).isEqualTo("notes.txt");
@@ -380,7 +381,7 @@ class TaskAttachmentServiceTest {
         @Test
         @DisplayName("hands the stream back open, because reading it here would mean holding the file")
         void doesNotDrainTheStream() throws IOException {
-            var content = service.content(caller, 42, 1L);
+            var content = service.content(caller, 42, 1L, null);
 
             assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
         }
@@ -391,7 +392,7 @@ class TaskAttachmentServiceTest {
             var elsewhere = taskOn(tenant.board(), 43);
             when(attachments.findById(1L)).thenReturn(Optional.of(stored(elsewhere, 1L)));
 
-            assertThatThrownBy(() -> service.content(caller, 42, 1L))
+            assertThatThrownBy(() -> service.content(caller, 42, 1L, null))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_NOT_FOUND);
@@ -402,7 +403,7 @@ class TaskAttachmentServiceTest {
         void refusesAnUnknownAttachment() {
             when(attachments.findById(7L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.content(caller, 42, 7L))
+            assertThatThrownBy(() -> service.content(caller, 42, 7L, null))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_NOT_FOUND);
@@ -414,7 +415,7 @@ class TaskAttachmentServiceTest {
             when(blobStore.read(anyString()))
                     .thenThrow(new BlobStoreException("gone", new IllegalStateException()));
 
-            assertThatThrownBy(() -> service.content(caller, 42, 1L))
+            assertThatThrownBy(() -> service.content(caller, 42, 1L, null))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.FILE_UPLOAD_FAILED);
@@ -423,7 +424,7 @@ class TaskAttachmentServiceTest {
         @Test
         @DisplayName("a stranger gets the task 404 and the blob is never opened")
         void refusesAStranger() {
-            assertThatThrownBy(() -> service.content(stranger, 42, 1L))
+            assertThatThrownBy(() -> service.content(stranger, 42, 1L, null))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.TASK_NOT_FOUND);
@@ -557,9 +558,9 @@ class TaskAttachmentServiceTest {
                     .thenReturn(new ByteArrayInputStream(CONTENT))
                     .thenReturn(new ByteArrayInputStream(CONTENT));
 
-            var first = singleSlot.content(caller, 42, 1L);
+            var first = singleSlot.content(caller, 42, 1L, null);
 
-            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L))
+            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L, null))
                     .as("content() returning is not the same as the download finishing")
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
@@ -567,7 +568,7 @@ class TaskAttachmentServiceTest {
 
             first.stream().close();
 
-            var second = singleSlot.content(caller, 42, 1L);
+            var second = singleSlot.content(caller, 42, 1L, null);
             assertThat(second.stream().readAllBytes())
                     .as("the permit freed by the first close() let this one through")
                     .isEqualTo(CONTENT);
@@ -582,12 +583,120 @@ class TaskAttachmentServiceTest {
                     .thenThrow(new BlobStoreException("gone", new IllegalStateException()))
                     .thenReturn(new ByteArrayInputStream(CONTENT));
 
-            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L))
+            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L, null))
                     .isInstanceOf(GlobalException.class);
 
             // Nothing was handed a stream to close, so the permit must already be free.
-            var content = singleSlot.content(caller, 42, 1L);
+            var content = singleSlot.content(caller, 42, 1L, null);
             assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
+        }
+    }
+
+    @Nested
+    @DisplayName("downloading a range")
+    class Ranges {
+
+        @BeforeEach
+        void storeOne() {
+            when(attachments.findById(1L)).thenReturn(Optional.of(stored(task, 1L)));
+            when(blobStore.read(anyString(), anyLong(), anyLong()))
+                    .thenReturn(new ByteArrayInputStream(CONTENT));
+        }
+
+        @Test
+        @DisplayName("an open-ended range asks the store for the tail and reports it as partial")
+        void resumesFromAnOffset() {
+            var content = service.content(caller, 42, 1L, HttpRange.createByteRange(10));
+
+            verify(blobStore).read("tasks/42/blob-1", 10, CONTENT.length - 10L);
+            assertThat(content.partial()).isTrue();
+            assertThat(content.rangeStart()).isEqualTo(10);
+            assertThat(content.rangeLength()).isEqualTo(CONTENT.length - 10L);
+            assertThat(content.sizeBytes())
+                    .as("the whole size is still carried, because Content-Range has to name it")
+                    .isEqualTo(CONTENT.length);
+            assertThat(content.contentRange()).isEqualTo("bytes 10-17/18");
+        }
+
+        @Test
+        @DisplayName("a closed range serves exactly the bytes between its two ends, inclusive")
+        void servesAClosedRange() {
+            var content = service.content(caller, 42, 1L, HttpRange.createByteRange(4, 8));
+
+            verify(blobStore).read("tasks/42/blob-1", 4, 5);
+            assertThat(content.contentRange()).isEqualTo("bytes 4-8/18");
+        }
+
+        @Test
+        @DisplayName("a suffix range is resolved against the size on the row, which is why this is here")
+        void resolvesASuffixRange() {
+            var content = service.content(caller, 42, 1L, HttpRange.createSuffixRange(5));
+
+            verify(blobStore).read("tasks/42/blob-1", CONTENT.length - 5L, 5);
+            assertThat(content.contentRange()).isEqualTo("bytes 13-17/18");
+        }
+
+        @Test
+        @DisplayName("an end past the file is clamped to it rather than refused")
+        void clampsAnOverlongEnd() {
+            var content = service.content(caller, 42, 1L, HttpRange.createByteRange(10, 9999));
+
+            verify(blobStore).read("tasks/42/blob-1", 10, CONTENT.length - 10L);
+            assertThat(content.contentRange()).isEqualTo("bytes 10-17/18");
+        }
+
+        @Test
+        @DisplayName("a range that starts past the end is a 416 carrying the real length")
+        void refusesAStartPastTheEnd() {
+            assertThatThrownBy(() -> service.content(caller, 42, 1L, HttpRange.createByteRange(900)))
+                    .isInstanceOf(UnsatisfiableRangeException.class)
+                    .extracting(e -> ((UnsatisfiableRangeException) e).getTotalSizeBytes())
+                    .as("the length is the whole point of the refusal - it is the fact the caller "
+                            + "was wrong about")
+                    .isEqualTo((long) CONTENT.length);
+        }
+
+        @Test
+        @DisplayName("an empty suffix range is refused rather than served as nothing")
+        void refusesAnEmptySuffixRange() {
+            assertThatThrownBy(() -> service.content(caller, 42, 1L, HttpRange.createSuffixRange(0)))
+                    .isInstanceOf(UnsatisfiableRangeException.class);
+        }
+
+        @Test
+        @DisplayName("a range covering the whole file is still answered as a range")
+        void answersAFullRangeAsPartial() {
+            var content = service.content(caller, 42, 1L, HttpRange.createByteRange(0));
+
+            assertThat(content.partial())
+                    .as("the client asked with a Range, so it is told what it got")
+                    .isTrue();
+            assertThat(content.contentRange()).isEqualTo("bytes 0-17/18");
+        }
+
+        @Test
+        @DisplayName("a refused range costs no transfer permit, because it never reached storage")
+        void refusedRangesCostNoPermit() throws IOException {
+            var singleSlot = serviceWith(properties(1, 500, 1_073_741_824L));
+
+            assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L, HttpRange.createByteRange(900)))
+                    .isInstanceOf(UnsatisfiableRangeException.class);
+
+            // The one slot is still free, which it would not be if the range were checked after it.
+            var content = singleSlot.content(caller, 42, 1L, HttpRange.createByteRange(0));
+            assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
+            verify(blobStore, never()).read(anyString());
+        }
+
+        @Test
+        @DisplayName("a stranger is refused before the range is even looked at")
+        void refusesAStranger() {
+            assertThatThrownBy(() -> service.content(stranger, 42, 1L, HttpRange.createByteRange(0)))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.TASK_NOT_FOUND);
+
+            verify(blobStore, never()).read(anyString(), anyLong(), anyLong());
         }
     }
 

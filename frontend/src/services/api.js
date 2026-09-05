@@ -1355,23 +1355,96 @@ export const uploadTaskAttachment = async (taskId, file) => {
 };
 
 /**
+ * How many times a download that died part-way may pick up where it stopped.
+ *
+ * Small on purpose. This is for a connection that dropped, not for a server that is refusing: an
+ * HTTP error is fatal on the first answer, and only a broken transfer is resumed at all.
+ */
+const DOWNLOAD_RESUME_ATTEMPTS = 3;
+
+/**
+ * Reads one response body into `state`, resuming rather than restarting where the server allows it.
+ *
+ * The reader is used instead of `response.blob()` for one reason: a `blob()` that fails half way
+ * yields nothing at all, so there is no "how far did we get" to resume from. Reading chunk by chunk
+ * keeps what already arrived, and `state.received` is what the next request's `Range` is built out
+ * of. Where there is no reader - jsdom, and any browser old enough to lack streams - this falls back
+ * to `blob()` and the download simply is not resumable, which is what it was before ranges existed.
+ */
+const collectInto = async (url, state) => {
+  const response = state.received > 0
+    ? await fetch(url, { headers: { Range: `bytes=${state.received}-` } })
+    : await fetch(url);
+
+  if (!response.ok) {
+    const error = new Error(`Error downloading the attachment: ${response.status}`);
+    error.fatal = true;
+    throw error;
+  }
+
+  // Asked to resume and handed the whole file back: the server ignored the Range, so what is
+  // already held is a prefix of what is arriving now and has to be dropped rather than prepended.
+  if (state.received > 0 && response.status !== 206) {
+    state.chunks = [];
+    state.received = 0;
+  }
+
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    const whole = await response.blob();
+    state.chunks.push(whole);
+    state.received += whole.size;
+    return;
+  }
+
+  const reader = response.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return;
+    }
+    state.chunks.push(value);
+    state.received += value.byteLength;
+  }
+};
+
+/**
  * Fetches the bytes and hands them to the browser as a download.
  *
  * A plain `<a href>` would be simpler and does not work: the route is authenticated and a link
  * click carries no `Authorization` header, so the fetch has to happen here where the interceptor
  * can attach the token. That is the same reason `getUserAvatar` reads its image this way.
  *
+ * Because the fetch happens here, the browser's own resume machinery never applies - a `fetch()`
+ * that dies at 90% is simply a rejected promise, and the ten megabytes it had already moved are
+ * thrown away. So the resume is done here too: the server answers `206` for a `Range`, and a
+ * transfer that broke asks for the rest rather than for the file again. That is the whole reason
+ * the range support on the server is worth having; nothing else in this application would ever
+ * send the header.
+ *
  * The object URL is revoked immediately after the click. The browser has already taken the blob by
  * then, and leaving it unrevoked pins the whole file in memory for the life of the tab.
  */
 export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => {
-  const response = await fetch(`${attachmentsOf(taskId)}/${attachmentId}/content`);
+  const url = `${attachmentsOf(taskId)}/${attachmentId}/content`;
+  const state = { chunks: [], received: 0 };
 
-  if (!response.ok) {
-    throw new Error(`Error downloading the attachment: ${response.status}`);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await collectInto(url, state);
+      break;
+    } catch (error) {
+      // A refusal is an answer and will be the same answer next time; a broken transfer with
+      // nothing to show for it is a first request that failed, which is not a resume either.
+      if (error.fatal || state.received === 0 || attempt >= DOWNLOAD_RESUME_ATTEMPTS) {
+        throw error;
+      }
+    }
   }
 
-  const blob = await response.blob();
+  // One Blob straight through when that is all there is, rather than copying it into another.
+  const blob = state.chunks.length === 1 && state.chunks[0] instanceof Blob
+    ? state.chunks[0]
+    : new Blob(state.chunks);
   const objectUrl = URL.createObjectURL(blob);
 
   const link = document.createElement('a');
