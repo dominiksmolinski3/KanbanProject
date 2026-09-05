@@ -127,11 +127,21 @@ Cypress.Commands.add('drag', { prevSubject: 'element' }, (subject, targetSelecto
     
   cy.wrap(subject).trigger('mousedown', { which: 1 });
   cy.wrap(subject).trigger('dragstart', { dataTransfer });
-    
+
   target.trigger('dragover', { dataTransfer });
   target.trigger('drop', { dataTransfer });
-    
-  cy.wrap(subject).trigger('dragend', { dataTransfer });
+
+  // The drop above can make the app re-render and replace this exact node - moving a task
+  // optimistically re-renders the column/row it left, and if that happens before dragend fires,
+  // `subject` (captured once, at the top of this command) is a detached element. dragend is
+  // native drag-and-drop cleanup on the *source*, and a source that is no longer in the document
+  // has nothing left to clean up, so it is only fired when the node is still attached - doing
+  // that unconditionally is what "the page updated while this command was executing" means.
+  cy.wrap(subject, { log: false }).then($el => {
+    if (Cypress.dom.isAttached($el)) {
+      cy.wrap($el, { log: false }).trigger('dragend', { dataTransfer });
+    }
+  });
   cy.wait(300);
 });
 
@@ -162,7 +172,21 @@ Cypress.Commands.add('setupTaskWithSubtasks', (title, subtasks = []) => {
   cy.wait(300);
 });
 
+// Cleanup's own first move, regardless of which spec called it: a task panel left open by a
+// failed test sits in the same component tree as the board grid (see Board.jsx/Task.jsx), so it
+// does not block clicks on `.delete-btn`/`.delete-column-btn` underneath it - but every command
+// below still expects a clean board, and closing the panel first is one assertion cheaper than
+// discovering later that it was in the way.
+Cypress.Commands.add('closePanelIfOpen', () => {
+  cy.get('body').then($body => {
+    if ($body.find('.close-panel-btn').length > 0) {
+      cy.get('.close-panel-btn').click();
+    }
+  });
+});
+
 Cypress.Commands.add('deleteTasks', () => {
+  cy.closePanelIfOpen();
   cy.get('body').then($body => {
     if ($body.find('.task').length > 0) {
       cy.get('.delete-btn').first().click();
@@ -199,7 +223,7 @@ Cypress.Commands.add('deleteColumns', () => {
     if ($columns.length > 2) {
       cy.get('th').eq(1).find('.delete-column-btn').click({ force: true });
       cy.get('.confirm-button').first().click({ force: true });
-      cy.get('.confirm-button').should('not.exist');
+      cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
       cy.deleteColumns();
     }
   });
@@ -216,7 +240,7 @@ Cypress.Commands.add('deleteRows', () => {
     if ($rowHeaders.length > 2) {
       cy.get('.grid-row-header').eq(0).find('.delete-row-btn').click({ force: true });
       cy.get('.confirm-button').first().click({ force: true });
-      cy.get('.confirm-button').should('not.exist');
+      cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
       cy.deleteRows();
     }
   });
