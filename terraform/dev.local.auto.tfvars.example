@@ -12,8 +12,9 @@ key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
 # allowed_ingress_cidrs = ["203.0.113.42/32"]  # optional; locks Container App ingress to these IPv4 CIDRs. Empty = open to the internet.
 # key_vault_allow_azure_services_bypass = true  # optional override
 
-acs_email_connection_string = ""   # Azure Communication Services -> Keys. Empty turns mail off.
-acs_email_sender_address    = ""   # e.g. DoNotReply@<guid>.azurecomm.net on a linked domain
+acs_email_connection_string   = ""   # Azure Communication Services -> Keys. Empty turns mail off.
+acs_email_sender_address      = ""   # e.g. DoNotReply@<guid>.azurecomm.net on a linked domain
+acs_communication_service_id  = ""   # same resource's JSON view -> id. Empty skips the bounce alert (MAIL-03).
 captcha_enabled = true
 captcha_secret  = ""        # reCAPTCHA server-side secret
 # app_image_tag = "latest"  # optional; defaults to "latest". Pin to a git SHA for reproducible deploys.
