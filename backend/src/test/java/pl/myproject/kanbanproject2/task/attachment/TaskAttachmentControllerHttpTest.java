@@ -5,8 +5,10 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mock.web.MockMultipartFile;
@@ -96,8 +98,15 @@ class TaskAttachmentControllerHttpTest {
     }
 
     private static TaskAttachmentContent content(String fileName, String contentType) {
-        return new TaskAttachmentContent(new ByteArrayInputStream(CONTENT), fileName, contentType,
+        return TaskAttachmentContent.whole(new ByteArrayInputStream(CONTENT), fileName, contentType,
                 CONTENT.length);
+    }
+
+    /** The tail of {@link #CONTENT} from {@code start}, as the service would hand it back. */
+    private static TaskAttachmentContent partFrom(int start) {
+        return TaskAttachmentContent.part(
+                new ByteArrayInputStream(CONTENT, start, CONTENT.length - start),
+                "design.pdf", "application/pdf", CONTENT.length, start, CONTENT.length - start);
     }
 
     @Test
@@ -126,7 +135,7 @@ class TaskAttachmentControllerHttpTest {
     @Test
     @DisplayName("a download forces a save under the stored name, as the stored type")
     void contentIsAnAttachment() throws Exception {
-        when(attachmentService.content(caller, 42, 5L)).thenReturn(content("design.pdf", "application/pdf"));
+        when(attachmentService.content(caller, 42, 5L, null)).thenReturn(content("design.pdf", "application/pdf"));
 
         var response = mvc.perform(get("/tasks/42/attachments/5/content"))
                 .andExpect(status().isOk())
@@ -146,7 +155,7 @@ class TaskAttachmentControllerHttpTest {
     @Test
     @DisplayName("a name that is not ASCII survives into the header")
     void contentEncodesANonAsciiName() throws Exception {
-        when(attachmentService.content(caller, 42, 5L))
+        when(attachmentService.content(caller, 42, 5L, null))
                 .thenReturn(content("sprawozdanie kwartalne.pdf", "application/pdf"));
 
         var disposition = mvc.perform(get("/tasks/42/attachments/5/content"))
@@ -161,7 +170,7 @@ class TaskAttachmentControllerHttpTest {
     @Test
     @DisplayName("a row with no usable type is served as octet-stream rather than failing")
     void contentFallsBackToOctetStream() throws Exception {
-        when(attachmentService.content(caller, 42, 5L)).thenReturn(content("notes", ""));
+        when(attachmentService.content(caller, 42, 5L, null)).thenReturn(content("notes", ""));
 
         mvc.perform(get("/tasks/42/attachments/5/content"))
                 .andExpect(status().isOk())
@@ -171,7 +180,7 @@ class TaskAttachmentControllerHttpTest {
     @Test
     @DisplayName("an attachment the caller may not see is a 404, with nothing in the body about it")
     void contentAnswers404() throws Exception {
-        when(attachmentService.content(caller, 42, 5L))
+        when(attachmentService.content(caller, 42, 5L, null))
                 .thenThrow(new GlobalException(ExceptionIdentifier.ATTACHMENT_NOT_FOUND));
 
         mvc.perform(get("/tasks/42/attachments/5/content"))
@@ -213,6 +222,85 @@ class TaskAttachmentControllerHttpTest {
                         .file(new MockMultipartFile("file", "design.pdf", "application/pdf", CONTENT)))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.code").value("ATTACHMENT_QUOTA_EXCEEDED"));
+    }
+
+    @Test
+    @DisplayName("a full download advertises that it could have been a range")
+    void contentAdvertisesRanges() throws Exception {
+        when(attachmentService.content(caller, 42, 5L, null))
+                .thenReturn(content("design.pdf", "application/pdf"));
+
+        mvc.perform(get("/tasks/42/attachments/5/content"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+                .andExpect(header().doesNotExist(HttpHeaders.CONTENT_RANGE));
+    }
+
+    @Test
+    @DisplayName("a Range is answered 206, with the length of what was sent and not of the file")
+    void contentAnswers206ForARange() throws Exception {
+        var range = ArgumentCaptor.forClass(HttpRange.class);
+        when(attachmentService.content(eq(caller), eq(42), eq(5L), any(HttpRange.class)))
+                .thenReturn(partFrom(4));
+
+        var response = mvc.perform(get("/tasks/42/attachments/5/content")
+                        .header(HttpHeaders.RANGE, "bytes=4-"))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+                .andReturn()
+                .getResponse();
+
+        verify(attachmentService).content(eq(caller), eq(42), eq(5L), range.capture());
+        assertThat(range.getValue().getRangeStart(CONTENT.length)).isEqualTo(4);
+        assertThat(response.getHeader(HttpHeaders.CONTENT_RANGE))
+                .isEqualTo("bytes 4-" + (CONTENT.length - 1) + "/" + CONTENT.length);
+        assertThat(response.getHeader(HttpHeaders.CONTENT_LENGTH))
+                .as("the length of this response, not of the attachment - conflating the two is "
+                        + "how a resumed download ends up truncated")
+                .isEqualTo(String.valueOf(CONTENT.length - 4));
+        assertThat(response.getHeader(HttpHeaders.CONTENT_DISPOSITION))
+                .as("a partial response is still a download, not something to render")
+                .startsWith("attachment;");
+    }
+
+    @Test
+    @DisplayName("a range past the end is 416 and names the real length, which is the useful part")
+    void contentAnswers416() throws Exception {
+        when(attachmentService.content(eq(caller), eq(42), eq(5L), any(HttpRange.class)))
+                .thenThrow(new UnsatisfiableRangeException(CONTENT.length));
+
+        mvc.perform(get("/tasks/42/attachments/5/content")
+                        .header(HttpHeaders.RANGE, "bytes=900-"))
+                .andExpect(status().isRequestedRangeNotSatisfiable())
+                .andExpect(header().string(HttpHeaders.CONTENT_RANGE, "bytes */" + CONTENT.length))
+                .andExpect(jsonPath("$.code").value("ATTACHMENT_RANGE_NOT_SATISFIABLE"));
+    }
+
+    @Test
+    @DisplayName("a Range header that will not parse is ignored rather than refused")
+    void contentIgnoresAnUnparseableRange() throws Exception {
+        when(attachmentService.content(caller, 42, 5L, null))
+                .thenReturn(content("design.pdf", "application/pdf"));
+
+        mvc.perform(get("/tasks/42/attachments/5/content")
+                        .header(HttpHeaders.RANGE, "kilobytes=1-2"))
+                .andExpect(status().isOk());
+
+        verify(attachmentService).content(caller, 42, 5L, null);
+    }
+
+    @Test
+    @DisplayName("several ranges at once get the whole file, because this serves no multipart body")
+    void contentIgnoresMultipleRanges() throws Exception {
+        when(attachmentService.content(caller, 42, 5L, null))
+                .thenReturn(content("design.pdf", "application/pdf"));
+
+        mvc.perform(get("/tasks/42/attachments/5/content")
+                        .header(HttpHeaders.RANGE, "bytes=0-3,8-11"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist(HttpHeaders.CONTENT_RANGE));
+
+        verify(attachmentService).content(caller, 42, 5L, null);
     }
 
     @Test

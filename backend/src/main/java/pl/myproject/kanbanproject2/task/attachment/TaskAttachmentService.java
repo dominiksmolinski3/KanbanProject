@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.task.attachment;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -53,6 +54,11 @@ import java.util.function.IntConsumer;
  * accumulate in total, checked before the blob is written for the same reason every other check
  * here runs first: writing the bytes only to reject the row would leak an orphaned blob for
  * nothing.
+ *
+ * <p><b>A download may ask for part of a file.</b> {@link #content} takes a range and asks the
+ * store for exactly those bytes, so a transfer that died at 90% resumes for the last tenth rather
+ * than paying for the whole file again. The range is bounded by the size on the row before storage
+ * is touched at all, which is what keeps a made-up offset from ever becoming a request to Azure.
  */
 @Slf4j
 @Transactional
@@ -184,20 +190,48 @@ public class TaskAttachmentService {
      * to the response after this call, so the permit is handed off to the stream itself and released
      * from its {@code close()}, whenever that turns out to be. Only the failure path still releases
      * here, because a stream that was never handed out has no {@code close()} coming.
+     *
+     * <p><b>{@code range} is resolved here rather than in the controller, because resolving it
+     * needs the size.</b> A suffix range - {@code bytes=-500}, the last five hundred bytes - cannot
+     * be turned into an offset without knowing how long the file is, and the row holding that
+     * number is the one this method has just read. The permit is taken <em>after</em> the range is
+     * checked, so a request that was never going to be served does not cost a transfer slot.
+     *
+     * @param range the single range asked for, or {@code null} for the whole file.
+     * @throws UnsatisfiableRangeException if the range names bytes the attachment does not have.
      */
-    public TaskAttachmentContent content(User caller, Integer taskId, Long attachmentId) {
+    public TaskAttachmentContent content(User caller, Integer taskId, Long attachmentId, HttpRange range) {
         var attachment = findAttachment(caller, taskId, attachmentId);
+        long size = attachment.getSizeBytes();
+        long start = 0;
+        long length = size;
+        if (range != null) {
+            start = range.getRangeStart(size);
+            long end = range.getRangeEnd(size);
+            // Both forms land here: `bytes=900-` past the end gives start >= size, and `bytes=-0`
+            // gives an end below its own start. Either way the caller is asking for bytes that do
+            // not exist, and the honest answer names the length rather than quietly serving less.
+            if (start >= size || end < start) {
+                throw new UnsatisfiableRangeException(size);
+            }
+            length = end - start + 1;
+        }
+
         if (!transferPermits.tryAcquire()) {
             throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
         }
         boolean handedOff = false;
         try {
-            InputStream stream = blobStore.read(attachment.getBlobName());
-            TaskAttachmentContent content = new TaskAttachmentContent(
-                    releasingOnClose(stream),
-                    attachment.getFileName(),
-                    attachment.getContentType(),
-                    attachment.getSizeBytes());
+            // The unranged read stays the unranged call rather than a range covering everything,
+            // so an ordinary download reaches storage exactly as it did before this existed.
+            InputStream stream = range == null
+                    ? blobStore.read(attachment.getBlobName())
+                    : blobStore.read(attachment.getBlobName(), start, length);
+            TaskAttachmentContent content = range == null
+                    ? TaskAttachmentContent.whole(releasingOnClose(stream), attachment.getFileName(),
+                            attachment.getContentType(), size)
+                    : TaskAttachmentContent.part(releasingOnClose(stream), attachment.getFileName(),
+                            attachment.getContentType(), size, start, length);
             handedOff = true;
             return content;
         } catch (BlobStoreException e) {

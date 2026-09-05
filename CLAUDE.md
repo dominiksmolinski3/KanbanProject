@@ -245,6 +245,30 @@ Four decisions carry the feature:
   board and every token in it. Forcing the download is what makes it safe to echo back whatever
   type was uploaded. The name comes from Postgres — the blob is `tasks/<taskId>/<uuid>`, no
   extension, nothing a person typed, so the storage account never carries a chosen name.
+- **A download can be resumed, and the resume goes all the way to Azure.** The route answers
+  `Accept-Ranges: bytes` on every response, `206` with a `Content-Range` for a satisfiable `Range`,
+  and `416` with `bytes */<total>` for one that names bytes the attachment does not have — the
+  length being the whole point of that refusal, since it is the fact the caller was wrong about.
+  Two decisions are load-bearing. The range is asked of `BlobStore.read(name, offset, length)`
+  rather than served by skipping a full stream: a `ResourceRegion` over the whole blob answers the
+  same `206` and still pulls every earlier byte across the private endpoint, so a resume at 90%
+  would cost the same egress as starting over. And **the range is resolved in the service, not the
+  controller**, because a suffix range (`bytes=-500`) cannot become an offset without the size, and
+  the row holding it is the one the service has just read; the transfer permit is taken *after* that
+  check, so a request that was never going to be served costs no slot. A `Range` that will not
+  parse, and a request for several ranges at once, are both ignored in favour of the whole file —
+  spec-legal, and the alternative to the second is a `multipart/byteranges` body nothing here asks
+  for. The `416` is answered by a controller-local `@ExceptionHandler` because
+  `GlobalExceptionHandler` has no per-exception header plumbing, which is the same trade the
+  `Retry-After` on `ATTACHMENT_TRANSFER_BUSY` was declined for.
+- **The client is the only thing that ever sends a `Range`, so it had to be taught to.** The
+  download goes through `fetch` rather than an `<a href>` because the route is authenticated — which
+  also means the browser's own resume machinery never applies, and a `fetch()` that dies at 90% is a
+  rejected promise whose bytes are gone. So `downloadTaskAttachment` reads the body through
+  `response.body.getReader()`, keeps what arrived, and re-asks with `Range: bytes=<received>-`, up
+  to three times. A server that ignores the `Range` and answers `200` makes it drop what it held
+  rather than prepend it; an HTTP error is fatal on the first answer, because the next one would say
+  the same thing. Without this half the server's range support would be a header nobody sends.
 - **There is no account key.** `shared_access_key_enabled = false`; the container app authenticates
   as its managed identity. There is no storage secret in Key Vault, in the container template, or in
   Terraform state. A connection string is accepted too, and is only ever local development against

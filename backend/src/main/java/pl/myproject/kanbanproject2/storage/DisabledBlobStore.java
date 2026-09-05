@@ -41,6 +41,11 @@ public class DisabledBlobStore implements BlobStore {
     }
 
     @Override
+    public InputStream read(String blobName, long offset, long length) {
+        throw unavailable();
+    }
+
+    @Override
     public boolean isConfigured() {
         return false;
     }
