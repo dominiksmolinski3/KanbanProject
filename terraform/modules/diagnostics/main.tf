@@ -330,6 +330,14 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
   action {
     action_groups = [azurerm_monitor_action_group.main[0].id]
   }
+
+  # ContainerAppConsoleLogs_CL is a custom log table: Azure Monitor only creates its schema once
+  # the container app has actually shipped a log line through the diagnostic setting below, so a
+  # rule querying it can't validate until both exist and at least one log has landed. Waiting on
+  # the diagnostic setting orders this after the plumbing exists; on a genuinely first-ever apply
+  # (no prior revision has logged anything yet) the table itself can still be missing for a few
+  # minutes after the app starts, and this resource needs a re-apply once it has.
+  depends_on = [azurerm_monitor_diagnostic_setting.container_app]
 }
 
 data "azurerm_monitor_diagnostic_categories" "acs" {

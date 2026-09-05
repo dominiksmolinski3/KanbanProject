@@ -14,6 +14,17 @@ variable "container_app_env_id" {
   type = string
 }
 
+variable "container_app_env_default_domain" {
+  description = "The environment's default_domain output. Combined with this module's own app-name pattern, it gives the app's ingress FQDN before the app resource exists - which is what lets SECURITY_CORS_ALLOWED_ORIGINS include the app's own origin without a dependency cycle on azurerm_container_app.main's own fqdn."
+  type        = string
+}
+
+variable "extra_cors_origins" {
+  description = "Additional browser origins allowed to call this API, e.g. a production custom domain (\"https://kanbanproject.pl\"). The app's own generated ingress URL is always included; this is for anything served under a different hostname. Empty by default because dev/uat have no custom domain."
+  type        = list(string)
+  default     = []
+}
+
 variable "key_vault_uri" {
   type = string
 }

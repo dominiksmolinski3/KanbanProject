@@ -17,3 +17,7 @@ postgres_geo_redundant_backup_enabled = true
 key_vault_purge_protection_enabled     = true
 key_vault_soft_delete_retention_days   = 90
 key_vault_purge_soft_delete_on_destroy = false
+
+# The app's own generated Container Apps URL is always allowed automatically; this is the
+# custom domain visitors actually use, which needs to be an allowed CORS origin too.
+extra_cors_origins = ["https://kanbanproject.pl", "https://www.kanbanproject.pl"]
