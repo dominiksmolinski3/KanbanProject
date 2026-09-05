@@ -38,7 +38,13 @@ function Board() {
     };
   }, [columns.length, rows.length]);
 
-  if (loading) {
+  // Only the very first load has nothing to show yet - a background refresh (adding a subtask,
+  // reordering, anything that calls refreshTasks()/refreshBoard() to resync) sets the same
+  // `loading` flag, and gating the whole tree on it would unmount every open Task and, with it,
+  // any TaskDetails panel a person has open - out from under them, mid-edit, for no reason a
+  // background sync needs. Once there is board structure to show, `loading` only means "a refresh
+  // is in flight," which the existing UI (toasts, optimistic updates) already communicates.
+  if (loading && columns.length === 0 && rows.length === 0 && tasks.length === 0) {
     return (
       <div className="board-loading">
         <span className="loading-spinner"></span>
