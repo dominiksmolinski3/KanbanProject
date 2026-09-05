@@ -9,56 +9,50 @@ afterEach(() => {
   cy.on('window:alert', () => true);
   cy.on('window:confirm', () => true);
   cy.get('body').type('{esc}');
-  
-  cy.get('body').then($body => {
-    if ($body.find('.close-panel-btn').length) {
-      cy.get('.close-panel-btn').click();
-    }
-  });
 
+  // deleteTasks() closes an open panel first, on every spec's behalf - see commands.js.
   cy.deleteTasks();
   cy.deleteColumns();
   cy.deleteRows();
 });
 
+// Assignment moved into the task panel's "relationships" tab (alongside parent/child task
+// management) at some point after this spec was last run - it used to be an icon in the panel's
+// main view that toggled an inline form. Selecting "User One" needs a second board member too;
+// GET /api/users only lists accounts the caller shares a board with (see CLAUDE.md's tenancy
+// section), so seed-test-account.js adds one to the seeded account's board before this spec runs.
 describe('User Assignment', () => {
-  
+
   it('allows assigning a user to a task', () => {
     cy.createTask('Assignment Test Task');
-      
-    cy.contains('.task', 'Assignment Test Task').click();
-    cy.wait(500);
 
-    cy.get('.assign-user-icon > svg').click();
-    cy.wait(300);
-    cy.get('select').select('User One');
-    cy.wait(300);
-    cy.get('.assign-btn').click();
-    cy.wait(300);
-    cy.get('.user-avatar > .avatar-preview').should('exist');
+    cy.contains('.task', 'Assignment Test Task').click();
+    cy.get('.parent-child-btn').click();
+
+    cy.get('.user-select').select('User One');
+    cy.get('.assign-btn-relationships').click();
+    cy.get('.assigned-user-card').should('exist');
 
     cy.get('.close-panel-btn').click();
-      
-    cy.contains('.task', 'Assignment Test Task').get('.avatar-preview').should('exist');
+
+    cy.contains('.task', 'Assignment Test Task').find('.avatar-preview').should('exist');
   });
-  
+
   it('allows removing user assignment', () => {
     cy.createTask('Remove Assignment Task');
     cy.contains('.task', 'Remove Assignment Task').click();
+    cy.get('.parent-child-btn').click();
 
-    cy.get('.assign-user-icon > svg').click();
-    cy.wait(100);
-    cy.get('select').select('User One');
-    cy.wait(100);
-    cy.get('.assign-btn').click();
-    cy.wait(100);
-    cy.get('.user-avatar > .avatar-preview').should('exist');
-      
+    cy.get('.user-select').select('User One');
+    cy.get('.assign-btn-relationships').click();
+    cy.get('.assigned-user-card').should('exist');
+
+    // The remove control lives in the panel's always-visible assigned-users bar, not in the
+    // relationships tab the assignment above just used - removing does not need the tab switch.
     cy.get('.remove-user-btn').click();
-    cy.wait(100);
     cy.get('.confirm-btn').click();
-      
-    cy.get('.user-avatar > .avatar-preview').should('not.exist');
+
+    cy.get('.assigned-user-card').should('not.exist');
     cy.get('.close-panel-btn').click();
   });
 
