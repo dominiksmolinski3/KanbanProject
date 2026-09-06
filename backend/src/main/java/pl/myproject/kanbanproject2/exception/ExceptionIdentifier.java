@@ -70,6 +70,15 @@ public enum ExceptionIdentifier {
     INVALID_SEARCH(BAD_REQUEST, "The search request cannot be served as asked"),
 
     /*
+     * A page of the activity feed this route will not serve: a negative page, or a size outside
+     * 1..MAX_PAGE_SIZE. Same shape and same reasoning as INVALID_SEARCH above - a silent clamp is
+     * indistinguishable from a short last page, so the caller pages past rows it never saw. A
+     * separate constant rather than a reuse, because the two routes take different parameters and
+     * a message naming "search" on the feed would send somebody looking in the wrong place.
+     */
+    INVALID_ACTIVITY_REQUEST(BAD_REQUEST, "The activity feed cannot be paged as asked"),
+
+    /*
      * The unauthenticated routes answer three statuses between them and no more: 202 for signup
      * and resend whatever the address turns out to be, 401 for every login failure including an
      * unverified account, and 400 for a verification code that is wrong, expired, or attached to

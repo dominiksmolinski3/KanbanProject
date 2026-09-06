@@ -211,7 +211,8 @@
       "wipLimit": "Límite WIP",
       "addBoardItem": "Añadir fila/columna",
       "users": "Usuarios",
-      "logout": "Cerrar sesión"
+      "logout": "Cerrar sesión",
+      "activity": "Actividad"
     },
     "forms": {
       "wipLimit": {
@@ -430,6 +431,27 @@
         "ended": "La sesión se ha cerrado",
         "endError": "No se pudo cerrar esa sesión",
         "loadError": "No se pudieron cargar las sesiones"
+      }
+    },
+    "activity": {
+      "heading": "Actividad",
+      "explainer": "Lo que ha pasado en este tablero, lo más reciente primero.",
+      "loading": "Cargando…",
+      "failed": "No se pudo cargar la actividad.",
+      "empty": "Todavía no ha pasado nada en este tablero.",
+      "someone": "Alguien",
+      "untitledTask": "una tarea sin título",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "pageOf": "Página {{page}} de {{pages}} · {{total}} entradas",
+      "types": {
+        "CREATED": "{{who}} creó {{what}}",
+        "MOVED": "{{who}} movió {{what}} a {{detail}}",
+        "ASSIGNED": "{{who}} asignó {{what}} a {{detail}}",
+        "UNASSIGNED": "{{who}} quitó a {{detail}} de {{what}}",
+        "COMPLETED": "{{who}} completó {{what}}",
+        "REOPENED": "{{who}} reabrió {{what}}",
+        "DELETED": "{{who}} eliminó {{what}}"
       }
     }
   }

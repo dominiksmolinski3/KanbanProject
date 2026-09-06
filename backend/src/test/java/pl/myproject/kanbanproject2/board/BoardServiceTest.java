@@ -13,6 +13,7 @@ import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
+import pl.myproject.kanbanproject2.task.activity.TaskActivityRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
@@ -44,6 +45,7 @@ class BoardServiceTest {
     private TaskColumnHistoryRepository historyRepository;
     private UserRepository userRepository;
     private BoardInvitationRepository invitationRepository;
+    private TaskActivityRepository activityRepository;
     private BoardService boardService;
 
     private User owner;
@@ -60,10 +62,11 @@ class BoardServiceTest {
         userRepository = mock(UserRepository.class);
 
         invitationRepository = mock(BoardInvitationRepository.class);
+        activityRepository = mock(TaskActivityRepository.class);
 
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
                 taskRepository, historyRepository, userRepository, invitationRepository,
-                new BoardMapper(new UserMapper()));
+                activityRepository, new BoardMapper(new UserMapper()));
 
         owner = TenancyFixtures.user(1);
         member = TenancyFixtures.user(2);

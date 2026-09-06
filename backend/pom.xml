@@ -474,8 +474,34 @@
                                                 a shade under 75, because 385 lines is large enough
                                                 that a tight floor is a tripwire on the next honest
                                                 refactor rather than a gate on untested code.
+
+                                                0.75 with the activity feed on it: the package
+                                                measures 81.4 (328/403), up from 75.6, because the
+                                                recording calls arrived with a suite asserting each
+                                                one - and a recording call is exactly the kind of
+                                                line a floor has to hold, since deleting one breaks
+                                                no test and changes no response.
                                             -->
-                                            <minimum>0.70</minimum>
+                                            <minimum>0.75</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  task.activity arrives with this branch and measures 87.3 over 71
+                                  lines. 0.80 rather than a shade under, for the size reason above.
+                                  It needs a rule at all because a new package otherwise lands on
+                                  the 0.15 catch-all and hides there.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.task.activity</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
