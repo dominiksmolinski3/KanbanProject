@@ -8,6 +8,7 @@ import HomePage from './components/HomePage';
 import Board from './components/Board';
 import UsersManagement from './components/UsersManagement';
 import Devices from './components/Devices';
+import ActivityFeed from './components/ActivityFeed';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Bench from './components/Bench';
@@ -82,6 +83,25 @@ function App() {
                 </KanbanProvider>
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/activity"
+            element={
+              <ProtectedRoute>
+                <KanbanProvider>
+                <ChatProvider>
+                  <div className="app-container">
+                    <Header />
+                    <div className="content-container">
+                      <ActivityFeed />
+                    </div>
+                    <Footer />
+                    <Chat />
+                  </div>
+                </ChatProvider>
+                </KanbanProvider>
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/sessions"

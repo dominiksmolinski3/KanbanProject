@@ -211,7 +211,8 @@
       "wipLimit": "Limite WIP",
       "addBoardItem": "Ajouter ligne/colonne",
       "users": "Utilisateurs",
-      "logout": "Déconnexion"
+      "logout": "Déconnexion",
+      "activity": "Activité"
     },
     "forms": {
       "wipLimit": {
@@ -430,6 +431,27 @@
         "ended": "La session a été fermée",
         "endError": "Cette session n’a pas pu être fermée",
         "loadError": "Les sessions n’ont pas pu être chargées"
+      }
+    },
+    "activity": {
+      "heading": "Activité",
+      "explainer": "Ce qui s'est passé sur ce tableau, du plus récent au plus ancien.",
+      "loading": "Chargement…",
+      "failed": "Impossible de charger l'activité.",
+      "empty": "Rien ne s'est encore passé sur ce tableau.",
+      "someone": "Quelqu'un",
+      "untitledTask": "une tâche sans titre",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "pageOf": "Page {{page}} sur {{pages}} · {{total}} entrées",
+      "types": {
+        "CREATED": "{{who}} a créé {{what}}",
+        "MOVED": "{{who}} a déplacé {{what}} vers {{detail}}",
+        "ASSIGNED": "{{who}} a assigné {{what}} à {{detail}}",
+        "UNASSIGNED": "{{who}} a retiré {{detail}} de {{what}}",
+        "COMPLETED": "{{who}} a terminé {{what}}",
+        "REOPENED": "{{who}} a rouvert {{what}}",
+        "DELETED": "{{who}} a supprimé {{what}}"
       }
     }
   }

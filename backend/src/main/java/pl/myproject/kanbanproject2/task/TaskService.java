@@ -14,6 +14,7 @@ import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
+import pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryDto;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
@@ -54,6 +55,7 @@ public class TaskService {
     private final BoardService boardService;
     private final DeadlineNotifier deadlineNotifier;
     private final TaskAttachmentService attachmentService;
+    private final TaskActivityRecorder activityRecorder;
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
@@ -77,6 +79,7 @@ public class TaskService {
         if (savedTask.getColumn() != null) {
             saveTaskColumnHistory(savedTask, savedTask.getColumn());
         }
+        activityRecorder.created(caller, savedTask);
         return taskMapper.apply(savedTask);
     }
 
@@ -174,6 +177,15 @@ public class TaskService {
     public void deleteTask(User caller, Integer id) {
         var task = findTask(caller, id);
 
+        /*
+         * Written before the row goes, and then detached from it. The feed entry that says a task
+         * was deleted is the one entry that has to outlive its subject, which is why the entries
+         * keep a copy of the title and why nothing here cascades: a foreign key that took them
+         * would take the record of the deletion with the thing deleted.
+         */
+        activityRecorder.deleted(caller, task);
+        activityRecorder.detachFrom(task);
+
         taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task));
 
         /*
@@ -214,7 +226,7 @@ public class TaskService {
 
         if (request.column().isPresent()) {
             var column = request.column().get();
-            moveToColumn(existingTask, column == null ? null : findColumn(caller, board, column.id()));
+            moveToColumn(caller, existingTask, column == null ? null : findColumn(caller, board, column.id()));
         }
 
         if (request.position().isPresent()) {
@@ -277,7 +289,7 @@ public class TaskService {
      * is arbitrary, and one of the two orders charges the whole of the next column's time to the
      * previous one. Time in a column is the gap to the next arrival, which needs a single row.
      */
-    private void moveToColumn(Task task, Column newColumn) {
+    private void moveToColumn(User caller, Task task, Column newColumn) {
         var currentColumn = task.getColumn();
         boolean unchanged = currentColumn == null
                 ? newColumn == null
@@ -289,6 +301,11 @@ public class TaskService {
         task.setColumn(newColumn);
         if (newColumn != null) {
             saveTaskColumnHistory(task, newColumn);
+            // Both records of the same move, written in the same three lines, which is the only
+            // thing keeping them from drifting apart. They are not redundant: the history row is
+            // an interval series the task panel folds into time-per-column, and it has never
+            // recorded who did it. See TaskActivity.
+            activityRecorder.moved(caller, task, newColumn.getName());
         }
     }
 
@@ -346,6 +363,7 @@ public class TaskService {
         user.getTasks().add(task);
 
         userRepository.save(user);
+        activityRecorder.assigned(caller, task, user);
         return taskMapper.apply(taskRepository.save(task));
     }
 
@@ -363,6 +381,7 @@ public class TaskService {
         user.getTasks().remove(task);
 
         userRepository.save(user);
+        activityRecorder.unassigned(caller, task, user);
         return taskMapper.apply(taskRepository.save(task));
     }
 
@@ -551,9 +570,15 @@ public class TaskService {
             throw new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_COMPLETED);
         }
 
+        boolean changed = task.isCompleted() != completed;
         task.setCompleted(completed);
         if (!completed) {
             updateDependentTasksCompletion(task);
+        }
+        // Only a real change. Ticking a box that is already ticked is a request, not an event, and
+        // a feed that records it fills with entries nobody performed.
+        if (changed) {
+            activityRecorder.completionChanged(caller, task, completed);
         }
         return taskMapper.apply(taskRepository.save(task));
     }

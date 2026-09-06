@@ -11,6 +11,7 @@ import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
+import pl.myproject.kanbanproject2.task.activity.TaskActivityRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -69,6 +70,7 @@ public class BoardService {
     private final TaskColumnHistoryRepository taskColumnHistoryRepository;
     private final UserRepository userRepository;
     private final BoardInvitationRepository invitationRepository;
+    private final TaskActivityRepository activityRepository;
     private final BoardMapper boardMapper;
 
     // ------------------------------------------------------------------ access ---
@@ -237,9 +239,11 @@ public class BoardService {
 
         columnRepository.deleteAll(columnRepository.findByBoardOrderByPositionAsc(board));
         rowRepository.deleteAll(rowRepository.findByBoardOrderByPositionAsc(board));
-        // Nothing cascades to these either, and an invitation whose board is gone is a row the
-        // invitee's own listing would render as a board with no name.
+        // Nothing cascades to either of these. An invitation whose board is gone is a row the
+        // invitee's own listing would render as a board with no name, and a feed entry outlives
+        // its task on purpose - so the only thing that can take one is the board going away.
         invitationRepository.deleteAll(invitationRepository.findByBoard(board));
+        activityRepository.deleteAll(activityRepository.findByBoard(board));
 
         board.getMembers().clear();
         boardRepository.delete(board);

@@ -14,6 +14,7 @@ import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
+import pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder;
 import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
@@ -69,7 +70,8 @@ class TaskServiceRequestBindingTest {
                 rowRepository,
                 tenant.boardService(),
                 Mockito.mock(DeadlineNotifier.class),
-                Mockito.mock(TaskAttachmentService.class));
+                Mockito.mock(TaskAttachmentService.class),
+                Mockito.mock(TaskActivityRecorder.class));
     }
 
     @Test
