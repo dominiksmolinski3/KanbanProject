@@ -405,6 +405,28 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  board.invitation arrives with this branch and measures 89.5 over
+                                  95 lines. 0.80 rather than a shade under, because at 95 lines a
+                                  tight floor is a tripwire on the next honest refactor rather than
+                                  a gate on untested code - the same trade task/attachment and
+                                  storage were given. It needs a rule of its own at all because a
+                                  new package otherwise lands on the 0.15 catch-all and hides
+                                  there, which is the failure the ratchet has already had once.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.board.invitation</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>

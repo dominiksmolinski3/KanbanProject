@@ -12,7 +12,7 @@ import '../styles/components/BoardSwitcher.css';
  * room to explain what they do.
  */
 function BoardSwitcher() {
-  const { boards, activeBoard, activeBoardId, selectBoard, createBoard } = useKanban();
+  const { boards, activeBoard, activeBoardId, selectBoard, createBoard, myInvitations } = useKanban();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
@@ -47,8 +47,11 @@ function BoardSwitcher() {
     }
   };
 
-  // One board and nothing to switch to is the common case; a dropdown there would be noise.
-  if (!activeBoard && boards.length === 0) {
+  const pending = myInvitations ? myInvitations.length : 0;
+
+  // One board and nothing to switch to is the common case; a dropdown there would be noise. An
+  // outstanding invitation is not that case: there is a second board waiting to exist.
+  if (!activeBoard && boards.length === 0 && pending === 0) {
     return null;
   }
 
@@ -65,6 +68,17 @@ function BoardSwitcher() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v6h-4z" />
         </svg>
         {activeBoard ? activeBoard.name : t('boards.switcher.label')}
+        {/* The only place an invitation is visible without going looking for it. The list itself
+            is on the users page, where there is room to say who sent it. */}
+        {pending > 0 && (
+          <span
+            className="board-switcher-badge"
+            data-testid="invitation-badge"
+            title={t('boards.invitations.badge', { count: pending })}
+          >
+            {pending}
+          </span>
+        )}
       </button>
 
       {open && (

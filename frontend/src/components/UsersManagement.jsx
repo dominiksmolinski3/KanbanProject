@@ -3,6 +3,7 @@ import '../styles/components/Users.css';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import BoardMembers from './BoardMembers';
+import Invitations from './Invitations';
 
 function UsersManagement() {
   const [users, setUsers] = useState([]);
@@ -200,6 +201,8 @@ function UsersManagement() {
   return (
     <div className="container">
       <h1>{t('usersManagement.title')}</h1>
+
+      <Invitations />
 
       <BoardMembers />
 

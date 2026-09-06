@@ -66,13 +66,6 @@ public class BoardController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/members")
-    public ResponseEntity<BoardDto> addMember(@PathVariable Integer id,
-                                              @Valid @RequestBody AddMemberRequest request,
-                                              @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(boardService.addMember(currentUser, id, request));
-    }
-
     @DeleteMapping("/{id}/members/{userId}")
     public ResponseEntity<BoardDto> removeMember(@PathVariable Integer id,
                                                  @PathVariable Integer userId,

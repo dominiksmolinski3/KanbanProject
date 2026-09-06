@@ -35,15 +35,42 @@ describe('boardApi', () => {
     expect(fetch).toHaveBeenCalledWith('/api/boards/current');
   });
 
-  test('adds a member by email address', async () => {
-    respondWith(board);
+  test('invites by email address, and the answer is the invitation rather than the board', async () => {
+    respondWith({ id: 7, boardId: 3, email: 'colleague@example.com', status: 'PENDING' });
 
-    await boardApi.addBoardMember(3, 'colleague@example.com');
+    const invitation = await boardApi.inviteToBoard(3, 'colleague@example.com');
 
     const [url, options] = fetch.mock.calls[0];
-    expect(url).toBe('/api/boards/3/members');
+    expect(url).toBe('/api/boards/3/invitations');
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual({ email: 'colleague@example.com' });
+    // No member list comes back, which is the whole point: the old route answered with one, so an
+    // owner could diff it and learn whether that address had an account here.
+    expect(invitation.members).toBeUndefined();
+  });
+
+  test('the invitee reads and answers their own invitations, off the board path', async () => {
+    respondWith([{ id: 7, boardName: 'Kanban' }]);
+    await boardApi.fetchMyInvitations();
+    expect(fetch).toHaveBeenCalledWith('/api/invitations');
+
+    respondWith(board);
+    await boardApi.acceptInvitation(7);
+    expect(fetch).toHaveBeenLastCalledWith('/api/invitations/7/accept', { method: 'POST' });
+
+    fetch.mockResolvedValueOnce({ ok: true, status: 204 });
+    await boardApi.declineInvitation(7);
+    expect(fetch).toHaveBeenLastCalledWith('/api/invitations/7/decline', { method: 'POST' });
+  });
+
+  test('the owner lists and revokes what is outstanding on their board', async () => {
+    respondWith([{ id: 7, email: 'waiting@example.com' }]);
+    await boardApi.fetchBoardInvitations(3);
+    expect(fetch).toHaveBeenCalledWith('/api/boards/3/invitations');
+
+    fetch.mockResolvedValueOnce({ ok: true, status: 204 });
+    await boardApi.revokeBoardInvitation(3, 7);
+    expect(fetch).toHaveBeenLastCalledWith('/api/boards/3/invitations/7', { method: 'DELETE' });
   });
 
   test('removing a member answers with the board that is left', async () => {
