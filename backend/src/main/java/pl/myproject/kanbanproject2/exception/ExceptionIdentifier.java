@@ -141,6 +141,19 @@ public enum ExceptionIdentifier {
     BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board"),
 
     /*
+     * An invitation that is not the caller's to act on: a wrong id, another board's row under an
+     * owner's path, somebody else's invitation under /invitations, or one already accepted,
+     * declined or revoked. One 404 for all of them, and 404 rather than 403 for the reason
+     * BOARD_NOT_FOUND spells out - these ids are sequential too, and a status that distinguished
+     * "not yours" from "no such row" would let anyone count how many invitations exist.
+     *
+     * ALREADY_BOARD_MEMBER is a 400 and discloses nothing, because only the board's owner can
+     * reach it and the owner is looking at the member list on the same screen.
+     */
+    INVITATION_NOT_FOUND(NOT_FOUND, "Invitation not found"),
+    ALREADY_BOARD_MEMBER(BAD_REQUEST, "That person is already on this board"),
+
+    /*
      * A language the mail templates have no bundle for. The caller's mistake, so 400 - and a
      * refusal rather than a fallback, because this is only ever reached by somebody setting the
      * language explicitly. Signup, which guesses from a browser header, falls back to English

@@ -109,7 +109,9 @@ class TenantIsolationTest {
 
         boardMapper = new BoardMapper(new UserMapper());
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
-                taskRepository, historyRepository, userRepository, boardMapper);
+                taskRepository, historyRepository, userRepository,
+                mock(pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository.class),
+                boardMapper);
 
         var taskMapper = new TaskMapper();
         userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService);

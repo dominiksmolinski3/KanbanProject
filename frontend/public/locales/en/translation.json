@@ -140,8 +140,11 @@
     "boardCreated": "Board created",
     "boardRenamed": "Board renamed",
     "boardDeleted": "Board deleted",
-    "boardMemberInvited": "If that address has an account here, it now has access to this board",
-    "boardMemberRemoved": "Member removed from the board"
+    "boardMemberRemoved": "Member removed from the board",
+    "boardInvitationSent": "Invitation sent",
+    "boardInvitationRevoked": "Invitation cancelled",
+    "boardInvitationAccepted": "You have joined \"{{name}}\"",
+    "boardInvitationDeclined": "Invitation declined"
   },
   "boards": {
     "switcher": {
@@ -167,11 +170,22 @@
       "removeConfirm": "Remove this person from the board?",
       "leaveConfirm": "Leave this board? You will lose access to it.",
       "deleteConfirm": "Delete \"{{name}}\" and every column, swimlane and task on it? This cannot be undone.",
-      "addLabel": "Add someone to this board",
-      "addPlaceholder": "their email address",
-      "add": "Add",
-      "addNote": "The answer is the same whether or not that address has an account here, so this form cannot be used to find out who is registered.",
       "delete": "Delete this board"
+    },
+    "invitations": {
+      "heading": "Invitations to you",
+      "explainer": "Someone has asked you to join their board. Nothing is shared with you until you accept.",
+      "from": "from {{name}}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "badge": "Invitations waiting: {{count}}",
+      "pendingHeading": "Invited, not yet accepted",
+      "pending": "Invited",
+      "revoke": "Cancel this invitation",
+      "inviteLabel": "Invite someone to this board",
+      "invitePlaceholder": "their email address",
+      "invite": "Invite",
+      "inviteNote": "They are emailed an invitation and join only if they accept it. The answer here is the same whether or not that address has an account, so this form cannot be used to find out who is registered."
     }
   },
   "column": {

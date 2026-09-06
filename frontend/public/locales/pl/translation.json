@@ -140,8 +140,11 @@
     "boardCreated": "Tablica utworzona",
     "boardRenamed": "Nazwa tablicy zmieniona",
     "boardDeleted": "Tablica usunięta",
-    "boardMemberInvited": "Jeśli ten adres ma tutaj konto, ma teraz dostęp do tej tablicy",
-    "boardMemberRemoved": "Usunięto uczestnika z tablicy"
+    "boardMemberRemoved": "Usunięto uczestnika z tablicy",
+    "boardInvitationSent": "Zaproszenie wysłane",
+    "boardInvitationRevoked": "Zaproszenie anulowane",
+    "boardInvitationAccepted": "Dołączono do tablicy \"{{name}}\"",
+    "boardInvitationDeclined": "Zaproszenie odrzucone"
   },
   "boards": {
     "switcher": {
@@ -167,11 +170,22 @@
       "removeConfirm": "Usunąć tę osobę z tablicy?",
       "leaveConfirm": "Opuścić tę tablicę? Stracisz do niej dostęp.",
       "deleteConfirm": "Usunąć „{{name}}” wraz ze wszystkimi kolumnami, torami i zadaniami? Tej operacji nie można cofnąć.",
-      "addLabel": "Dodaj kogoś do tej tablicy",
-      "addPlaceholder": "adres e-mail",
-      "add": "Dodaj",
-      "addNote": "Odpowiedź jest taka sama niezależnie od tego, czy ten adres ma tutaj konto, więc tym formularzem nie da się sprawdzić, kto jest zarejestrowany.",
       "delete": "Usuń tę tablicę"
+    },
+    "invitations": {
+      "heading": "Zaproszenia dla Ciebie",
+      "explainer": "Ktoś zaprosił Cię do swojej tablicy. Nic nie zostanie Ci udostępnione, dopóki nie przyjmiesz zaproszenia.",
+      "from": "od {{name}}",
+      "accept": "Przyjmij",
+      "decline": "Odrzuć",
+      "badge": "Oczekujące zaproszenia: {{count}}",
+      "pendingHeading": "Zaproszeni, jeszcze bez odpowiedzi",
+      "pending": "Zaproszony",
+      "revoke": "Anuluj to zaproszenie",
+      "inviteLabel": "Zaproś kogoś do tej tablicy",
+      "invitePlaceholder": "jego adres e-mail",
+      "invite": "Zaproś",
+      "inviteNote": "Ta osoba dostanie zaproszenie e-mailem i dołączy tylko wtedy, gdy je przyjmie. Odpowiedź jest taka sama niezależnie od tego, czy ten adres ma tu konto, więc tego formularza nie da się użyć do sprawdzania, kto jest zarejestrowany."
     }
   },
   "column": {

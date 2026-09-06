@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useKanban } from '../context/KanbanContext';
+import { fetchBoardInvitations } from '../services/boardApi';
 import '../styles/components/BoardMembers.css';
 
 /**
@@ -15,20 +16,44 @@ import '../styles/components/BoardMembers.css';
  * same list and a way out.
  */
 function BoardMembers() {
-  const { activeBoard, renameBoard, deleteBoard, addBoardMember, removeBoardMember } = useKanban();
+  const { activeBoard, renameBoard, deleteBoard, inviteToBoard, revokeInvitation, removeBoardMember } = useKanban();
   const { user } = useAuth();
   const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
+  const [invitations, setInvitations] = useState([]);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
+  /*
+   * Kept here rather than in KanbanContext. A board's outstanding invitations are only ever read
+   * on this panel, by the one person allowed to see them, and putting them in the shared context
+   * would mean every screen carrying a list nothing else asks about.
+   */
+  const boardId = activeBoard?.id;
+  const owned = Boolean(activeBoard?.owned);
+
+  const loadInvitations = useCallback(async () => {
+    if (!boardId || !owned) {
+      setInvitations([]);
+      return;
+    }
+    try {
+      setInvitations(await fetchBoardInvitations(boardId));
+    } catch (err) {
+      console.error('Error fetching board invitations:', err);
+      setInvitations([]);
+    }
+  }, [boardId, owned]);
+
+  useEffect(() => {
+    loadInvitations();
+  }, [loadInvitations]);
+
   if (!activeBoard) {
     return null;
   }
-
-  const owned = activeBoard.owned;
 
   const handleInvite = async (event) => {
     event.preventDefault();
@@ -37,9 +62,18 @@ function BoardMembers() {
       return;
     }
     setBusy(true);
-    await addBoardMember(activeBoard.id, address);
-    setEmail('');
+    const invitation = await inviteToBoard(activeBoard.id, address);
+    if (invitation) {
+      setEmail('');
+      await loadInvitations();
+    }
     setBusy(false);
+  };
+
+  const handleRevoke = async (invitationId) => {
+    if (await revokeInvitation(activeBoard.id, invitationId)) {
+      await loadInvitations();
+    }
   };
 
   const handleRename = async (event) => {
@@ -148,23 +182,46 @@ function BoardMembers() {
         })}
       </ul>
 
+      {owned && invitations.length > 0 && (
+        <>
+          <h3 className="board-invite-heading">{t('boards.invitations.pendingHeading')}</h3>
+          <ul className="board-invitation-list">
+            {invitations.map(invitation => (
+              <li key={invitation.id} className="board-invitation">
+                <span className="board-member-email">{invitation.email}</span>
+                <span className="board-role">{t('boards.invitations.pending')}</span>
+                <button
+                  type="button"
+                  className="board-member-remove"
+                  title={t('boards.invitations.revoke')}
+                  onClick={() => handleRevoke(invitation.id)}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       {owned && (
         <form className="board-invite" onSubmit={handleInvite}>
-          <label htmlFor="board-invite-email">{t('boards.members.addLabel')}</label>
+          <label htmlFor="board-invite-email">{t('boards.invitations.inviteLabel')}</label>
           <div className="board-invite-row">
             <input
               id="board-invite-email"
               type="email"
               value={email}
               maxLength={255}
-              placeholder={t('boards.members.addPlaceholder')}
+              placeholder={t('boards.invitations.invitePlaceholder')}
               onChange={(event) => setEmail(event.target.value)}
             />
-            <button type="submit" disabled={busy}>{t('boards.members.add')}</button>
+            <button type="submit" disabled={busy}>{t('boards.invitations.invite')}</button>
           </div>
-          {/* Not a hedge: the server answers identically whether or not that address has an
-              account, so that this form cannot be used to find out which addresses do. */}
-          <p className="board-invite-note">{t('boards.members.addNote')}</p>
+          {/* Not a hedge. Nobody is added by this form: it sends an invitation the other person
+              has to accept, and the server answers identically whether or not that address has an
+              account here, so it cannot be used to find out which addresses do. */}
+          <p className="board-invite-note">{t('boards.invitations.inviteNote')}</p>
         </form>
       )}
 

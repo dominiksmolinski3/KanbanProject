@@ -18,12 +18,13 @@
  *   3. POST /api/auth/verify with that code, which is what a real user clicking an emailed link
  *      would send.
  *
- * The second account is then added to the primary's board via POST /api/boards/{id}/members -
- * GET /api/users only lists accounts the caller shares a board with (see CLAUDE.md's tenancy
- * section), so without this step the assignment `<select>` in TaskDetails has nobody to offer.
+ * The second account is then put on the primary's board the way a person would: the owner sends
+ * an invitation and the invitee accepts it. GET /api/users only lists accounts the caller shares
+ * a board with (see CLAUDE.md's tenancy section), so without this step the assignment `<select>`
+ * in TaskDetails has nobody to offer.
  *
- * Idempotent throughout: an already-verified account is left alone, and adding a member who is
- * already on the board is treated as success rather than retried. Safe to run before every
+ * Idempotent throughout: an already-verified account is left alone, and a member who is already
+ * on the board is left alone rather than re-invited. Safe to run before every
  * Cypress invocation, locally or in CI.
  */
 
@@ -139,28 +140,51 @@ async function ensureVerified(client, account) {
   console.log(`[seed] ${account.email} is verified`);
 }
 
-/** Adds memberAccount to primaryAccount's board, unless it is already a member. */
+/**
+ * Puts memberAccount on primaryAccount's board, unless it is already there.
+ *
+ * Two round trips rather than one, because membership is now something a person accepts: the
+ * owner sends an invitation and the invitee redeems it. Driving both halves is the point - it
+ * seeds the fixture the assignment spec needs and exercises the real path while doing it, which
+ * is the same reason this script signs up through /auth/signup instead of writing a BCrypt hash.
+ */
 async function ensureBoardMembership() {
-  const login = await fetchJson('/auth/login', {
+  const ownerLogin = await fetchJson('/auth/login', {
     method: 'POST',
     body: { email: primaryAccount.email, password: primaryAccount.password },
   });
+  const asOwner = { Authorization: `Bearer ${ownerLogin.token}` };
 
-  const board = await fetchJson('/boards/current', {
-    headers: { Authorization: `Bearer ${login.token}` },
-  });
+  const board = await fetchJson('/boards/current', { headers: asOwner });
 
   if (board.members.some((m) => m.email === memberAccount.email)) {
     console.log(`[seed] ${memberAccount.email} is already a member of board ${board.id} - nothing to do`);
     return;
   }
 
-  console.log(`[seed] adding ${memberAccount.email} to board ${board.id} via POST /api/boards/${board.id}/members`);
-  await fetchJson(`/boards/${board.id}/members`, {
+  // Idempotent on the server: a second invite to an address that already has one pending answers
+  // the existing row rather than creating a second, so re-running this is safe.
+  console.log(`[seed] inviting ${memberAccount.email} to board ${board.id}`);
+  await fetchJson(`/boards/${board.id}/invitations`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${login.token}` },
+    headers: asOwner,
     body: { email: memberAccount.email },
   });
+
+  const memberLogin = await fetchJson('/auth/login', {
+    method: 'POST',
+    body: { email: memberAccount.email, password: memberAccount.password },
+  });
+  const asMember = { Authorization: `Bearer ${memberLogin.token}` };
+
+  const invitations = await fetchJson('/invitations', { headers: asMember });
+  const mine = invitations.find((invitation) => invitation.boardId === board.id);
+  if (!mine) {
+    throw new Error(`[seed] no pending invitation to board ${board.id} for ${memberAccount.email}`);
+  }
+
+  console.log(`[seed] accepting invitation ${mine.id} as ${memberAccount.email}`);
+  await fetchJson(`/invitations/${mine.id}/accept`, { method: 'POST', headers: asMember });
 
   console.log(`[seed] ${memberAccount.email} is now a member of board ${board.id}`);
 }

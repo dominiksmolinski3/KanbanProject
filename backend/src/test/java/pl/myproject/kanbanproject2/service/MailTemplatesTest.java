@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * with no alternative part. That a value which arrives from a user - a task title, a board name -
  * cannot close a tag, which is the one way these messages could be made to carry something they did
  * not compose. And, new with the bundles, that <em>every</em> message renders in <em>every</em>
- * locale: nine languages times three messages is where a missing key or a mis-quoted apostrophe
+ * locale: nine languages times four messages is where a missing key or a mis-quoted apostrophe
  * lives, and neither is visible to the compiler.
  */
 class MailTemplatesTest {
@@ -74,6 +74,45 @@ class MailTemplatesTest {
 
             assertThat(message.subject()).isEqualTo("Task overdue: Untitled task");
             assertThat(message.textBody()).contains("Untitled task").contains("your board");
+        }
+
+        @Test
+        @DisplayName("an invitation names the board and who sent it, in both bodies")
+        void invitationNamesTheBoardAndInviter() {
+            EmailMessage message = MailTemplates
+                    .boardInvitation("someone@example.test", "Delivery", "Ada", true, EN);
+
+            assertThat(message.subject()).isEqualTo("You have been invited to Delivery");
+            assertThat(message.htmlBody()).contains("Delivery").contains("Ada");
+            assertThat(message.textBody()).contains("Delivery").contains("Ada").doesNotContain("<");
+        }
+
+        /**
+         * The one branch in this message, and the only thing {@code registered} decides. An
+         * address with no account is told to create one; an address with an account is told to
+         * sign in. Getting this backwards mails somebody instructions they cannot follow, and
+         * nothing else in the message would look wrong.
+         */
+        @Test
+        @DisplayName("an address with no account is told to sign up, not to sign in")
+        void anUnregisteredInviteeIsToldToSignUp() {
+            EmailMessage registered = MailTemplates
+                    .boardInvitation("someone@example.test", "Delivery", "Ada", true, EN);
+            EmailMessage unregistered = MailTemplates
+                    .boardInvitation("someone@example.test", "Delivery", "Ada", false, EN);
+
+            assertThat(registered.textBody()).contains("Sign in");
+            assertThat(unregistered.textBody()).contains("Create an account");
+        }
+
+        @Test
+        @DisplayName("a nameless inviter and an unnamed board are filled in by the bundle")
+        void invitationStandInsComeFromTheBundle() {
+            EmailMessage message = MailTemplates
+                    .boardInvitation("someone@example.test", " ", null, false, EN);
+
+            assertThat(message.subject()).isEqualTo("You have been invited to your board");
+            assertThat(message.textBody()).contains("Someone").contains("your board");
         }
 
         @Test
@@ -151,7 +190,9 @@ class MailTemplatesTest {
                     MailTemplates.verification("someone@example.test", "123456", 15, locale),
                     MailTemplates.passwordReset("someone@example.test", "654321", 10, locale),
                     MailTemplates.taskOverdue("someone@example.test", "Ship it", "Delivery", DEADLINE, locale),
-                    MailTemplates.taskOverdue("someone@example.test", null, null, null, locale));
+                    MailTemplates.taskOverdue("someone@example.test", null, null, null, locale),
+                    MailTemplates.boardInvitation("someone@example.test", "Delivery", "Ada", true, locale),
+                    MailTemplates.boardInvitation("someone@example.test", null, null, false, locale));
 
             for (EmailMessage message : messages) {
                 assertThat(message.subject())
