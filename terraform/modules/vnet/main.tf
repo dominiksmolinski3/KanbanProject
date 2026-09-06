@@ -23,6 +23,18 @@ resource "azurerm_subnet" "backend" {
   service_endpoint {
     service = "Microsoft.KeyVault"
   }
+
+  # Azure now rejects a Managed Environment whose infrastructure subnet carries no delegation
+  # (ManagedEnvironmentSubnetDelegationError) even for a Consumption-only environment.
+  delegation {
+    name = "cae"
+    service_delegation {
+      name = "Microsoft.App/environments"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action",
+      ]
+    }
+  }
 }
 
 resource "azurerm_subnet" "private_endpoints" {
@@ -72,5 +84,14 @@ resource "azurerm_container_app_environment" "main" {
   location                   = var.location
   resource_group_name        = var.resource_group_name
   infrastructure_subnet_id   = azurerm_subnet.backend.id
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  # Azure now provisions a default Consumption workload profile on every Managed Environment
+  # whether or not one is declared. Declaring it explicitly is what stops every plan from showing
+  # it as drift to remove.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
