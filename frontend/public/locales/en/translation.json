@@ -211,7 +211,8 @@
     "wipLimit": "WIP Limit",
     "addBoardItem": "Add row/column",
     "users": "Users",
-    "logout": "Logout"
+    "logout": "Logout",
+    "activity": "Activity"
   },
   "forms": {
     "wipLimit": {
@@ -430,6 +431,27 @@
       "ended": "That session has been signed out",
       "endError": "That session could not be signed out",
       "loadError": "The sessions could not be loaded"
+    }
+  },
+  "activity": {
+    "heading": "Activity",
+    "explainer": "What has happened on this board, newest first.",
+    "loading": "Loading…",
+    "failed": "The activity feed could not be loaded.",
+    "empty": "Nothing has happened on this board yet.",
+    "someone": "Someone",
+    "untitledTask": "an untitled task",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{pages}} · {{total}} entries",
+    "types": {
+      "CREATED": "{{who}} created {{what}}",
+      "MOVED": "{{who}} moved {{what}} to {{detail}}",
+      "ASSIGNED": "{{who}} assigned {{what}} to {{detail}}",
+      "UNASSIGNED": "{{who}} took {{detail}} off {{what}}",
+      "COMPLETED": "{{who}} completed {{what}}",
+      "REOPENED": "{{who}} reopened {{what}}",
+      "DELETED": "{{who}} deleted {{what}}"
     }
   }
 }

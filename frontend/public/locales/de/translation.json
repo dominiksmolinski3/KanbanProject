@@ -211,7 +211,8 @@
     "wipLimit": "WIP-Limit",
     "addBoardItem": "Zeile/Spalte hinzufügen",
     "users": "Benutzer",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "activity": "Aktivität"
   },
   "forms": {
     "wipLimit": {
@@ -430,6 +431,27 @@
       "ended": "Die Sitzung wurde beendet",
       "endError": "Die Sitzung konnte nicht beendet werden",
       "loadError": "Die Sitzungen konnten nicht geladen werden"
+    }
+  },
+  "activity": {
+    "heading": "Aktivität",
+    "explainer": "Was auf diesem Board passiert ist, das Neueste zuerst.",
+    "loading": "Wird geladen…",
+    "failed": "Die Aktivität konnte nicht geladen werden.",
+    "empty": "Auf diesem Board ist noch nichts passiert.",
+    "someone": "Jemand",
+    "untitledTask": "eine Aufgabe ohne Titel",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pageOf": "Seite {{page}} von {{pages}} · {{total}} Einträge",
+    "types": {
+      "CREATED": "{{who}} hat {{what}} erstellt",
+      "MOVED": "{{who}} hat {{what}} nach {{detail}} verschoben",
+      "ASSIGNED": "{{who}} hat {{what}} an {{detail}} zugewiesen",
+      "UNASSIGNED": "{{who}} hat {{detail}} von {{what}} entfernt",
+      "COMPLETED": "{{who}} hat {{what}} abgeschlossen",
+      "REOPENED": "{{who}} hat {{what}} wieder geöffnet",
+      "DELETED": "{{who}} hat {{what}} gelöscht"
     }
   }
 }

@@ -1,0 +1,60 @@
+/* The board's own history. Deliberately plain: it is a list of sentences, and anything that made
+   an entry look like a card would compete with the board it describes. */
+.activity-feed {
+  max-width: 60rem;
+  margin: 0 auto 2rem;
+}
+
+.activity-header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.activity-explainer {
+  margin: 0 0 1rem;
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.25rem;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+/* A deletion is the one entry whose subject no longer exists, so it is the one worth marking. */
+.activity-entry.activity-deleted .activity-what {
+  opacity: 0.7;
+}
+
+.activity-when {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.activity-empty {
+  padding: 1rem 0.25rem;
+  opacity: 0.75;
+}
+
+.activity-paging {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.activity-page-of {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
