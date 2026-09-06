@@ -57,7 +57,12 @@ jest.mock('../../services/boardApi', () => ({
   createBoard: jest.fn(),
   renameBoard: jest.fn(),
   deleteBoard: jest.fn(),
-  addBoardMember: jest.fn(),
+  inviteToBoard: jest.fn(),
+  fetchBoardInvitations: jest.fn(),
+  revokeBoardInvitation: jest.fn(),
+  fetchMyInvitations: jest.fn(),
+  acceptInvitation: jest.fn(),
+  declineInvitation: jest.fn(),
   removeBoardMember: jest.fn(),
 }));
 

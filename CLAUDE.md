@@ -156,6 +156,37 @@ being on a board's member list is the only thing that grants access to anything 
 only: the **owner** may rename, delete and change the membership; a **member** may do anything to the
 board's contents.
 
+**Membership is offered and accepted, not assigned (`V14`).** `board_invitations` holds one row per
+offer, and `POST /api/boards/{id}/invitations` is the only thing that creates one;
+`POST /api/invitations/{id}/accept` is the only thing that puts anybody on a member list. That
+replaced `POST /api/boards/{id}/members`, which added an account the moment an owner typed its
+address **and answered with the board** — so an owner could diff the member list before and after
+and learn whether an address had an account here, which is exactly the oracle every unauthenticated
+route is written to avoid. Four things about the row are load-bearing:
+
+- **It names an address, not a user id.** That is what lets an invitation be created for somebody
+  who has not signed up: the row waits, and `GET /api/invitations` finds it the first time they log
+  in. The alternative — creating an unverified account on their behalf, which is what the audit
+  originally sketched — would let any account occupy an arbitrary address and lock its real owner
+  out of signup. Addresses are stored lower-cased, so the partial unique index in `V14` is a plain
+  one.
+- **The response is the invitation and never the board**, and it is byte-identical whether or not
+  the address has an account. The one place the two cases differ is the mailbox: `registered`
+  picks between "sign in and accept" and "create an account with this address", and the language is
+  the recipient's when there is an account to read one from and the *inviter's* when there is not.
+- **Re-inviting an address that already has a pending invitation sends no second mail.** It answers
+  the row that exists. A route that mails on every click is a way to have this application post
+  somebody else's mailbox on request; that is not a complete bound (one board per invitation still
+  is one mail each) and the honest fix for the rest is a limit on boards, which does not exist.
+- **`BoardService.deleteBoard` clears the invitations by hand**, for the same reason it clears the
+  history rows: nothing cascades to them, and an invitation whose board is gone renders as a board
+  with no name on the invitee's own screen.
+
+Anything that is not a pending invitation the caller may act on — a wrong id, another board's row
+under an owner's path, somebody else's row under `/invitations`, one already answered — is one
+`404 INVITATION_NOT_FOUND`. `400 ALREADY_BOARD_MEMBER` is the exception and discloses nothing:
+only the owner can reach it, and they are looking at the member list on the same screen.
+
 Three conventions follow from it, and all three are load-bearing:
 
 - **Every controller method takes `@AuthenticationPrincipal User currentUser` and passes it to the
@@ -619,6 +650,7 @@ the two moments mail is composed have no client to ask — a verification code i
 whose browser may never be seen again, and an overdue notice by a scheduler with no request at all —
 so the account carries a `locale` column and `MailTemplates` reads
 `backend/src/main/resources/mail/messages*.properties` through a `ResourceBundleMessageSource`.
+There are four messages: a verification code, a reset code, an overdue task and a board invitation.
 `messages.properties` **is** the English one, which is why there is no `messages_en`, and
 `fallbackToSystemLocale` is off so an unmatched language falls back to that file rather than to
 whatever locale the JVM was started in.
@@ -637,5 +669,5 @@ the screen without a second control to find.
 One trap in the bundles, and it is invisible to every compiler involved: Spring runs a message
 through `MessageFormat` only when it is given arguments, so a lone apostrophe is harmless in a
 message with no `{0}` and **swallows the rest of the pattern** in one that has them.
-`MailTemplatesTest` renders all three messages in all nine locales and fails on a surviving brace,
+`MailTemplatesTest` renders all four messages in all nine locales and fails on a surviving brace,
 which is what that mistake produces.
