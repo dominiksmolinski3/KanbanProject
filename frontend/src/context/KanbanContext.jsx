@@ -37,7 +37,11 @@ import {
   createBoard,
   renameBoard,
   deleteBoard,
-  addBoardMember,
+  inviteToBoard,
+  revokeBoardInvitation,
+  fetchMyInvitations,
+  acceptInvitation,
+  declineInvitation,
   removeBoardMember,
 } from '../services/boardApi';
 
@@ -54,6 +58,7 @@ export function KanbanProvider({ children }) {
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
   const [boards, setBoards] = useState([]);
   const [activeBoardId, setActiveBoardId] = useState(null);
+  const [myInvitations, setMyInvitations] = useState([]);
   const { t } = useTranslation();
 
   /*
@@ -82,6 +87,10 @@ export function KanbanProvider({ children }) {
     };
 
     resolveBoard();
+    // Asked for once on load, beside the board itself: an invitation is the one thing that can
+    // change which boards exist without this session doing anything, so it is read at the same
+    // moment the board list is and re-read whenever one is answered.
+    refreshMyInvitations();
   }, []);
 
   useEffect(() => {
@@ -206,18 +215,73 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  const handleAddBoardMember = async (boardId, email) => {
+  /*
+   * Invitations, both directions. `myInvitations` is loaded once on mount and re-read after every
+   * answer rather than kept in step optimistically: accepting one changes which boards exist, so
+   * the two lists have to move together and a stale invitation is a button that 404s.
+   */
+  const refreshMyInvitations = async () => {
     try {
-      const board = await addBoardMember(boardId, email);
-      await refreshBoards();
-      // Deliberately not "added": the server answers the same whether or not that address has an
-      // account here, so claiming success would be a claim the client cannot back up.
-      toast.info(t('notifications.boardMemberInvited'));
-      return board;
+      const mine = await fetchMyInvitations();
+      setMyInvitations(mine);
+      return mine;
     } catch (err) {
-      console.error('Error adding board member:', err);
+      console.error('Error fetching invitations:', err);
+      return [];
+    }
+  };
+
+  const handleInviteToBoard = async (boardId, email) => {
+    try {
+      const invitation = await inviteToBoard(boardId, email);
+      // Deliberately not "added": nobody has joined anything, and the server answers the same
+      // whether or not that address has an account here.
+      toast.info(t('notifications.boardInvitationSent'));
+      return invitation;
+    } catch (err) {
+      console.error('Error sending an invitation:', err);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       return null;
+    }
+  };
+
+  const handleRevokeInvitation = async (boardId, invitationId) => {
+    try {
+      await revokeBoardInvitation(boardId, invitationId);
+      toast.success(t('notifications.boardInvitationRevoked'));
+      return true;
+    } catch (err) {
+      console.error('Error revoking an invitation:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return false;
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId) => {
+    try {
+      const board = await acceptInvitation(invitationId);
+      await refreshBoards();
+      await refreshMyInvitations();
+      selectBoard(board.id);
+      toast.success(t('notifications.boardInvitationAccepted', { name: board.name }));
+      return board;
+    } catch (err) {
+      console.error('Error accepting an invitation:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return null;
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId) => {
+    try {
+      await declineInvitation(invitationId);
+      await refreshMyInvitations();
+      toast.info(t('notifications.boardInvitationDeclined'));
+      return true;
+    } catch (err) {
+      console.error('Error declining an invitation:', err);
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      return false;
     }
   };
 
@@ -963,7 +1027,12 @@ export function KanbanProvider({ children }) {
     createBoard: handleCreateBoard,
     renameBoard: handleRenameBoard,
     deleteBoard: handleDeleteBoard,
-    addBoardMember: handleAddBoardMember,
+    inviteToBoard: handleInviteToBoard,
+    myInvitations,
+    refreshMyInvitations,
+    revokeInvitation: handleRevokeInvitation,
+    acceptInvitation: handleAcceptInvitation,
+    declineInvitation: handleDeclineInvitation,
     removeBoardMember: handleRemoveBoardMember,
     columns,
     tasks,

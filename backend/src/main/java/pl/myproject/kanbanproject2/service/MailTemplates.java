@@ -9,7 +9,7 @@ import java.time.format.FormatStyle;
 import java.util.Locale;
 
 /**
- * The three messages this application sends, in one place, in two formats and in nine languages.
+ * The four messages this application sends, in one place, in two formats and in nine languages.
  *
  * <p>They used to be three near-identical blocks of inline HTML - one in {@code
  * AuthenticationService}, one in {@code PasswordResetService}, one in {@code DeadlineNotifier} -
@@ -83,6 +83,34 @@ final class MailTemplates {
                 : say(locale, "mail.overdue.intro", title, board, on(deadline, locale));
 
         return new EmailMessage(to, say(locale, "mail.overdue.subject", title),
+                html(locale, heading, intro, null, null, footnote),
+                text(heading, intro, null, footnote));
+    }
+
+    /**
+     * The invitation, which is the one message sent to somebody who may not be a user here.
+     *
+     * <p>That is what {@code registered} decides, and it decides only the last sentence: whether
+     * the reader is told to sign in or told to sign up. Two intro keys rather than a second
+     * paragraph, which is exactly the shape {@code mail.overdue.intro} and its no-deadline
+     * variant already have.
+     *
+     * <p><b>There is no link and no token in it.</b> An invitation is redeemed by whoever holds
+     * the account at the address, so a forwarded message gives nobody anything - and a link would
+     * need a base URL this deployment does not configure anywhere, which is a variable in four
+     * files for a convenience.
+     */
+    static EmailMessage boardInvitation(String to, String boardName, String inviterName,
+                                        boolean registered, Locale locale) {
+        String board = blank(boardName) ? say(locale, "mail.overdue.defaultBoard") : boardName;
+        String inviter = blank(inviterName) ? say(locale, "mail.invitation.someone") : inviterName;
+        String heading = say(locale, "mail.invitation.heading");
+        String footnote = say(locale, "mail.invitation.footnote");
+        String intro = registered
+                ? say(locale, "mail.invitation.introExisting", inviter, board)
+                : say(locale, "mail.invitation.introNew", inviter, board);
+
+        return new EmailMessage(to, say(locale, "mail.invitation.subject", board),
                 html(locale, heading, intro, null, null, footnote),
                 text(heading, intro, null, footnote));
     }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -42,6 +43,7 @@ class BoardServiceTest {
     private TaskRepository taskRepository;
     private TaskColumnHistoryRepository historyRepository;
     private UserRepository userRepository;
+    private BoardInvitationRepository invitationRepository;
     private BoardService boardService;
 
     private User owner;
@@ -57,8 +59,11 @@ class BoardServiceTest {
         historyRepository = mock(TaskColumnHistoryRepository.class);
         userRepository = mock(UserRepository.class);
 
+        invitationRepository = mock(BoardInvitationRepository.class);
+
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
-                taskRepository, historyRepository, userRepository, new BoardMapper(new UserMapper()));
+                taskRepository, historyRepository, userRepository, invitationRepository,
+                new BoardMapper(new UserMapper()));
 
         owner = TenancyFixtures.user(1);
         member = TenancyFixtures.user(2);
@@ -200,39 +205,22 @@ class BoardServiceTest {
     @DisplayName("members")
     class Members {
 
+        /*
+         * There is no addMember test here any more, and no addMember. Putting somebody on a board
+         * is now the last step of accepting an invitation, and the checks that used to live on
+         * this route - who may ask, and what an unknown address answers - moved with it to
+         * BoardInvitationServiceTest. What is left on this service is the one line that mutates
+         * the list, which has no access check of its own on purpose.
+         */
         @Test
-        @DisplayName("the owner can add somebody by the address they signed up with")
-        void addsByEmail() {
+        @DisplayName("an accepted invitee joins the list, and joining twice does not double them up")
+        void acceptedInviteeJoins() {
             var board = boardOf(owner);
-            when(userRepository.findByEmail("user2@example.com")).thenReturn(Optional.of(member));
 
-            var dto = boardService.addMember(owner, 10, new AddMemberRequest("user2@example.com"));
+            boardService.addAcceptedMember(board, member);
+            boardService.addAcceptedMember(board, member);
 
-            assertThat(dto.members()).extracting(u -> u.id()).contains(1, 2);
-        }
-
-        @Test
-        @DisplayName("an address with no account changes nothing and is not reported as an error")
-        void unknownEmailIsNotAnError() {
-            var board = boardOf(owner);
-            when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
-
-            var dto = boardService.addMember(owner, 10, new AddMemberRequest("nobody@example.com"));
-
-            assertThat(dto.members()).extracting(u -> u.id()).containsExactly(1);
-            assertThat(board.getMembers()).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("a member cannot add anybody - that is the owner's to decide")
-        void membersCannotInvite() {
-            boardOf(owner, member);
-
-            assertThatThrownBy(() ->
-                    boardService.addMember(member, 10, new AddMemberRequest("x@example.com")))
-                    .isInstanceOf(GlobalException.class)
-                    .extracting(e -> ((GlobalException) e).getIdentifier())
-                    .isEqualTo(ExceptionIdentifier.NOT_BOARD_OWNER);
+            assertThat(board.everyone()).extracting(User::getId).containsExactly(1, 2);
         }
 
         @Test

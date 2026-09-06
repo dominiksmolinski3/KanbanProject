@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.board;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -67,6 +68,7 @@ public class BoardService {
     private final TaskRepository taskRepository;
     private final TaskColumnHistoryRepository taskColumnHistoryRepository;
     private final UserRepository userRepository;
+    private final BoardInvitationRepository invitationRepository;
     private final BoardMapper boardMapper;
 
     // ------------------------------------------------------------------ access ---
@@ -235,6 +237,9 @@ public class BoardService {
 
         columnRepository.deleteAll(columnRepository.findByBoardOrderByPositionAsc(board));
         rowRepository.deleteAll(rowRepository.findByBoardOrderByPositionAsc(board));
+        // Nothing cascades to these either, and an invitation whose board is gone is a row the
+        // invitee's own listing would render as a board with no name.
+        invitationRepository.deleteAll(invitationRepository.findByBoard(board));
 
         board.getMembers().clear();
         boardRepository.delete(board);
@@ -243,19 +248,23 @@ public class BoardService {
     // ----------------------------------------------------------------- members ---
 
     /**
-     * Adds the account that signed up with {@code email}, if there is one.
+     * Puts an accepted invitee on the board.
      *
-     * <p><b>An unknown address is not an error.</b> The response is the board either way, so the
-     * owner is told what the board now looks like rather than whether that address has an account
-     * here. This is weaker than the uniform answers on the unauthenticated routes — the member list
-     * comes back in the same response, so an owner who compares it before and after can still tell.
-     * Closing that properly means invitations the invitee accepts, which is a feature rather than a
-     * check; what this avoids is the blunter version where the API says "no such user" outright.
+     * <p>The only way onto a member list. It used to be {@code addMember(caller, id, request)},
+     * an owner naming an address and the account appearing immediately - which meant membership
+     * was something done to you, and which answered with the member list, so an owner could diff
+     * it and learn whether an address had an account here. Both are closed by
+     * {@code board/invitation}: an owner offers, the person offered accepts, and this is what
+     * their acceptance calls.
+     *
+     * <p>No access check of its own, deliberately. The caller is the person joining, so there is
+     * nothing to authorise here that the invitation has not already decided; the check that
+     * matters is that the invitation is pending and addressed to them, and it belongs where that
+     * can be seen.
      */
-    public BoardDto addMember(User caller, Integer id, AddMemberRequest request) {
-        var board = requireOwned(caller, id);
-        userRepository.findByEmail(request.email()).ifPresent(board::addMember);
-        return boardMapper.apply(boardRepository.save(board), caller);
+    public Board addAcceptedMember(Board board, User user) {
+        board.addMember(user);
+        return boardRepository.save(board);
     }
 
     /**
