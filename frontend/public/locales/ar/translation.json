@@ -211,7 +211,8 @@
       "wipLimit": "حد العمل قيد التنفيذ",
       "addBoardItem": "إضافة صف/عمود",
       "users": "المستخدمون",
-      "logout": "تسجيل الخروج"
+      "logout": "تسجيل الخروج",
+      "activity": "النشاط"
     },
     "forms": {
       "wipLimit": {
@@ -430,6 +431,27 @@
         "ended": "تم إنهاء الجلسة",
         "endError": "تعذّر إنهاء تلك الجلسة",
         "loadError": "تعذّر تحميل الجلسات"
+      }
+    },
+    "activity": {
+      "heading": "النشاط",
+      "explainer": "ما حدث على هذه اللوحة، الأحدث أولًا.",
+      "loading": "جارٍ التحميل…",
+      "failed": "تعذّر تحميل النشاط.",
+      "empty": "لم يحدث شيء على هذه اللوحة بعد.",
+      "someone": "شخص ما",
+      "untitledTask": "مهمة بلا عنوان",
+      "previous": "السابق",
+      "next": "التالي",
+      "pageOf": "الصفحة {{page}} من {{pages}} · {{total}} إدخالًا",
+      "types": {
+        "CREATED": "أنشأ {{who}} {{what}}",
+        "MOVED": "نقل {{who}} {{what}} إلى {{detail}}",
+        "ASSIGNED": "أسند {{who}} {{what}} إلى {{detail}}",
+        "UNASSIGNED": "أزال {{who}} {{detail}} من {{what}}",
+        "COMPLETED": "أكمل {{who}} {{what}}",
+        "REOPENED": "أعاد {{who}} فتح {{what}}",
+        "DELETED": "حذف {{who}} {{what}}"
       }
     }
   }

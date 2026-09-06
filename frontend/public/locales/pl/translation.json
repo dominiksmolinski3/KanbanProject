@@ -211,7 +211,8 @@
     "wipLimit": "Limit WIP",
     "addBoardItem": "Dodaj wiersz/kolumnę",
     "users": "Użytkownicy",
-    "logout": "Wyloguj"
+    "logout": "Wyloguj",
+    "activity": "Aktywność"
   },
   "forms": {
     "wipLimit": {
@@ -430,6 +431,27 @@
       "ended": "Sesja została zakończona",
       "endError": "Nie udało się zakończyć tej sesji",
       "loadError": "Nie udało się wczytać sesji"
+    }
+  },
+  "activity": {
+    "heading": "Aktywność",
+    "explainer": "Co wydarzyło się na tej tablicy, od najnowszych.",
+    "loading": "Wczytywanie…",
+    "failed": "Nie udało się wczytać historii aktywności.",
+    "empty": "Na tej tablicy nic się jeszcze nie wydarzyło.",
+    "someone": "Ktoś",
+    "untitledTask": "zadanie bez tytułu",
+    "previous": "Poprzednia",
+    "next": "Następna",
+    "pageOf": "Strona {{page}} z {{pages}} · wpisów: {{total}}",
+    "types": {
+      "CREATED": "{{who}} utworzył(a) {{what}}",
+      "MOVED": "{{who}} przeniósł(-osła) {{what}} do {{detail}}",
+      "ASSIGNED": "{{who}} przypisał(a) {{what}} do {{detail}}",
+      "UNASSIGNED": "{{who}} usunął(-nęła) {{detail}} z {{what}}",
+      "COMPLETED": "{{who}} ukończył(a) {{what}}",
+      "REOPENED": "{{who}} otworzył(a) ponownie {{what}}",
+      "DELETED": "{{who}} usunął(-nęła) {{what}}"
     }
   }
 }

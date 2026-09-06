@@ -211,7 +211,8 @@
       "wipLimit": "WIP制限",
       "addBoardItem": "行/カラムを追加",
       "users": "ユーザー",
-      "logout": "ログアウト"
+      "logout": "ログアウト",
+      "activity": "アクティビティ"
     },
     "forms": {
       "wipLimit": {
@@ -430,6 +431,27 @@
         "ended": "セッションを終了しました",
         "endError": "このセッションを終了できませんでした",
         "loadError": "セッションを読み込めませんでした"
+      }
+    },
+    "activity": {
+      "heading": "アクティビティ",
+      "explainer": "このボードで起きたことを、新しい順に表示します。",
+      "loading": "読み込み中…",
+      "failed": "アクティビティを読み込めませんでした。",
+      "empty": "このボードではまだ何も起きていません。",
+      "someone": "どなたか",
+      "untitledTask": "無題のタスク",
+      "previous": "前へ",
+      "next": "次へ",
+      "pageOf": "{{pages}} ページ中 {{page}} ページ · 全 {{total}} 件",
+      "types": {
+        "CREATED": "{{who}} が {{what}} を作成しました",
+        "MOVED": "{{who}} が {{what}} を {{detail}} に移動しました",
+        "ASSIGNED": "{{who}} が {{what}} を {{detail}} に割り当てました",
+        "UNASSIGNED": "{{who}} が {{what}} から {{detail}} を外しました",
+        "COMPLETED": "{{who}} が {{what}} を完了しました",
+        "REOPENED": "{{who}} が {{what}} を再開しました",
+        "DELETED": "{{who}} が {{what}} を削除しました"
       }
     }
   }

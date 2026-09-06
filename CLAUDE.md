@@ -271,6 +271,34 @@ match" by destroying the layout that says where they are, so each result names i
 
 Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
 
+**What happened on a board is a second table, not a query over the first (`V15`).** `task_activity`
+records creation, moves, assignment, completion and deletion with an actor; `GET /api/activity`
+serves it, newest first, paged. It does **not** replace `task_column_history`, and the reason is
+worth knowing before merging them: that table is an *interval* series — one row per arrival, folded
+by the task panel into time-per-column — and it has never recorded **who**. An activity feed with no
+actor is not an activity feed, which is why this is a table rather than a join. Both records of a
+move are written in the same three lines of `TaskService.moveToColumn`, which is the only thing
+keeping them from drifting.
+
+Four details carry it:
+
+- **`task_id` is nullable and the title is a copy on the row.** The entry saying a task was deleted
+  is the one entry that has to outlive its subject, so `TaskService.deleteTask` writes the entry,
+  then calls `TaskActivityRecorder.detachFrom` before deleting — nothing cascades, deliberately, for
+  the same reason attachment blobs are removed by a service call rather than a foreign key.
+  `actor_id`/`actor_name` are the same pattern applied to accounts, and `task_column_history.column_name`
+  was the precedent for both: an event log records what was true when it happened.
+- **The recorder never throws.** A feed entry is a side effect of somebody else's operation, and a
+  task with no board records nothing rather than failing the edit that produced it.
+- **Nothing stored is a sentence.** The row holds a type name and a detail (the column, or the
+  person); `ActivityFeed.jsx` turns it into wording through `t()`. A feed composed in Java would be
+  a screen the other eight languages cannot translate.
+- **It is paged, and the board listing still is not.** Same numbers and the same refusal as the
+  search route — 25 default, 100 maximum, `400 INVALID_ACTIVITY_REQUEST` rather than a silent clamp.
+  A board is bounded by what a team will put on one; a feed only grows.
+
+`/activity` is a client route, so it is in `SpaRoutes.ALL` — see the SPA-routing note above.
+
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 
 ### Attachments
