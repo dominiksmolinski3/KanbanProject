@@ -1,0 +1,57 @@
+name: Migration order
+
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/src/main/resources/db/migration/**'
+      - '.github/workflows/migration-order.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  added-migrations-are-newest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Added migrations must outrank the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          dir="backend/src/main/resources/db/migration"
+
+          version_of() { basename "$1" | sed -n 's/^V\([0-9]\+\)__.*\.sql$/\1/p'; }
+
+          base_max=0
+          while read -r f; do
+            [ -n "$f" ] || continue
+            v="$(version_of "$f")"
+            [ -n "$v" ] && [ "$v" -gt "$base_max" ] && base_max="$v"
+          done < <(git ls-tree -r --name-only "origin/${BASE_REF}" -- "$dir")
+          echo "highest migration on origin/${BASE_REF}: V${base_max}"
+
+          bad=0
+          while read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in "$dir"/*.sql) ;; *) continue ;; esac
+            v="$(version_of "$f")"
+            if [ -z "$v" ]; then
+              echo "::error file=$f::not a V<n>__<description>.sql migration name"
+              bad=1
+              continue
+            fi
+            if [ "$v" -le "$base_max" ]; then
+              echo "::error file=$f::adds V${v}, but origin/${BASE_REF} is already at V${base_max}. Renumber this migration above V${base_max} so merge order cannot break the next deploy."
+              bad=1
+            else
+              echo "ok: $f adds V${v}"
+            fi
+          done < <(git diff --diff-filter=A --name-only "origin/${BASE_REF}...HEAD" -- "$dir")
+
+          exit "$bad"
