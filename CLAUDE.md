@@ -70,7 +70,12 @@ BREAKING CHANGE: ticket endpoints no longer supports list all entities.
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and the Dockerfile runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
 
-### Backend (Java 21 / Spring Boot 3.5.16 / Maven wrapper)
+### Backend (Java 21 language level / Spring Boot 4.1.1 / Maven wrapper)
+
+The `pom.xml` pins `<java.version>21</java.version>`, so the bytecode target stays 21, but CI
+(`kanban-ci.yml`) and the Dockerfile both build and run on **JDK 25** (`eclipse-temurin:25`) — one
+toolchain across both, which is what Stage 3 of the audit meant by "pin one JDK". The frontend build
+image is Node 26, matching `node-version: 26` in CI.
 
 ```bash
 ./mvnw clean package                    # build the jar (target/KanbanProject2-0.0.1-SNAPSHOT.jar)
@@ -511,7 +516,7 @@ not fire on every lapsed session. Kicking an idle-but-present user to the sign-i
 nothing here — the refresh token is in the same `localStorage` either way — so the client never
 does it while a renewal is possible.
 
-CORS allowed origins are hardcoded in two places that must stay in sync: [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java). They have already drifted — the WebSocket list additionally allows `http://kanbanproject.pl` and `http://www.kanbanproject.pl`.
+CORS allowed origins live in one place — [AllowedOriginsProperties](backend/src/main/java/pl/myproject/kanbanproject2/config/AllowedOriginsProperties.java), a `@ConfigurationProperties` record bound from `security.cors.allowed-origins` (`SECURITY_CORS_ALLOWED_ORIGINS`, comma-separated), which both [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java) read. The two used to hold a copy each and had drifted — the WebSocket list additionally allowed the `http://` variants of `kanbanproject.pl` — which is why the list is single-sourced now, with `AllowedOriginsTest` as the guard and the stricter (HTTPS-only) set kept as the default. Terraform passes `SECURITY_CORS_ALLOWED_ORIGINS` to the container app, so a new deployment origin is a tfvars change rather than a rebuild.
 
 ### Chat
 
@@ -611,6 +616,8 @@ every existing account a member of it, which is precisely the arrangement those 
 
 A schema change is therefore two edits, not one: the entity, **and** a new `V<n>__description.sql`. `ddl-auto=validate` will not add a column for you — it refuses to start without it, which on Container Apps is a revision that never becomes healthy. `FlywayMigrationsMatchEntitiesTest` regenerates the DDL Hibernate would emit and fails the build when an entity has moved on without a migration, so that mismatch is caught at build time rather than at startup.
 
+**Two branches that each add a migration have an order between them even when they share no line of code**, and it is invisible to `FlywayMigrationsMatchEntitiesTest` (which compares names, not history). Merge them the wrong way round — a lower `V<n>` appearing under a higher one already applied — and the build stays green while the *next* deploy migrates and then refuses. The `migration-order.yml` PR check is the guard: it reads the highest migration version on the base branch and fails a PR that adds one at or below it, so a branch that has fallen behind `main` must renumber before it can merge. `MigrationOrderTest` is the database-free companion that catches a duplicate or a gap left by a sloppy merge; it cannot see the deploy-order trap and says so in its own Javadoc.
+
 `V1__baseline_schema.sql` is the schema as `ddl-auto=update` left it, generated from the entity mappings under **Spring Boot's** naming strategies rather than Hibernate's bare defaults — that is the difference between `recipient_id` and `recipientId`, and between the `task` table and `Task`. `spring.flyway.baseline-on-migrate=true` means an environment that already has that schema is marked at V1 without re-running it, while a fresh database runs it like any other migration.
 
 `backend/db.sql` is gone. The default columns it seeded are `V3__seed_default_columns.sql`, so local development gets them by the same route as every other environment — and an init script would have left the volume non-empty, which is exactly the state `baseline-on-migrate` reads as "already migrated".
@@ -633,7 +640,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 
 ### CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage. Cypress is not run in CI.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile, pushes the image to
   `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
   (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
@@ -643,6 +650,11 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
   later build of the same tag.
 - `codeql.yml` — CodeQL analysis of the Java backend.
+- `migration-order.yml` — on PRs: fails a branch that adds a Flyway migration numbered at or below the highest version already on the base branch, forcing a stale branch to renumber before it merges (see the Flyway section). Its cheaper companion is the database-free `MigrationOrderTest`, which catches a duplicated or skipped `V<n>` after a sloppy merge.
+- `hadolint.yml` — Dockerfile lint, on push and PR.
+- `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR (comment only).
+- `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI.
+- `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`) security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP ZAP DAST run. None gate a PR.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI

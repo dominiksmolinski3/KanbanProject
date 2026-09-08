@@ -56,8 +56,8 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 
 ## 🛠️ Technologies
 
-- **Backend**: Java 21 with Spring Boot 3.5
-- **Frontend**: React.js
+- **Backend**: Java 21 language level with Spring Boot 4.1, built and run on JDK 25
+- **Frontend**: React 19 with Vite 8
 - **Database**: PostgreSQL
 - **Containerization**: Docker
 - **Testing**: JUnit, Mockito, JaCoCo for test coverage
@@ -222,8 +222,12 @@ VNet/NSGs and Log Analytics -- is defined as Terraform in [terraform/](terraform
 Azure RBAC prerequisites and the per-environment state layout.
 
 Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
-Postgres service container, frontend build/lint/Jest), `kanban-cd.yml` (build, scan, push, promote) and
-`codeql.yml` (CodeQL analysis of the Java backend).
+Postgres service container, frontend build/lint/Jest, and an `e2e` job that runs Cypress against the
+`docker-compose` stack), `kanban-cd.yml` (build, scan, push, promote), `codeql.yml` (CodeQL analysis
+of the Java backend), `migration-order.yml` (guards Flyway migration numbering across branches),
+`terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (Dockerfile lint), and the dependency and
+attack-surface scans (`dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`,
+`external-scan.yml`, `dast.yml`).
 
 ## 🧪 Testing
 The project uses JUnit, Mockito, Jest, Eslint and Cypress for linting checks, unit, integration and e2e testing. Test coverage is monitored with JaCoCo.
