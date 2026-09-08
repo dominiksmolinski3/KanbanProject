@@ -104,7 +104,7 @@ resource "azurerm_key_vault_secret" "postgres_password" {
 resource "azurerm_key_vault_secret" "postgres_connection_string" {
   tags         = var.tags
   name         = "POSTGRES-CONNECTION-STRING"
-  value        = format("jdbc:postgresql://%s:5432/%s?sslmode=require", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
+  value        = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
   content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }

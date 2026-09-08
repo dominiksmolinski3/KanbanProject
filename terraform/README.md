@@ -158,6 +158,34 @@ Note: if you see `subscription ID could not be determined`, set `subscription_id
 ## CI/CD
 The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds and pushes the Docker image to GitHub Container Registry (public). The Container App pulls the public image without authentication. The Container App's managed identity is granted the `Key Vault Secrets User` role to read application secrets from Key Vault -- see [Key Vault authorization](#key-vault-authorization) for the full access model.
 
+`.github/workflows/terraform-ci.yml` runs `fmt`, `validate` and a blocking Checkov scan on every PR
+that touches `terraform/`. There is no automated `apply` -- deployment stays a deliberate manual
+step (`./tf.sh <env> apply`).
+
+### Plan on pull requests
+
+The same workflow has a `plan` job that runs `terraform plan` against the **dev** state and writes
+the diff into the PR's job summary, so a reviewer sees what a change would do before it merges
+rather than after somebody applies it. It is **off by default** and only runs when the
+`TF_PLAN_ENABLED` repository variable is set to `true` -- the same "stay inert until wired up" gate
+the mail-bounce alert uses. Turning it on is a one-time setup:
+
+1. **Entra app registration + federated credential.** Create an app registration and add a
+   federated credential of subject `repo:<owner>/<repo>:pull_request` (issuer
+   `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`). No client
+   secret -- the workflow authenticates with a short-lived OIDC token.
+2. **RBAC for that identity.** `Reader` on the subscription (so the plan can read resource state)
+   and `Storage Blob Data Reader` on the `tfstatekanban` storage account (so it can read the
+   backend state). It needs no write role and no Key Vault access.
+3. **Repository secrets.** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+4. **Repository variable.** `TF_PLAN_ENABLED = true`.
+
+The job runs `plan -refresh=false` on purpose. The Key Vault denies public traffic and a GitHub
+runner's address is not on its firewall, so a refreshing plan fails reading the secret resources.
+Without refresh the plan compares the PR's config against the last applied state, which is the
+question a PR gate is asking. Drift introduced through the portal is still only caught by a local
+`./tf.sh dev plan` from an allow-listed address.
+
 ## Notes
 
 - **Password generation**: the Postgres module generates the administrator password internally, and the `container_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
@@ -540,7 +568,7 @@ clone run without an Azure subscription.
 
 ### Key Vault authorization
 
-The vault is created with `enable_rbac_authorization = true`, so **Azure RBAC is the
+The vault is created with `rbac_authorization_enabled = true`, so **Azure RBAC is the
 only thing that grants data-plane access** -- Key Vault access policies are ignored
 entirely. Two role assignments carry the whole model:
 
