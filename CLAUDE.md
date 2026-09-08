@@ -666,7 +666,16 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   entry cannot be lost that way. What it costs is breadth — the skip applies to any future
   resource of that kind, and there is one Postgres server. **Checkov's version is pinned** — an
   unpinned scanner on a blocking step goes red on somebody else's release day, and the first
-  response to that is always to put the escape back.
+  response to that is always to put the escape back. The same workflow carries a `plan` job that
+  runs `terraform plan` against the **dev** state and writes the diff to the PR summary; it is
+  gated on the `TF_PLAN_ENABLED` repository variable and does nothing until an Entra app
+  registration with a federated credential and three `AZURE_*` secrets exist (see
+  [terraform/README.md](terraform/README.md), *Plan on pull requests*). It plans with
+  `-refresh=false` on purpose: a GitHub runner's address is not on the Key Vault firewall, so a
+  refreshing plan cannot read the secret resources. The Postgres JDBC URL uses
+  `sslmode=verify-full`, not `require` — `require` encrypts without authenticating the server; the
+  roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA Root Certificate Authority
+  2017") are already in the JDK trust store, so no cert is bundled.
 - [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,container_app}`. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `container_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
