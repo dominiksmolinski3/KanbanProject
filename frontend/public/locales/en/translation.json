@@ -91,6 +91,16 @@
       "statusCompleted": "Completed",
       "statusOpen": "Open",
       "title": "Find a task"
+    },
+    "keyboardMove": {
+      "roleDescription": "movable task",
+      "untitled": "Untitled task",
+      "help": "Press Space to pick this task up, then the arrow keys to choose a column and swimlane. Press Space or Enter to drop it there, or Escape to leave it where it was. Press Enter to open the task.",
+      "grabbed": "Picked up {{title}}. Use the arrow keys to choose a cell, then Space to drop it.",
+      "over": "Over {{column}}, {{row}}.",
+      "dropped": "Moved {{title}} to {{column}}, {{row}}.",
+      "unchanged": "{{title}} stayed where it was.",
+      "cancelled": "Move cancelled. {{title}} stayed where it was."
     }
   },
   "notifications": {
