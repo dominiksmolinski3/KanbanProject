@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -32,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
@@ -60,7 +62,7 @@ class DeleteDetachesReferencesTest {
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final RowService rowService =
                 new RowService(rowRepository, new RowMapper(new pl.myproject.kanbanproject2.task.TaskMapper()),
-                        taskRepository, TENANT.boardService());
+                        taskRepository, TENANT.boardService(), mock(BoardEventPublisher.class));
 
         @Test
         @DisplayName("clears row_id on its tasks before the row is removed")
@@ -104,7 +106,7 @@ class DeleteDetachesReferencesTest {
         private final ColumnService columnService =
                 new ColumnService(columnRepository,
                         new ColumnMapper(new pl.myproject.kanbanproject2.task.TaskMapper()), taskService,
-                        TENANT.boardService());
+                        TENANT.boardService(), mock(BoardEventPublisher.class));
 
         @Test
         @DisplayName("removes each task through the path that clears its history rows")

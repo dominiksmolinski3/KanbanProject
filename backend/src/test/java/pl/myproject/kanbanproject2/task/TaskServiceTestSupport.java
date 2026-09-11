@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.task;
 
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
@@ -54,6 +55,6 @@ final class TaskServiceTestSupport {
                 TenancyFixtures.boardServiceReturning(TENANT.board()),
                 mock(DeadlineNotifier.class),
                 mock(TaskAttachmentService.class),
-                mock(TaskActivityRecorder.class));
+                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
     }
 }

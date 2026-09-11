@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -71,7 +73,7 @@ class TaskServiceRequestBindingTest {
                 tenant.boardService(),
                 Mockito.mock(DeadlineNotifier.class),
                 Mockito.mock(TaskAttachmentService.class),
-                Mockito.mock(TaskActivityRecorder.class));
+                Mockito.mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
     }
 
     @Test

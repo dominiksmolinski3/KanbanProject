@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -24,6 +25,7 @@ public class RowService {
     private final RowMapper rowMapper;
     private final TaskRepository taskRepository;
     private final BoardService boardService;
+    private final BoardEventPublisher boardEvents;
 
     public List<RowDto> getAllRows(User caller, Integer boardId) {
         var board = boardService.resolve(caller, boardId);
@@ -40,7 +42,9 @@ public class RowService {
         row.setPosition(request.position() != null
                 ? request.position()
                 : nextPosition(board));
-        return rowMapper.toResponseDto(rowRepository.save(row));
+        var created = rowRepository.save(row);
+        boardEvents.rowsChanged(created.getBoard());
+        return rowMapper.toResponseDto(created);
     }
 
     /**
@@ -48,6 +52,16 @@ public class RowService {
      * row count. A count drops after any delete, so the next create hands out a position that is
      * still taken, and two concurrent creates read the same count.
      */
+    /**
+     * Saves a row, tells the board's other viewers, and maps it. See
+     * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
+     */
+    private RowDto saveAndAnnounce(Row row) {
+        var saved = rowRepository.save(row);
+        boardEvents.rowsChanged(saved.getBoard());
+        return rowMapper.apply(saved);
+    }
+
     private int nextPosition(Board board) {
         return rowRepository.findMaxPosition(board).orElse(0) + 1;
     }
@@ -64,7 +78,7 @@ public class RowService {
         if (rowDto.position() != null) {
             existingRow.setPosition(rowDto.position());
         }
-        return rowMapper.apply(rowRepository.save(existingRow));
+        return saveAndAnnounce(existingRow);
     }
 
     /**
@@ -86,6 +100,7 @@ public class RowService {
         }
 
         rowRepository.delete(row);
+        boardEvents.rowsChanged(row.getBoard());
     }
 
     public RowDto getRowById(User caller, Integer id) {
@@ -95,7 +110,7 @@ public class RowService {
     public RowDto updateRowPosition(User caller, Integer id, Integer position) {
         var row = findRow(caller, id);
         row.setPosition(position);
-        return rowMapper.apply(rowRepository.save(row));
+        return saveAndAnnounce(row);
     }
 
     /**
@@ -116,7 +131,7 @@ public class RowService {
         for (int position = 0; position < rows.size(); position++) {
             var row = rows.get(position);
             row.setPosition(position);
-            reordered.add(rowMapper.apply(rowRepository.save(row)));
+            reordered.add(saveAndAnnounce(row));
         }
         return reordered;
     }

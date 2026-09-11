@@ -576,6 +576,58 @@ CORS allowed origins live in one place — [AllowedOriginsProperties](backend/sr
 
 STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`; `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not `useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat server on a separate host would need a configured URL rather than the page's.
 
+### Live board sync
+
+A board is the same board for everybody on it, so a change one person makes appears on the others'
+screens without a reload. The server announces it on **`/topic/boards/{id}`** and the client
+re-reads; `board/event/` holds the publisher, `config/websocket/BoardSubscriptionInterceptor` holds
+the check on who may listen, and [boardEvents.js](frontend/src/services/boardEvents.js) holds the
+client's own connection.
+
+Six decisions carry it, and none of them is visible from the destination name:
+
+- **The frame carries a kind and a board id, never the thing that changed.** A STOMP topic has no
+  per-subscriber filtering - every subscriber of a destination gets every frame - so whatever is in
+  the payload is readable by everyone on it, and keeping it to `{type, boardId}` means the
+  subscription check is the only thing that has to be right rather than the payload as well. The
+  second reason is drift: a DTO published here would be a second copy of the read model, free to
+  disagree with what `GET /api/tasks` returns. A kind says "re-read", and the re-read goes back
+  through the route that already decides what this caller may see.
+- **It carries no actor either**, so nobody can filter out "their own" event. An account is not a
+  client: the same account in a second tab is a different screen that does need the frame. The
+  duplicate read is made cheap by coalescing instead, which is right in both cases.
+- **A subscription is authorised, because the simple broker does not do it.** `WebSocketAuthInterceptor`
+  answers whether a caller is anybody; without `BoardSubscriptionInterceptor` a subscriber holding
+  any valid token could sit on any board's topic. It refuses through `BoardService.requireVisible`,
+  so "may this caller see this board" is answered in the one place the REST routes answer it, and a
+  board that does not exist and a board that belongs to somebody else are the same refusal for the
+  same reason they are over HTTP. **Order is load-bearing**: the authentication interceptor runs
+  first, because it is what puts the principal on the session.
+- **The frame is sent after the commit, and that is correctness.** Published inside the transaction,
+  it can reach a subscriber whose re-read then beats the commit and returns the state from *before*
+  the change - leaving that client permanently stale, because it has spent its only notification.
+  The same ordering means a rolled-back transaction announces nothing.
+- **One frame per board per kind per transaction.** Reordering a cell of twelve cards saves twelve
+  tasks and needs one re-read, so the events are collected against the transaction and sent once;
+  the client then coalesces a burst into one fetch (`LIVE_REFRESH_WINDOW_MS`). Otherwise the
+  busiest gesture on the board would be the noisiest thing on the wire.
+- **It is a second connection, not chat's.** `ChatContext` connects when somebody opens the chat
+  panel and disconnects when they close it, so a board riding that connection would stop updating
+  the moment anyone tidied their screen and would never start for people who never open chat. The
+  board client renews its token in `beforeConnect` rather than in the constructor, because the
+  CONNECT frame is the only place the fifteen-minute token is checked and a socket that drops an
+  hour later would otherwise retry with a dead token every five seconds forever.
+
+**A mutation that forgets to announce is silent**: the row is written, the response is right, every
+unit test passes, and only somebody *else's* screen is wrong. So `TaskService`, `ColumnService` and
+`RowService` each funnel their save-and-map through a private `saveAndAnnounce`, and
+`BoardEventCoverageTest` reads their source and fails the build when a save-and-map appears outside
+it - turning "somebody forgot a line" into "somebody wrote a different method call", which is a
+thing a check can see. Deletes map nothing, so they are named in that guard separately.
+
+There is deliberately **no toast** for a remote change: a card moving under somebody is worth
+showing and not worth interrupting them over, and `/activity` is the screen that answers who did it.
+
 ### Configuration and secrets
 
 `application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
