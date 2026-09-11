@@ -91,6 +91,16 @@
       "statusCompleted": "Ukończone",
       "statusOpen": "Otwarte",
       "title": "Znajdź zadanie"
+    },
+    "keyboardMove": {
+      "roleDescription": "zadanie do przeniesienia",
+      "untitled": "Zadanie bez tytułu",
+      "help": "Naciśnij spację, aby podnieść to zadanie, a następnie użyj strzałek, by wybrać kolumnę i wiersz. Naciśnij spację lub Enter, aby je upuścić, albo Escape, aby zostawić je na miejscu. Naciśnij Enter, aby otworzyć zadanie.",
+      "grabbed": "Podniesiono {{title}}. Użyj strzałek, aby wybrać komórkę, a potem spacji, aby upuścić.",
+      "over": "Nad {{column}}, {{row}}.",
+      "dropped": "Przeniesiono {{title}} do {{column}}, {{row}}.",
+      "unchanged": "{{title}} pozostało na swoim miejscu.",
+      "cancelled": "Anulowano przenoszenie. {{title}} pozostało na swoim miejscu."
     }
   },
   "notifications": {

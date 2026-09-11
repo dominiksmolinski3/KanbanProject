@@ -49,6 +49,15 @@ function contextValue(overrides = {}) {
       handleDrop: jest.fn(),
       handleDragEnd: jest.fn()
     },
+    keyboardMove: {
+      isHeld: () => false,
+      isTarget: () => false,
+      grab: jest.fn(),
+      step: jest.fn(),
+      drop: jest.fn(),
+      cancel: jest.fn(),
+      announcement: null
+    },
     ...overrides
   };
 }
@@ -162,6 +171,15 @@ describe('the board daily-focus filter', () => {
         handleDrop: jest.fn(),
         handleDragEnd: jest.fn(),
         handleTaskReorder: jest.fn()
+      },
+      keyboardMove: {
+        isHeld: () => false,
+        isTarget: () => false,
+        grab: jest.fn(),
+        step: jest.fn(),
+        drop: jest.fn(),
+        cancel: jest.fn(),
+        announcement: null
       },
       ...overrides
     };
