@@ -91,6 +91,16 @@
         "statusCompleted": "Completadas",
         "statusOpen": "Abiertas",
         "title": "Encontrar una tarea"
+      },
+      "keyboardMove": {
+        "roleDescription": "tarea movible",
+        "untitled": "Tarea sin título",
+        "help": "Pulsa Espacio para tomar esta tarea y luego usa las flechas para elegir columna y fila. Pulsa Espacio o Intro para soltarla ahí, o Escape para dejarla donde estaba. Pulsa Intro para abrir la tarea.",
+        "grabbed": "{{title}} tomada. Usa las flechas para elegir una celda y Espacio para soltarla.",
+        "over": "Sobre {{column}}, {{row}}.",
+        "dropped": "{{title}} movida a {{column}}, {{row}}.",
+        "unchanged": "{{title}} se quedó donde estaba.",
+        "cancelled": "Movimiento cancelado. {{title}} se quedó donde estaba."
       }
     },
     "notifications": {

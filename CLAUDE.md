@@ -423,6 +423,28 @@ answers with the `notifications.changedBySomeoneElse` toast and a refresh rather
 nothing was applied, so nothing is broken. New board behavior belongs here rather than in
 components.
 
+**Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
+cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
+only be dragged could not be moved by anyone without a pointer, which on a Kanban board is the
+gesture the board exists for. [keyboardMove.js](frontend/src/context/keyboardMove.js) holds the
+state machine and `KanbanContext` exposes it as `keyboardMove`, built on the same `handleMoveTask`
+`handleDrop` calls — so the toast, the resync and the activity entry cannot drift from the dragged
+path. Space picks a card up, the arrows choose a cell, Space or Enter drops it, Escape puts it back
+(the ARIA authoring-practice set, not one invented here).
+
+Three details carry it:
+
+- **Nothing reaches the server until the drop.** The pending target lives in the hook; committing on
+  each arrow press would move a card four times to cross four columns, with four toasts, four
+  refreshes and four feed rows. A drop onto the cell the card came from is not a move at all.
+- **The card does not leave its cell while it is held**, so the focused element never unmounts and
+  there is nothing to restore focus to after a cancel. The cost is that "which card am I holding"
+  and "where would it land" have to be drawn (`.keyboard-held`, `.keyboard-move-target`) and spoken
+  (a `role="status"` live region on the board) rather than being visible from the card's position.
+- **The announcement is a key and its values, never a sentence** — the activity feed's rule, for the
+  same reason: a sentence composed in JavaScript is one the other eight bundles cannot translate.
+  `Board.jsx` renders it through `t()`.
+
 Drag payloads are typed through `dataTransfer` MIME types — `application/task`, `application/column`, `application/row` — and `handleDrop` branches on which type is present, with a `taskId`/`columnId` plain-text fallback.
 
 ### Auth

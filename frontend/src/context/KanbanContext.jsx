@@ -44,6 +44,7 @@ import {
   declineInvitation,
   removeBoardMember,
 } from '../services/boardApi';
+import { useKeyboardMove } from './keyboardMove';
 
 const KanbanContext = createContext();
 
@@ -1009,6 +1010,13 @@ export function KanbanProvider({ children }) {
     setDraggedItem(null);
   };
   
+  /**
+   * The keyboard's equivalent of a drag. Built on handleMoveTask, the same call handleDrop makes,
+   * so a card moved with the keyboard takes exactly the path a dragged one does - the toast, the
+   * resync and the activity entry are not a second implementation that can drift from the first.
+   */
+  const keyboardMove = useKeyboardMove({ columns, rows, moveTask: handleMoveTask });
+
   const dragAndDrop = {
     draggedItem,
     handleDragStart,
@@ -1062,7 +1070,8 @@ export function KanbanProvider({ children }) {
     setDailyFocus: handleSetDailyFocus,
     dailyFocusOnly,
     setDailyFocusOnly,
-    dragAndDrop
+    dragAndDrop,
+    keyboardMove
   };
   
   return <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>;

@@ -91,6 +91,16 @@
         "statusCompleted": "Completati",
         "statusOpen": "Aperti",
         "title": "Trova un task"
+      },
+      "keyboardMove": {
+        "roleDescription": "attività spostabile",
+        "untitled": "Attività senza titolo",
+        "help": "Premi Spazio per prendere questa attività, poi usa le frecce per scegliere colonna e riga. Spazio o Invio la rilascia, Esc la lascia dov'era. Invio apre l'attività.",
+        "grabbed": "{{title}} presa. Usa le frecce per scegliere una cella, poi Spazio per rilasciarla.",
+        "over": "Su {{column}}, {{row}}.",
+        "dropped": "{{title}} spostata in {{column}}, {{row}}.",
+        "unchanged": "{{title}} è rimasta dov'era.",
+        "cancelled": "Spostamento annullato. {{title}} è rimasta dov'era."
       }
     },
     "notifications": {

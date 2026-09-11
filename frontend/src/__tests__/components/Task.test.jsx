@@ -34,6 +34,15 @@ describe('Task Component', () => {
             handleDragOver: jest.fn(),
             handleDrop: jest.fn(),
             handleDragEnd: jest.fn(),
+        },
+        keyboardMove: {
+            isHeld: () => false,
+            isTarget: () => false,
+            grab: jest.fn(),
+            step: jest.fn(),
+            drop: jest.fn(),
+            cancel: jest.fn(),
+            announcement: null
         }
     };
 
