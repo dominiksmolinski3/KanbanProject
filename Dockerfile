@@ -9,7 +9,7 @@ ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
 # Stage 2: Build the backend jar with the frontend bundled in
-FROM eclipse-temurin:25-jdk-noble@sha256:534968c051301957beae735e7ba1db54d99ddecf08746d3b9d4f318cc132dbc3 AS backend-build
+FROM eclipse-temurin:25-jdk-noble@sha256:264fafc3390db78c93dc51da0109a0d66ad1fb59f7a893f12b7e3df1f15e52da AS backend-build
 WORKDIR /build
 
 # Copy the build files first so the wrapper layer survives source-only changes
@@ -25,7 +25,7 @@ COPY --from=frontend-build /frontend/dist/ ./src/main/resources/static/
 RUN ./mvnw package -Dmaven.test.skip=true
 
 # Stage 3: Run the application on a JRE, with only the jar
-FROM eclipse-temurin:25-jre-noble@sha256:b4c93a50fc67612798db73d68ca3b0ee4ebdd51736e59cca370e689b9797037e
+FROM eclipse-temurin:25-jre-noble@sha256:d120abd9d8d7dec94520ce974ece62d0e4eed8576eb00bbc84e6128307ab48ef
 WORKDIR /app
 
 RUN groupadd --system --gid 10001 appuser \
