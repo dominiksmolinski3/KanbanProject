@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.Configuration;
+import org.springdoc.webmvc.api.OpenApiWebMvcResource;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,6 +57,24 @@ class ApiPathPrefixTest {
         contextRunner.run(context -> assertThat(mappedPatterns(context.getBean(RequestMappingHandlerMapping.class)))
                 .contains("/plain/ping")
                 .doesNotContain("/api/plain/ping"));
+    }
+
+    @Test
+    @DisplayName("a library's own @RestController keeps its documented path")
+    void leavesLibraryControllersAlone() {
+        // springdoc's OpenApiWebMvcResource is a @RestController, so an unscoped predicate serves
+        // the published contract at /api/v3/api-docs - a path no generator, scanner or reader of
+        // the springdoc documentation asks for, and one that looks like the feature simply does
+        // not work. The prefix is for this application's API; a library's endpoint is not it.
+        assertThat(WebConfig.prefixedControllers().test(OpenApiWebMvcResource.class))
+                .as("the /api prefix must not move a dependency's endpoint")
+                .isFalse();
+        assertThat(WebConfig.prefixedControllers().test(ProbeRestController.class))
+                .as("...while this project's own controllers are exactly what it is for")
+                .isTrue();
+        assertThat(WebConfig.prefixedControllers().test(ProbePlainController.class))
+                .as("a plain @Controller stays out of it whatever package it is in")
+                .isFalse();
     }
 
     @Test

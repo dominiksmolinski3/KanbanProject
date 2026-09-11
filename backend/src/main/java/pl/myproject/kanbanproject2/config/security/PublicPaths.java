@@ -37,6 +37,24 @@ public final class PublicPaths {
     };
 
     /*
+     * The published contract, and the one thing here that is public because publishing it is the
+     * point rather than because a browser needs it before signing in.
+     *
+     * A contract that needs a token is not published: a generator, a linter or somebody wiring up
+     * a client reads it before they have an account, and every route it describes checks its own
+     * caller anyway - cross-tenant access answers 404 whether or not the path was guessable, so
+     * route names were never a control. What is deliberately absent is a console: the -api starter
+     * is on the classpath rather than -ui, so there is no Swagger HTML to reach at all.
+     *
+     * springdoc serves the group listing at the second pattern; both are needed, and neither
+     * carries the /api prefix, because WebConfig scopes that to this application's own package.
+     */
+    public static final String[] DOCS_ENDPOINTS = {
+            "/v3/api-docs",
+            "/v3/api-docs/**"
+    };
+
+    /*
      * Everything a browser fetches before it holds a token.
      *
      * The single-segment patterns cover the files Vite copies to the bundle root (favicon, logo);
@@ -66,6 +84,7 @@ public final class PublicPaths {
     public static boolean isPublic(String path) {
         return matchesAny(AUTH_ENDPOINTS, path)
                 || matchesAny(INFRA_ENDPOINTS, path)
+                || matchesAny(DOCS_ENDPOINTS, path)
                 || matchesAny(STATIC_ASSETS, path);
     }
 
