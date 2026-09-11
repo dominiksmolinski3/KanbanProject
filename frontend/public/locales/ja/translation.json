@@ -91,6 +91,16 @@
         "statusCompleted": "完了",
         "statusOpen": "未完了",
         "title": "タスクを探す"
+      },
+      "keyboardMove": {
+        "roleDescription": "移動できるタスク",
+        "untitled": "無題のタスク",
+        "help": "スペースキーでこのタスクを持ち上げ、矢印キーで列とレーンを選びます。スペースキーまたは Enter で置き、Escape で元の場所に戻します。Enter でタスクを開きます。",
+        "grabbed": "{{title}} を持ち上げました。矢印キーでセルを選び、スペースキーで置いてください。",
+        "over": "{{column}}、{{row}} の上です。",
+        "dropped": "{{title}} を {{column}}、{{row}} に移動しました。",
+        "unchanged": "{{title}} は元の場所のままです。",
+        "cancelled": "移動を取り消しました。{{title}} は元の場所のままです。"
       }
     },
     "notifications": {

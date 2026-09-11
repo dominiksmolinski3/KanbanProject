@@ -91,6 +91,16 @@
         "statusCompleted": "Terminées",
         "statusOpen": "Ouvertes",
         "title": "Trouver une tâche"
+      },
+      "keyboardMove": {
+        "roleDescription": "tâche déplaçable",
+        "untitled": "Tâche sans titre",
+        "help": "Appuyez sur Espace pour prendre cette tâche, puis utilisez les flèches pour choisir une colonne et une ligne. Espace ou Entrée la dépose, Échap la laisse où elle était. Entrée ouvre la tâche.",
+        "grabbed": "{{title}} prise. Utilisez les flèches pour choisir une cellule, puis Espace pour la déposer.",
+        "over": "Sur {{column}}, {{row}}.",
+        "dropped": "{{title}} déplacée vers {{column}}, {{row}}.",
+        "unchanged": "{{title}} est restée à sa place.",
+        "cancelled": "Déplacement annulé. {{title}} est restée à sa place."
       }
     },
     "notifications": {

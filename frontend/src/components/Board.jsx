@@ -24,6 +24,7 @@ function Board() {
     updateRowName,
     dailyFocusOnly,
     setDailyFocusOnly,
+    keyboardMove,
   } = useKanban();
   
   const { t } = useTranslation();
@@ -337,12 +338,15 @@ function Board() {
       dragAndDrop.handleDrop(e, column.id, row.id);
     };
     
+    const isKeyboardTarget = keyboardMove.isTarget(column.id, row.id);
+
     return (
       <td 
         key={`${row.id}-${column.id}`} 
-        className={`grid-cell ${shouldHighlight ? 'wip-exceeded-cell' : ''}`}
+        className={`grid-cell ${shouldHighlight ? 'wip-exceeded-cell' : ''} ${isKeyboardTarget ? 'keyboard-move-target' : ''}`}
         data-column-id={column.id}
         data-row-id={row.id}
+        data-keyboard-target={isKeyboardTarget ? 'true' : undefined}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
@@ -366,8 +370,28 @@ function Board() {
     );
   };
 
+  const announcement = keyboardMove.announcement;
+
   return (
     <div className="board-grid" onDragOver={onBoardDragOver}>
+      {/*
+        The two halves of moving a card without a pointer that live outside the card.
+
+        The help text is what every card points its aria-describedby at, so the keys are read out
+        once the card has focus rather than being something a person has to already know. The live
+        region is where the move is narrated: nothing about a pending target is visible to a screen
+        reader otherwise, because the card itself does not move until the drop.
+
+        The announcement arrives as a key and its values rather than as a sentence - the same rule
+        the activity feed follows, because a sentence composed in JavaScript is a sentence the
+        other eight languages cannot translate.
+      */}
+      <p id="board-keyboard-move-help" className="visually-hidden">
+        {t('board.keyboardMove.help')}
+      </p>
+      <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {announcement ? t(announcement.key, announcement.values) : ''}
+      </div>
       <div className="board-toolbar">
         <button
           type="button"
