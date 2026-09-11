@@ -5,6 +5,15 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  # A push made with the default GITHUB_TOKEN does not start a workflow run. Dependabot's
+  # auto-merge job merges with exactly that token, so the merge commits it produces reach main
+  # with no CI behind them - which is how react and react-dom ended up on different versions and
+  # the trunk's entire frontend suite stopped starting, unnoticed until it broke somebody else's
+  # pull request an hour later. The `push` trigger above is not wrong; it is simply never reached
+  # on that path. This sweep is what reaches it.
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -176,3 +185,63 @@ jobs:
     - name: Tear down the stack
       if: always()
       run: docker compose down -v
+
+  # ---------------------------------------------------------------------------------------------
+  # The half that tells somebody.
+  #
+  # A red run in the Actions tab answers whoever goes and looks; this exists for the far commoner
+  # case of nobody looking, which is the shape `MailHealthIndicator` and the dead-letter alert
+  # already have. It only fires on the scheduled sweep: a pull request that goes red already has
+  # an author staring at it, and a push that goes red was pushed by somebody.
+  #
+  # It closes the issue again when the sweep comes back green, for the reason the mail indicator
+  # windows its DOWN to a day - a status that cannot clear is one people stop reading.
+  #
+  # `needs` has to name every other job in this workflow. Nothing in YAML enforces that, and a job
+  # added later and left out of the list would fail without this one noticing, so
+  # TrunkAlarmCoverageTest reads this file and fails the build when the two disagree.
+  trunk-alarm:
+    if: always() && github.event_name == 'schedule'
+    needs: [ backend, frontend, e2e ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+    - name: Open, update or close the trunk-red issue
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+        RESULTS: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }}"
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+
+        # Anything that is not a pass is red. `skipped` is included deliberately: a job that did
+        # not run is a job that proved nothing, and reading that as green is how this whole gap
+        # came about in the first place.
+        red=false
+        for result in $RESULTS; do
+          if [ "$result" != "success" ]; then red=true; fi
+        done
+
+        # --force makes this idempotent; `gh issue create --label` fails outright on a label that
+        # does not exist yet, which would make the very first alarm the one that gets lost.
+        gh label create trunk-red --color B60205 \
+          --description "The scheduled sweep found main broken" --force >/dev/null
+
+        existing=$(gh issue list --label trunk-red --state open --limit 1 --json number \
+          --jq '.[0].number // empty')
+
+        if [ "$red" = true ]; then
+          body=$(printf 'The scheduled run of `Kanban CI` against `main` failed.\n\nbackend / frontend / e2e: `%s`\n\n%s\n' "$RESULTS" "$RUN_URL")
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Still red. $RUN_URL"
+          else
+            gh issue create --title "main is red: the scheduled trunk sweep failed" \
+              --label trunk-red --body "$body"
+          fi
+        elif [ -n "$existing" ]; then
+          gh issue comment "$existing" --body "Green again as of $RUN_URL - closing."
+          gh issue close "$existing"
+        fi
