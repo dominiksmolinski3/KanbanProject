@@ -676,3 +676,23 @@
   border-left-color: var(--accent-dark);
   box-shadow: var(--shadow-sm), inset 3px 0 0 var(--accent-light);
 }
+
+/* A card is reachable by Tab now, so it needs a focus ring that is actually visible - the default
+   one is drawn over by the card's own background in several of the card states. */
+.task:focus-visible {
+  outline: 3px solid var(--accent-color, #4a90d9);
+  outline-offset: 2px;
+}
+
+/* Held by the keyboard: the same "this one is moving" signal `.dragging` gives a pointer user,
+   without the opacity, because the card stays where it is and has to stay readable. */
+.task.keyboard-held {
+  box-shadow: 0 0 0 3px var(--accent-color, #4a90d9), 0 6px 16px rgba(0, 0, 0, 0.25);
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task.keyboard-held {
+    transition: none;
+  }
+}
