@@ -72,6 +72,7 @@ public class SecurityConfiguration {
                         // Shared with JwtAuthenticationFilter so the two lists cannot drift apart.
                         .requestMatchers(PublicPaths.AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.INFRA_ENDPOINTS).permitAll()
+                        .requestMatchers(PublicPaths.DOCS_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.STATIC_ASSETS).permitAll()
                         .anyRequest().authenticated()
                 )

@@ -139,9 +139,41 @@ Because the jar serves the bundle, Spring Security has to let the bundle through
 
 In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (SockJS) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
 
-**Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch` + `HandlerTypePredicate.forAnnotation(RestController.class)`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
+**Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix `ChatController` too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
 The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users` and `/sessions`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh. Client routes are listed once in [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java), which both `WebConfig` (forwards them to `index.html`) and `SecurityConfiguration` (permits them) read. **Adding a `<Route>` to `App.jsx` means adding it to `SpaRoutes.ALL`**, or the deep link 403s.
+
+### The published contract
+
+`springdoc-openapi` serves an OpenAPI 3 document for the whole of `/api` at **`/v3/api-docs`**, and
+that is the only thing it serves: the dependency is `springdoc-openapi-starter-webmvc-api`, not
+`-ui`, so no Swagger console is on the classpath to be exposed on a deployed origin — which is also
+the first thing `dast.yml`'s ZAP scan would flag. Point Redoc or a local Swagger UI at the JSON.
+
+Two decisions are load-bearing and neither is visible from the route:
+
+- **The document is public**, in `PublicPaths.DOCS_ENDPOINTS`. A contract that needs a token is not
+  published — a generator or somebody wiring up a client reads it before they have an account — and
+  route names were never a control here, since every route checks its own caller and a board the
+  caller cannot see answers 404 whether or not the path was guessable.
+- **Which operations need a token is read from `PublicPaths`, not written down.** No controller
+  carries a `@SecurityRequirement`; [OpenApiConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/OpenApiConfiguration.java)
+  contributes an `OpenApiCustomizer` that marks every operation whose path is not public, off the
+  same list `SecurityConfiguration` builds the chain from. The spec says what the chain does because
+  both read one list — which matters most at `/api/auth/**`, where `devices` is authenticated and
+  its seven neighbours are not. Shapes need no such help: they come from the DTO records, so a
+  record change is a contract change.
+
+**`ClientRoutesExistTest` is the guard the contract was wanted for.** It resolves every `fetch` URL
+in `frontend/src/services/` — through the endpoint constants, the one-line path helpers and the
+`onActiveBoard` wrapper — and fails the build when one names a path no `@RestController` maps.
+Neither suite can see this on its own: Jest stubs `fetch`, so a frontend test asserts a request was
+made to a string and never that anything serves it, and the backend suite asserts routes no client
+necessarily calls. It is a **subset** assertion, not an equality — a served route nothing calls is
+not a defect (`FileController` has been owned and unused for revisions). The handful of calls whose
+path the caller supplies (`reorder(endpoint, ...)`, which is one function for three routes) are
+named in `CALLER_SUPPLIED_PATHS` with the routes they stand for, so a genuinely new way of building
+a URL fails rather than joining an unasserted set.
 
 ### Backend layering
 
