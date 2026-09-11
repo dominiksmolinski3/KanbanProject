@@ -91,6 +91,16 @@
       "statusCompleted": "Erledigt",
       "statusOpen": "Offen",
       "title": "Aufgabe finden"
+    },
+    "keyboardMove": {
+      "roleDescription": "verschiebbare Aufgabe",
+      "untitled": "Aufgabe ohne Titel",
+      "help": "Drücken Sie die Leertaste, um diese Aufgabe aufzunehmen, und wählen Sie dann mit den Pfeiltasten Spalte und Zeile. Leertaste oder Eingabetaste legt sie dort ab, Escape lässt sie an ihrem Platz. Die Eingabetaste öffnet die Aufgabe.",
+      "grabbed": "{{title}} aufgenommen. Wählen Sie mit den Pfeiltasten eine Zelle und legen Sie sie mit der Leertaste ab.",
+      "over": "Über {{column}}, {{row}}.",
+      "dropped": "{{title}} nach {{column}}, {{row}} verschoben.",
+      "unchanged": "{{title}} ist an seinem Platz geblieben.",
+      "cancelled": "Verschieben abgebrochen. {{title}} ist an seinem Platz geblieben."
     }
   },
   "notifications": {

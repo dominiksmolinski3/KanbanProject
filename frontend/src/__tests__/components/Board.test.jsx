@@ -69,6 +69,16 @@ describe('Board Component', () => {
     handleTaskReorder: jest.fn()
   };
   
+  const mockKeyboardMove = {
+    isHeld: () => false,
+    isTarget: () => false,
+    grab: jest.fn(),
+    step: jest.fn(),
+    drop: jest.fn(),
+    cancel: jest.fn(),
+    announcement: null
+  };
+
   const mockContextValue = {
     columns: mockColumns,
     rows: mockRows,
@@ -79,7 +89,8 @@ describe('Board Component', () => {
     deleteColumn: jest.fn(),
     updateColumnName: jest.fn(),
     updateRowName: jest.fn(),
-    dragAndDrop: mockDragAndDrop
+    dragAndDrop: mockDragAndDrop,
+    keyboardMove: mockKeyboardMove
   };
 
   beforeEach(() => {
@@ -105,6 +116,42 @@ describe('Board Component', () => {
     });
   });
   
+  test('the keyboard instructions and the live region are on the board', () => {
+    // Every card points its aria-describedby at the help paragraph, and the move is narrated in
+    // the live region - the card does not leave its cell until the drop, so there is nothing else
+    // a screen reader could read to know where it would land.
+    const { container } = render(
+      <KanbanContext.Provider value={mockContextValue}>
+        <Board />
+      </KanbanContext.Provider>
+    );
+
+    expect(container.querySelector('#board-keyboard-move-help')).toBeInTheDocument();
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    // Visually hidden rather than display:none, which would take it out of the accessibility tree
+    // and leave the region silent.
+    expect(liveRegion).toHaveClass('visually-hidden');
+  });
+
+  test('the cell a held card would land in is marked, and only that one', () => {
+    const targeting = {
+      ...mockContextValue,
+      keyboardMove: { ...mockKeyboardMove, isTarget: (columnId, rowId) => columnId === 'col2' && rowId === 'row1' }
+    };
+
+    const { container } = render(
+      <KanbanContext.Provider value={targeting}>
+        <Board />
+      </KanbanContext.Provider>
+    );
+
+    const marked = container.querySelectorAll('.grid-cell.keyboard-move-target');
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveAttribute('data-column-id', 'col2');
+    expect(marked[0]).toHaveAttribute('data-row-id', 'row1');
+  });
+
   test('shows WIP limits correctly', () => {
     render(
       <KanbanContext.Provider value={mockContextValue}>
