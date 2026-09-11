@@ -11,7 +11,6 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -21,7 +20,6 @@ import pl.myproject.kanbanproject2.user.User;
 import java.security.Principal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -32,6 +30,9 @@ import static org.mockito.Mockito.when;
 /**
  * The simple broker does not authorise a destination, so this is the whole of what stops a
  * subscriber holding any valid token from sitting on any board's topic.
+ *
+ * <p>A refusal is a dropped frame, not an exception: throwing closes the whole session, which
+ * turns a member removed from a board into a reconnect loop and tells a caller the board is real.
  */
 @ExtendWith(MockitoExtension.class)
 class BoardSubscriptionInterceptorTest {
@@ -56,29 +57,31 @@ class BoardSubscriptionInterceptorTest {
     }
 
     @Test
-    @DisplayName("somebody else's board is refused, on the same check the REST route uses")
-    void refusesABoardTheCallerCannotSee() {
+    @DisplayName("somebody else's board is dropped, on the same check the REST route uses")
+    void dropsABoardTheCallerCannotSee() {
         when(boardService.requireVisible(any(User.class), any(Integer.class)))
                 .thenThrow(new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND));
 
-        assertThatThrownBy(() -> interceptor.preSend(subscribe("/topic/boards/9", authenticated()), CHANNEL))
-                .isInstanceOf(AccessDeniedException.class);
+        assertThat(interceptor.preSend(subscribe("/topic/boards/9", authenticated()), CHANNEL))
+                .as("the frame reached the broker, so the topic is open to any signed-in account")
+                .isNull();
     }
 
     @Test
-    @DisplayName("an unauthenticated frame is refused rather than treated as anybody")
-    void refusesAnAnonymousSubscription() {
-        assertThatThrownBy(() -> interceptor.preSend(subscribe("/topic/boards/7", null), CHANNEL))
-                .isInstanceOf(AccessDeniedException.class);
+    @DisplayName("an unauthenticated frame is dropped rather than treated as anybody")
+    void dropsAnAnonymousSubscription() {
+        assertThat(interceptor.preSend(subscribe("/topic/boards/7", null), CHANNEL)).isNull();
         verifyNoInteractions(boardService);
     }
 
     @Test
-    @DisplayName("a board destination that names no number is refused rather than ignored")
-    void refusesAMalformedBoardDestination() {
-        assertThatThrownBy(() -> interceptor.preSend(subscribe("/topic/boards/7; drop", authenticated()), CHANNEL))
-                .isInstanceOf(AccessDeniedException.class);
-        verifyNoInteractions(boardService);
+    @DisplayName("a board destination that names no number is dropped, not waved through")
+    void dropsAMalformedBoardDestination() {
+        when(boardService.requireVisible(any(User.class), any(Integer.class)))
+                .thenThrow(new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND));
+
+        assertThat(interceptor.preSend(subscribe("/topic/boards/7; drop", authenticated()), CHANNEL))
+                .isNull();
     }
 
     @Test

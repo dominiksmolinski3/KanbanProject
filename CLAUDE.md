@@ -598,11 +598,19 @@ Six decisions carry it, and none of them is visible from the destination name:
   duplicate read is made cheap by coalescing instead, which is right in both cases.
 - **A subscription is authorised, because the simple broker does not do it.** `WebSocketAuthInterceptor`
   answers whether a caller is anybody; without `BoardSubscriptionInterceptor` a subscriber holding
-  any valid token could sit on any board's topic. It refuses through `BoardService.requireVisible`,
-  so "may this caller see this board" is answered in the one place the REST routes answer it, and a
-  board that does not exist and a board that belongs to somebody else are the same refusal for the
-  same reason they are over HTTP. **Order is load-bearing**: the authentication interceptor runs
-  first, because it is what puts the principal on the session.
+  any valid token could sit on any board's topic. It asks `BoardService.requireVisible`, so "may
+  this caller see this board" is answered in the one place the REST routes answer it. **Order is
+  load-bearing**: the authentication interceptor runs first, because it is what puts the principal
+  on the session.
+- **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
+  the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
+  exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed
+  from a board while watching it would reconnect, resubscribe, be closed, and do it again every five
+  seconds — and the refusal itself tells a caller the board is real. Returning `null` from `preSend`
+  discards the frame: the connection survives with its other subscriptions intact, and a board the
+  caller may not see looks exactly like a board where nothing is happening. The cost is that a
+  misconfiguration here would look like a feature that quietly does nothing, so every drop is logged
+  at WARN and that log is the diagnosis path.
 - **The frame is sent after the commit, and that is correctness.** Published inside the transaction,
   it can reach a subscriber whose re-read then beats the commit and returns the state from *before*
   the change - leaving that client permanently stale, because it has spent its only notification.
