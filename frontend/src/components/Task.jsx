@@ -9,10 +9,11 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import '../styles/components/Task.css';
 
-function Task({ task, columnId }) {
+function Task({ task, columnId, rowId }) {
   const {
     deleteTask,
     dragAndDrop,
+    keyboardMove,
     refreshTasks,
     updateTaskName,
     updateTaskCompletion,
@@ -292,6 +293,55 @@ function Task({ task, columnId }) {
     }
   };
 
+  const heldByKeyboard = keyboardMove.isHeld(task.id);
+
+  /**
+   * The keyboard's half of drag-and-drop.
+   *
+   * HTML5 DnD has no keyboard equivalent - there is no key that begins a drag - so without this
+   * the card cannot be moved at all without a pointer. Space picks it up, the arrows choose a
+   * cell, Space or Enter drops it, Escape puts it back, which is the ARIA authoring-practice set
+   * rather than one invented here.
+   *
+   * Enter opens the task when nothing is held, because that is what a click does and the card is
+   * a button first. The keys are only bound on the card itself: anything a person is typing into
+   * - the inline title, a textarea in the panel - is a different element, so this never has to
+   * guess whether a keystroke was meant for it.
+   */
+  const onKeyDown = (e) => {
+    if (e.target !== e.currentTarget) {
+      return;
+    }
+    if (heldByKeyboard) {
+      const direction = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+      if (direction) {
+        // Or the board scrolls under the card the person is trying to place.
+        e.preventDefault();
+        keyboardMove.step(direction);
+        return;
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        keyboardMove.drop();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        keyboardMove.cancel();
+      }
+      return;
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      keyboardMove.grab(task, columnId, rowId ?? task.rowId);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setShowDetails(shown => !shown);
+    }
+  };
+
   const onDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -454,13 +504,20 @@ function Task({ task, columnId }) {
         ref={taskRef}
         id={`task-${task.id}`}
         className={`task ${isDragOver ? 'user-drag-over' : ''} 
+          ${heldByKeyboard ? 'keyboard-held' : ''} 
           ${isParentTask ? 'parent-task' : ''} 
           ${task.completed ? 'task-completed' : ''} 
           ${task.dailyFocus ? 'daily-focus' : ''} 
           ${isDeadlineExpired ? 'deadline-expired' : ''} 
           ${isDeadlineUpcoming ? 'deadline-upcoming' : ''}`}
         draggable="true"
+        tabIndex={0}
+        role="button"
+        aria-roledescription={t('board.keyboardMove.roleDescription')}
+        aria-label={task.title || t('board.keyboardMove.untitled')}
+        aria-describedby="board-keyboard-move-help"
         onClick={handleTaskClick}
+        onKeyDown={onKeyDown}
         onDragStart={onDragStartHandler}
         onDragEnd={onDragEndHandler}
         onDragOver={onDragOver}
