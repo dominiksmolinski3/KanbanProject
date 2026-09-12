@@ -11,6 +11,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -62,6 +65,38 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                /*
+                 * Spring Security already sends nosniff, X-Frame-Options and a no-store
+                 * Cache-Control by default, and the ZAP baseline sweep does not flag any of them.
+                 * What it does flag - and what has been true since the first revision of this
+                 * application - is that there is no Content-Security-Policy at all. On a monolith
+                 * that serves its own bundle, its API and its users' uploads from one origin, that
+                 * is the header worth having: everything an injected script could reach is
+                 * same-origin with the token that reaches it.
+                 *
+                 * Cross-Origin-Embedder-Policy is deliberately *not* set, and it is the one ZAP
+                 * finding here that is declined rather than fixed. `require-corp` buys cross-origin
+                 * isolation, which is worth having if you use SharedArrayBuffer or high-resolution
+                 * timers; this application uses neither, and it would break the reCAPTCHA frame,
+                 * which is served without a CORP header of its own. Turning on a control that
+                 * breaks sign-in to satisfy a Low-severity line in a scan report is the wrong
+                 * trade, and writing that down is the alternative to re-deciding it every sweep.
+                 */
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp ->
+                                csp.policyDirectives(SecurityHeaders.CONTENT_SECURITY_POLICY))
+                        .permissionsPolicyHeader(permissions ->
+                                permissions.policy(SecurityHeaders.PERMISSIONS_POLICY))
+                        .referrerPolicy(referrer ->
+                                referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        // Nothing outside this deployment embeds its pages or its assets, so
+                        // same-origin is the honest setting rather than a cautious one. It is also
+                        // what ZAP flagged on the bundle files themselves, not only on the shell.
+                        .crossOriginOpenerPolicy(coop ->
+                                coop.policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
+                        .crossOriginResourcePolicy(corp ->
+                                corp.policy(CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_ORIGIN))
+                )
                 .sessionManagement(c -> c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(authorize -> authorize
