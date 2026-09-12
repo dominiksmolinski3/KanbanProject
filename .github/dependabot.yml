@@ -30,6 +30,17 @@ updates:
 
   # Left ungrouped on purpose: a grouped PR bundling a patch and a major update
   # would carry one update-type, which is what the auto-merge workflow keys on.
+  #
+  # With one exception, and it is an exception the trunk paid for. `react-dom` compares its own
+  # version against `react`'s at import and refuses to load when they differ, so bumping one
+  # without the other does not degrade anything - it stops every React suite before its first
+  # assertion. That is exactly what happened: `react` was auto-merged on its own, `react-dom` was
+  # left behind, and fifteen suites failed to start on `main` for an hour. Grouping them means
+  # there is no such pull request to auto-merge - they move together or they do not move.
+  #
+  # Named rather than matched by pattern, because "anything that looks like react" would sweep
+  # react-router-dom, react-toastify and react-i18next in with them and recreate the bundling
+  # problem the comment above avoids everywhere else.
   - package-ecosystem: npm
     directory: /frontend
     schedule:
@@ -37,6 +48,11 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
 
   - package-ecosystem: maven
     directory: /backend
