@@ -32,7 +32,7 @@
         <tomcat.version>10.1.59</tomcat.version>
         <jackson-databind-nullable.version>0.2.11</jackson-databind-nullable.version>
         <azure-sdk-bom.version>1.3.8</azure-sdk-bom.version>
-        <springdoc.version>3.0.0</springdoc.version>
+        <springdoc.version>3.1.1</springdoc.version>
     </properties>
 
     <dependencyManagement>
