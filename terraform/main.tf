@@ -28,6 +28,48 @@ resource "azurerm_resource_group" "main" {
       condition     = can(regex("(^|[^a-z])${var.env}([^a-z]|$)", var.resource_group_name))
       error_message = "resource_group_name (${var.resource_group_name}) does not name env (${var.env}); the -var-file and the backend key are probably from different environments."
     }
+
+    /*
+     * MAIL-02, turned from a step somebody has to remember into a plan that refuses.
+     *
+     * With no connection string the app starts normally and drops every message, which is the
+     * right default for CI and a fresh clone and is the wrong one here. In production it means
+     * signup answers 200, the account is written unverified, the code is generated and stored, and
+     * the mail never leaves: a user who cannot log in, and an operator looking at a healthy
+     * revision with no error in it. Both variables are required because one without the other is
+     * also mail off - EmailConfiguration wants the pair and warns about exactly that.
+     *
+     * Deliberately on prod alone. dev and uat are expected to run with mail disabled, which is how
+     * the Cypress stack and every local boot work; and deliberately with no escape hatch, because
+     * a flag saying "yes, production without mail" describes a deployment whose users cannot
+     * complete signup. The cost is that the Communication Services resource has to exist before
+     * prod is first applied, and that ordering is the finding rather than a side effect of it.
+     *
+     * This is a plan-time refusal for the same reason the two Postgres preconditions are: the
+     * alternative is a container that deploys, goes healthy, and silently sends nobody anything.
+     */
+    precondition {
+      condition = var.env != "prod" || (
+        var.acs_email_connection_string != "" && var.acs_email_sender_address != ""
+      )
+      error_message = <<-EOT
+        prod would deploy with mail switched off (MAIL-02).
+
+        Set both for env = "prod":
+          acs_email_connection_string
+          acs_email_sender_address
+
+        Empty means mail off: the app starts, signup answers 200, the
+        verification code is stored, and the message is dropped. The
+        revision is healthy and there is nothing in the log to look at.
+
+        Create the Communication Services resource, link a domain (an
+        Azure-managed *.azurecomm.net subdomain needs no DNS), and put
+        both values in the gitignored prod.local.tfvars.
+
+        See terraform/README.md, section "Mail".
+      EOT
+    }
   }
 }
 

@@ -38,7 +38,16 @@ hs_err_pid14848.log
 /frontend/coverage
 secrets.yaml
 /terraform/.terraform
-terraform/dev.local.auto.tfvars
+# Per-environment local overrides: the ACS connection string, the captcha secret, the alert
+# address, a workstation's own IP for the Key Vault firewall. tf.sh passes the one matching the
+# environment you asked for. Every environment, not just dev - the old single-environment line here
+# meant doing MAIL-02 the documented way for prod staged prod's ACS connection string and captcha
+# secret for commit.
+terraform/*.local.tfvars
+# The name these used to have. Terraform auto-loads any *.auto.tfvars on every run whatever
+# -var-file is passed, so one of these leaks its values into every other environment's plan; tf.sh
+# refuses to run while one exists. Still ignored so that a leftover cannot be committed either.
+terraform/*.local.auto.tfvars
 terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
 /.claude
