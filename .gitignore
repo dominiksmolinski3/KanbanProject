@@ -48,6 +48,11 @@ terraform/*.local.tfvars
 # -var-file is passed, so one of these leaks its values into every other environment's plan; tf.sh
 # refuses to run while one exists. Still ignored so that a leftover cannot be committed either.
 terraform/*.local.auto.tfvars
+# A saved plan holds the resource values it would write, secrets among them, in the clear - and
+# `plan -out=` is the workflow tf.sh's own header documents, so the file lands here by following
+# the instructions rather than by going off them. Exactly TF-07's shape: the remedy the docs
+# prescribe is what stages the secret.
+terraform/*.tfplan
 terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
 /.claude

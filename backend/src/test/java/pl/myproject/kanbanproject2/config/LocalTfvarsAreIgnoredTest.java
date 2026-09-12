@@ -85,6 +85,22 @@ class LocalTfvarsAreIgnoredTest {
                 .contains("*.local.auto.tfvars");
     }
 
+    @Test
+    @DisplayName("a saved plan is ignored, because tf.sh's own documented workflow writes one")
+    void savedPlansAreIgnored() throws IOException {
+        assertThat(ignorePatterns())
+                .as("a saved plan holds the values it would write - the ACS connection string, the "
+                        + "captcha secret, the Postgres password - in the clear, and `plan -out=` "
+                        + "is the workflow tf.sh's own header documents, so the file appears by "
+                        + "following the instructions rather than by going off them")
+                .contains("terraform/*.tfplan");
+
+        assertThat(read(TF_SH))
+                .as("tf.sh no longer documents a saved plan, so either this guard is pointing at a "
+                        + "workflow nobody uses or the apply path has moved")
+                .contains("-out=");
+    }
+
     /** Non-blank, non-comment lines, trimmed - which is what git itself reads them as. */
     private static List<String> ignorePatterns() throws IOException {
         return Files.readAllLines(exists(GITIGNORE), StandardCharsets.UTF_8).stream()
