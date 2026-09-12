@@ -830,8 +830,18 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 - `migration-order.yml` — on PRs: fails a branch that adds a Flyway migration numbered at or below the highest version already on the base branch, forcing a stale branch to renumber before it merges (see the Flyway section). Its cheaper companion is the database-free `MigrationOrderTest`, which catches a duplicated or skipped `V<n>` after a sloppy merge.
 - `hadolint.yml` — Dockerfile lint, on push and PR.
 - `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR (comment only).
-- `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI.
-- `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`) security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP ZAP DAST run. None gate a PR.
+- `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI, and **only
+  `semver-patch` and `semver-minor`**: majors are held for a person. That rule has held every time
+  it mattered — Spring Boot 4, azurerm 5 and the jjwt 0.12 API rewrite were each opened by a human
+  and each needed source changes they got. The one bump that ever broke `main` was a *correctly
+  classified* minor: `react-dom` reads `react`'s version at import and refuses to load when they
+  differ, so the package's own semver understated its coupling. `react` and `react-dom` are a
+  Dependabot **group** now — there is no pull request that moves one alone — and
+  `frontend/src/__tests__/dependencyPairs.test.js` fails the build when the two declare different
+  versions, on the branch proposing it rather than an hour later on somebody else's PR. The full
+  read of PRs 61–121 is in [docs/dependency-backlog-audit.md](docs/dependency-backlog-audit.md);
+  its conclusion is that counting unreviewed PRs was never the useful thing to track.
+- `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`) security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP ZAP DAST run. None gate a PR. **`dast.yml` files its findings as a GitHub issue, and nobody has to read it** — the first one sat open and unread for eight days. Its standing finding is the absent security headers; see `SecurityConfiguration`.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
