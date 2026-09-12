@@ -35,18 +35,18 @@ import pg from 'pg';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const primaryAccount = JSON.parse(
-  readFileSync(path.join(__dirname, 'fixtures', 'test-account.json'), 'utf8')
-);
+const fixture = (name) =>
+  JSON.parse(readFileSync(path.join(__dirname, 'fixtures', `${name}.json`), 'utf8'));
 
-// Not read from a fixture of its own: nothing needs to log in as this account, only to select it
-// by name, so its credentials never leave this script. The name is "User One" verbatim because
-// that is the literal option text users/user-assignment.cy.js selects.
-const memberAccount = {
-  email: 'cypress.member@kanban.local',
-  username: 'User One',
-  password: 'Cypress-E2E-Member-1!',
-};
+const primaryAccount = fixture('test-account');
+
+// The second account lived inline here while nothing needed to log in as it - the assignment
+// specs only select it by name. board/live-sync.cy.js does need to act as it: somebody else has
+// to make the change that the browser then receives, and that somebody is this account calling
+// the API. So the credentials move into a fixture beside the primary account's rather than being
+// written down twice. The name is "User One" verbatim because that is the literal option text
+// users/user-assignment.cy.js selects.
+const memberAccount = fixture('member-account');
 
 const API_BASE_URL = process.env.SEED_API_BASE_URL || 'http://localhost:8080/api';
 
