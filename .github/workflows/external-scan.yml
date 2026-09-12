@@ -82,3 +82,18 @@ jobs:
             testssl-report.txt
             headers.txt
           if-no-files-found: warn
+
+  # This one already fails its own job on an unexpected open port, which is the finding it exists
+  # for - and failing a job on a weekly cron tells nobody. The alarm is what turns that into
+  # something with an assignee on it.
+  scan-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ scan ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.scan.result }}"
+      subject: the external attack-surface scan failed
+      label: scan-red
