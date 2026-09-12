@@ -72,7 +72,7 @@ variable "key_vault_allowed_ips" {
     to the backend subnet. Terraform writes secrets over the data plane, so whoever runs
     `terraform apply` from outside the VNet has to appear in this list. Record stable egress
     addresses here (a self-hosted runner, an office range); for local development set your own
-    address in the gitignored dev.local.auto.tfvars rather than committing it.
+    address in the gitignored dev.local.tfvars rather than committing it.
   EOT
   type        = list(string)
   default     = []
