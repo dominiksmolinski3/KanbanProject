@@ -850,13 +850,31 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   lockfile and to neither side of it, and found an hour later only because it broke somebody
   else's pull request. The `push` trigger is not wrong; it is simply never reached on that path.
   The sweep's `trunk-alarm` job is the half that tells somebody: it opens, comments on, or closes
-  a `trunk-red` issue, and fires **only** on the schedule, because a red pull request already has
+  a `trunk-red` issue, and fires on the sweep triggers only, because a red pull request already has
   an author watching it. It reads `skipped` as red, deliberately — a job that did not run proved
-  nothing. **The alarm is only as wide as its `needs` list**: a job added to this workflow and left
-  out of that list fails while the alarm still reports success, and nothing in YAML, in Actions or
-  in any linter notices. `TrunkAlarmCoverageTest` reads the workflow and fails the build when the
-  two disagree — the same rule-in-two-files-checked-in-one shape as `DeadLetterAlertTest`.
-- `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile, pushes the image to
+  nothing. The script itself lives in **`sweep-alarm.yml`**, a `workflow_call` workflow four sweeps
+  now share; see below.
+- **`sweep-alarm.yml`** — the alarm, once, for every workflow that runs with nobody watching it.
+  The caller passes the results it collected and a phrase for the title; `github.ref_name`,
+  `github.workflow` and the run URL come from the context, which inside a reusable workflow is the
+  *caller's*. One issue per ref per sweep — per ref because a dispatch can sweep a branch and a
+  green branch sweep must not close the issue saying `main` is broken, per sweep because a red DAST
+  run and a red image scan are two different things to go and fix. **It assigns the issue it
+  opens** (`vars.SECURITY_CONTACT`, falling back to the repository owner), best-effort so a failed
+  assignment cannot lose an issue that was successfully opened: an unassigned issue notifies
+  nobody, which is the whole failure this exists for rather than a detail of it.
+  **Three couplings hold each caller together and nothing but a test can see any of them.** The
+  alarm is only as wide as its `needs` list — a job added to a workflow and left out of that list
+  fails while the alarm still reports success. It is only as wide as the `results` string, which is
+  new with the reusable workflow: the alarm no longer reads `needs` itself, it reads a string the
+  caller builds out of it, so a job in `needs` and not in that string is the same defect one level
+  further in. And it is only as wide as the triggers its `if` names, which is how the whole alarm
+  was once unreachable except by a red cron. `SweepAlarmCoverageTest` reads all five workflows and
+  fails the build when any of the three disagree — the same rule-in-two-files-checked-in-one shape
+  as `DeadLetterAlertTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
+  workflow added and not listed there is not covered; that is stated rather than solved, because
+  guessing from the trigger block would silently cover workflows that were never meant to alarm.
+- `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds the root Dockerfile, pushes the image to
   `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
   (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
   a scan failure or a commit that's no longer the tip of `main` blocks promotion, so `latest` is
@@ -864,7 +882,18 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs the image
   and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
   later build of the same tag.
-- `codeql.yml` — CodeQL analysis of the Java backend.
+  **The sweep is here for the same reason it is on CI, and it was measured before it was added.**
+  A `GITHUB_TOKEN` merge starts no run here either, and on 12 Sep 2026 five consecutive merge
+  commits (`974b764`, `f8817f7`, `b5c8f11`, `ed9d463`, `549e343`) reached `main` with no CI, no
+  CodeQL and no CD behind any of them. On CI that gap is an untested trunk and the sweep already
+  covers it; here it is quieter and reads as the opposite of a problem — no image is built for
+  those commits at all, so `latest` stops being the tip of `main` and looks exactly like a
+  deployment nobody has made yet. A daily rebuild of the tip is what makes `latest` converge again
+  whoever did the merging, and `cd-alarm` is what says so when it cannot. The rebuild is cheap and
+  idempotent: the SHA tag is the same tag, and `promote` re-tags `latest` at the same digest.
+- `codeql.yml` — CodeQL analysis of the Java backend, on pushes, PRs and a weekly cron. The weekly
+  cron is why it is not in `SweepAlarmCoverageTest`'s list: its findings go to the Security tab,
+  which has its own notifications, and there is no job result an alarm could add anything to.
 - `migration-order.yml` — on PRs: fails a branch that adds a Flyway migration numbered at or below the highest version already on the base branch, forcing a stale branch to renumber before it merges (see the Flyway section). Its cheaper companion is the database-free `MigrationOrderTest`, which catches a duplicated or skipped `V<n>` after a sloppy merge.
 - `hadolint.yml` — Dockerfile lint, on push and PR.
 - `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR (comment only).
@@ -879,7 +908,17 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   versions, on the branch proposing it rather than an hour later on somebody else's PR. The full
   read of PRs 61–121 is in [docs/dependency-backlog-audit.md](docs/dependency-backlog-audit.md);
   its conclusion is that counting unreviewed PRs was never the useful thing to track.
-- `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`) security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP ZAP DAST run. None gate a PR. **`dast.yml` files its findings as a GitHub issue, and nobody has to read it** — the first one sat open and unread for eight days. Its standing finding is the absent security headers; see `SecurityConfiguration`.
+- `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`)
+  security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP
+  ZAP DAST run. None gate a PR, and **all three now call `sweep-alarm.yml`**, because a weekly cron
+  that goes red on a repository nobody watches is a finding that reaches nobody. `dast.yml` needs
+  both halves: `fail_action: false` means the job is green whatever ZAP finds, so the alarm there
+  only ever catches the sweep itself breaking, and the findings reach a person through the standing
+  `ZAP Scan Baseline Report` issue — **which is now assigned and labelled**, because the first one
+  sat open and unread for eight days with the absent `Content-Security-Policy` as its first
+  finding. That is the same shape as the dead-letter queue MAIL-04 was filed over, and it cost the
+  same. The assignment step is `continue-on-error`, deliberately: the scan has already run and its
+  report is already filed by the time it executes, so it must not turn a green sweep red.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI

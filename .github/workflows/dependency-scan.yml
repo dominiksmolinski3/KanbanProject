@@ -37,3 +37,18 @@ jobs:
         with:
           sarif_file: trivy-fs-results.sarif
           category: trivy-fs
+
+  # A CVE disclosed against a dependency is the output of this sweep, and until now the only place
+  # it landed was the Security tab - which has to be visited. A sweep that breaks outright landed
+  # nowhere at all: a red weekly cron on a repository nobody watches is invisible.
+  scan-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ trivy-fs-scan ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.trivy-fs-scan.result }}"
+      subject: the dependency vulnerability sweep failed
+      label: scan-red
