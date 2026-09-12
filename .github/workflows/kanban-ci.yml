@@ -191,17 +191,34 @@ jobs:
   #
   # A red run in the Actions tab answers whoever goes and looks; this exists for the far commoner
   # case of nobody looking, which is the shape `MailHealthIndicator` and the dead-letter alert
-  # already have. It only fires on the scheduled sweep: a pull request that goes red already has
-  # an author staring at it, and a push that goes red was pushed by somebody.
+  # already have. It fires on the sweep and not on a pull request or a push: a pull request that
+  # goes red already has an author staring at it, and a push that goes red was pushed by somebody.
+  #
+  # `workflow_dispatch` counts as the sweep, and that is a correction rather than a widening. The
+  # trigger was added so that confirming a fix need not wait a day for the cron - but this
+  # condition named `schedule` alone, so a manual run executed the suite and skipped this job.
+  # The whole alarm was therefore unreachable except by a cron that happened to be red, which is
+  # not a path anybody can exercise on purpose: `gh issue create`, the `issues: write` grant and
+  # the label creation below were all code nothing had ever run. An alarm that cannot be tested is
+  # an alarm nobody should believe, and a dispatch has the same subject a cron does - somebody
+  # asked for a sweep of this ref, rather than pushing a commit and watching it.
+  #
+  # What a dispatch does change is that the run may be on a branch, and the issue then has to say
+  # which ref it is about. The title carries `github.ref_name` for that reason, and the lookup
+  # below matches on that title rather than on the label alone - otherwise a sweep dispatched on a
+  # green feature branch would close the issue saying `main` is broken, which is a worse failure
+  # than the one this job exists to prevent.
   #
   # It closes the issue again when the sweep comes back green, for the reason the mail indicator
   # windows its DOWN to a day - a status that cannot clear is one people stop reading.
   #
   # `needs` has to name every other job in this workflow. Nothing in YAML enforces that, and a job
   # added later and left out of the list would fail without this one noticing, so
-  # TrunkAlarmCoverageTest reads this file and fails the build when the two disagree.
+  # TrunkAlarmCoverageTest reads this file and fails the build when the two disagree. That same
+  # test now reads the trigger block against the condition below, because the gap above was
+  # precisely that coupling: a trigger meant for this job that this job did not answer to.
   trunk-alarm:
-    if: always() && github.event_name == 'schedule'
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ backend, frontend, e2e ]
     runs-on: ubuntu-latest
     permissions:
@@ -214,6 +231,8 @@ jobs:
         GH_REPO: ${{ github.repository }}
         RESULTS: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }}"
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        REF_NAME: ${{ github.ref_name }}
+        TRIGGER: ${{ github.event_name }}
       run: |
         set -euo pipefail
 
@@ -225,21 +244,27 @@ jobs:
           if [ "$result" != "success" ]; then red=true; fi
         done
 
+        # One issue per ref, because a dispatch can sweep a branch. Sharing one issue across refs
+        # would let a green branch sweep close the issue that says main is broken.
+        title="$REF_NAME is red: the trunk sweep failed"
+
         # --force makes this idempotent; `gh issue create --label` fails outright on a label that
         # does not exist yet, which would make the very first alarm the one that gets lost.
         gh label create trunk-red --color B60205 \
-          --description "The scheduled sweep found main broken" --force >/dev/null
+          --description "A trunk sweep found this ref broken" --force >/dev/null
 
-        existing=$(gh issue list --label trunk-red --state open --limit 1 --json number \
-          --jq '.[0].number // empty')
+        # Matched on the title rather than taking the first trunk-red issue: see above. jq rather
+        # than `gh --jq` only so the title can be passed in as an argument instead of interpolated
+        # into a filter, where a ref containing a quote would break the expression.
+        existing=$(gh issue list --label trunk-red --state open --limit 100 --json number,title \
+          | jq -r --arg title "$title" 'map(select(.title == $title)) | .[0].number // empty')
 
         if [ "$red" = true ]; then
-          body=$(printf 'The scheduled run of `Kanban CI` against `main` failed.\n\nbackend / frontend / e2e: `%s`\n\n%s\n' "$RESULTS" "$RUN_URL")
+          body=$(printf 'The `%s` run of `Kanban CI` against `%s` failed.\n\nbackend / frontend / e2e: `%s`\n\n%s\n' "$TRIGGER" "$REF_NAME" "$RESULTS" "$RUN_URL")
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "Still red. $RUN_URL"
           else
-            gh issue create --title "main is red: the scheduled trunk sweep failed" \
-              --label trunk-red --body "$body"
+            gh issue create --title "$title" --label trunk-red --body "$body"
           fi
         elif [ -n "$existing" ]; then
           gh issue comment "$existing" --body "Green again as of $RUN_URL - closing."
