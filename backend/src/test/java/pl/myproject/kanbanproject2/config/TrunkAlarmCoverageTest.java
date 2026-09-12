@@ -33,6 +33,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the whole signal gone. That is the same shape as {@code DeadLetterAlertTest}'s coupling - a rule
  * living in two places, checked in one - and it is checked here for the same reason.
  *
+ * <p><b>And the alarm is only as wide as the triggers it answers to</b>, which is the second
+ * coupling here and the one that had already gone wrong. The workflow gained a
+ * {@code workflow_dispatch} trigger so that a fix need not wait a day for the cron, and the
+ * alarm's own condition named {@code schedule} alone - so a manual sweep ran the suite and
+ * skipped the job. Everything the alarm is made of was therefore unreachable on purpose: the
+ * {@code gh issue create} call, the {@code issues: write} grant and the label creation could only
+ * ever be exercised by a cron that happened to be red. Nothing in YAML notices a trigger no job
+ * answers to, so the trigger block is read against the condition here.
+ *
  * <p>Like every guard here it does not skip when the file is missing. A guard that turns itself
  * off when it cannot find what it guards leaves the build green either way, and only one of those
  * two states is honest.
@@ -61,24 +70,17 @@ class TrunkAlarmCoverageTest {
                 .containsExactlyInAnyOrderElementsOf(everythingElse);
     }
 
+    /**
+     * The triggers that are a sweep of a ref nobody is already watching, rather than a push or a
+     * pull request somebody just made and is looking at. These are the ones the alarm has to
+     * answer to; everything else in the trigger block it must leave alone.
+     */
+    private static final Set<String> NOT_A_SWEEP = Set.of("push", "pull_request");
+
     @Test
-    @DisplayName("the workflow still runs on a schedule, which is the only trigger the alarm fires on")
+    @DisplayName("the workflow still runs on a schedule, which is what reaches a GITHUB_TOKEN merge")
     void theSweepIsStillScheduled() throws IOException {
-        Map<String, Object> workflow = workflow();
-
-        /*
-         * `on` is a YAML 1.1 boolean, so the key parses as Boolean.TRUE rather than the string.
-         * Both are checked so that a future parser resolving it the other way does not turn this
-         * into a test that quietly passes over a missing section.
-         */
-        Object triggers = workflow.containsKey(Boolean.TRUE) ? workflow.get(Boolean.TRUE) : workflow.get("on");
-
-        assertThat(triggers)
-                .as("the workflow has no trigger block at all")
-                .isInstanceOf(Map.class);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> on = (Map<String, Object>) triggers;
+        Map<String, Object> on = triggers();
 
         assertThat(on)
                 .as("without the sweep, a merge made with GITHUB_TOKEN runs no CI and nothing notices")
@@ -89,16 +91,42 @@ class TrunkAlarmCoverageTest {
     }
 
     @Test
-    @DisplayName("the alarm runs whatever its dependencies did, and only on the sweep")
-    void theAlarmRunsOnFailureAndOnlyOnSchedule() throws IOException {
+    @DisplayName("the alarm runs whatever its dependencies did")
+    void theAlarmRunsOnFailure() throws IOException {
         Object condition = job(ALARM_JOB).get("if");
 
         assertThat(condition)
                 .as("a job with no `if` is skipped the moment a dependency fails, which is exactly "
                         + "the case it exists for")
                 .asString()
-                .contains("always()")
-                .contains("schedule");
+                .contains("always()");
+    }
+
+    /**
+     * The check the gap this guard was written over would have failed.
+     *
+     * <p>It is deliberately an allow-list assertion: the condition has to <em>name</em> every
+     * sweep trigger. Writing the same rule as a deny-list ({@code event_name != 'push'}) would
+     * read correctly today and silently stop covering the next trigger somebody adds, which is
+     * the whole failure being guarded against - so the form is pinned, not only the meaning.
+     */
+    @Test
+    @DisplayName("the alarm answers to every trigger that is a sweep, not just the cron")
+    void theAlarmAnswersToEverySweepTrigger() throws IOException {
+        String condition = String.valueOf(job(ALARM_JOB).get("if"));
+
+        Set<String> sweeps = new LinkedHashSet<>(triggers().keySet());
+        sweeps.removeIf(NOT_A_SWEEP::contains);
+
+        assertThat(sweeps)
+                .as("the workflow declares no trigger the alarm could fire on")
+                .isNotEmpty();
+
+        assertThat(sweeps)
+                .allSatisfy(trigger -> assertThat(condition)
+                        .as("the workflow runs on '%s' and the alarm does not fire on it, so that "
+                                + "sweep runs the suite and tells nobody the result", trigger)
+                        .contains(trigger));
     }
 
     @Test
@@ -115,6 +143,26 @@ class TrunkAlarmCoverageTest {
         Map<String, Object> grants = (Map<String, Object>) permissions;
 
         assertThat(grants).containsEntry("issues", "write");
+    }
+
+    /**
+     * The workflow's trigger block.
+     *
+     * <p>{@code on} is a YAML 1.1 boolean, so the key parses as {@link Boolean#TRUE} rather than
+     * as the string. Both are read so that a future parser resolving it the other way does not
+     * turn every check above into one that quietly passes over a missing section.
+     */
+    private static Map<String, Object> triggers() throws IOException {
+        Map<String, Object> workflow = workflow();
+        Object declared = workflow.containsKey(Boolean.TRUE) ? workflow.get(Boolean.TRUE) : workflow.get("on");
+
+        assertThat(declared)
+                .as("the workflow has no trigger block at all")
+                .isInstanceOf(Map.class);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> on = (Map<String, Object>) declared;
+        return on;
     }
 
     private static List<String> needsOf(Map<String, Object> jobs) {
