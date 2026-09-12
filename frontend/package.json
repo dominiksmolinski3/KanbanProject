@@ -24,7 +24,7 @@
     "i18next-http-backend": "^4.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-i18next": "^15.5.1",
+    "react-i18next": "^17.0.13",
     "react-router-dom": "^7.18.3",
     "react-toastify": "^11.1.0",
     "react-xarrows": "^2.0.2",
