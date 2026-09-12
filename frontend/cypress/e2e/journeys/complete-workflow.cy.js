@@ -30,11 +30,16 @@ describe('Complete User Journey', () => {
     cy.wait(300);
     cy.contains('.task', 'Implement login').click();
     cy.get('.subtask-input').type('Create UI{enter}');
-    cy.wait(300);
     cy.get('.add-subtask-btn').click();
+    // Adding a subtask reloads the whole panel (TaskDetails' `loading` state swaps it for a
+    // "Loading kanban board..." placeholder), which unmounts .subtask-input mid-flight. Waiting
+    // for the subtask to actually land, instead of a fixed cy.wait(), is what keeps the next
+    // cy.get('.subtask-input') from racing that reload and finding a stale, disabled element.
+    cy.contains('.subtask-item', 'Create UI').should('exist');
+
     cy.get('.subtask-input').type('Validate inputs{enter}');
-    cy.wait(300);
     cy.get('.add-subtask-btn').click();
+    cy.contains('.subtask-item', 'Validate inputs').should('exist');
 
     cy.get('.subtask-item').first().find('input[type="checkbox"]').check();
 
