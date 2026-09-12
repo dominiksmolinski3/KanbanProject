@@ -52,3 +52,8 @@ terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
 /.claude
 docker-compose.override.yml
+
+# Cypress writes a screenshot for every failed test and, when enabled, a video per spec. They are
+# artefacts of one run on one machine, and a failing local run should not leave a diff behind.
+frontend/cypress/screenshots/
+frontend/cypress/videos/

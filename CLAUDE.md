@@ -572,6 +572,44 @@ does it while a renewal is possible.
 
 CORS allowed origins live in one place — [AllowedOriginsProperties](backend/src/main/java/pl/myproject/kanbanproject2/config/AllowedOriginsProperties.java), a `@ConfigurationProperties` record bound from `security.cors.allowed-origins` (`SECURITY_CORS_ALLOWED_ORIGINS`, comma-separated), which both [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java) read. The two used to hold a copy each and had drifted — the WebSocket list additionally allowed the `http://` variants of `kanbanproject.pl` — which is why the list is single-sourced now, with `AllowedOriginsTest` as the guard and the stricter (HTTPS-only) set kept as the default. Terraform passes `SECURITY_CORS_ALLOWED_ORIGINS` to the container app, so a new deployment origin is a tfvars change rather than a rebuild.
 
+**The browser is told what this application may load, and the policy lives in
+[SecurityHeaders](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityHeaders.java).**
+Spring Security already sent `nosniff`, `X-Frame-Options: DENY` and a no-store `Cache-Control` by
+default; what was missing until now was a `Content-Security-Policy`, which matters here more than
+on most applications because one origin serves the bundle, the API and every uploaded attachment —
+everything an injected script could reach is same-origin with the token that reaches it. It was
+found by reading the OWASP ZAP baseline report `dast.yml` had been filing as a GitHub issue on a
+schedule and nobody had opened.
+
+Four things are worth knowing before editing the policy:
+
+- **`script-src` has no `'unsafe-inline'`, and that is the half worth anything.** `index.html`
+  carries no inline script and Vite emits the bundle as a hashed module, so `'self'` is enough. The
+  two Google hosts are reCAPTCHA — `recaptchaLoader` injects `www.google.com/recaptcha/api.js`,
+  which pulls its implementation from `www.gstatic.com`, a host no file in this repository names.
+- **`style-src` keeps `'unsafe-inline'`, deliberately.** Removing it means nonces, which means a
+  server-rendered shell this application does not have; Spring serves Vite's `index.html` as a
+  static file. Injected CSS can restyle a page, not read a token.
+- **`Cross-Origin-Embedder-Policy` is declined rather than forgotten**, and `SecurityHeadersTest`
+  asserts its absence so that adding it is a deliberate act. `require-corp` buys cross-origin
+  isolation — worth having for `SharedArrayBuffer` or high-resolution timers, neither of which this
+  application uses — and it would break the reCAPTCHA frame, which carries no CORP header of its own.
+- **Two guards, because a CSP does not go wrong on the day it is written.** It goes wrong when
+  somebody adds a font. `CspMatchesTheClientTest` reads `frontend/src` and fails when the client
+  names an `https://` host the policy does not allow — the same shape as
+  `SupportedLocalesMatchClientTest`. `cypress/e2e/security/csp.cy.js` listens for
+  `securitypolicyviolation` while a real browser loads the sign-in screen and the board, **with a
+  control test that provokes a real violation**, because a listener that cannot fire is otherwise
+  indistinguishable from a page that causes none.
+
+One thing about running the e2e suite under it: **Cypress strips six CSP directives from the
+responses it proxies** — `script-src`, `script-src-elem`, `default-src`, `form-action`, `child-src`
+and `frame-src` — so a suite that passes "with a CSP" is, by default, a suite that ran with the
+directives that matter removed. `experimentalCspAllowList` in `cypress.config.js` names all six so
+the application under test runs under the real policy. `frame-ancestors` is stripped regardless and
+cannot be named there, because the application under test genuinely does run in an iframe; that one
+is checked by reading the header instead.
+
 ### Chat
 
 STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`; `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not `useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat server on a separate host would need a configured URL rather than the page's.
