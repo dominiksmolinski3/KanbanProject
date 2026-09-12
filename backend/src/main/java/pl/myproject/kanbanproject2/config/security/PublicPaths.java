@@ -70,6 +70,25 @@ public final class PublicPaths {
             "/*.webp", "/*.woff", "/*.woff2", "/*.ttf"
     };
 
+    /*
+     * The one unauthenticated write in the application, and the only route here that is public
+     * because a caller outside this deployment has to reach it rather than because a browser needs
+     * it before signing in.
+     *
+     * Azure Event Grid posts delivery reports and holds no account here, so it cannot present a
+     * token. What it can do is call a URL somebody gave it, which is why the route carries a shared
+     * key in its query string and answers 404 without it - and why, with no key configured, it
+     * answers 404 to everything. On a fresh clone and in CI that is every request: the endpoint is
+     * off unless somebody turns it on.
+     *
+     * It is deliberately not under /api/auth. Nothing about it is a credential route, the rate
+     * limiter does not cover it, and putting it there would make the one place a reader looks for
+     * "what can be called without a token" mean two different things.
+     */
+    public static final String[] WEBHOOK_ENDPOINTS = {
+            "/api/mail/delivery-reports"
+    };
+
     private static final AntPathMatcher MATCHER = new AntPathMatcher();
 
     private PublicPaths() {
@@ -85,6 +104,7 @@ public final class PublicPaths {
         return matchesAny(AUTH_ENDPOINTS, path)
                 || matchesAny(INFRA_ENDPOINTS, path)
                 || matchesAny(DOCS_ENDPOINTS, path)
+                || matchesAny(WEBHOOK_ENDPOINTS, path)
                 || matchesAny(STATIC_ASSETS, path);
     }
 

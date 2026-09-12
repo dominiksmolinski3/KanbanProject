@@ -172,6 +172,8 @@ module "container_app" {
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
   depends_on = [module.key_vault, module.postgres, module.storage]
+
+  mail_delivery_report_key = var.mail_delivery_report_key
 }
 
 module "diagnostics" {
@@ -189,4 +191,9 @@ module "diagnostics" {
   key_vault_id                 = module.key_vault.id
   postgres_server_id           = module.postgres.postgres_server_id
   acs_communication_service_id = var.acs_communication_service_id
+
+  # The webhook's address is the app's own ingress plus the key that authenticates it, assembled in
+  # the diagnostics module so the two cannot be configured into disagreeing with each other.
+  container_app_url        = module.container_app.container_app_url
+  mail_delivery_report_key = var.mail_delivery_report_key
 }

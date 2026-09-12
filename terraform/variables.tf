@@ -241,3 +241,10 @@ variable "ingress_trusted_proxy_count" {
     error_message = "ingress_trusted_proxy_count must be a non-negative whole number."
   }
 }
+
+variable "mail_delivery_report_key" {
+  description = "Shared key in the URL Azure Event Grid calls to report what became of a sent message. Empty (the default) means the webhook is closed - MailDeliveryReportController answers 404 to everything and no Event Grid subscription is created. Set it, together with acs_communication_service_id, to have delivery outcomes written back onto email_outbox rows. Generate one: `openssl rand -hex 32`."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

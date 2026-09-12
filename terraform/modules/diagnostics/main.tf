@@ -401,3 +401,67 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
 
   depends_on = [azurerm_monitor_diagnostic_setting.acs]
 }
+
+#
+# Delivery reports, pushed to the application rather than only landing in a log table.
+#
+# The alert above tells a person when a message bounces. That is the operator's half and it is the
+# half that was built first, because it needed no application change at all. What it cannot do is
+# tell the application: `email_outbox` has said "the provider took it" since V10 and nothing more,
+# so a row for a mail that bounced an hour ago still reads exactly like a row for one that arrived.
+#
+# Event Grid closes that. Azure publishes a delivery report per recipient naming the message by the
+# id the send returned, and MailDeliveryReportController writes it back onto the row that id came
+# from. Two resources: a system topic on the Communication Services resource, which is where Azure
+# publishes from, and one subscription pointing at this deployment's own webhook.
+#
+# Three things about the gating are deliberate:
+#
+#   * It is off unless mail_delivery_report_key is set, exactly like the bounce alert is off unless
+#     acs_communication_service_id is. A key nobody has chosen would be a public write endpoint.
+#   * The URL is built here from the container app's own FQDN and that same key, rather than being
+#     a variable somebody pastes. A URL and a key configured separately are two things that can
+#     disagree, and the failure when they do is a subscription that exists and delivers nothing.
+#   * Only the delivery-report event type is included. The Communication Services topic also
+#     publishes SMS, chat and engagement-tracking events, none of which this endpoint is for, and
+#     a subscription that received them would be asking the application to ignore traffic it never
+#     needed to see.
+#
+# What this cannot do is apply before the application is deployed and serving. Event Grid performs
+# a validation handshake against the URL at creation time and refuses to create a subscription
+# whose endpoint does not answer it - so this resource is the one piece of the deployment with an
+# ordering constraint against the app itself, rather than only against other Terraform.
+#
+resource "azurerm_eventgrid_system_topic" "acs" {
+  count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+  tags  = var.tags
+
+  name                = "evgt-kanban-acs-${var.env}"
+  resource_group_name = var.resource_group_name
+  # Communication Services is a global resource and its system topic has to match it. A regional
+  # location here is rejected at apply time with a message that does not say so.
+  location           = "global"
+  source_resource_id = var.acs_communication_service_id
+  topic_type         = "Microsoft.Communication.CommunicationServices"
+}
+
+resource "azurerm_eventgrid_system_topic_event_subscription" "mail_delivery_reports" {
+  count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+
+  name                = "kanban-${var.env}-mail-delivery-reports"
+  system_topic        = azurerm_eventgrid_system_topic.acs[0].name
+  resource_group_name = var.resource_group_name
+
+  included_event_types = ["Microsoft.Communication.EmailDeliveryReportReceived"]
+
+  webhook_endpoint {
+    url = "${var.container_app_url}/api/mail/delivery-reports?key=${var.mail_delivery_report_key}"
+  }
+
+  # Event Grid's own retry, which is why the endpoint answers 2xx to a report it cannot place: a
+  # non-2xx here buys the same report delivered again on this schedule and ignored again each time.
+  retry_policy {
+    max_delivery_attempts = 10
+    event_time_to_live    = 1440
+  }
+}

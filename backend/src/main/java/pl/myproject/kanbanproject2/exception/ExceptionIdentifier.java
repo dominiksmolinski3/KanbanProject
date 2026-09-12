@@ -177,7 +177,17 @@ public enum ExceptionIdentifier {
      * and the fix is to reload and reapply. Raised from Hibernate's optimistic lock, not thrown by
      * a service.
      */
-    CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again");
+    CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
+
+    /*
+     * The delivery-report webhook, with no key configured or the wrong key presented. One 404 for
+     * both, and 404 rather than 401, for the same reason every other "you may not see this" here is
+     * a 404: this is the only unauthenticated write in the application, so the least it can do is
+     * decline to confirm that it exists. There is nobody on the other end to help either - Event
+     * Grid does not read messages, and the person wiring up the subscription is looking at the key
+     * they pasted rather than at a status code.
+     */
+    MAIL_DELIVERY_REPORT_NOT_FOUND(NOT_FOUND, "Not found");
 
     private final HttpStatus status;
     private final String defaultMessage;

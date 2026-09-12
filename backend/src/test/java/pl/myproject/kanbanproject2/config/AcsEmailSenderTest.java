@@ -134,7 +134,8 @@ class AcsEmailSenderTest {
         senderOver(transportAnswering(202), 1)
                 .send(new EmailMessage("someone@example.test", "Account Verification", "<p>123456</p>", "123456"));
 
-        assertThat(requests).hasSize(1);
+        // The send is the first request out; the second is the operation lookup that reads the
+        // message id back, and is counted in its own test rather than here.
         Recorded posted = requests.get(0);
         assertThat(posted.method()).isEqualTo("POST");
         assertThat(posted.url()).contains("emails");
@@ -158,15 +159,49 @@ class AcsEmailSenderTest {
     }
 
     @Test
-    @DisplayName("beginSend posts before it returns, so dropping the poller drops nothing - and polls nothing either")
-    void theSendHappensWithoutPollingForIt() {
+    @DisplayName("beginSend posts before it returns - the message is gone by the time anything is polled")
+    void theSendHappensWithoutWaitingForIt() {
         // The claim AcsEmailSender rests on: activation runs inside the SyncPoller's constructor.
         // Were it lazy instead, every verification mail would be composed, handed over and never
-        // sent, and nothing else in this suite would notice. Exactly one request also says the
-        // poller is not being walked to completion on the request thread.
+        // sent, and nothing else in this suite would notice. The POST being *first* is what says
+        // so - the id lookup below could not have caused it.
         senderOver(transportAnswering(202), 1).send(message());
 
-        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).method()).isEqualTo("POST");
+        assertThat(requests.get(0).url()).contains("emails");
+    }
+
+    @Test
+    @DisplayName("the id is read with exactly one poll - not none, and not a walk to completion")
+    void theOperationIdCostsOneExtraRequest() {
+        // Two requests: the send, and one GET on the operation Azure opened for it. This number is
+        // the whole cost of being able to match a delivery report to a message, and it is asserted
+        // rather than described because the failure it guards is silent in both directions - a
+        // sender that stopped reading the id would leave every row unmatchable, and one that
+        // waited for the operation to finish would sit on the relay thread until Azure had
+        // actually delivered the mail.
+        String id = senderOver(transportAnswering(202), 1).send(message());
+
+        assertThat(requests).hasSize(2);
+        assertThat(requests.get(1).method()).isEqualTo("GET");
+        assertThat(id).isEqualTo("stub-operation-id");
+    }
+
+    @Test
+    @DisplayName("an id that cannot be read is null rather than a failed send - the message has already gone")
+    void anUnreadableIdIsNotASendFailure() {
+        // The message is with Azure before this lookup happens, so a failure here must not surface
+        // as a refusal: the relay would mark the row for retry and post the same mail twice.
+        HttpClient acceptsThenRefusesTheLookup = request -> {
+            requests.add(new Recorded(request.getHttpMethod().name(), request.getUrl().toString(), null, ""));
+            return Mono.just(response(request, "POST".equals(request.getHttpMethod().name()) ? 202 : 400));
+        };
+
+        AcsEmailSender sender = senderOver(acceptsThenRefusesTheLookup, 0);
+
+        assertThatCode(() -> assertThat(sender.send(message())).isNull())
+                .doesNotThrowAnyException();
+        assertThat(requests).hasSize(2);
     }
 
     @Test
@@ -205,7 +240,7 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("with nothing configured the sender is the disabled one, and sending is a no-op")
     void withoutCredentialsMailIsDroppedRatherThanFailing() {
-        AcsMailProperties unconfigured = new AcsMailProperties("", "", Duration.ofSeconds(10), 1);
+        AcsMailProperties unconfigured = new AcsMailProperties("", "", Duration.ofSeconds(10), 1, "");
 
         assertThat(unconfigured.isConfigured()).isFalse();
         assertThat(new EmailConfiguration().mailTransport(unconfigured)).isInstanceOf(DisabledEmailSender.class);
@@ -217,7 +252,7 @@ class AcsEmailSenderTest {
     @DisplayName("half-configured is not configured - a connection string with no sender address sends nothing")
     void aSenderAddressIsRequiredToo() {
         AcsMailProperties halfConfigured =
-                new AcsMailProperties(CONNECTION_STRING, "  ", Duration.ofSeconds(10), 1);
+                new AcsMailProperties(CONNECTION_STRING, "  ", Duration.ofSeconds(10), 1, "");
 
         assertThat(halfConfigured.isConfigured()).isFalse();
         assertThat(new EmailConfiguration().mailTransport(halfConfigured)).isInstanceOf(DisabledEmailSender.class);
@@ -237,7 +272,7 @@ class AcsEmailSenderTest {
     @DisplayName("a configured account gets the real sender, built without reaching the network to do it")
     void aConfiguredAccountGetsTheRealSender() {
         AcsMailProperties configured = new AcsMailProperties(
-                CONNECTION_STRING, "DoNotReply@stub.azurecomm.net", Duration.ofSeconds(10), 1);
+                CONNECTION_STRING, "DoNotReply@stub.azurecomm.net", Duration.ofSeconds(10), 1, "");
 
         assertThat(new EmailConfiguration().mailTransport(configured)).isInstanceOf(AcsEmailSender.class);
     }
