@@ -66,6 +66,50 @@ jobs:
           # place each run, and in the run's own artifact either way.
           fail_action: false
 
+      # The findings themselves land in a standing issue that the action rewrites in place. That
+      # issue is the whole output of this sweep and it had no assignee, so it notified nobody:
+      # #96 sat open and unread for eight days, and its first finding was that the application
+      # sent no Content-Security-Policy at all. An issue nobody is subscribed to is the same
+      # shape as the dead-letter queue MAIL-04 was filed over, and it cost the same.
+      #
+      # Best-effort on purpose: the scan has already run and its report is already filed by the
+      # time this executes, so a failure here must not turn a green sweep red.
+      - name: Make sure somebody is subscribed to the report
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CONTACT: ${{ vars.SECURITY_CONTACT || github.repository_owner }}
+        run: |
+          set -euo pipefail
+          # The action names its issue exactly this; matched on the title because the issue
+          # carries no label of its own until this step puts one on it.
+          number=$(gh issue list --state open --limit 100 --json number,title             | jq -r 'map(select(.title == "ZAP Scan Baseline Report")) | .[0].number // empty')
+          if [ -z "$number" ]; then
+            echo "::notice::no open ZAP report issue - the scan found nothing worth filing"
+            exit 0
+          fi
+          gh label create dast --color 5319E7 --description "Filed by the scheduled ZAP sweep" --force >/dev/null
+          gh issue edit "$number" --add-label dast --add-assignee "$CONTACT"
+
       - name: Stop the stack
         if: always()
         run: docker compose down -v
+
+  # `fail_action: false` above means this job is green whatever ZAP finds, so this alarm only ever
+  # catches the sweep itself breaking - the stack refusing to boot, the action failing. The
+  # findings reach a person through the standing issue instead, which is why the step above
+  # assigns it. Both halves are needed: one of them answers "the scan found something", the other
+  # answers "the scan did not run".
+  scan-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ zap-baseline ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.zap-baseline.result }}"
+      subject: the DAST sweep failed
+      label: scan-red

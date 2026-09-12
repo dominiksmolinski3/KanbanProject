@@ -212,61 +212,23 @@ jobs:
   # It closes the issue again when the sweep comes back green, for the reason the mail indicator
   # windows its DOWN to a day - a status that cannot clear is one people stop reading.
   #
-  # `needs` has to name every other job in this workflow. Nothing in YAML enforces that, and a job
-  # added later and left out of the list would fail without this one noticing, so
-  # TrunkAlarmCoverageTest reads this file and fails the build when the two disagree. That same
-  # test now reads the trigger block against the condition below, because the gap above was
-  # precisely that coupling: a trigger meant for this job that this job did not answer to.
+  # `needs` has to name every other job in this workflow, and the `results` string below has to
+  # name every job in `needs`. Nothing in YAML enforces either, and a job left out of one of the
+  # two lists fails without this one noticing, so SweepAlarmCoverageTest reads this file and fails
+  # the build when they disagree. That same test reads the trigger block against the condition
+  # below, because the first gap here was precisely that coupling: a trigger meant for this job
+  # that this job did not answer to.
+  #
+  # The script itself now lives in `sweep-alarm.yml`, because three other unattended workflows
+  # needed the same thing and four copies of one shell script is four chances to fix a bug once.
   trunk-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ backend, frontend, e2e ]
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       issues: write
-    steps:
-    - name: Open, update or close the trunk-red issue
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GH_REPO: ${{ github.repository }}
-        RESULTS: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }}"
-        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        REF_NAME: ${{ github.ref_name }}
-        TRIGGER: ${{ github.event_name }}
-      run: |
-        set -euo pipefail
-
-        # Anything that is not a pass is red. `skipped` is included deliberately: a job that did
-        # not run is a job that proved nothing, and reading that as green is how this whole gap
-        # came about in the first place.
-        red=false
-        for result in $RESULTS; do
-          if [ "$result" != "success" ]; then red=true; fi
-        done
-
-        # One issue per ref, because a dispatch can sweep a branch. Sharing one issue across refs
-        # would let a green branch sweep close the issue that says main is broken.
-        title="$REF_NAME is red: the trunk sweep failed"
-
-        # --force makes this idempotent; `gh issue create --label` fails outright on a label that
-        # does not exist yet, which would make the very first alarm the one that gets lost.
-        gh label create trunk-red --color B60205 \
-          --description "A trunk sweep found this ref broken" --force >/dev/null
-
-        # Matched on the title rather than taking the first trunk-red issue: see above. jq rather
-        # than `gh --jq` only so the title can be passed in as an argument instead of interpolated
-        # into a filter, where a ref containing a quote would break the expression.
-        existing=$(gh issue list --label trunk-red --state open --limit 100 --json number,title \
-          | jq -r --arg title "$title" 'map(select(.title == $title)) | .[0].number // empty')
-
-        if [ "$red" = true ]; then
-          body=$(printf 'The `%s` run of `Kanban CI` against `%s` failed.\n\nbackend / frontend / e2e: `%s`\n\n%s\n' "$TRIGGER" "$REF_NAME" "$RESULTS" "$RUN_URL")
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "Still red. $RUN_URL"
-          else
-            gh issue create --title "$title" --label trunk-red --body "$body"
-          fi
-        elif [ -n "$existing" ]; then
-          gh issue comment "$existing" --body "Green again as of $RUN_URL - closing."
-          gh issue close "$existing"
-        fi
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }}"
+      subject: the trunk sweep failed
+      label: trunk-red
