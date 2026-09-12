@@ -73,6 +73,7 @@ public class SecurityConfiguration {
                         .requestMatchers(PublicPaths.AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.INFRA_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.DOCS_ENDPOINTS).permitAll()
+                        .requestMatchers(PublicPaths.WEBHOOK_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.STATIC_ASSETS).permitAll()
                         .anyRequest().authenticated()
                 )

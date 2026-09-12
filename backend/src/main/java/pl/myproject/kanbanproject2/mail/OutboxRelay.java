@@ -103,12 +103,18 @@ public class OutboxRelay {
         for (OutboxEmail row : due) {
             deliver(row, now);
         }
+        // Whether any of these actually arrived is not known here and is not knowable here: the
+        // provider answers that later, out of band, and MailDeliveryReportService is what writes
+        // the answer back onto these same rows.
     }
 
     private void deliver(OutboxEmail row, Instant now) {
         try {
-            transport.send(row.asMessage());
-            row.accepted(now);
+            // What comes back is the provider's own id for the message, which is the only thing a
+            // delivery report arriving later has to match against. Null is ordinary and is stored
+            // as null: it means this row can never be matched to a report, not that the send
+            // failed.
+            row.accepted(now, transport.send(row.asMessage()));
         } catch (EmailDeliveryException refusal) {
             row.refused(reasonOf(refusal), now, FIRST_BACKOFF);
             if (row.getStatus() == OutboxStatus.FAILED) {
