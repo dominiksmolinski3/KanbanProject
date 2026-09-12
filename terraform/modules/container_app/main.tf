@@ -236,9 +236,15 @@ resource "azurerm_role_assignment" "key_vault_secrets_user" {
   principal_id         = azurerm_user_assigned_identity.main.principal_id
 }
 
+# Keyed on the assignment's id rather than ordered by `depends_on`, so the wait is recreated
+# whenever the grant is. See the note on the same pattern in modules/key_vault: `depends_on` waited
+# on the first apply and silently stopped waiting on every one after it, which is the opposite of
+# what this is for - a replaced assignment is a brand-new grant with no propagation behind it.
 resource "time_sleep" "wait_for_secrets_user" {
-  depends_on      = [azurerm_role_assignment.key_vault_secrets_user]
-  create_duration = "60s"
+  triggers = {
+    role_assignment_id = azurerm_role_assignment.key_vault_secrets_user.id
+  }
+  create_duration = var.rbac_propagation_delay
 }
 
 # Read and write the attachment blobs, and - because the application creates its own container on
@@ -246,9 +252,10 @@ resource "time_sleep" "wait_for_secrets_user" {
 # Data Reader/Writer pair for exactly that reason: creating a container is a container-level
 # operation that Writer does not carry.
 #
-# This role is also what makes a download link possible at all. A user delegation SAS is signed with
-# a key the service will only issue to an identity that could read the blob itself, which is what
-# lets the storage account keep shared_access_key_enabled = false.
+# It is also the only way the application reaches the blobs at all: shared_access_key_enabled is
+# false, so there is no account key and no connection string to build one from. The earlier version
+# of this comment described a user delegation SAS handed to the browser; that design was reversed
+# when the account was closed to the internet, and the bytes are proxied through the app now.
 resource "azurerm_role_assignment" "storage_blob_contributor" {
   scope                = var.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
@@ -256,8 +263,10 @@ resource "azurerm_role_assignment" "storage_blob_contributor" {
 }
 
 resource "time_sleep" "wait_for_blob_contributor" {
-  depends_on      = [azurerm_role_assignment.storage_blob_contributor]
-  create_duration = "60s"
+  triggers = {
+    role_assignment_id = azurerm_role_assignment.storage_blob_contributor.id
+  }
+  create_duration = var.rbac_propagation_delay
 }
 
 # outside the app needs to know it, so no one should have to type it. Same pattern the
