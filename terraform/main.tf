@@ -105,6 +105,7 @@ module "key_vault" {
   network_default_action      = var.key_vault_network_default_action
   purge_protection_enabled    = var.key_vault_purge_protection_enabled
   soft_delete_retention_days  = var.key_vault_soft_delete_retention_days
+  rbac_propagation_delay      = var.rbac_propagation_delay
   tags                        = local.tags
 }
 
@@ -153,6 +154,7 @@ module "container_app" {
   container_app_env_id             = module.vnet.container_app_env_id
   container_app_env_default_domain = module.vnet.container_app_env_default_domain
   extra_cors_origins               = var.extra_cors_origins
+  rbac_propagation_delay           = var.rbac_propagation_delay
   app_image_tag                    = var.app_image_tag
   max_replicas                     = var.max_replicas
   allowed_ingress_cidrs            = var.allowed_ingress_cidrs
