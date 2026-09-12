@@ -248,3 +248,9 @@ variable "mail_delivery_report_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "rbac_propagation_delay" {
+  description = "How long an apply waits after granting a role before using it, e.g. \"60s\" or \"3m\". Azure accepts a role assignment before it is usable at the data plane and offers nothing to wait on, so every value here is a guess; raise it if an apply on this tenant has ever failed with a 403 on a permission it had just granted itself."
+  type        = string
+  default     = "60s"
+}

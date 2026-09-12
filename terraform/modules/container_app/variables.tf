@@ -165,3 +165,9 @@ variable "mail_delivery_report_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "rbac_propagation_delay" {
+  description = "How long to wait after granting a role before using it. An RBAC assignment is accepted by ARM before it is usable at the data plane, and Terraform has no primitive that waits for the difference - so this is a guess, and the only honest thing to do about a guess is to let a slower tenant raise it without editing a module."
+  type        = string
+  default     = "60s"
+}

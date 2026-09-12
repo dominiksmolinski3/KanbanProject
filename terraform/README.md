@@ -604,8 +604,9 @@ there is nothing to drift.
 blob container** -- the application does, on first start. Creating a container is a data-plane call,
 which from Terraform would need either the account key back or a blob data role for whoever runs
 `apply`; the identity that writes the blobs can make the container it writes them into, and doing so
-is idempotent. That role assignment gets the same 60-second `time_sleep` the Key Vault one does, for
-the same reason.
+is idempotent. That role assignment gets the same `time_sleep` the Key Vault one does, for the same
+reason, and is keyed on the assignment id the same way -- see *Role assignments propagate
+asynchronously* below.
 
 Two things to know when operating it:
 
@@ -649,10 +650,26 @@ Two consequences worth knowing:
   To inspect secrets by hand (`az keyvault secret show`), assign yourself
   `Key Vault Secrets User` or `Key Vault Secrets Officer` at the vault scope.
 - **Role assignments propagate asynchronously.** Each assignment is followed by a
-  60-second `time_sleep` before anything touches a secret, because Key Vault's data
-  plane can still answer `403` on a grant Azure has already accepted. If an apply
-  fails with `Forbidden` on `azurerm_key_vault_secret` or the first Container App
-  revision fails to start, re-running `terraform apply` is usually enough.
+  `time_sleep` before anything touches a secret, because Key Vault's data plane can
+  still answer `403` on a grant Azure has already accepted. If an apply fails with
+  `Forbidden` on `azurerm_key_vault_secret` or the first Container App revision
+  fails to start, re-running `terraform apply` is usually enough.
+
+  The wait is `var.rbac_propagation_delay`, `60s` by default and settable per
+  environment -- because there is nothing here to wait *on*: Azure offers no signal
+  that a grant has reached the data plane, so the number is a guess and a slower
+  tenant should be able to raise it without editing a module.
+
+  **Each wait is keyed on the id of the assignment it waits for**, which it was not
+  originally, and the difference matters more than it looks. `depends_on` orders a
+  *create*; it does not make a resource that already exists in state create again --
+  so the original waits fired on the first apply of an environment and on no apply
+  after it. Measured on dev: all three `time_sleep` ids were timestamps from 5 Sep,
+  unchanged through every apply since. The applies that need the wait most are
+  exactly the later ones, where an assignment is *replaced* -- the vault rebuilt, the
+  identity recreated, a different operator running `apply` -- and the grant is brand
+  new while the wait is a no-op left over from months ago. Keying on the assignment
+  id recreates the wait precisely when the grant is recreated.
 
 Migrating a vault created before this change: `terraform apply` flips it from
 access-policy mode to RBAC in place. The pre-existing access policies stay recorded
