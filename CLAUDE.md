@@ -695,6 +695,21 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 ### CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now.
+  **It also runs on a daily `schedule` (and `workflow_dispatch`), which is the only trigger that
+  covers a merge.** A push made with the default `GITHUB_TOKEN` starts no workflow run, and
+  `dependabot-auto-merge.yml` merges with exactly that token — so an auto-merged dependency PR
+  reaches `main` with nothing having run the suite against the *merged* tree. That is not
+  hypothetical: it is how `react` and `react-dom` ended up on different versions with every React
+  suite failing to start — green on the Dependabot branch, because the break belongs to the merged
+  lockfile and to neither side of it, and found an hour later only because it broke somebody
+  else's pull request. The `push` trigger is not wrong; it is simply never reached on that path.
+  The sweep's `trunk-alarm` job is the half that tells somebody: it opens, comments on, or closes
+  a `trunk-red` issue, and fires **only** on the schedule, because a red pull request already has
+  an author watching it. It reads `skipped` as red, deliberately — a job that did not run proved
+  nothing. **The alarm is only as wide as its `needs` list**: a job added to this workflow and left
+  out of that list fails while the alarm still reports success, and nothing in YAML, in Actions or
+  in any linter notices. `TrunkAlarmCoverageTest` reads the workflow and fails the build when the
+  two disagree — the same rule-in-two-files-checked-in-one shape as `DeadLetterAlertTest`.
 - `kanban-cd.yml` — on pushes to `main`: builds the root Dockerfile, pushes the image to
   `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
   (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
