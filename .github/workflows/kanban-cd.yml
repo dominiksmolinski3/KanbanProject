@@ -3,6 +3,18 @@ name: Kanban CD
 on:
   push:
     branches: [ main ]
+  # The same hole `kanban-ci.yml` sweeps, and it was still open here after that one was closed: a
+  # push made with the default GITHUB_TOKEN starts no workflow run, and `dependabot-auto-merge.yml`
+  # merges with exactly that token. Measured on 12 Sep 2026 - five consecutive merge commits
+  # (974b764, f8817f7, b5c8f11, ed9d463, 549e343) reached `main` with no CI, no CodeQL and no CD
+  # behind any of them. For CI that meant an untested trunk, which the sweep there now catches.
+  # Here it means something quieter: no image was built for those commits at all, so `:latest`
+  # stopped tracking the tip of `main` and nothing said so. A daily rebuild of the tip is what
+  # makes `:latest` converge again, whoever did the merging.
+  #
+  # Half an hour after the CI sweep, so that the tree this builds has just been swept.
+  schedule:
+    - cron: '47 5 * * *'
   # Optional: Run manually from GitHub UI
   workflow_dispatch:
 
@@ -108,13 +120,25 @@ jobs:
       packages: write
 
     steps:
-    - name: Check that this commit is still the tip of main
+    # Two questions, and only the second one was ever asked. `:latest` means "the tip of the default
+    # branch", so promoting requires both that this ref *is* that branch and that this commit is
+    # still its tip. The ref half was missing, and `workflow_dispatch` has been on this workflow all
+    # along - so dispatching CD on a feature branch tagged that branch's build `:latest`, because
+    # the commit is perfectly well the tip of the ref it names. Nothing had ever done it. Adding a
+    # schedule is a reason to make sure nothing can.
+    - name: Check that this is the tip of the default branch
       id: tip
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       run: |
+        if [ "${{ github.ref_name }}" != "$DEFAULT_BRANCH" ]; then
+          echo "is_tip=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::This ran on ${{ github.ref_name }}, not $DEFAULT_BRANCH; the image was built and scanned but will not be promoted to :latest."
+          exit 0
+        fi
         tip=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" --jq .sha)
-        echo "main is at $tip, this run built ${{ github.sha }}"
+        echo "$DEFAULT_BRANCH is at $tip, this run built ${{ github.sha }}"
         if [ "$tip" = "${{ github.sha }}" ]; then
           echo "is_tip=true" >> "$GITHUB_OUTPUT"
         else
@@ -146,3 +170,19 @@ jobs:
         if [ "$tip" != "${{ github.sha }}" ]; then
           echo "::warning::main moved to $tip while this job was promoting; :latest may point at the older ${{ github.sha }} and need promoting by hand."
         fi
+
+  # A sweep has nobody watching it, which is the whole argument in `sweep-alarm.yml`. It matters
+  # more here than on CI: a red CI sweep at least leaves a red tick against `main`, while a CD
+  # sweep that fails leaves `:latest` pointing at an older commit, which looks exactly like a
+  # deployment nobody has made yet.
+  cd-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ build-and-push, promote ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.build-and-push.result }} ${{ needs.promote.result }}"
+      subject: the image sweep failed
+      label: cd-red
