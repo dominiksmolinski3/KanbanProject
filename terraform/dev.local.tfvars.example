@@ -1,5 +1,18 @@
-# Copy this file to dev.local.auto.tfvars (excluded by .gitignore) and set your current public IP.
-# It will be picked up automatically by Terraform and override variables from dev.tfvars without committing secrets.
+# Copy this file to dev.local.tfvars (excluded by .gitignore) and set your current public IP.
+# ./tf.sh passes it after dev.tfvars, so it overrides that file without committing any secrets.
+#
+# One file per environment, and the name matters: these used to be called <env>.local.auto.tfvars,
+# and Terraform loads every *.auto.tfvars in this directory on EVERY run, whatever -var-file is
+# passed. The committed var-file wins for anything it sets, so nothing looked wrong - but the
+# values below have no committed counterpart, which means a prod plan run on a machine holding this
+# file took dev's ACS connection string, dev's captcha secret, dev's alert address and a
+# developer's home IP straight into prod. Dropping `.auto.` is what makes a file for an
+# environment you are not running simply not read; tf.sh refuses to run while a `.auto.` one is
+# still lying around.
+#
+# For prod, copy this to prod.local.tfvars. acs_email_connection_string and
+# acs_email_sender_address are not optional there - a prod plan refuses with both empty, because
+# mail off in production is a signup nobody can complete (MAIL-02).
 
 # Optional: set this if Terraform cannot determine the subscription from Azure CLI.
 # subscription_id = "00000000-0000-0000-0000-000000000000"

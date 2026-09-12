@@ -115,9 +115,13 @@ Optional (Key Vault durability) - see [Key Vault durability](#key-vault-durabili
 - `key_vault_purge_protection_enabled`, `key_vault_purge_soft_delete_on_destroy`
 - `key_vault_soft_delete_retention_days`
 
-Recommended: copy `dev.local.auto.tfvars.example` to `dev.local.auto.tfvars` and fill in values for local development (auto-loaded and usually gitignored). Alternatively, use the provided `*.tfvars` files and pass with `-var-file`.
+Recommended: copy `dev.local.tfvars.example` to `dev.local.tfvars` and fill in values for local
+development. It is gitignored, and `./tf.sh dev ...` passes it after `dev.tfvars` so it overrides
+that file without committing any secrets. One per environment, named for the environment -- see
+[Local overrides, one per environment](#local-overrides-one-per-environment) for why the name is
+load-bearing.
 
-Note: the `azurerm` provider uses the active Azure CLI context by default (`use_cli = true`). If Terraform cannot determine your subscription for any reason, set `subscription_id` in `dev.local.auto.tfvars` or export `ARM_SUBSCRIPTION_ID`.
+Note: the `azurerm` provider uses the active Azure CLI context by default (`use_cli = true`). If Terraform cannot determine your subscription for any reason, set `subscription_id` in `dev.local.tfvars` or export `ARM_SUBSCRIPTION_ID`.
 
 ## Deployment
 
@@ -153,7 +157,7 @@ terraform apply -var-file "prod.tfvars"
 
 </details>
 
-Note: if you see `subscription ID could not be determined`, set `subscription_id` in `dev.local.auto.tfvars` (preferred) or export `ARM_SUBSCRIPTION_ID` in your shell.
+Note: if you see `subscription ID could not be determined`, set `subscription_id` in `dev.local.tfvars` (preferred) or export `ARM_SUBSCRIPTION_ID` in your shell.
 
 ## CI/CD
 The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds and pushes the Docker image to GitHub Container Registry (public). The Container App pulls the public image without authentication. The Container App's managed identity is granted the `Key Vault Secrets User` role to read application secrets from Key Vault -- see [Key Vault authorization](#key-vault-authorization) for the full access model.
@@ -275,6 +279,67 @@ control that actually matters is who can read it. Treat `Storage Blob Data Reade
 the state container as equivalent to full production credential access, and grant it
 accordingly. The account's own hardening is applied in [Setup](#setup) step 2.
 
+### Local overrides, one per environment
+
+Anything that must not be committed -- the ACS connection string, the captcha secret, the alert
+address, a workstation's own IP for the Key Vault firewall -- goes in `<env>.local.tfvars`, which is
+gitignored. `./tf.sh <env> ...` passes it *after* the committed `<env>.tfvars`, so it overrides that
+file, and a file belonging to an environment you are not running is simply not read.
+
+**The name is load-bearing, and it used not to be.** These files were called
+`<env>.local.auto.tfvars`, and Terraform loads every `*.auto.tfvars` in the working directory on
+every run, whatever `-var-file` is passed. `tf.sh` exists to stop one environment's variables
+reaching another environment's state, and that channel went straight through it.
+
+It was invisible because the committed var-file wins for everything it sets: `env`, the SKUs, the
+retention days all came out right. What `prod.tfvars` does not set is exactly the secret-bearing
+list, because those have no committed value -- so a `prod` plan run on a workstation holding
+`dev.local.auto.tfvars` took **dev's ACS connection string into the prod Key Vault secret, dev's
+captcha secret with it, dev's alert address onto the prod alerts, and a developer's home IP onto the
+prod vault firewall**. Measured rather than reasoned: with a var-file setting `env` and an auto file
+setting both `env` and a second variable, `terraform console` answers the var-file's `env` and the
+auto file's second variable.
+
+Dropping `.auto.` is the whole fix. `tf.sh` refuses to run while any `*.local.auto.tfvars` still
+exists rather than loading it alongside, because a file Terraform picks up by itself is the thing
+being removed:
+
+```
+$ ./tf.sh dev plan
+error: Terraform auto-loads these on every run, whatever environment you asked for:
+  ./dev.local.auto.tfvars
+rename each to <env>.local.tfvars (drop the '.auto.'); this script passes the one that matches.
+```
+
+### Mail
+
+Terraform writes the `ACS-EMAIL-CONNECTION-STRING` Key Vault secret and passes
+`ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app. It does **not**
+create the Communication Services resource or the email domain linked to it; those are made by hand
+in the portal, and an Azure-managed `*.azurecomm.net` domain needs no DNS.
+
+With both values empty the app starts and drops every message instead of refusing to boot, which is
+what lets CI and a fresh clone run without an Azure account. In production that same default is a
+signup that answers `200`, writes the account unverified, stores the verification code and sends
+nothing -- a user who cannot log in, and an operator looking at a healthy revision with no error in
+it.
+
+So **a `prod` plan refuses while either value is empty**, as a precondition on the resource group,
+next to the one that catches a state key paired with the wrong var-file:
+
+```
+prod would deploy with mail switched off (MAIL-02).
+
+acs_email_connection_string and acs_email_sender_address must both be set for env = "prod".
+```
+
+`dev` and `uat` are unaffected and are expected to run with mail off. There is no override flag, on
+purpose: a deployment that deliberately cannot send a verification code is one nobody can sign up
+to. The cost is that the Communication Services resource has to exist before `prod` is first
+applied -- which is the ordering the finding is about, not a side effect of enforcing it.
+
+Set `acs_communication_service_id` as well to get the bounce alert; empty leaves it at `count = 0`.
+
 ### Postgres sizing and availability
 
 The database SKU, storage and availability zone are per-environment variables, set
@@ -371,7 +436,7 @@ Pick one durable path per environment:
 |---|---|
 | A self-hosted runner inside the VNet | Nothing. The subnet is already allowed; leave `key_vault_allowed_ips` empty. |
 | A runner or office with a stable egress IP | Commit that address or range to the environment's `*.tfvars`. |
-| A developer workstation | Set `key_vault_allowed_ips` in the gitignored `dev.local.auto.tfvars`; find your address with `(Invoke-RestMethod https://api.ipify.org)`. Refresh it when your ISP rotates it. |
+| A developer workstation | Set `key_vault_allowed_ips` in the gitignored `dev.local.tfvars`; find your address with `(Invoke-RestMethod https://api.ipify.org)`. Refresh it when your ISP rotates it. |
 
 Keep the committed list to addresses that do not move. A workstation address belongs in
 the local override, so it never lands in the repository or in another environment's plan.
