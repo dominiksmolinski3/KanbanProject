@@ -17,6 +17,7 @@ import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final BoardSubscriptionInterceptor boardSubscriptionInterceptor;
     private final AllowedOriginsProperties allowedOrigins;
 
     @Override
@@ -34,8 +35,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.setUserDestinationPrefix("/user");
     }
 
+    /**
+     * Order is load-bearing: the authentication interceptor is what puts the principal on the
+     * session, so a subscription check running ahead of it would read every SUBSCRIBE frame as
+     * anonymous and refuse the lot.
+     */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(webSocketAuthInterceptor);
+        registration.interceptors(webSocketAuthInterceptor, boardSubscriptionInterceptor);
     }
 }

@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.layout;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -63,7 +64,7 @@ class LayoutServiceTest {
         private final ColumnRepository repository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
                 repository, new ColumnMapper(new TaskMapper()),
-                mock(TaskService.class), TENANT.boardService());
+                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Column column(int id, Board board) {
             var column = new Column();
@@ -185,7 +186,7 @@ class LayoutServiceTest {
         private final RowRepository repository = mock(RowRepository.class);
         private final TaskRepository taskRepository = mock(TaskRepository.class);
         private final RowService service = new RowService(
-                repository, new RowMapper(new TaskMapper()), taskRepository, TENANT.boardService());
+                repository, new RowMapper(new TaskMapper()), taskRepository, TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Row row(int id, Board board) {
             var row = new Row();

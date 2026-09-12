@@ -8,6 +8,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.data.repository.query.parser.PartTree;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -80,7 +82,7 @@ class BoardDataIntegrityTest {
                 tenant.boardService(),
                 Mockito.mock(DeadlineNotifier.class),
                 Mockito.mock(TaskAttachmentService.class),
-                Mockito.mock(TaskActivityRecorder.class));
+                Mockito.mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
     }
 
     @Nested

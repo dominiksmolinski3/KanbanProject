@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -24,6 +25,7 @@ public class ColumnService {
     private final ColumnMapper columnMapper;
     private final TaskService taskService;
     private final BoardService boardService;
+    private final BoardEventPublisher boardEvents;
 
     public List<ColumnDto> getAllColumns(User caller, Integer boardId) {
         var board = boardService.resolve(caller, boardId);
@@ -41,7 +43,9 @@ public class ColumnService {
         column.setPosition(request.position() != null
                 ? request.position()
                 : nextPosition(board));
-        return columnMapper.toResponseDto(columnRepository.save(column));
+        var created = columnRepository.save(column);
+        boardEvents.columnsChanged(created.getBoard());
+        return columnMapper.toResponseDto(created);
     }
 
     /**
@@ -51,6 +55,16 @@ public class ColumnService {
      * position is what the board renders in order, and two boards number their stages
      * independently.
      */
+    /**
+     * Saves a column, tells the board's other viewers, and maps it. See
+     * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
+     */
+    private ColumnDto saveAndAnnounce(Column column) {
+        var saved = columnRepository.save(column);
+        boardEvents.columnsChanged(saved.getBoard());
+        return columnMapper.apply(saved);
+    }
+
     private int nextPosition(Board board) {
         return columnRepository.findMaxPosition(board).orElse(0) + 1;
     }
@@ -67,7 +81,7 @@ public class ColumnService {
         if (columnDto.position() != null) {
             existingColumn.setPosition(columnDto.position());
         }
-        return columnMapper.apply(columnRepository.save(existingColumn));
+        return saveAndAnnounce(existingColumn);
     }
 
     /**
@@ -91,6 +105,7 @@ public class ColumnService {
         }
 
         columnRepository.delete(column);
+        boardEvents.columnsChanged(column.getBoard());
     }
 
     public ColumnDto getColumnById(User caller, Integer id) {
@@ -100,7 +115,7 @@ public class ColumnService {
     public ColumnDto updateColumnPosition(User caller, Integer id, Integer position) {
         var column = findColumn(caller, id);
         column.setPosition(position);
-        return columnMapper.apply(columnRepository.save(column));
+        return saveAndAnnounce(column);
     }
 
     /**
@@ -124,7 +139,7 @@ public class ColumnService {
         for (int position = 0; position < columns.size(); position++) {
             var column = columns.get(position);
             column.setPosition(position);
-            reordered.add(columnMapper.apply(columnRepository.save(column)));
+            reordered.add(saveAndAnnounce(column));
         }
         return reordered;
     }
