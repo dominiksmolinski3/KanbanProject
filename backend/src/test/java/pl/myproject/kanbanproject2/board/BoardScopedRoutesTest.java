@@ -80,8 +80,8 @@ class BoardScopedRoutesTest {
     }
 
     @Test
-    @DisplayName("the public routes are exactly the pre-authentication ones")
-    void onlyAuthRoutesArePublic() {
+    @DisplayName("the public routes are exactly the pre-authentication ones and the one webhook")
+    void onlyAuthAndWebhookRoutesArePublic() {
         List<String> publicRoutes = routes().stream()
                 .filter(route -> PublicPaths.isPublic(route.path()))
                 .map(Route::path)
@@ -89,10 +89,28 @@ class BoardScopedRoutesTest {
                 .sorted()
                 .toList();
 
-        // Signup, login, verify, resend and the two password-reset routes. Anything else appearing
-        // here means a board route has been made reachable without a token.
-        assertThat(publicRoutes).allMatch(path -> path.startsWith("/api/auth/"));
-        assertThat(publicRoutes).hasSize(PublicPaths.AUTH_ENDPOINTS.length);
+        /*
+         * Two groups, and the second one has to be named here rather than waved through, because
+         * this assertion is the only thing standing between "a route was deliberately made public"
+         * and "a board route lost its token check".
+         *
+         * The first group is the pre-authentication routes: signup, login, verify, resend, the two
+         * password-reset routes and the two session ones. A caller reaching those has no token yet
+         * by definition.
+         *
+         * The second is the delivery-report webhook, and it is public for the opposite reason - the
+         * caller is Azure Event Grid, which is not a person, has no account here, and never will.
+         * It is also the only unauthenticated *write* in the application, so what makes it safe is
+         * not on this list: a shared key in the URL, compared without an early exit, and a route
+         * that answers 404 to everything when no key is configured - which is its state on every
+         * fresh clone and in CI. MailDeliveryReportControllerHttpTest is where that is asserted.
+         *
+         * Anything else appearing here is a mistake.
+         */
+        assertThat(publicRoutes).allMatch(path ->
+                path.startsWith("/api/auth/") || Arrays.asList(PublicPaths.WEBHOOK_ENDPOINTS).contains(path));
+        assertThat(publicRoutes)
+                .hasSize(PublicPaths.AUTH_ENDPOINTS.length + PublicPaths.WEBHOOK_ENDPOINTS.length);
     }
 
     private static List<Route> routes() {

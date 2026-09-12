@@ -32,3 +32,16 @@ captcha_enabled = true
 captcha_secret  = ""        # reCAPTCHA server-side secret
 # app_image_tag = "latest"  # optional; defaults to "latest". Pin to a git SHA for reproducible deploys.
 alert_email = "you@example.com"
+
+# Turns on the delivery-report webhook: Azure Event Grid calls this deployment when it learns what
+# became of a message it accepted, and MailDeliveryReportService writes the answer back onto the
+# email_outbox row. Empty - the default - means the route answers 404 and no Event Grid
+# subscription is created, which is the right state until you want it.
+#
+# Generate one:  openssl rand -hex 32
+#
+# Two things to know before setting it. It needs acs_communication_service_id set as well, since
+# the subscription is created on that resource. And Event Grid validates the endpoint by calling it
+# at creation time, so the application has to be deployed and serving before this can apply - it is
+# the one resource here that depends on the app rather than only on other Terraform.
+# mail_delivery_report_key = ""

@@ -718,6 +718,54 @@ What a caller sees change: `POST /api/auth/register` no longer waits for Azure a
 reaches the caller, but only when the *row* cannot be written — a database that will not take it is
 a signup that was not going to work anyway.
 
+**`SENT` means accepted, and since `V16` a row can say what happened afterwards.** Azure answering
+`202` is acceptance; a hard bounce, a spam rejection or an address that does not exist all happen
+later and out of band, and the outbox could not see any of it. It can now: Azure publishes a
+delivery report per recipient over Event Grid, `MailDeliveryReportController` receives it at
+`POST /api/mail/delivery-reports`, and `MailDeliveryReportService` writes the outcome onto the row
+the report names. Five things carry it.
+
+- **The join key is written at the moment of acceptance, and getting it costs one extra request.**
+  `EmailSender.send` now returns the provider's id for the message and `AcsEmailSender` reads it
+  with a single `SyncPoller.poll()` — one `GET` on the operation, never a walk to completion. That
+  reverses a decision made deliberately when the transport landed ("a signup has no use for the
+  answer and every reason not to hold a request thread open for it"), and the reason is that the
+  premise expired: since the outbox, no request thread waits for a send at all. It is best-effort —
+  the message is already with Azure by the time the id is read, so an unreadable id is `null` and a
+  row that cannot be matched, never a send reported as refused.
+- **It is the only unauthenticated write in the application, and it is off by default.** Event Grid
+  holds no account here, so the URL is the credential: `app.mail.delivery-report-key`
+  (`APP_MAIL_DELIVERY_REPORT_KEY`) must appear as `?key=`, compared with `MessageDigest.isEqual`
+  rather than `equals`. Blank — the default, and the state of every fresh clone and CI run — makes
+  the route answer `404` to everything, and Terraform creates no Event Grid subscription either. A
+  wrong key is the same `404`, for the reason every other "you may not see this" here is a 404.
+  `BoardScopedRoutesTest` names it explicitly alongside the auth routes, so a board route losing its
+  token check still fails the build.
+- **The handshake is answered in the body.** Event Grid will not deliver to an endpoint until the
+  endpoint echoes a `validationCode` back, so a `200` with an empty body creates a subscription that
+  exists and silently never delivers. Past the key check the route answers 2xx to everything,
+  including a report naming a message this deployment never sent — ordinary, for a row queued before
+  `V16` or a subscription aimed at another environment — because Event Grid reads anything else as
+  "retry".
+- **Later reports win, on the provider's clock rather than on arrival.** One message produces
+  several reports and a retry can overtake what it is retrying; taking the last to arrive would let
+  `OutForDelivery` land on top of `Delivered`. `delivery_reported_at` is the comparison.
+- **`delivery_status` stores the provider's own word** — `Delivered`, `Bounced`, `Failed`,
+  `Quarantined`, `FilteredSpam`, `Suppressed` — rather than an enum of this application's invention,
+  and an unrecognised value is stored rather than refused. Which of those mean "did not arrive" is
+  written down twice, in `MailDeliveryStatuses.UNDELIVERED` and in the Log Analytics bounce alert's
+  KQL, and `BounceStatusesMatchAlertTest` fails the build when the two disagree —
+  `DeadLetterAlertTest`'s shape, on a rule that has already been wrong once (the alert's first draft
+  omitted `Bounced` itself).
+
+The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
+(`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module
+builds from the container app's own FQDN plus that key — so the address and the credential cannot be
+configured into disagreeing. It needs both `acs_communication_service_id` and
+`mail_delivery_report_key`, and it is **the one resource here with an ordering constraint against
+the application rather than against other Terraform**: Event Grid validates the endpoint by calling
+it at creation time, so the app has to be deployed and serving before this can apply.
+
 **Attachment storage takes one of two ways in, never both.** `app.storage.endpoint` with no key is production — a managed identity against an account with shared-key access off — and `app.storage.connection-string` is a local Azurite container. Neither set turns attachments off rather than failing to boot. `AZURE_STORAGE_IDENTITY_CLIENT_ID` is read as a property rather than left to the SDK's own `AZURE_CLIENT_ID`, because a variable Terraform passes and nothing in this repo binds is one `ConfigurationTest` reports as dead configuration — and it would be right to.
 
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.

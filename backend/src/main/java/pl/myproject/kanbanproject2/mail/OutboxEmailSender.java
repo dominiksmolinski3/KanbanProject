@@ -54,8 +54,13 @@ public class OutboxEmailSender implements EmailSender {
         this.clock = clock;
     }
 
+    /**
+     * @return always {@code null}. This is the queue rather than a transport: no provider has seen
+     *     the message yet, so there is no provider id to report. The id arrives when
+     *     {@link OutboxRelay} posts the row, and is written onto that row then.
+     */
     @Override
-    public void send(EmailMessage message) {
+    public String send(EmailMessage message) {
         Instant now = clock.instant();
         try {
             OutboxEmail queued = outbox.save(OutboxEmail.queueing(message, now));
@@ -63,5 +68,6 @@ public class OutboxEmailSender implements EmailSender {
         } catch (DataAccessException failure) {
             throw new EmailDeliveryException("the message could not be written to the outbox", failure);
         }
+        return null;
     }
 }

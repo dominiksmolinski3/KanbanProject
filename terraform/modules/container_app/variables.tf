@@ -158,3 +158,10 @@ variable "storage_blob_endpoint" {
   description = "Blob service endpoint the app stores task attachments in, e.g. \"https://stkanbanprod123456.blob.core.windows.net/\". Not a secret: it is reached with a token, and the account allows no anonymous access."
   type        = string
 }
+
+variable "mail_delivery_report_key" {
+  description = "Shared key the delivery-report webhook requires in its URL. Empty (the default) leaves the route answering 404 to everything, which is the correct state for any environment that has not deliberately turned it on."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
