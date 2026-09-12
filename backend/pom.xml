@@ -432,6 +432,28 @@
                                   new package otherwise lands on the 0.15 catch-all and hides
                                   there, which is the failure the ratchet has already had once.
                                 -->
+                                <!--
+                                  board.event arrives with the live-sync branch. It needs a rule of
+                                  its own for the reason board.invitation did: a new package with no
+                                  rule lands on the 0.15 catch-all and hides there, which is a
+                                  failure this ratchet has already had once. 0.85 rather than a
+                                  shade under where it measures - the package is three files, and a
+                                  tight floor on a package that small is a tripwire rather than a
+                                  gate.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.board.event</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -608,6 +630,14 @@
                                         </limit>
                                     </limits>
                                 </rule>
+                                <!--
+                                  config/websocket has been the lowest row in the report for nine
+                                  revisions at 27.8 over 72 lines. BoardSubscriptionInterceptor and
+                                  its suite take it to 48.0 over 100 - the floor moves to 0.40 and
+                                  not to a shade under, because half the package is still the two
+                                  configuration classes and the event listener, none of which has a
+                                  test and all of which a refactor moves lines around in.
+                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -617,7 +647,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.25</minimum>
+                                            <minimum>0.40</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

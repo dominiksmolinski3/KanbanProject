@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -45,8 +45,17 @@ import {
   removeBoardMember,
 } from '../services/boardApi';
 import { useKeyboardMove } from './keyboardMove';
+import BoardEvents from '../services/boardEvents';
 
 const KanbanContext = createContext();
+
+/**
+ * How long a burst of board events is collected before one re-read answers all of them.
+ *
+ * Long enough that a drag - which is one gesture and several frames - costs one fetch;
+ * short enough that a change still looks immediate to somebody watching it happen.
+ */
+const LIVE_REFRESH_WINDOW_MS = 250;
 
 export function KanbanProvider({ children }) {
   const [columns, setColumns] = useState([]);
@@ -144,6 +153,7 @@ export function KanbanProvider({ children }) {
     
     loadData();
   }, [activeBoardId]);
+
 
   const activeBoard = boards.find(board => board.id === activeBoardId) || null;
 
@@ -497,6 +507,65 @@ export function KanbanProvider({ children }) {
       setLoading(false);
     }
   };
+
+  /**
+   * Somebody else's change, applied here without them having to say so.
+   *
+   * Before this, a board was live for whoever was touching it and a snapshot for everybody else:
+   * two people on one board saw each other's work only when one of them reloaded. The server now
+   * announces the change on a topic per board, and what arrives is a kind, not the thing that
+   * changed - so this re-reads through the same calls the rest of this file uses, and there is no
+   * second way for board state to get in.
+   *
+   * **Coalesced, because the frames are not one per user gesture.** Dragging a card renumbers the
+   * cell it landed in and re-reads its own board anyway; without a short window here, the
+   * originator would fetch twice for its own drag and a board with three people on it would spend
+   * its time re-reading. One timer per burst is what makes the duplicate read cheap enough not to
+   * be worth filtering out by actor - which cannot be done correctly anyway, since the same
+   * account in a second tab is a different screen that does need the event.
+   *
+   * No toast. A card that moves under somebody is worth showing and not worth interrupting them
+   * over, and `/activity` is the screen that answers who did it.
+   */
+  const liveRefresh = useRef(null);
+  liveRefresh.current = { refreshTasks, refreshBoard };
+
+  useEffect(() => {
+    if (activeBoardId === null) {
+      return undefined;
+    }
+
+    const events = new BoardEvents();
+    let pending = null;
+    let wanted = null;
+
+    events.watch(activeBoardId, ({ type }) => {
+      // COLUMNS and ROWS both take the wider read: deleting a column takes its cards with it, so
+      // a layout change is a task change as well and refreshBoard is the call that covers both.
+      wanted = wanted === 'board' || type !== 'TASKS' ? 'board' : 'tasks';
+      if (pending) {
+        return;
+      }
+      pending = setTimeout(() => {
+        const read = wanted;
+        pending = null;
+        wanted = null;
+        const handlers = liveRefresh.current;
+        if (read === 'board') {
+          handlers.refreshBoard();
+        } else {
+          handlers.refreshTasks();
+        }
+      }, LIVE_REFRESH_WINDOW_MS);
+    });
+
+    return () => {
+      if (pending) {
+        clearTimeout(pending);
+      }
+      events.stop();
+    };
+  }, [activeBoardId]);
   
   const handleAddColumn = async (name, wipLimit) => {
     try {

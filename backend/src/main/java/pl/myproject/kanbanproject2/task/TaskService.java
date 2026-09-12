@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -56,6 +57,7 @@ public class TaskService {
     private final DeadlineNotifier deadlineNotifier;
     private final TaskAttachmentService attachmentService;
     private final TaskActivityRecorder activityRecorder;
+    private final BoardEventPublisher boardEvents;
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
@@ -80,6 +82,7 @@ public class TaskService {
             saveTaskColumnHistory(savedTask, savedTask.getColumn());
         }
         activityRecorder.created(caller, savedTask);
+        boardEvents.tasksChanged(savedTask.getBoard());
         return taskMapper.apply(savedTask);
     }
 
@@ -167,6 +170,22 @@ public class TaskService {
      * task in neither still has to be numbered, and without the board every such task in the
      * deployment would be drawing from one shared sequence.
      */
+    /**
+     * Saves a task, tells the board's other viewers, and maps it.
+     *
+     * <p>Every mutation here returns through this rather than mapping the repository's own
+     * return value, so "a change nobody else is told about" stops being a line somebody can
+     * forget to write and becomes a different method call, which {@code BoardEventCoverageTest}
+     * fails the build over. A forgotten announcement
+     * is invisible to every other test here: the mutation works, its own response is right, and
+     * the only symptom is somebody else's screen staying wrong until they reload it.
+     */
+    private TaskDto saveAndAnnounce(Task task) {
+        var saved = taskRepository.save(task);
+        boardEvents.tasksChanged(saved.getBoard());
+        return taskMapper.apply(saved);
+    }
+
     private int nextPositionIn(Board board, Column column, Row row) {
         return taskRepository.findMaxPosition(
                 board.getId(),
@@ -205,6 +224,7 @@ public class TaskService {
         }
 
         taskRepository.delete(task);
+        boardEvents.tasksChanged(task.getBoard());
     }
 
     public TaskDto getTaskById(User caller, Integer id) {
@@ -256,7 +276,7 @@ public class TaskService {
             applyDeadline(existingTask, request.deadline().get());
         }
 
-        return taskMapper.apply(taskRepository.save(existingTask));
+        return saveAndAnnounce(existingTask);
     }
 
     /**
@@ -364,7 +384,7 @@ public class TaskService {
 
         userRepository.save(user);
         activityRecorder.assigned(caller, task, user);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     /**
@@ -382,13 +402,13 @@ public class TaskService {
 
         userRepository.save(user);
         activityRecorder.unassigned(caller, task, user);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     public TaskDto updateTaskPosition(User caller, Integer id, Integer position) {
         var task = findTask(caller, id);
         task.setPosition(position);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     /**
@@ -414,7 +434,7 @@ public class TaskService {
         for (int position = 0; position < tasks.size(); position++) {
             var task = tasks.get(position);
             task.setPosition(position);
-            reordered.add(taskMapper.apply(taskRepository.save(task)));
+            reordered.add(saveAndAnnounce(task));
         }
         return reordered;
     }
@@ -456,14 +476,14 @@ public class TaskService {
             task.setLabels(new HashSet<>());
         }
         task.getLabels().add(label);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     public TaskDto removeLabelFromTask(User caller, Integer taskId, String label) {
         var task = findTask(caller, taskId);
         if (task.getLabels() != null) {
             task.getLabels().remove(label);
-            return taskMapper.apply(taskRepository.save(task));
+            return saveAndAnnounce(task);
         }
         return taskMapper.apply(task);
     }
@@ -471,7 +491,7 @@ public class TaskService {
     public TaskDto updateTaskLabels(User caller, Integer taskId, Set<String> labels) {
         var task = findTask(caller, taskId);
         task.setLabels(labels);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     public Set<String> getAllLabels(User caller, Integer boardId) {
@@ -501,7 +521,7 @@ public class TaskService {
         parentTask.getChildTasks().add(childTask);
 
         taskRepository.save(parentTask);
-        return taskMapper.apply(taskRepository.save(childTask));
+        return saveAndAnnounce(childTask);
     }
 
     public TaskDto removeParentTask(User caller, Integer childTaskId) {
@@ -512,7 +532,7 @@ public class TaskService {
             childTask.setParentTask(null);
             taskRepository.save(parentTask);
         }
-        return taskMapper.apply(taskRepository.save(childTask));
+        return saveAndAnnounce(childTask);
     }
 
     public List<TaskDto> getChildTasks(User caller, Integer taskId) {
@@ -580,7 +600,7 @@ public class TaskService {
         if (changed) {
             activityRecorder.completionChanged(caller, task, completed);
         }
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     private void updateDependentTasksCompletion(Task parentTask) {
@@ -612,7 +632,7 @@ public class TaskService {
             return taskMapper.apply(task);
         }
         task.setDailyFocus(dailyFocus);
-        return taskMapper.apply(taskRepository.save(task));
+        return saveAndAnnounce(task);
     }
 
     /**
@@ -635,6 +655,7 @@ public class TaskService {
             if (wasExpired != isExpired) {
                 task.setExpired(isExpired);
                 taskRepository.save(task);
+                boardEvents.tasksChanged(task.getBoard());
                 if (isExpired) {
                     newlyExpired.add(task);
                 }

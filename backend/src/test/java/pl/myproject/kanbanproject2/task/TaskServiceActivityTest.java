@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -78,7 +79,7 @@ class TaskServiceActivityTest {
                 tenant.boardService(),
                 mock(DeadlineNotifier.class),
                 attachmentService,
-                activityRecorder);
+                activityRecorder, mock(BoardEventPublisher.class));
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());

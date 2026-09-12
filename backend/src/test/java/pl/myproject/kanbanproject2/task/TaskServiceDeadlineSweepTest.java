@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
@@ -53,7 +54,7 @@ class TaskServiceDeadlineSweepTest {
                 mock(BoardService.class),
                 deadlineNotifier,
                 mock(TaskAttachmentService.class),
-                mock(TaskActivityRecorder.class));
+                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
     }
 
     private static Task task(LocalDateTime deadline, boolean expired) {

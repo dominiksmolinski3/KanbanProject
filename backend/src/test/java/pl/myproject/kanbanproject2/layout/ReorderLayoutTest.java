@@ -3,6 +3,7 @@ package pl.myproject.kanbanproject2.layout;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -60,7 +61,7 @@ class ReorderLayoutTest {
         private final ColumnRepository columnRepository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
                 columnRepository, new ColumnMapper(new TaskMapper()),
-                mock(TaskService.class), TENANT.boardService());
+                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Column column(int id, Board board, int position) {
             var column = new Column();
@@ -128,7 +129,7 @@ class ReorderLayoutTest {
         private final RowRepository rowRepository = mock(RowRepository.class);
         private final RowService service = new RowService(
                 rowRepository, new RowMapper(new TaskMapper()),
-                mock(TaskRepository.class), TENANT.boardService());
+                mock(TaskRepository.class), TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Row row(int id, Board board, int position) {
             var row = new Row();
