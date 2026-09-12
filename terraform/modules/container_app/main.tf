@@ -30,6 +30,7 @@ resource "azurerm_container_app" "main" {
     time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
     azurerm_key_vault_secret.acs_email_connection_string,
+    azurerm_key_vault_secret.mail_delivery_report_key,
     azurerm_key_vault_secret.captcha_secret,
     azurerm_key_vault_secret.ghcr_token,
   ]
@@ -57,6 +58,11 @@ resource "azurerm_container_app" "main" {
   secret {
     name                = "acs-email-connection-string"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "ACS-EMAIL-CONNECTION-STRING")
+    identity            = azurerm_user_assigned_identity.main.id
+  }
+  secret {
+    name                = "app-mail-delivery-report-key"
+    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "APP-MAIL-DELIVERY-REPORT-KEY")
     identity            = azurerm_user_assigned_identity.main.id
   }
   secret {
@@ -115,6 +121,10 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "ACS_EMAIL_SENDER_ADDRESS"
         value = var.acs_email_sender_address
+      }
+      env {
+        name        = "APP_MAIL_DELIVERY_REPORT_KEY"
+        secret_name = "app-mail-delivery-report-key"
       }
       env {
         name  = "CAPTCHA_ENABLED"
@@ -285,6 +295,22 @@ resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   name         = "ACS-EMAIL-CONNECTION-STRING"
   value        = var.acs_email_connection_string
   content_type = "endpoint=...;accesskey=..."
+  key_vault_id = var.key_vault_id
+}
+
+# The key in the delivery-report webhook's URL. Empty is not only allowed but is the default for
+# every environment: with no key the application's webhook answers 404 to everything and the Event
+# Grid subscription in the diagnostics module is not created either, so the one unauthenticated
+# write in this deployment does not exist unless somebody has deliberately switched it on.
+#
+# A secret rather than a plain env value because it is a credential - anyone holding it can post
+# delivery reports. What that buys is small (a wrong delivery status on a row that really was sent)
+# and it is still not a string to leave sitting in a container template.
+resource "azurerm_key_vault_secret" "mail_delivery_report_key" {
+  tags         = var.tags
+  name         = "APP-MAIL-DELIVERY-REPORT-KEY"
+  value        = var.mail_delivery_report_key
+  content_type = "webhook shared key"
   key_vault_id = var.key_vault_id
 }
 

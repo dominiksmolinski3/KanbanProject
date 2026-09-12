@@ -53,3 +53,16 @@ variable "acs_communication_service_id" {
   description = "Resource ID of the Azure Communication Services resource that carries mail (portal -> the resource -> JSON view -> id), created by hand outside Terraform - see acs_email_connection_string at the root. Empty (the default) skips both the diagnostic setting and the bounce alert below: there is no resource to point either at yet."
   default     = ""
 }
+
+variable "container_app_url" {
+  description = "Public URL of the container app ingress, used to build the delivery-report webhook address. Passed in rather than looked up so the URL and the key that authenticates it are assembled in one place."
+  type        = string
+  default     = ""
+}
+
+variable "mail_delivery_report_key" {
+  description = "Shared key in the delivery-report webhook's URL. Empty (the default) means no Event Grid subscription is created at all, which is the right state for any environment that has not deliberately turned the webhook on - it is the application's only unauthenticated write."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

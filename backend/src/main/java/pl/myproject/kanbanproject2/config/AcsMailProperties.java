@@ -41,11 +41,26 @@ public record AcsMailProperties(
          * Retries on top of the first attempt, for transient failures only - the SDK's retry
          * policy does not replay a 4xx.
          *
-         * One, because these sends still happen on the request thread: every retry is time a
-         * signup spends waiting, and at this timeout two attempts is already twenty seconds in the
-         * worst case. The number to raise once sending moves behind a queue is this one.
+         * One. This comment used to say "because these sends still happen on the request thread",
+         * which stopped being true when the outbox moved them onto the relay's scheduler: nobody
+         * is waiting any more, so the number is now simply a modest default rather than a
+         * concession to a signup's patience. Raising it is safe and has not been needed.
          */
-        @DefaultValue("1") int maxRetries) {
+        @DefaultValue("1") int maxRetries,
+
+        /*
+         * The shared secret in the delivery-report webhook's URL, or blank for no webhook at all.
+         *
+         * Event Grid has no account here and cannot hold a token, so the URL it is given is the
+         * credential. Blank - the default, and the state of every fresh clone and CI run - means
+         * MailDeliveryReportController answers 404 to everything, so the application's one
+         * unauthenticated write does not exist unless somebody deliberately turns it on.
+         *
+         * It is not part of isConfigured(): mail sends perfectly well without anyone listening for
+         * reports about it, and tying the two together would mean a deployment that wanted mail had
+         * to expose a webhook to get it.
+         */
+        String deliveryReportKey) {
 
     /** Whether there is enough here to send anything at all. */
     public boolean isConfigured() {

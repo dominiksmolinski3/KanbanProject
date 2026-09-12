@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OutboxEmailRepository extends JpaRepository<OutboxEmail, Long> {
@@ -44,4 +46,24 @@ public interface OutboxEmailRepository extends JpaRepository<OutboxEmail, Long> 
      * has run out of attempts the two are about a quarter of an hour apart.
      */
     long countByStatusAndCreatedAtGreaterThanEqual(OutboxStatus status, Instant since);
+
+    /**
+     * The row one delivery report is about, found by the id Azure gave the message.
+     *
+     * <p>The webhook's only query, and the only reason {@code provider_message_id} is written at
+     * all. {@code V16} indexes that column uniquely where it is not null, so this cannot quietly
+     * pick one of two rows claiming the same send.
+     */
+    Optional<OutboxEmail> findByProviderMessageId(String providerMessageId);
+
+    /**
+     * How many messages this deployment believes it sent and has since been told did not arrive.
+     *
+     * <p>A count rather than the rows, for the reason every other count here is a count: these
+     * bodies carry live verification codes and a health endpoint has no business loading one. It
+     * is windowed by report time rather than by creation, because the question it answers is
+     * whether mail is arriving <em>now</em> - a bounce from March says nothing about this morning.
+     */
+    long countByDeliveryStatusInAndDeliveryReportedAtGreaterThanEqual(
+            Collection<String> statuses, Instant since);
 }

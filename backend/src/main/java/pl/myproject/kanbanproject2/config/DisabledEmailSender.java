@@ -22,8 +22,11 @@ import pl.myproject.kanbanproject2.service.EmailSender;
 public class DisabledEmailSender implements EmailSender {
 
     @Override
-    public void send(EmailMessage message) {
+    public String send(EmailMessage message) {
         log.warn("Mail is not configured; a message was dropped rather than sent");
+        // No provider took it, so there is no provider id to hand back. A DROPPED row is never
+        // going to be named by a delivery report.
+        return null;
     }
 
     @Override

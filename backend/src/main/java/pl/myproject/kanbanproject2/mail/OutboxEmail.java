@@ -28,6 +28,11 @@ import java.time.Instant;
  * template <em>bug</em> cannot be replayed as it was meant to read. What is queued is what was
  * composed.
  *
+ * <p><b>{@code SENT} means accepted, and since {@code V16} the row can say more than that.</b>
+ * {@link #providerMessageId} is Azure's own id for the message, written when it is accepted, and it
+ * is what a delivery report arriving later names. Without an id there is nothing to attach the
+ * report to and "did the code reach them" stays unanswerable however much the provider knows.
+ *
  * <p><b>These rows hold live credentials.</b> A pending verification or reset row carries a code
  * that is currently redeemable, which is why nothing here is logged with its body and why the
  * relay's error path stores the provider's complaint rather than the message. The rows are not
@@ -84,6 +89,37 @@ public class OutboxEmail {
     @jakarta.persistence.Column(name = "last_error", length = 500)
     private String lastError;
 
+    /**
+     * Azure's own id for the message, written when the provider accepts it.
+     *
+     * <p>This is the join key and it is the whole reason a delivery report can say anything about
+     * a <em>message</em> rather than about an address. Null is ordinary: a {@code DROPPED} row was
+     * never given to a provider, a row queued before {@code V16} predates anybody listening, and a
+     * send whose id could not be read back is still a send.
+     */
+    @jakarta.persistence.Column(name = "provider_message_id", length = 200)
+    private String providerMessageId;
+
+    /**
+     * The provider's own word for what became of it - {@code Delivered}, {@code Bounced} and the
+     * rest - stored verbatim rather than mapped onto an enum of this application's invention.
+     *
+     * <p>Two reasons. The person reading this column is diagnosing a mail that did not arrive, and
+     * the provider's documentation and its own logs are written in the provider's vocabulary. And a
+     * status nobody here has seen before has to be storable: a provider that adds one is not a
+     * reason to throw the report away.
+     */
+    @jakarta.persistence.Column(name = "delivery_status", length = 32)
+    private String deliveryStatus;
+
+    /** When the provider says the attempt happened - not when this application heard about it. */
+    @jakarta.persistence.Column(name = "delivery_reported_at")
+    private Instant deliveryReportedAt;
+
+    /** Whatever the provider said about it, when it says anything. Truncated like {@link #lastError}. */
+    @jakarta.persistence.Column(name = "delivery_detail", length = 500)
+    private String deliveryDetail;
+
     protected OutboxEmail() {
     }
 
@@ -106,11 +142,35 @@ public class OutboxEmail {
         return new EmailMessage(recipient, subject, htmlBody, textBody);
     }
 
-    void accepted(Instant now) {
+    void accepted(Instant now, String providerMessageId) {
         this.status = OutboxStatus.SENT;
         this.sentAt = now;
         this.attempts++;
         this.lastError = null;
+        this.providerMessageId = providerMessageId;
+    }
+
+    /**
+     * Records what the provider says became of this message.
+     *
+     * <p><b>Later reports win, and "later" is the provider's clock rather than ours.</b> Azure
+     * reports per recipient and per attempt, so one message can produce several; they travel over
+     * a network and a retry can overtake the thing it is retrying. Taking whichever arrived last
+     * would let an {@code OutForDelivery} land on top of a {@code Delivered} and leave the row
+     * saying something that was true a second earlier and is not true now. Comparing the reported
+     * instants makes the order of arrival irrelevant, which is the only ordering promise worth
+     * making about a webhook.
+     *
+     * @return whether this report was the newer one and was kept.
+     */
+    boolean deliveryReported(String status, String detail, Instant reportedAt) {
+        if (deliveryReportedAt != null && reportedAt.isBefore(deliveryReportedAt)) {
+            return false;
+        }
+        this.deliveryStatus = truncate(status, 32);
+        this.deliveryDetail = truncate(detail, 500);
+        this.deliveryReportedAt = reportedAt;
+        return true;
     }
 
     void dropped(Instant now) {
@@ -142,7 +202,15 @@ public class OutboxEmail {
         if (reason == null) {
             return "the provider refused the message without saying why";
         }
-        return reason.length() <= 500 ? reason : reason.substring(0, 500);
+        return truncate(reason, 500);
+    }
+
+    /** Null stays null here: an absent detail is a fact, unlike an absent refusal reason. */
+    private static String truncate(String value, int limit) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= limit ? value : value.substring(0, limit);
     }
 
     public Long getId() {
@@ -171,5 +239,21 @@ public class OutboxEmail {
 
     public String getLastError() {
         return lastError;
+    }
+
+    public String getProviderMessageId() {
+        return providerMessageId;
+    }
+
+    public String getDeliveryStatus() {
+        return deliveryStatus;
+    }
+
+    public Instant getDeliveryReportedAt() {
+        return deliveryReportedAt;
+    }
+
+    public String getDeliveryDetail() {
+        return deliveryDetail;
     }
 }

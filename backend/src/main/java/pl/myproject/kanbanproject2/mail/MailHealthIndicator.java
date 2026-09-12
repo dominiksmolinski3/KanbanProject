@@ -35,6 +35,14 @@ import java.time.Instant;
  *   <li>{@code UP} otherwise, with the queue depth as a detail.</li>
  * </ul>
  *
+ * <p><b>{@code undelivered} is a detail and never a status, and that is deliberate.</b> A message
+ * Azure accepted and then could not deliver is a fact about one recipient's mailbox - a full
+ * inbox, an address that does not exist, a spam filter - and not a fault in this deployment. Two
+ * bounces do not mean mail is broken, and a health status that went red for them would be red most
+ * weeks and read by nobody. What does raise an alarm about bounces is the Log Analytics rule over
+ * the provider's own table, which mails somebody; this number is here so that whoever goes looking
+ * after that mail can see it from the application's side too.
+ *
  * <p><b>This cannot take the deployment down, and that is checked rather than assumed.</b> The
  * container's startup, readiness and liveness probes all address {@code /actuator/health/readiness}
  * and {@code /actuator/health/liveness} - the two <em>groups</em>, which contain only Spring's own
@@ -81,6 +89,8 @@ public class MailHealthIndicator implements HealthIndicator {
         Instant since = clock.instant().minus(RECENT);
         long failed = outbox.countByStatus(OutboxStatus.FAILED);
         long failedRecently = outbox.countByStatusAndCreatedAtGreaterThanEqual(OutboxStatus.FAILED, since);
+        long undelivered = outbox.countByDeliveryStatusInAndDeliveryReportedAtGreaterThanEqual(
+                MailDeliveryStatuses.UNDELIVERED, since);
 
         if (!transport.deliversMessages()) {
             return Health.outOfService()
@@ -96,11 +106,13 @@ public class MailHealthIndicator implements HealthIndicator {
                     .withDetail("failedRecently", failedRecently)
                     .withDetail("failed", failed)
                     .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
+                    .withDetail("undelivered", undelivered)
                     .build();
         }
         return Health.up()
                 .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
                 .withDetail("failed", failed)
+                .withDetail("undelivered", undelivered)
                 .build();
     }
 }
