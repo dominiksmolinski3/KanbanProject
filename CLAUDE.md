@@ -877,8 +877,12 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 - `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds the root Dockerfile, pushes the image to
   `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
   (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
-  a scan failure or a commit that's no longer the tip of `main` blocks promotion, so `latest` is
-  always a SHA that both built clean and passed the scan. The build job also emits a CycloneDX SBOM
+  a scan failure, a ref that is not the default branch, or a commit that's no longer the tip of it
+  blocks promotion, so `latest` is always a SHA on `main` that both built clean and passed the scan.
+  **The ref half of that was missing until the sweep landed**: the check asked only whether the
+  commit was the tip of `github.ref_name`, which on a `workflow_dispatch` against a feature branch
+  is perfectly true — so dispatching CD on a branch would have tagged that branch's build `latest`.
+  Nothing ever did. Adding a schedule was the reason to make sure nothing can. The build job also emits a CycloneDX SBOM
   (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs the image
   and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
   later build of the same tag.
