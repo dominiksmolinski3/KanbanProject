@@ -101,10 +101,29 @@ resource "azurerm_key_vault_secret" "postgres_password" {
   key_vault_id = var.key_vault_id
 }
 
+# sslmode=verify-full authenticates the server rather than only encrypting the link, which is the
+# whole point of it over `require`. sslfactory is what makes that work on the JDK, and leaving it
+# out is not a no-op:
+#
+# pgjdbc's default for a verifying mode is LibPQFactory, which follows libpq's convention and reads
+# the root certificate from ~/.postgresql/root.crt on disk. It never consults the JDK trust store.
+# So a container with no such file does not fall back - it refuses to connect at all:
+#
+#   Could not open SSL root certificate file /home/appuser/.postgresql/root.crt
+#   Caused by: java.io.FileNotFoundException: /home/appuser/.postgresql/root.crt
+#
+# Measured on dev, 13 Sep 2026, on the first revision ever to use this connection string: Flyway
+# could not open a connection, the context never built, and the revision reached ActivationFailed.
+# The claim this replaces - "no cert is bundled, Azure's roots are already in the JDK trust store" -
+# was true about the JDK and irrelevant to the driver, which was not reading it.
+#
+# DefaultJavaSSLFactory is what points the driver at the JDK trust store, and there the claim holds:
+# "DigiCert Global Root G2" and "Microsoft RSA Root Certificate Authority 2017" ship in cacerts, so
+# there is still no certificate to bundle, mount or rotate.
 resource "azurerm_key_vault_secret" "postgres_connection_string" {
   tags         = var.tags
   name         = "POSTGRES-CONNECTION-STRING"
-  value        = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
+  value        = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
   content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }
