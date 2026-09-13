@@ -97,7 +97,7 @@ Values supplied through variables:
 `jwt_secret_key` is **not** an input -- Terraform generates it. See [Secrets](#secrets).
 
 Optional (recommended):
-- `app_image_tag` - container image tag deployed to Azure Container Apps. For reproducible deployments, set this to an immutable value like the git SHA pushed by the CI pipeline.
+- `app_image_tag` - container image tag deployed to Azure Container Apps. **Required, with no default, and it must be an immutable value such as the git SHA the CD pipeline pushed.** A mutable tag like `latest` does not merely cost reproducibility: the tag is the only part of the container template that changes between releases, so pinning it renders an identical template on every apply, which produces no diff and therefore no new revision. An environment on `latest` cannot be deployed to by `terraform apply` at all, while looking perfectly converged - dev sat on one revision for eight days that way.
 - `key_vault_allowed_ips` - public addresses allowed through the Key Vault firewall. Required when you apply from outside the VNet, which includes every workstation - see [Key Vault network access](#key-vault-network-access).
 
 Optional (network) - see [Container App ingress restrictions](#container-app-ingress-restrictions):
