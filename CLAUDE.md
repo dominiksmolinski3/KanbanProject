@@ -953,9 +953,15 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   [terraform/README.md](terraform/README.md), *Plan on pull requests*). It plans with
   `-refresh=false` on purpose: a GitHub runner's address is not on the Key Vault firewall, so a
   refreshing plan cannot read the secret resources. The Postgres JDBC URL uses
-  `sslmode=verify-full`, not `require` — `require` encrypts without authenticating the server; the
-  roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA Root Certificate Authority
-  2017") are already in the JDK trust store, so no cert is bundled.
+  `sslmode=verify-full`, not `require` — `require` encrypts without authenticating the server. **It
+  carries `sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory`, and that half is load-bearing**:
+  pgjdbc's default for a verifying mode is `LibPQFactory`, which follows libpq's convention and
+  reads `~/.postgresql/root.crt` off disk. It never consults the JDK trust store and does not fall
+  back to it — it refuses to connect, with `Could not open SSL root certificate file`. That is not
+  hypothetical: `verify-full` sat on `main` for six revisions and the first revision ever to use it
+  reached `ActivationFailed` on exactly that. With the factory set, the original reasoning holds and
+  is why no cert is bundled: the roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA
+  Root Certificate Authority 2017") are already in the JDK trust store.
 - [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,container_app}`. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `container_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
