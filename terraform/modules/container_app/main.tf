@@ -1,7 +1,24 @@
 locals {
   app_port = 8080
 
+  # An optional secret is one whose variable defaults to "", and every one of them has to be
+  # switched off in three places together: the Key Vault secret is not created, the container app
+  # declares no `secret` for it, and no `env` references that secret name.
+  #
+  # Not a style preference. Key Vault stores an empty secret value happily, and Container Apps then
+  # refuses to resolve it - "Unable to get value using Managed identity ... unable to fetch secret"
+  # - so the revision never provisions and the apply fails outright. Measured on dev, 13 Sep 2026,
+  # on the first apply after the delivery-report work: five resources applied and the container app
+  # would not. `ghcr_token` had the pattern from the start; the other three did not, and the only
+  # reason dev had not hit it before is that dev happens to supply ACS and captcha values.
+  #
+  # Which means "blank is the safe default" was true of the application and false of the
+  # deployment: an environment that leaves any of these empty could not be applied at all. uat is
+  # documented to run with mail off, so uat's first apply would have failed on ACS.
   ghcr_credentials_configured = var.ghcr_token != ""
+  acs_mail_configured         = var.acs_email_connection_string != ""
+  delivery_reports_configured = var.mail_delivery_report_key != ""
+  captcha_secret_configured   = var.captcha_secret != ""
 
   # The Container Apps FQDN pattern (<app-name>.<environment-default-domain>) is fixed once the
   # environment exists, so this is knowable before azurerm_container_app.main is created -
@@ -32,6 +49,8 @@ resource "azurerm_container_app" "main" {
     azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.mail_delivery_report_key,
     azurerm_key_vault_secret.captcha_secret,
+    # `depends_on` on a counted resource is legal and means "all instances", so these still order
+    # correctly when the count is zero - there is simply nothing to wait for.
     azurerm_key_vault_secret.ghcr_token,
   ]
 
@@ -55,20 +74,29 @@ resource "azurerm_container_app" "main" {
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "JWT-SECRET-KEY")
     identity            = azurerm_user_assigned_identity.main.id
   }
-  secret {
-    name                = "acs-email-connection-string"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "ACS-EMAIL-CONNECTION-STRING")
-    identity            = azurerm_user_assigned_identity.main.id
+  dynamic "secret" {
+    for_each = local.acs_mail_configured ? [1] : []
+    content {
+      name                = "acs-email-connection-string"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "ACS-EMAIL-CONNECTION-STRING")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
   }
-  secret {
-    name                = "app-mail-delivery-report-key"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "APP-MAIL-DELIVERY-REPORT-KEY")
-    identity            = azurerm_user_assigned_identity.main.id
+  dynamic "secret" {
+    for_each = local.delivery_reports_configured ? [1] : []
+    content {
+      name                = "app-mail-delivery-report-key"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "APP-MAIL-DELIVERY-REPORT-KEY")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
   }
-  secret {
-    name                = "captcha-secret"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "CAPTCHA-SECRET")
-    identity            = azurerm_user_assigned_identity.main.id
+  dynamic "secret" {
+    for_each = local.captcha_secret_configured ? [1] : []
+    content {
+      name                = "captcha-secret"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "CAPTCHA-SECRET")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
   }
 
   dynamic "secret" {
@@ -114,25 +142,40 @@ resource "azurerm_container_app" "main" {
         name        = "JWT_SECRET_KEY"
         secret_name = "jwt-secret-key"
       }
-      env {
-        name        = "ACS_EMAIL_CONNECTION_STRING"
-        secret_name = "acs-email-connection-string"
+      # Absent rather than empty, which the application already reads the same way: a blank
+      # ACS_EMAIL_CONNECTION_STRING and an unset one both select DisabledEmailSender.
+      dynamic "env" {
+        for_each = local.acs_mail_configured ? [1] : []
+        content {
+          name        = "ACS_EMAIL_CONNECTION_STRING"
+          secret_name = "acs-email-connection-string"
+        }
       }
       env {
         name  = "ACS_EMAIL_SENDER_ADDRESS"
         value = var.acs_email_sender_address
       }
-      env {
-        name        = "APP_MAIL_DELIVERY_REPORT_KEY"
-        secret_name = "app-mail-delivery-report-key"
+      # Unset leaves app.mail.delivery-report-key blank, which is what makes the webhook answer
+      # 404 to everything - the state every fresh clone and CI run is already in.
+      dynamic "env" {
+        for_each = local.delivery_reports_configured ? [1] : []
+        content {
+          name        = "APP_MAIL_DELIVERY_REPORT_KEY"
+          secret_name = "app-mail-delivery-report-key"
+        }
       }
       env {
         name  = "CAPTCHA_ENABLED"
         value = tostring(var.captcha_enabled)
       }
-      env {
-        name        = "CAPTCHA_SECRET"
-        secret_name = "captcha-secret"
+      # CAPTCHA_ENABLED above is what decides whether the check runs; with it off the secret is
+      # not read, and CaptchaVerifier refuses to start enabled with no secret either way.
+      dynamic "env" {
+        for_each = local.captcha_secret_configured ? [1] : []
+        content {
+          name        = "CAPTCHA_SECRET"
+          secret_name = "captcha-secret"
+        }
       }
       env {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
@@ -300,6 +343,8 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
 # as captcha_secret (see terraform/README.md, Secrets). Empty is allowed: the app reads a blank
 # ACS_EMAIL_CONNECTION_STRING as "mail off" rather than failing to boot.
 resource "azurerm_key_vault_secret" "acs_email_connection_string" {
+  count = local.acs_mail_configured ? 1 : 0
+
   tags         = var.tags
   name         = "ACS-EMAIL-CONNECTION-STRING"
   value        = var.acs_email_connection_string
@@ -316,6 +361,8 @@ resource "azurerm_key_vault_secret" "acs_email_connection_string" {
 # delivery reports. What that buys is small (a wrong delivery status on a row that really was sent)
 # and it is still not a string to leave sitting in a container template.
 resource "azurerm_key_vault_secret" "mail_delivery_report_key" {
+  count = local.delivery_reports_configured ? 1 : 0
+
   tags         = var.tags
   name         = "APP-MAIL-DELIVERY-REPORT-KEY"
   value        = var.mail_delivery_report_key
@@ -324,6 +371,8 @@ resource "azurerm_key_vault_secret" "mail_delivery_report_key" {
 }
 
 resource "azurerm_key_vault_secret" "captcha_secret" {
+  count = local.captcha_secret_configured ? 1 : 0
+
   tags         = var.tags
   name         = "CAPTCHA-SECRET"
   value        = var.captcha_secret
