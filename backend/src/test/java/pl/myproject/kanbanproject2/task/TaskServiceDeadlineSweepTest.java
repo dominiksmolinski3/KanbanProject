@@ -29,6 +29,13 @@ import static org.mockito.Mockito.when;
  * The deadline sweep flips {@code expired} on both crossings; only the crossing <em>into</em>
  * expired should raise a notification, and it should raise it after the flag is saved rather than
  * instead of saving it.
+ *
+ * <p>Since the sweep claims its rows rather than reading them all, the database now decides which
+ * tasks are candidates and these tests stand in for that decision. What they still check is what
+ * the sweep does with one: which direction it flipped, whether it saved before notifying, and that
+ * a task nobody claimed is a task nobody mails. The claim itself - that {@code SKIP LOCKED} keeps
+ * two replicas off the same row - is the database's to keep and {@code DeadlineSweepClaimTest}'s to
+ * pin.
  */
 class TaskServiceDeadlineSweepTest {
 
@@ -65,11 +72,17 @@ class TaskServiceDeadlineSweepTest {
         return task;
     }
 
+    /** What the claim would have taken: the ids, and then the rows behind them. */
+    private void claimed(Task task) {
+        when(taskRepository.claimTasksCrossingDeadline(any())).thenReturn(List.of(task.getId()));
+        when(taskRepository.findByIdIn(List.of(task.getId()))).thenReturn(List.of(task));
+    }
+
     @Test
     @DisplayName("a task that just passed its deadline is flagged and its assignees notified")
     void notifiesOnCrossingIntoExpired() {
         Task task = task(LocalDateTime.now().minusMinutes(5), false);
-        when(taskRepository.findAllByDeadlineIsNotNull()).thenReturn(List.of(task));
+        claimed(task);
 
         taskService.checkAllTasksDeadlines();
 
@@ -82,7 +95,7 @@ class TaskServiceDeadlineSweepTest {
     @DisplayName("a task whose deadline was pushed back is un-flagged without a second mail")
     void doesNotNotifyOnCrossingOutOfExpired() {
         Task task = task(LocalDateTime.now().plusDays(1), true);
-        when(taskRepository.findAllByDeadlineIsNotNull()).thenReturn(List.of(task));
+        claimed(task);
 
         taskService.checkAllTasksDeadlines();
 
@@ -92,14 +105,29 @@ class TaskServiceDeadlineSweepTest {
     }
 
     @Test
-    @DisplayName("a task already expired and still overdue is left alone")
+    @DisplayName("a task already expired and still overdue is not claimed, so nothing happens to it")
     void steadyStateDoesNothing() {
-        Task task = task(LocalDateTime.now().minusDays(1), true);
-        when(taskRepository.findAllByDeadlineIsNotNull()).thenReturn(List.of(task));
+        when(taskRepository.claimTasksCrossingDeadline(any())).thenReturn(List.of());
 
         taskService.checkAllTasksDeadlines();
 
+        // The steady state is now the database's answer rather than a comparison in Java, and the
+        // sweep should not so much as load a row for it - which is the point of moving it.
+        verify(taskRepository, never()).findByIdIn(any());
         verify(taskRepository, never()).save(any());
         verify(deadlineNotifier, never()).notifyExpired(any());
+    }
+
+    @Test
+    @DisplayName("the sweep asks for the rows the claim took, and for nothing else")
+    void onlyClaimedRowsAreTouched() {
+        Task mine = task(LocalDateTime.now().minusMinutes(5), false);
+        claimed(mine);
+
+        taskService.checkAllTasksDeadlines();
+
+        // A second replica sweeping at the same instant holds the rows this one skipped; asking for
+        // anything but the claimed ids is how it would mail somebody else's task a second time.
+        verify(taskRepository).findByIdIn(List.of(mine.getId()));
     }
 }
