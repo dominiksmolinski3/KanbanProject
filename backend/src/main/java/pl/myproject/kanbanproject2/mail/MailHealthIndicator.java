@@ -43,6 +43,35 @@ import java.time.Instant;
  * the provider's own table, which mails somebody; this number is here so that whoever goes looking
  * after that mail can see it from the application's side too.
  *
+ * <p><b>{@code reported} and {@code sentAwaitingReport} exist because arriving safely leaves no
+ * trace.</b> {@code MailDeliveryReportService} logs a report that matched its row at {@code debug},
+ * and a report that matched <em>nothing</em> at {@code debug} as well - deliberately, since a
+ * subscription shared with another environment would otherwise fill the log with lines nobody can
+ * act on. At the level production runs, both are silence. And {@code undelivered} counts only
+ * failures, so it reads {@code 0} both when every message arrives and when no report has ever
+ * found the row it names.
+ *
+ * <p>That second case is not hypothetical. {@code AcsEmailSender} reads the provider's message id
+ * <em>best-effort</em> - an id it cannot read is {@code null}, and a {@code null} is a row no
+ * report can ever match. If that read stops working, every later report misses in silence and the
+ * deployment looks exactly like one where nothing has ever bounced: {@code undelivered: 0}, no
+ * warning, no alert. <strong>A signal whose absence is indistinguishable from the normal state</strong>
+ * is the shape MAIL-04, the unread ZAP report and the unwatched CD sweep each had, and this is the
+ * fourth instance of it in this application.
+ *
+ * <p>So two numbers sit beside {@code undelivered}: how many recently-sent messages have been told
+ * what became of them, and how many are still waiting. {@code reported} climbing with sending is
+ * the join working. Sending climbing while {@code reported} stays at zero is the join broken, and
+ * nothing else here would say so. {@code sentWithoutProviderId} is the sharper of the two when it
+ * is not zero, because it measures the best-effort capture failing directly rather than by its
+ * consequence.
+ *
+ * <p><b>They are details and never a status</b>, for the same reason {@code undelivered} is. A
+ * report arrives minutes after the send, so a deployment that has just mailed somebody legitimately
+ * has messages awaiting one, and a status that went red for that would be red after every signup.
+ * Neither number can be read as a fault on its own; they are there so that somebody asking "is this
+ * feature doing anything at all" has an answer, which until now nobody outside the VNet did.
+ *
  * <p><b>This cannot take the deployment down, and that is checked rather than assumed.</b> The
  * container's startup, readiness and liveness probes all address {@code /actuator/health/readiness}
  * and {@code /actuator/health/liveness} - the two <em>groups</em>, which contain only Spring's own
@@ -91,6 +120,12 @@ public class MailHealthIndicator implements HealthIndicator {
         long failedRecently = outbox.countByStatusAndCreatedAtGreaterThanEqual(OutboxStatus.FAILED, since);
         long undelivered = outbox.countByDeliveryStatusInAndDeliveryReportedAtGreaterThanEqual(
                 MailDeliveryStatuses.UNDELIVERED, since);
+        long sent = outbox.countByStatusAndCreatedAtGreaterThanEqual(OutboxStatus.SENT, since);
+        long reported = outbox.countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual(
+                OutboxStatus.SENT, since);
+        long sentWithoutProviderId =
+                outbox.countByStatusAndCreatedAtGreaterThanEqualAndProviderMessageIdIsNull(
+                        OutboxStatus.SENT, since);
 
         if (!transport.deliversMessages()) {
             return Health.outOfService()
@@ -107,12 +142,20 @@ public class MailHealthIndicator implements HealthIndicator {
                     .withDetail("failed", failed)
                     .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
                     .withDetail("undelivered", undelivered)
+                    .withDetail("sent", sent)
+                    .withDetail("reported", reported)
+                    .withDetail("sentAwaitingReport", sent - reported)
+                    .withDetail("sentWithoutProviderId", sentWithoutProviderId)
                     .build();
         }
         return Health.up()
                 .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
                 .withDetail("failed", failed)
                 .withDetail("undelivered", undelivered)
+                .withDetail("sent", sent)
+                .withDetail("reported", reported)
+                .withDetail("sentAwaitingReport", sent - reported)
+                .withDetail("sentWithoutProviderId", sentWithoutProviderId)
                 .build();
     }
 }

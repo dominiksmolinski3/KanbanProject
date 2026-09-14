@@ -66,4 +66,33 @@ public interface OutboxEmailRepository extends JpaRepository<OutboxEmail, Long> 
      */
     long countByDeliveryStatusInAndDeliveryReportedAtGreaterThanEqual(
             Collection<String> statuses, Instant since);
+
+    /**
+     * How many recently-sent messages have been told what became of them, and how many are still
+     * waiting to be.
+     *
+     * <p>These two exist because <em>arriving safely leaves no trace</em>. A report that matches its
+     * row is recorded and logged at {@code debug}; a report that matches nothing is dropped and
+     * logged at {@code debug}. At the level production runs, both are silence, and
+     * {@code undelivered} counts only failures - so it reads {@code 0} both when every message
+     * arrives and when no report has ever found the row it names.
+     *
+     * <p>The failure that hides is a real one and the codebase already names it:
+     * {@code AcsEmailSender} reads the provider's message id <em>best-effort</em>, so an id it
+     * cannot read is {@code null} and a row that can never be matched. If that read stops working -
+     * an SDK bump, a changed response shape - every later report misses, quietly, and the
+     * deployment looks exactly like one where nothing has ever bounced. That is the shape MAIL-04,
+     * issue #96 and the unwatched sweeps each had: <strong>a signal whose absence is
+     * indistinguishable from the normal state.</strong>
+     *
+     * <p>Two numbers beside each other answer it. {@code reported} rising with {@code sent} is the
+     * join working; {@code sent} climbing while {@code reported} stays at zero is the join broken,
+     * and nothing else in this deployment would say so.
+     */
+    long countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual(
+            OutboxStatus status, Instant since);
+
+    /** @see #countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual */
+    long countByStatusAndCreatedAtGreaterThanEqualAndProviderMessageIdIsNull(
+            OutboxStatus status, Instant since);
 }
