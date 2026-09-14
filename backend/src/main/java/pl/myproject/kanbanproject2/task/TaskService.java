@@ -642,23 +642,43 @@ public class TaskService {
      * <p>Every flag is written first and the mail goes out afterwards, so a slow or unreachable
      * mail provider cannot leave the {@code expired} column half-updated. Only the crossing into
      * expired is notified; a task whose deadline was pushed back goes quiet without a second mail.
+     *
+     * <p><b>It claims the rows it is about to change, which is what makes a second replica safe.</b>
+     * Two schedulers sweeping the same tasks is not a benign duplicate: both write the flag, both
+     * record the expiry, and both ask {@link DeadlineNotifier} to mail every assignee - so an
+     * overdue task arrives N times in N mailboxes, which is the same class of failure the outbox
+     * claim was written for and is just as impossible to recall.
+     * {@link TaskRepository#claimTasksCrossingDeadline} selects {@code FOR UPDATE SKIP LOCKED}, so
+     * two sweeps take disjoint rows and each row is answered for once.
+     *
+     * <p><b>The class-level {@code @Transactional} is load-bearing here</b> and is the reason this
+     * needs no lock table, no advisory lock and no new dependency: the row locks last exactly as
+     * long as the sweep, and the sweep is one transaction. Remove it and the claim releases at the
+     * end of its own statement, which reads identically and protects nothing.
+     *
+     * <p>The claim asks for the tasks whose flag disagrees with their deadline rather than for
+     * every task with one. That is the whole of what makes locking affordable - the rows held are
+     * the rows the very next statement writes - and it also stops a half-hourly read of every
+     * deadline in the deployment to answer a question that is almost always "none".
      */
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
-        var tasksWithDeadline = taskRepository.findAllByDeadlineIsNotNull();
         var now = LocalDateTime.now();
-        var newlyExpired = new ArrayList<Task>();
+        var claimed = taskRepository.claimTasksCrossingDeadline(now);
+        if (claimed.isEmpty()) {
+            return;
+        }
 
-        for (Task task : tasksWithDeadline) {
-            boolean wasExpired = task.isExpired();
+        var newlyExpired = new ArrayList<Task>();
+        for (Task task : taskRepository.findByIdIn(claimed)) {
+            // The claim already decided this row disagrees with its deadline; the comparison here
+            // is what says in which direction, on the same instant the claim was made with.
             boolean isExpired = task.getDeadline().isBefore(now);
-            if (wasExpired != isExpired) {
-                task.setExpired(isExpired);
-                taskRepository.save(task);
-                boardEvents.tasksChanged(task.getBoard());
-                if (isExpired) {
-                    newlyExpired.add(task);
-                }
+            task.setExpired(isExpired);
+            taskRepository.save(task);
+            boardEvents.tasksChanged(task.getBoard());
+            if (isExpired) {
+                newlyExpired.add(task);
             }
         }
 
