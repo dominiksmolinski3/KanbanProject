@@ -89,6 +89,31 @@ public final class SecurityHeaders {
             "payment=()",
             "usb=()");
 
+    /**
+     * How long a browser should refuse to reach this origin over anything but HTTPS.
+     *
+     * <p>A year, which is the conventional value and Spring Security's own default. The number is
+     * not the interesting part of this constant; <b>the fact that the header is sent at all
+     * is</b>, because for the whole life of this deployment it was not.
+     *
+     * <p>Spring Security writes {@code Strict-Transport-Security} by default, and gates it on
+     * {@code request.isSecure()} - which is right for an application that terminates its own TLS
+     * and wrong for every application behind an ingress that terminates it for them. Container
+     * Apps is the latter: the ingress is declared {@code transport = "http"}, so the container is
+     * handed plain HTTP and {@code isSecure()} is false on every request it has ever served. The
+     * default therefore fired on nothing, and nothing noticed, because the default is the sort of
+     * thing nobody writes a test for and {@code MockHttpServletRequest} is insecure too. It was
+     * found by an external scan asking the real hostname for its headers.
+     *
+     * <p>{@code SecurityConfiguration} writes it unconditionally instead. That is safe rather
+     * than sloppy: a user agent is required to ignore an HSTS header received over plain HTTP, and
+     * there is no plain-HTTP way in here anyway - the ingress redirects. {@code includeSubDomains}
+     * stays on and <b>{@code preload} stays off</b>: preloading is a one-way door measured in
+     * months, and this origin is a subdomain of {@code azurecontainerapps.io}, which is not a
+     * domain this deployment owns.
+     */
+    public static final long STRICT_TRANSPORT_SECURITY_MAX_AGE = 31536000L;
+
     private SecurityHeaders() {
     }
 }
