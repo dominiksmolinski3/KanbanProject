@@ -166,29 +166,48 @@ The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds
 that touches `terraform/`. There is no automated `apply` -- deployment stays a deliberate manual
 step (`./tf.sh <env> apply`).
 
-### Plan on pull requests
+### Plan on pull requests -- retired, not built
 
-The same workflow has a `plan` job that runs `terraform plan` against the **dev** state and writes
-the diff into the PR's job summary, so a reviewer sees what a change would do before it merges
-rather than after somebody applies it. It is **off by default** and only runs when the
-`TF_PLAN_ENABLED` repository variable is set to `true` -- the same "stay inert until wired up" gate
-the mail-bounce alert uses. Turning it on is a one-time setup:
+The workflow used to carry a `plan` job, gated off behind a `TF_PLAN_ENABLED` repository variable
+until somebody wired an Entra federated credential to it. Nobody ever did, so it never ran once.
+When it was finally measured rather than reasoned about, it turned out it could not have worked:
 
-1. **Entra app registration + federated credential.** Create an app registration and add a
-   federated credential of subject `repo:<owner>/<repo>:pull_request` (issuer
-   `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`). No client
-   secret -- the workflow authenticates with a short-lived OIDC token.
-2. **RBAC for that identity.** `Reader` on the subscription (so the plan can read resource state)
-   and `Storage Blob Data Reader` on the `tfstatekanban` storage account (so it can read the
-   backend state). It needs no write role and no Key Vault access.
-3. **Repository secrets.** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-4. **Repository variable.** `TF_PLAN_ENABLED = true`.
+```
+# the exact command the job ran, against real dev state
+terraform plan -refresh=false -var-file=dev.tfvars
+Plan: 0 to add, 2 to change, 15 to destroy.
 
-The job runs `plan -refresh=false` on purpose. The Key Vault denies public traffic and a GitHub
-runner's address is not on its firewall, so a refreshing plan fails reading the secret resources.
-Without refresh the plan compares the PR's config against the last applied state, which is the
-question a PR gate is asking. Drift introduced through the portal is still only caught by a local
-`./tf.sh dev plan` from an allow-listed address.
+# the same plan a person runs, with the local var-file
+./tf.sh dev plan
+No changes. Your infrastructure matches the configuration.
+```
+
+**The cause is the fix for TF-07 and it is not a flag.** Every environment-specific and
+secret-bearing value lives in gitignored `<env>.local.tfvars`, deliberately, so that one
+environment's variables cannot reach another's state. CI has no access to that file -- and in this
+configuration those values do not merely set attributes, they gate `count`: an empty
+`acs_communication_service_id` is zero Event Grid resources, an empty `alert_email` is zero alerts,
+an empty `acs_email_connection_string` is no Key Vault secret. So CI's idea of "the configuration"
+is structurally a different configuration, and the job would have posted **15 to destroy** into
+every Terraform pull request, forever.
+
+That is the failure TF-12 is filed under, at full volume, in the one place this project treats as
+its strongest signal. A permanent alarming diff does not inform a reviewer; it teaches them to skim
+the output. `app_image_tag` being required (PR 145) and living only in the local file would in fact
+have stopped the job before it printed any of it.
+
+**So it is retired rather than fixed**, the distinction CD-01 established: nothing was built, and
+recording it as closed would be worse than saying so. The only way to make the job truthful is to
+put dev's live ACS connection string, captcha secret and delivery-report key into GitHub secrets so
+CI can reproduce the real configuration -- a mail-sending credential in CI, to power a code-review
+aid. That trade was declined.
+
+**What still runs on every Terraform pull request:** `fmt -check`, `init -backend=false`,
+`validate`, and a **blocking** Checkov scan. What is given up is early sight of a
+destroy-and-replace surprise -- TF-06's class. The mitigations for that are the ones that have
+actually been used before every apply in this repository's history: `prevent_destroy` on Postgres,
+and a person running `./tf.sh dev plan` from an allow-listed address before merging anything
+structural.
 
 ## Notes
 
