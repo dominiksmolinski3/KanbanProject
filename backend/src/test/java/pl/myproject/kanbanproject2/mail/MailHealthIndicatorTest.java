@@ -91,6 +91,67 @@ class MailHealthIndicatorTest {
     }
 
     @Test
+    @DisplayName("a join that is working reads as reported rising with sent")
+    void reportsThatLandAreVisible() {
+        Instant since = NOW.minus(MailHealthIndicator.RECENT);
+        when(transport.deliversMessages()).thenReturn(true);
+        when(outbox.countByStatusAndCreatedAtGreaterThanEqual(eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(9L);
+        when(outbox.countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual(
+                eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(8L);
+
+        Health health = indicator.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails())
+                .containsEntry("sent", 9L)
+                .containsEntry("reported", 8L)
+                .containsEntry("sentAwaitingReport", 1L);
+    }
+
+    @Test
+    @DisplayName("a join that is broken is the case undelivered cannot show: sent climbs, reported does not")
+    void aBrokenJoinIsDistinguishableFromQuietSuccess() {
+        Instant since = NOW.minus(MailHealthIndicator.RECENT);
+        when(transport.deliversMessages()).thenReturn(true);
+        when(outbox.countByStatusAndCreatedAtGreaterThanEqual(eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(40L);
+        when(outbox.countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual(
+                eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(0L);
+        when(outbox.countByStatusAndCreatedAtGreaterThanEqualAndProviderMessageIdIsNull(
+                eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(40L);
+
+        Health health = indicator.health();
+
+        // Still UP, deliberately: reports arrive minutes late, so this cannot be a status without
+        // going red after every signup. What it must do is be *visible*, because undelivered reads
+        // zero here and reads zero when everything is fine.
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails())
+                .containsEntry("undelivered", 0L)
+                .containsEntry("sent", 40L)
+                .containsEntry("reported", 0L)
+                .containsEntry("sentWithoutProviderId", 40L);
+    }
+
+    @Test
+    @DisplayName("the new counts are details rather than a status, like undelivered")
+    void theNewCountsNeverChangeTheStatus() {
+        Instant since = NOW.minus(MailHealthIndicator.RECENT);
+        when(transport.deliversMessages()).thenReturn(true);
+        when(outbox.countByStatusAndCreatedAtGreaterThanEqual(eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(100L);
+        when(outbox.countByStatusAndDeliveryStatusIsNotNullAndCreatedAtGreaterThanEqual(
+                eq(OutboxStatus.SENT), eq(since)))
+                .thenReturn(0L);
+
+        assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
+    }
+
+    @Test
     @DisplayName("nothing loads a row, because a pending row's body is a live verification code")
     void nothingReadsTheBodies() {
         when(transport.deliversMessages()).thenReturn(true);
