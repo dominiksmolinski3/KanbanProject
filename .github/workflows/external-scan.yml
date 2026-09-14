@@ -5,13 +5,27 @@ name: External attack-surface scan
 # internet, which is the only way to catch the two from drifting apart. No Azure
 # credentials involved: this only ever talks to the public hostname, the same as
 # any other visitor.
+#
+# It had never done any of that. The target came from a PROD_HOSTNAME repository
+# variable that was never set - prod was retired before it existed - so every step
+# carried `if: skip == false`, every step skipped, and the job reported success in
+# five seconds. One run in its whole history, green, having scanned nothing. The
+# alarm below could not see it either: the alarm reads job results, and the job
+# genuinely succeeded.
+#
+# Two changes follow from that, and they are the point of this file rather than
+# details of it. The target is now whichever deployment exists (DEPLOYED_HOSTNAME,
+# with PROD_HOSTNAME still honoured for whoever builds prod later), and **no target
+# is a failure**. That is the rule the alarm already applies to jobs - a job that
+# did not run proved nothing - applied one level in, to a job whose steps did not
+# run. A sweep that cannot say what it checked must not say it passed.
 on:
   schedule:
     - cron: '0 7 * * 1'
   workflow_dispatch:
     inputs:
       target:
-        description: 'Hostname to scan (defaults to the PROD_HOSTNAME repository variable)'
+        description: 'Hostname to scan (defaults to DEPLOYED_HOSTNAME, then PROD_HOSTNAME)'
         required: false
 
 permissions:
@@ -26,19 +40,26 @@ jobs:
         id: target
         env:
           INPUT_TARGET: ${{ inputs.target }}
-          VAR_TARGET: ${{ vars.PROD_HOSTNAME }}
+          VAR_TARGET: ${{ vars.DEPLOYED_HOSTNAME }}
+          VAR_TARGET_LEGACY: ${{ vars.PROD_HOSTNAME }}
         run: |
-          target="${INPUT_TARGET:-$VAR_TARGET}"
+          target="${INPUT_TARGET:-${VAR_TARGET:-$VAR_TARGET_LEGACY}}"
           if [ -z "$target" ]; then
-            echo "::notice::No target configured - set the PROD_HOSTNAME repository variable (Settings > Secrets and variables > Actions > Variables) or pass one via workflow_dispatch. Skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "host=$target" >> "$GITHUB_OUTPUT"
+            echo "::error::No target configured - set the DEPLOYED_HOSTNAME repository variable (Settings > Secrets and variables > Actions > Variables) or pass one via workflow_dispatch. Failing rather than skipping: a scan that checked nothing must not report that it passed."
+            exit 1
           fi
+          # A hostname, not a URL: nmap is handed this directly. Catching it here beats
+          # an nmap failure three steps later that reads like the host is unreachable.
+          case "$target" in
+            *://*|*/*)
+              echo "::error::DEPLOYED_HOSTNAME must be a bare hostname, not a URL: $target"
+              exit 1
+              ;;
+          esac
+          echo "host=$target" >> "$GITHUB_OUTPUT"
+          echo "scanning $target" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Port scan
-        if: steps.target.outputs.skip == 'false'
         env:
           HOST: ${{ steps.target.outputs.host }}
         run: |
@@ -54,7 +75,6 @@ jobs:
           fi
 
       - name: TLS configuration scan
-        if: steps.target.outputs.skip == 'false'
         env:
           HOST: ${{ steps.target.outputs.host }}
         run: |
@@ -62,18 +82,27 @@ jobs:
             --quiet --color 0 "https://$HOST" | tee testssl-report.txt
 
       - name: Security headers check
-        if: steps.target.outputs.skip == 'false'
         env:
           HOST: ${{ steps.target.outputs.host }}
         run: |
           curl -s -D headers.txt -o /dev/null "https://$HOST"
           cat headers.txt
+          # These four were warnings, which is the same mistake one size down: a warning on
+          # a weekly cron nobody opens is a finding that reaches nobody. Content-Security-Policy
+          # in particular is here because its absence was the ZAP report's first finding and sat
+          # unread for eight days; it is now set by SecurityHeaders and asserted by two suites,
+          # so the deployed origin not sending it is a regression rather than a nice-to-have.
+          missing=
           for header in "Strict-Transport-Security" "X-Content-Type-Options" "X-Frame-Options" "Content-Security-Policy"; do
-            grep -qi "^$header:" headers.txt || echo "::warning::missing security header: $header"
+            grep -qi "^$header:" headers.txt || missing="$missing $header"
           done
+          if [ -n "$missing" ]; then
+            echo "::error::missing security header(s) on $HOST:$missing"
+            exit 1
+          fi
 
       - name: Upload reports
-        if: steps.target.outputs.skip == 'false'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: external-scan-reports

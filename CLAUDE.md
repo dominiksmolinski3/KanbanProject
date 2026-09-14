@@ -923,6 +923,16 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   finding. That is the same shape as the dead-letter queue MAIL-04 was filed over, and it cost the
   same. The assignment step is `continue-on-error`, deliberately: the scan has already run and its
   report is already filed by the time it executes, so it must not turn a green sweep red.
+  **`external-scan.yml` needed a third thing, which is that it had never scanned anything.** Its
+  target came from a `PROD_HOSTNAME` repository variable that was never set — prod was retired
+  before it existed — so every step carried `if: skip == false`, every step skipped, and the job
+  reported success in five seconds. The alarm could not see it: the job genuinely succeeded. It
+  reads `DEPLOYED_HOSTNAME` now (`PROD_HOSTNAME` still honoured), **an unset target is a failure
+  rather than a skip**, and the four security-header checks are errors rather than warnings, since
+  `SecurityHeaders` now makes each of them a claim the build asserts. The rule — *a sweep that did
+  not do its work must not report that it passed*, which is the alarm's own `skipped`-is-red rule
+  read one level in — is pinned by `SweepAlarmCoverageTest`, which fails the build on a swept
+  workflow that writes a `skip=true` flag or gates a step on one.
 - `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
