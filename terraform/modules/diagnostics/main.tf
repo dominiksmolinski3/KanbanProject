@@ -432,30 +432,76 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
 # whose endpoint does not answer it - so this resource is the one piece of the deployment with an
 # ordering constraint against the app itself, rather than only against other Terraform.
 #
+# The group the system topic has to live in, which is the ACS resource's own and not this
+# deployment's.
+#
+#   InvalidRequest: System topic resource group must match with source resource group.
+#
+# The Communication Services resource is created by hand, outside Terraform and outside this
+# deployment's resource group - `acs-kanbanproject` sits in `rg-kanbanproject` while dev is
+# `kanban-dev-rg` - so `var.resource_group_name` is the one value it is guaranteed not to be.
+# Reading the group out of the id Terraform is already given is the same argument the webhook URL
+# is built on: a group configured separately from the resource it must match is two things that can
+# disagree, and the failure when they do is an apply that stops halfway.
+#
+# So Terraform writes two resources into a resource group it does not own. That is not a choice
+# this module gets to make - Azure refuses any other arrangement - and it is worth knowing before
+# a second environment points at the same Communication Services resource, because these two would
+# then be sharing a group with another environment's pair.
+#
+# An ARM id is /subscriptions/<sub>/resourceGroups/<rg>/providers/..., so element 4 of the split is
+# the group. `try` keeps a malformed id from failing with a message about a list index instead of
+# about the id, and the precondition below says what is actually wrong.
+locals {
+  acs_resource_group = try(split("/", var.acs_communication_service_id)[4], "")
+}
+
 resource "azurerm_eventgrid_system_topic" "acs" {
   count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
   tags  = var.tags
 
   name                = "evgt-kanban-acs-${var.env}"
-  resource_group_name = var.resource_group_name
+  resource_group_name = local.acs_resource_group
   # Communication Services is a global resource and its system topic has to match it. A regional
   # location here is rejected at apply time with a message that does not say so.
   location           = "global"
   source_resource_id = var.acs_communication_service_id
   topic_type         = "Microsoft.Communication.CommunicationServices"
+
+  lifecycle {
+    precondition {
+      condition     = local.acs_resource_group != ""
+      error_message = "acs_communication_service_id does not look like an ARM resource id: there is no resourceGroups segment to read the system topic's resource group from."
+    }
+  }
 }
 
 resource "azurerm_eventgrid_system_topic_event_subscription" "mail_delivery_reports" {
   count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
 
-  name                = "kanban-${var.env}-mail-delivery-reports"
-  system_topic        = azurerm_eventgrid_system_topic.acs[0].name
-  resource_group_name = var.resource_group_name
+  name         = "kanban-${var.env}-mail-delivery-reports"
+  system_topic = azurerm_eventgrid_system_topic.acs[0].name
+  # The subscription addresses the topic, so it takes the topic's group for the same reason.
+  resource_group_name = azurerm_eventgrid_system_topic.acs[0].resource_group_name
 
   included_event_types = ["Microsoft.Communication.EmailDeliveryReportReceived"]
 
   webhook_endpoint {
     url = "${var.container_app_url}/api/mail/delivery-reports?key=${var.mail_delivery_report_key}"
+
+    # Azure's own defaults, written down because leaving them out does not mean "leave them alone".
+    # Event Grid fills them in at creation - 1 and 64 - and Terraform then reads back two values the
+    # configuration does not set, so every subsequent plan proposes setting them to null and every
+    # apply puts them back. The result is a deployment that can never report "no changes" again,
+    # which is worse than it sounds: `terraform plan` is the only thing this project has that says
+    # whether an environment matches its description, and a permanent one-resource diff is how
+    # people learn to skim it.
+    #
+    # One report per delivery attempt is also what the endpoint is written for: the controller
+    # takes a batch, but the ordering rule that makes a later report win is per-row and per-clock,
+    # not per-batch, so batching buys nothing here and costs the retry granularity.
+    max_events_per_batch              = 1
+    preferred_batch_size_in_kilobytes = 64
   }
 
   # Event Grid's own retry, which is why the endpoint answers 2xx to a report it cannot place: a
