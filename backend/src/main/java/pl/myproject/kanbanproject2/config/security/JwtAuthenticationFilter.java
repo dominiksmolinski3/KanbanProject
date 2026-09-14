@@ -90,8 +90,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * the prefix landed, and it skipped anything merely *ending* in a static-asset extension. A
      * label is a free-text path segment, so `PUT /api/tasks/5/label/build.js` skipped the filter,
      * arrived unauthenticated and was rejected by the authorize rules with a bare 403.
+     *
+     * The health endpoint is the one place that conflation is wrong, and it cost this application
+     * every signal it ever put there.
+     *
+     * "Public" answers whether a caller *must* present a token. It is a different question from
+     * whether this filter should *look* at one a caller chose to present. For every other public
+     * path the two coincide: nothing behind `/api/auth/login` or a bundle asset reads the principal,
+     * so establishing one is wasted work. `/actuator/health` is the exception, because
+     * `management.endpoint.health.show-details=when_authorized` reads exactly that principal to
+     * decide whether to answer with details.
+     *
+     * Skipping it made `when_authorized` behave as `never`, on every deployment, since the setting
+     * was written. Measured against dev: a token that answers 200 on `/api/columns` and
+     * `/api/auth/devices` is ignored here, and the response is the bare
+     * `{"groups":[...],"status":"UP"}` an anonymous caller gets. So the `mail` indicator PR 56 added
+     * at rev 14 - the replacement signal for dead letters that nothing else reported - has never
+     * been readable by anybody, and neither were the delivery-report counts added a revision ago to
+     * answer a different invisible failure. **A signal nobody can read is the failure it was built
+     * for, one level up**, which is now the fifth instance of that shape in this application.
+     *
+     * The probes are unaffected and that is the thing to check before touching this. Every
+     * container probe addresses `/actuator/health/readiness` or `/actuator/health/liveness` with no
+     * Authorization header at all, so they take the `authHeader == null` branch immediately below
+     * and never reach token parsing. What changes is only the caller who brought a token.
      */
     private boolean shouldSkipFilter(String requestPath, String method) {
-        return "OPTIONS".equals(method) || PublicPaths.isPublic(requestPath);
+        if ("OPTIONS".equals(method)) {
+            return true;
+        }
+        return PublicPaths.isPublic(requestPath) && !wantsAnIdentityWhenOffered(requestPath);
+    }
+
+    /**
+     * Public paths that still read the principal when a caller presents one.
+     *
+     * <p>Deliberately the actuator endpoints and nothing else. Extending this to every public path
+     * would mean a stale token on {@code /api/auth/login} - which is exactly where a stale token
+     * turns up - being parsed, failing, and answering 401 to somebody trying to sign in again.
+     */
+    private boolean wantsAnIdentityWhenOffered(String requestPath) {
+        return requestPath.startsWith("/actuator/");
     }
 }

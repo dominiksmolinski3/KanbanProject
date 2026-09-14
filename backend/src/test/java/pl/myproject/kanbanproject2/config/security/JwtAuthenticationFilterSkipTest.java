@@ -74,9 +74,6 @@ class JwtAuthenticationFilterSkipTest {
             "/api/auth/signup",
             "/api/auth/verify",
             "/api/auth/resend",
-            "/actuator/health",
-            "/actuator/health/readiness",
-            "/actuator/info",
             "/ws/info",
             "/error",
             "/assets/index-BMKiHw11.js",
@@ -90,6 +87,53 @@ class JwtAuthenticationFilterSkipTest {
 
         verifyNoInteractions(jwtService, userDetailsService);
         verify(chain).doFilter(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/actuator/health",
+            "/actuator/health/readiness",
+            "/actuator/health/liveness",
+            "/actuator/info"
+    })
+    @DisplayName("the actuator reads a token when one is offered, because when_authorized needs a principal")
+    void actuatorPathsStillEstablishAnIdentity(String path) throws Exception {
+        var chain = authenticatedRequestTo(path);
+
+        // These three entries used to sit in the list above, asserting the defect they caused:
+        // `management.endpoint.health.show-details=when_authorized` reads the principal this filter
+        // was declining to establish, so it behaved as `never` and the mail indicator PR 56 added
+        // was unreadable by anybody from the day it shipped.
+        verify(jwtService).extractUsername("token");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
+        verify(chain).doFilter(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/actuator/health/readiness", "/actuator/health/liveness"})
+    @DisplayName("a probe carries no token, so it never reaches token parsing")
+    void probesAreUntouched(String path) throws Exception {
+        var request = new MockHttpServletRequest("GET", path);
+        var chain = mock(FilterChain.class);
+
+        filter.doFilterInternal(request, new MockHttpServletResponse(), chain);
+
+        // The thing to check before touching this filter: every container probe addresses one of
+        // these two paths with no Authorization header, so it takes the null-header branch and is
+        // unaffected. A health endpoint that started refusing probes would be an outage caused by
+        // an observability fix.
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verifyNoInteractions(jwtService, userDetailsService);
+        verify(chain).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("the actuator is still public: no token is still served, just without a principal")
+    void theActuatorIsStillPublic() {
+        assertThat(PublicPaths.isPublic("/actuator/health"))
+                .as("reading a token on this path must not have made it require one - the probes, "
+                        + "and anyone checking whether the app is alive, carry nothing")
+                .isTrue();
     }
 
     @Test
