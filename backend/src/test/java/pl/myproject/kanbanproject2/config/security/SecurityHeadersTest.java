@@ -10,9 +10,15 @@ import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter;
+import org.springframework.security.web.header.writers.HstsHeaderWriter;
 import org.springframework.security.web.header.writers.PermissionsPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +47,12 @@ class SecurityHeadersTest {
                 new ReferrerPolicyHeaderWriter(
                         ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN),
                 opener,
-                resource));
+                resource,
+                // The matcher is the whole point of this line: HstsHeaderWriter's own default is
+                // SecureRequestMatcher, and the request below is not secure - because no request
+                // this application ever serves is. See SecurityHeaders.
+                new HstsHeaderWriter(AnyRequestMatcher.INSTANCE,
+                        SecurityHeaders.STRICT_TRANSPORT_SECURITY_MAX_AGE, true)));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -123,5 +134,62 @@ class SecurityHeadersTest {
         // An allow-list with anything in it would be a capability this application asked for, and
         // it asks for none.
         assertThat(SecurityHeaders.PERMISSIONS_POLICY).doesNotContain("self").doesNotContain("*");
+    }
+
+    @Test
+    @DisplayName("HSTS is written to a request that is not secure, because none of them are")
+    void strictTransportSecurityIsWrittenBehindTheIngress() throws Exception {
+        // MockHttpServletRequest is insecure by default, which is the same thing every real
+        // request here is: TLS terminates at the Container Apps ingress and the container is
+        // handed plain HTTP. Spring Security's default writer is gated on isSecure(), so it fired
+        // on nothing for the whole life of this deployment and the header was simply absent.
+        // This test is the one that would have caught it, and it is worth being clear about why
+        // it did not exist: the suite assembles the writers it means to check, so it can only
+        // ever confirm headers somebody remembered to add. HSTS was a framework default, so it
+        // was on nobody's list.
+        assertThat(headersFor("/").getHeader("Strict-Transport-Security"))
+                .isEqualTo("max-age=31536000 ; includeSubDomains");
+    }
+
+    @Test
+    @DisplayName("the bundle gets HSTS too, on the same insecure request")
+    void theBundleCarriesHstsAsWell() throws Exception {
+        assertThat(headersFor("/assets/index-abc123.js").getHeader("Strict-Transport-Security"))
+                .isNotNull();
+    }
+
+    @Test
+    @DisplayName("a year, and not preloaded")
+    void theMaxAgeIsAYearAndPreloadIsDeclined() throws Exception {
+        assertThat(SecurityHeaders.STRICT_TRANSPORT_SECURITY_MAX_AGE).isEqualTo(31536000L);
+        // preload is a one-way door measured in months and this origin is a subdomain of
+        // azurecontainerapps.io, which this deployment does not own. Asserted so that turning it
+        // on is a deliberate act with a test to change.
+        assertThat(headersFor("/").getHeader("Strict-Transport-Security")).doesNotContain("preload");
+    }
+
+    @Test
+    @DisplayName("the chain is configured to write it, which the writer list above cannot show")
+    void theChainOverridesTheDefaultMatcher() throws IOException {
+        // This suite assembles the writers it checks, so everything above would still pass with
+        // the configuration untouched - which is not a hypothetical weakness, it is exactly how a
+        // framework default that fired on nothing went unnoticed. The rule lives in two files and
+        // is checked in one: whatever the writer list says, SecurityConfiguration has to override
+        // HstsHeaderWriter's SecureRequestMatcher, or the deployment sends no header again.
+        String configuration = Files.readString(
+                Path.of("src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java"),
+                StandardCharsets.UTF_8);
+
+        int hsts = configuration.indexOf("httpStrictTransportSecurity");
+        assertThat(hsts)
+                .as("SecurityConfiguration no longer configures HSTS at all, so the framework "
+                        + "default is back - and the framework default fires on nothing here")
+                .isNotNegative();
+
+        assertThat(configuration.indexOf("AnyRequestMatcher.INSTANCE", hsts))
+                .as("SecurityConfiguration no longer overrides the secure-request matcher, so HSTS "
+                        + "is gated on request.isSecure() again - false on every request served "
+                        + "behind an ingress that terminates TLS")
+                .isNotNegative();
     }
 }

@@ -590,6 +590,20 @@ Four things are worth knowing before editing the policy:
 - **`style-src` keeps `'unsafe-inline'`, deliberately.** Removing it means nonces, which means a
   server-rendered shell this application does not have; Spring serves Vite's `index.html` as a
   static file. Injected CSS can restyle a page, not read a token.
+- **`Strict-Transport-Security` is written unconditionally, and that is not sloppiness.** Spring
+  Security sends it by default and had never sent it once: its default writer is gated on
+  `request.isSecure()`, and TLS terminates at the Container Apps ingress, which is declared
+  `transport = "http"` — so every request this application has ever served arrived as plain HTTP
+  and the default fired on nothing. A default that fires on nothing looks exactly like a default
+  that works, which is why it was found by a scanner asking the real hostname rather than by any
+  suite here. `SecurityConfiguration` overrides the matcher with `AnyRequestMatcher.INSTANCE`; a
+  user agent must ignore an HSTS header received over plain HTTP and the ingress redirects, so
+  there is no case where writing it is wrong. **`server.forward-headers-strategy` is the other fix
+  and is declined**: it would rewrite `getRemoteAddr()` from `X-Forwarded-For` for the whole
+  application, which is exactly the decision `security.rate-limit.trusted-proxy-count` exists to
+  make deliberately — `ClientIpResolver` reads that header itself and a count of `0` means *ignore
+  it*. `preload` stays off: it is a one-way door and this origin is a subdomain of
+  `azurecontainerapps.io`, which this deployment does not own.
 - **`Cross-Origin-Embedder-Policy` is declined rather than forgotten**, and `SecurityHeadersTest`
   asserts its absence so that adding it is a deliberate act. `require-corp` buys cross-origin
   isolation — worth having for `SharedArrayBuffer` or high-resolution timers, neither of which this
