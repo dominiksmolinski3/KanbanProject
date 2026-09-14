@@ -191,22 +191,30 @@ Cypress.Commands.add('closePanelIfOpen', () => {
   });
 });
 
+// Guarded on `.delete-btn`, which is the element the next line actually clicks, rather than on
+// `.task`. Task.jsx renders the button unconditionally inside every card, so the two could only
+// ever disagree across a re-render - and that is exactly what happened: the snapshot caught a card
+// on its way out, `cy.get('.delete-btn')` then retried for four seconds against a board that was
+// legitimately empty, and the whole afterEach hook failed. Guarding on the thing being clicked
+// turns that into the recursion stopping, which is what it meant. It survived for as long as it
+// did because the specs using it left one or two tasks behind; the journey spec leaves four.
 Cypress.Commands.add('deleteTasks', () => {
   cy.closePanelIfOpen();
   cy.get('body').then($body => {
-    if ($body.find('.task').length > 0) {
-      cy.get('.delete-btn').first().click();
-      cy.wait(100);
-      cy.get('body').then($newBody => {
-        if ($newBody.find('.confirm-delete-btn').length > 0) {
-          cy.get('.confirm-delete-btn').click({ force: true });
-          cy.wait(300);
-          cy.deleteTasks();
-        }
-      });
+    const remaining = $body.find('.delete-btn').length;
+    if (remaining === 0) {
+      return;
     }
+    cy.get('.delete-btn').first().click();
+    // Task.jsx renders the confirmation as an overlay beside the card rather than in place of it,
+    // so the card and its .delete-btn stay mounted throughout - which is what makes counting them
+    // a reliable measure of how many cards are left.
+    cy.get('.confirm-delete-btn').first().click({ force: true });
+    // Wait for the board to actually lose the card rather than a fixed 300ms, which is what let
+    // the next iteration snapshot a board that had not caught up yet.
+    cy.get('.delete-btn', { timeout: 10000 }).should('have.length', remaining - 1);
+    cy.deleteTasks();
   });
-  cy.wait(300);
 });
 
 // Deleting a column or row asks for confirmation through a react-toastify toast

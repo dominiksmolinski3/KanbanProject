@@ -14,6 +14,29 @@ describe('Complete User Journey', () => {
     cy.wait(1000);
     cy.loginAsTestUser();
     cy.wait(1000);
+
+    // This spec owns its board rather than inheriting one. Every fresh board ships with the eight
+    // columns BoardService.DEFAULT_COLUMNS seeds, one of which is named "In Progress" - so the
+    // column created below is the *second* one by that name, and `th:contains("In Progress")`
+    // matches two elements, which cy.trigger() refuses outright.
+    //
+    // Until now it passed only because the board/ specs happened to run first and their afterEach
+    // had already emptied the board. Nothing guaranteed that: Cypress discovers specs by walking
+    // the filesystem and the order is not sorted, so on 14 Sep this spec moved from sixth to third
+    // - ahead of every spec that cleans - and trunk went red on two consecutive merges whose
+    // changes could not have touched it. Cleaning here removes the dependency instead of
+    // re-freezing the order that happened to satisfy it.
+    //
+    // Wait for the grid itself rather than trusting the cy.wait(1000) above: on a cold start the
+    // board can still be mounting, and cy.deleteColumns' own `cy.get('th')` gives up after the
+    // default four seconds. The corner cell and the "+ Add column" placeholder are always there
+    // once it has rendered, so this asserts the board exists without assuming it holds anything.
+    cy.get('th', { timeout: 30000 }).should('exist');
+
+    cy.deleteTasks();
+    cy.deleteColumns();
+    cy.deleteRows();
+
     cy.createColumn('Backlog', 0);
     cy.createColumn('In Progress', 3);
     cy.createColumn('Done', 0);
