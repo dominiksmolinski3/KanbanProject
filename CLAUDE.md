@@ -338,6 +338,32 @@ Four details carry it:
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 
+**The sweep claims the rows it is about to change**, `FOR UPDATE SKIP LOCKED`, for the same reason
+the outbox relay does. Two schedulers sweeping at once is not a benign duplicate: both write the
+flag, both record the expiry, and both ask `DeadlineNotifier` to mail every assignee, so an overdue
+task arrives twice in somebody's mailbox and nothing can recall it. Three things carry it:
+
+- **The claim asks for the rows that change, not for every task with a deadline.**
+  `claimTasksCrossingDeadline` selects the ids whose `expired` disagrees with `deadline < now`, and
+  the sweep then loads those through `findByIdIn` — the same two-query shape the search uses, and
+  the same entity graph. That is what makes locking affordable: the rows held are exactly the rows
+  the next statement writes, which any update would have locked anyway. It also stops a half-hourly
+  read of every deadline in the deployment to answer a question that is almost always "none".
+- **The class-level `@Transactional` on `TaskService` is what holds the claim**, and that is the
+  whole reason this needs no lock table, no advisory lock and no new dependency — row locks last as
+  long as the transaction, and the sweep is one. Remove it and the lock releases at the end of its
+  own statement: identical to read, and protecting nothing. `DeadlineSweepClaimTest` pins it, and
+  pins the `SKIP LOCKED` clause with it, because a native query is invisible to
+  `QueryStringsResolveTest` — that test compiles the hand-written HQL and skips native queries, so
+  nothing but a database checks the string.
+- **`COALESCE(expired, FALSE)`**, because the column is nullable and the entity's field is a
+  primitive defaulting to `false`. The two have to agree on what a null means, or the sweep selects
+  rows it then declines to change, every half hour, forever.
+
+`SKIP LOCKED` rather than a plain `FOR UPDATE` because a second sweep should take the rows the
+first is not holding rather than queue behind it for the length of a mail run — with nothing left to
+take, it does nothing and returns, which is the correct amount of work for it to do.
+
 ### Attachments
 
 A task carries files, and **the bytes are not in the database and never pass through the

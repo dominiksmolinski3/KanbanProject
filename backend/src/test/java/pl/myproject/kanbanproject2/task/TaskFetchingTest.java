@@ -95,7 +95,9 @@ class TaskFetchingTest {
         void listingsCarryAnEntityGraph() {
             List<EntityGraph> graphs = List.of(
                     graphOn("findByBoardOrderByIdAsc", pl.myproject.kanbanproject2.board.Board.class),
-                    graphOn("findAllByDeadlineIsNotNull"),
+                    // The deadline sweep claims ids and then loads them through findByIdIn, so the
+                    // graph it relies on is that one's.
+                    graphOn("findByIdIn", java.util.Collection.class),
                     graphOn("findByBoardAndDailyFocusTrue", pl.myproject.kanbanproject2.board.Board.class),
                     graphOn("findByBoardAndColumnAndRow",
                             pl.myproject.kanbanproject2.board.Board.class,

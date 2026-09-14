@@ -40,14 +40,48 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Task> findByBoardAndDailyFocusTrue(Board board);
 
     /**
-     * Every task with a deadline, across every board.
+     * The ids of the tasks whose {@code expired} flag no longer matches their deadline, locked for
+     * the sweep that is about to write them.
      *
      * <p>The one query here that is deliberately not board-scoped. It backs the scheduled sweep,
      * which runs as the system rather than as a caller and has to see the whole deployment; there
      * is no user on whose behalf it could be narrowed.
+     *
+     * <p><b>It asks for the rows that change, not for every task with a deadline.</b> The sweep used
+     * to load all of them and fold the comparison in Java, which is a growing read every half hour
+     * for an answer that is nearly always "nothing". Moving the predicate into SQL is worth a little
+     * on its own and is what makes the lock affordable: the rows locked are exactly the rows the
+     * next statement updates, which any update would have locked anyway.
+     *
+     * <p><b>{@code FOR UPDATE SKIP LOCKED} is what makes a second replica safe.</b> Two schedulers
+     * sweeping at once is not a harmless duplicate: each flips the same tasks, each writes an
+     * activity entry, and each asks {@code DeadlineNotifier} to mail every assignee - so an overdue
+     * task is announced N times to N people who cannot tell which is the real one. With the lock,
+     * two sweeps partition the work and each row is answered for once. {@code SKIP LOCKED} rather
+     * than a plain {@code FOR UPDATE} because a second sweep should take the rows the first is not
+     * holding rather than queue behind it for the length of a mail run.
+     *
+     * <p><b>The lock lasts as long as the transaction, which is the whole sweep.</b> That is why
+     * {@code TaskService} is {@code @Transactional} and why {@code DeadlineSweepClaimTest} asserts
+     * it: without a transaction the lock is released at the end of this statement and the next
+     * replica reads the same rows a moment later, unflipped.
+     *
+     * <p>{@code COALESCE} because the column is nullable and the entity's field is a primitive that
+     * defaults to {@code false} - the two have to agree on what a null means, or the sweep selects
+     * rows it then declines to change, every half hour, forever.
+     *
+     * <p>Native, because {@code SKIP LOCKED} has no JPQL spelling. The cost is the same one
+     * {@code OutboxEmailRepository} names: {@code QueryStringsResolveTest} compiles the hand-written
+     * HQL and skips native queries, so nothing but a database checks this string.
      */
-    @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
-    List<Task> findAllByDeadlineIsNotNull();
+    @Query(value = """
+            SELECT id FROM task
+            WHERE deadline IS NOT NULL
+              AND COALESCE(expired, FALSE) <> (deadline < :now)
+            ORDER BY id
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Integer> claimTasksCrossingDeadline(@Param("now") LocalDateTime now);
 
     /**
      * The tasks in one cell of the board. A {@code null} argument means exactly what it means on
@@ -147,6 +181,11 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
      * <p>Not board-scoped, and that is safe only because of how it is called: the ids come from
      * {@link #findMatchingIds}, which is scoped, so this never widens what the caller can see. It
      * is deliberately not a route's entry point for that reason.
+     *
+     * <p>The deadline sweep is the second caller and the exception that proves the rule - it has no
+     * caller to be scoped to, runs as the system, and its ids come from
+     * {@link #claimTasksCrossingDeadline}, which is unscoped for the same reason. Nothing that
+     * takes a {@code currentUser} may reach either.
      */
     @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
     List<Task> findByIdIn(Collection<Integer> ids);
