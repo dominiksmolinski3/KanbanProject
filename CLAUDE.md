@@ -895,6 +895,17 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   deployment nobody has made yet. A daily rebuild of the tip is what makes `latest` converge again
   whoever did the merging, and `cd-alarm` is what says so when it cannot. The rebuild is cheap and
   idempotent: the SHA tag is the same tag, and `promote` re-tags `latest` at the same digest.
+- **`deployed-contract.yml`** — a daily sweep that asks the deployed origin whether it still
+  answers what the trunk claims. It is the one direction nothing else here covers: every other
+  guard reads source and compares it with source, Checkov reads what Terraform declares, and
+  `terraform plan` reads what Terraform declared last time — **all of which stay green on an
+  environment running eight-day-old code**, which is precisely what TF-09 was. The claims are read
+  out of the Java at run time rather than copied into the script (`SecurityHeaders`'s two policy
+  constants, `SpaRoutes.ALL`), because a copy is the drift every guard here exists to catch; a
+  source file the script cannot parse is an error, never a skipped check. It needs no credentials
+  — only the `DEPLOYED_ORIGIN` repository variable — and an unset origin fails rather than skips.
+  **What it does not do is name the deployed commit**: nothing public says which one is running, so
+  a revision that moves no claim is invisible to it. That is stated rather than solved.
 - `codeql.yml` — CodeQL analysis of the Java backend, on pushes, PRs and a weekly cron. The weekly
   cron is why it is not in `SweepAlarmCoverageTest`'s list: its findings go to the Security tab,
   which has its own notifications, and there is no job result an alarm could add anything to.
