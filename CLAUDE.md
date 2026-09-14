@@ -741,9 +741,49 @@ messages because the fiftieth was refused. A refusal waits — one minute, doubl
 attempts the row is `FAILED`, which is the dead letter. With
 no mail account configured the relay marks rows `DROPPED` rather than `SENT`, via
 `EmailSender.deliversMessages()` — the one table whose job is to be truthful about mail must not
-claim a fresh clone sent anything. **Nothing claims a row**, so a second replica would post every
-message twice; replicas are already pinned to 1 for the in-memory broker and rate limiter, and a
-`FOR UPDATE SKIP LOCKED` claim is the change that lands with the second one.
+claim a fresh clone sent anything.
+
+**A row is claimed before it is posted, so a second relay cannot post it too.** `OutboxClaimer`
+selects `FOR UPDATE SKIP LOCKED` and marks the batch `SENDING` in one short transaction that
+commits before any HTTPS call; the relay then posts outside it, exactly as before. Four things
+carry it, and none is visible from the query alone:
+
+- **The lock partitions the batch; the status keeps the partition.** A row lock lives only as long
+  as its transaction, and that transaction cannot last as long as the send — which is the same
+  reason the relay is not transactional. So the lock is what makes two simultaneous selects
+  disjoint, and `SENDING` is what keeps them disjoint afterwards, because the claim query asks only
+  for `PENDING`. `SKIP LOCKED` rather than a plain `FOR UPDATE` because the second relay should
+  take the *next* fifty rows, not block behind the first and drain the queue at one replica's
+  speed however many are running.
+- **The claim is its own bean because Spring's transactions are proxies.** A `@Transactional`
+  private method of `OutboxRelay` would be called on `this`, run with no transaction at all, and
+  read perfectly — which is the failure it exists to prevent, since the lock would then be released
+  before `SENDING` was written. `OutboxClaimQueryTest` asserts the annotation and that the methods
+  are `public`, because `@Transactional` on a package-private method is ignored without a word.
+- **A claim carries a lease, in `next_attempt_at`.** A relay killed mid-batch leaves rows nothing
+  intends to post; ten minutes later the next pass takes them back to `PENDING` and says so at
+  WARN. The lease is not a timeout on one send — every row in a batch is claimed at the same
+  instant and the fiftieth is posted last. Reclaiming **charges an attempt**, which is the only
+  thing bounding a message whose own content kills the relay: five lapsed claims make it a dead
+  letter carrying the same `MAIL_DEAD_LETTER` marker as a refusal.
+- **It is at-least-once, deliberately.** A row already posted when the process died is posted again
+  after its lease lapses. The other ordering — mark sent, then send — trades that duplicate for a
+  verification code nobody ever receives, and a code arriving twice is the better failure.
+
+The query is native, and that costs something worth naming: `QueryStringsResolveTest` compiles the
+hand-written *HQL* and skips native queries, so nothing but a database checks this string.
+`@Lock(PESSIMISTIC_WRITE)` with a `jakarta.persistence.lock.timeout` hint of `-2` is the portable
+spelling and fails worse — a hint the provider does not honour is dropped silently, leaving a
+blocking `FOR UPDATE` that looks identical until two replicas run. `OutboxClaimQueryTest` pins the
+clause instead.
+
+`MailHealthIndicator` gained a `sending` detail with it: a claimed row is no longer `PENDING`, so
+without it a queue being worked reads as a queue that is empty, and a relay killed mid-batch reads
+as nothing at all until the lease lapses.
+
+The other three single-replica constraints are unchanged — the in-memory broker, the in-memory rate
+limiter, and the deadline sweep — so `max_replicas` stays at 1. This is the first of them lifted,
+and it went first because its failure mode is the one that leaves the building.
 
 **Two things watch the dead letters, because moving the send off the request thread moved the
 signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert
