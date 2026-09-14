@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -96,6 +97,34 @@ public class SecurityConfiguration {
                                 coop.policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
                         .crossOriginResourcePolicy(corp ->
                                 corp.policy(CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_ORIGIN))
+                        /*
+                         * Spring Security sends this by default and had never sent it once. Its
+                         * default writer is gated on request.isSecure(), and TLS terminates at the
+                         * Container Apps ingress - declared `transport = "http"` - so every request
+                         * this application has ever served arrived as plain HTTP. A default that
+                         * fires on nothing looks exactly like a default that works, which is why
+                         * this was found by a scanner asking the real hostname rather than by any
+                         * of the suites.
+                         *
+                         * Written unconditionally rather than made conditional on a forwarded
+                         * header: a user agent must ignore an HSTS header received over plain
+                         * HTTP, and the ingress redirects, so there is no case where writing it is
+                         * wrong.
+                         *
+                         * `server.forward-headers-strategy` is the other way to fix this and is
+                         * declined. It would rewrite getRemoteAddr() from X-Forwarded-For for the
+                         * whole application, which is precisely the decision
+                         * security.rate-limit.trusted-proxy-count exists to make deliberately -
+                         * ClientIpResolver reads that header itself, counting hops from the right,
+                         * and a deployment that sets the count to 0 means "ignore it". Changing
+                         * what that knob means as a side effect of adding a header is a worse
+                         * trade than one extra writer.
+                         */
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .requestMatcher(AnyRequestMatcher.INSTANCE)
+                                .maxAgeInSeconds(SecurityHeaders.STRICT_TRANSPORT_SECURITY_MAX_AGE)
+                                .includeSubDomains(true)
+                                .preload(false))
                 )
                 .sessionManagement(c -> c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
