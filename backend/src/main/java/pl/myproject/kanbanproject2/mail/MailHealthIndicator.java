@@ -81,6 +81,13 @@ import java.time.Instant;
  * to restart the container, and an indicator that conflated the two would be worse than none - the
  * failure it reports would take out the application that reports it.
  *
+ * <p><b>{@code sending} is here because {@code pending} stopped being the whole queue.</b> A row a
+ * relay has claimed is {@code SENDING} and no longer counted as pending, so without this number a
+ * queue being worked through looks like a queue that is empty - and, worse, a relay killed
+ * mid-batch would leave rows nothing here could see until their lease lapsed. A small number that
+ * moves is the relay working; a number that sits still across several checks is a relay that is
+ * not, and the next pass reclaiming those rows is what will say so in the log.
+ *
  * <p>Counts are details, and {@code management.endpoint.health.show-details=when_authorized} keeps
  * details away from anonymous callers. The public endpoint says {@code UP} or it does not.
  */
@@ -132,6 +139,7 @@ public class MailHealthIndicator implements HealthIndicator {
                     .withDetail("reason", "no mail account is configured; queued messages are dropped")
                     .withDetail("dropped", outbox.countByStatus(OutboxStatus.DROPPED))
                     .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
+                    .withDetail("sending", outbox.countByStatus(OutboxStatus.SENDING))
                     .withDetail("failed", failed)
                     .build();
         }
@@ -141,6 +149,7 @@ public class MailHealthIndicator implements HealthIndicator {
                     .withDetail("failedRecently", failedRecently)
                     .withDetail("failed", failed)
                     .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
+                    .withDetail("sending", outbox.countByStatus(OutboxStatus.SENDING))
                     .withDetail("undelivered", undelivered)
                     .withDetail("sent", sent)
                     .withDetail("reported", reported)
@@ -150,6 +159,7 @@ public class MailHealthIndicator implements HealthIndicator {
         }
         return Health.up()
                 .withDetail("pending", outbox.countByStatus(OutboxStatus.PENDING))
+                .withDetail("sending", outbox.countByStatus(OutboxStatus.SENDING))
                 .withDetail("failed", failed)
                 .withDetail("undelivered", undelivered)
                 .withDetail("sent", sent)

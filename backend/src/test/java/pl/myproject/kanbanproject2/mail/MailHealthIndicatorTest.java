@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -159,7 +160,20 @@ class MailHealthIndicatorTest {
         indicator.health();
 
         verify(outbox, never()).findAll();
-        verify(outbox, never())
-                .findTop50ByStatusAndNextAttemptAtLessThanEqualOrderByIdAsc(any(), any());
+        verify(outbox, never()).claimBatch(any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("a row a relay is posting right now is counted, so a worked queue is not an empty one")
+    void inFlightRowsAreVisible() {
+        when(transport.deliversMessages()).thenReturn(true);
+        when(outbox.countByStatus(OutboxStatus.PENDING)).thenReturn(0L);
+        when(outbox.countByStatus(OutboxStatus.SENDING)).thenReturn(6L);
+
+        Health health = indicator.health();
+
+        // Without this, a relay part-way through a batch and a relay with nothing to do report the
+        // same thing - and a relay killed mid-batch reports it until the lease lapses.
+        assertThat(health.getDetails()).containsEntry("pending", 0L).containsEntry("sending", 6L);
     }
 }

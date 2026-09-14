@@ -142,6 +142,56 @@ public class OutboxEmail {
         return new EmailMessage(recipient, subject, htmlBody, textBody);
     }
 
+    /**
+     * Takes the row out of the queue for the length of one lease, so that nothing else posts it.
+     *
+     * <p><b>The claim is a status, not a held lock.</b> {@code FOR UPDATE SKIP LOCKED} is what
+     * makes two relays selecting at the same moment take disjoint rows, but that lock lives only as
+     * long as the transaction that took it, and that transaction cannot last as long as the send -
+     * a connection held across fifty HTTPS round trips is the thing {@link OutboxRelay} refuses to
+     * do, and refuses for reasons that have not changed. So the lock partitions the batch and the
+     * status keeps the partition after the commit: the claim query reads {@code PENDING}, and a row
+     * that is {@code SENDING} is invisible to every other relay with nothing held open.
+     *
+     * <p><b>The lease is written into {@code next_attempt_at}</b>, which already means "when the
+     * relay may next take this row" and means exactly that here. A relay that dies between the
+     * claim and the answer leaves a row nothing will ever answer for, and a claim with no expiry
+     * turns that into a message silently never sent; a lease turns it into a message sent late. It
+     * also costs nothing in indexes - {@code idx_email_outbox_due} is on
+     * {@code (status, next_attempt_at, id)} and covers the reclaim query as it already stands.
+     *
+     * <p>The lease is not a timeout on the send. It has to outlast a whole batch, because every row
+     * in one is claimed at the same instant and the last of them is posted last.
+     */
+    void claimed(Instant now, java.time.Duration lease) {
+        this.status = OutboxStatus.SENDING;
+        this.nextAttemptAt = now.plus(lease);
+    }
+
+    /**
+     * A claim that lapsed: the relay holding this row never came back.
+     *
+     * <p>Put back in the queue rather than failed, because a verification code that arrives twice
+     * is a worse mail and a verification code that never arrives is a broken signup. The row's real
+     * state is unknowable from here - the relay may have died before the POST or after it - and
+     * between a possible duplicate and a possible loss this application chooses the duplicate.
+     *
+     * <p><b>The attempt is charged</b>, which is the only thing bounding the other case: a message
+     * whose own content kills the relay would otherwise be claimed, abandoned and re-claimed
+     * forever, by every replica in turn. Five lapsed claims make it a dead letter like any other
+     * refusal, and {@code lastError} says which kind of failure it was.
+     */
+    void abandoned(Instant now) {
+        this.attempts++;
+        this.lastError = "a relay claimed this row and did not come back; the claim lapsed";
+        if (attempts >= MAX_ATTEMPTS) {
+            this.status = OutboxStatus.FAILED;
+            return;
+        }
+        this.status = OutboxStatus.PENDING;
+        this.nextAttemptAt = now;
+    }
+
     void accepted(Instant now, String providerMessageId) {
         this.status = OutboxStatus.SENT;
         this.sentAt = now;
