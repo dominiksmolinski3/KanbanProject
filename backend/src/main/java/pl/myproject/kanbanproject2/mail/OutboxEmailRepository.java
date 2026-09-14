@@ -1,6 +1,8 @@
 package pl.myproject.kanbanproject2.mail;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -12,21 +14,54 @@ import java.util.Optional;
 public interface OutboxEmailRepository extends JpaRepository<OutboxEmail, Long> {
 
     /**
-     * The batch one relay pass posts, oldest first.
+     * The batch one relay pass posts, oldest first, locked so that no other relay takes the same
+     * rows.
      *
      * <p>Bounded because a relay that wakes up to ten thousand rows should send fifty of them and
      * come back rather than hold one thread for an hour; the next pass is a minute away. Oldest
      * first because a verification code has a fifteen-minute life and a backlog worked newest-first
      * delivers the ones that have already expired.
      *
-     * <p>There is no locking here, and that is a real constraint rather than an omission: two
-     * replicas running this would both claim the same rows and send every message twice. The
-     * deployment pins replicas to 1 for the in-memory broker and the in-memory rate limiter
-     * already, and a claim - {@code FOR UPDATE SKIP LOCKED}, or a status transition to {@code
-     * SENDING} - is the change that has to land with the second replica, not before it.
+     * <p><b>{@code FOR UPDATE SKIP LOCKED} is what makes a second replica safe</b>, and it is the
+     * whole of the change: without it two relays select the same fifty rows and every message goes
+     * out twice - externally, to a person, with no way to recall it. With it, the second relay's
+     * select steps over the rows the first is holding and takes the next fifty instead, so two
+     * relays drain the queue twice as fast rather than duplicating it. Plain {@code FOR UPDATE}
+     * would be correct and much worse: the second relay would block behind the first for as long as
+     * the claim transaction lasts rather than doing useful work.
+     *
+     * <p><b>The lock is not what keeps the row claimed.</b> It lives only as long as the
+     * transaction, which ends at the commit of {@link OutboxClaimer#claim} - long before the
+     * messages are posted, because {@link OutboxRelay} will not hold a connection across the
+     * sending. {@link OutboxEmail#claimed} writes {@code SENDING} inside that same transaction and
+     * that is what the next relay sees; this query asks only for {@code PENDING}.
+     *
+     * <p><b>Native, and deliberately.</b> JPQL has no way to say {@code SKIP LOCKED};
+     * {@code @Lock(PESSIMISTIC_WRITE)} with a {@code jakarta.persistence.lock.timeout} hint of
+     * {@code -2} is the portable spelling and it fails in the worst possible way - a hint the
+     * provider does not honour is silently dropped, leaving a blocking {@code FOR UPDATE} that
+     * looks identical until two replicas are running. Written out, it says what it does and
+     * {@code OutboxClaimQueryTest} can read it. The cost is real and worth naming: a native query
+     * is invisible to {@code QueryStringsResolveTest}, which compiles the HQL ones, so nothing here
+     * checks this string against the schema except a database.
+     *
+     * <p><b>One query, two callers, on purpose.</b> {@link OutboxClaimer} asks it for
+     * {@code PENDING} rows that are due and for {@code SENDING} rows whose lease has lapsed, and
+     * those are the same question asked of two statuses - {@code next_attempt_at} means "when the
+     * relay may next take this row" in both. Two copies of this SQL would be two things to keep in
+     * step for no gain, and the locking clause is exactly what must not drift between them.
      */
-    List<OutboxEmail> findTop50ByStatusAndNextAttemptAtLessThanEqualOrderByIdAsc(
-            OutboxStatus status, Instant now);
+    @Query(value = """
+            SELECT * FROM email_outbox
+            WHERE status = :status
+              AND next_attempt_at <= :now
+            ORDER BY id
+            LIMIT :limit
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<OutboxEmail> claimBatch(@Param("status") String status,
+                                 @Param("now") Instant now,
+                                 @Param("limit") int limit);
 
     /**
      * How many rows are in one state, for {@link MailHealthIndicator}.
