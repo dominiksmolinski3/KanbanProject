@@ -82,7 +82,8 @@ class SweepAlarmCoverageTest {
                 new String[] { "kanban-cd.yml", "cd-alarm" },
                 new String[] { "dast.yml", "scan-alarm" },
                 new String[] { "dependency-scan.yml", "scan-alarm" },
-                new String[] { "external-scan.yml", "scan-alarm" });
+                new String[] { "external-scan.yml", "scan-alarm" },
+                new String[] { "deployed-contract.yml", "contract-alarm" });
     }
 
     /**
