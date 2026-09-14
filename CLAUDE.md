@@ -981,13 +981,16 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   entry cannot be lost that way. What it costs is breadth — the skip applies to any future
   resource of that kind, and there is one Postgres server. **Checkov's version is pinned** — an
   unpinned scanner on a blocking step goes red on somebody else's release day, and the first
-  response to that is always to put the escape back. The same workflow carries a `plan` job that
-  runs `terraform plan` against the **dev** state and writes the diff to the PR summary; it is
-  gated on the `TF_PLAN_ENABLED` repository variable and does nothing until an Entra app
-  registration with a federated credential and three `AZURE_*` secrets exist (see
-  [terraform/README.md](terraform/README.md), *Plan on pull requests*). It plans with
-  `-refresh=false` on purpose: a GitHub runner's address is not on the Key Vault firewall, so a
-  refreshing plan cannot read the secret resources. The Postgres JDBC URL uses
+  response to that is always to put the escape back. **There is deliberately no `plan` job.** One
+  existed, gated off behind `TF_PLAN_ENABLED` and never wired, and measuring it before wiring it
+  showed it could not work: the values that gate `count` on the alerts, the Event Grid pair and
+  three Key Vault secrets live in gitignored `<env>.local.tfvars` — TF-07's fix — which CI cannot
+  read, so the exact command the job ran against real dev state plans **`0 to add, 2 to change, 15
+  to destroy`** where a person's `./tf.sh dev plan` reads **`No changes`**. A permanent
+  fifteen-resource destroy diff on every pull request is TF-12's failure in the place this project
+  treats as its strongest signal, and the only way to make it truthful is dev's live ACS
+  credential in GitHub secrets. Retired rather than fixed; the reasoning is in
+  [terraform/README.md](terraform/README.md). The Postgres JDBC URL uses
   `sslmode=verify-full`, not `require` — `require` encrypts without authenticating the server. **It
   carries `sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory`, and that half is load-bearing**:
   pgjdbc's default for a verifying mode is `LibPQFactory`, which follows libpq's convention and
