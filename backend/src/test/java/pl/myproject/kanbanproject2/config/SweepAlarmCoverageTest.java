@@ -51,6 +51,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the suite and skipped the job that reports the result. Everything the alarm is made of was
  * therefore unreachable on purpose.
  *
+ * <p><b>And the sweep itself must not be able to pass having done nothing.</b> That one is not a
+ * coupling but the same rule the alarm applies to jobs, read one level in: {@code external-scan.yml}
+ * skipped every step when its target was unset and reported success, which no amount of alarm
+ * correctness can see, because the job succeeded.
+ *
  * <p>Like every guard here it does not skip when a file is missing. A guard that turns itself off
  * when it cannot find what it guards leaves the build green either way, and only one of those two
  * states is honest.
@@ -210,6 +215,39 @@ class SweepAlarmCoverageTest {
                 .as("an issue with no assignee is an issue nobody is subscribed to, which is the "
                         + "failure this whole change is about rather than a detail of it")
                 .contains("--add-assignee");
+    }
+
+    /**
+     * The same rule as the alarm's, one level in: a sweep that did not do its work must not
+     * report that it passed.
+     *
+     * <p>The alarm reads {@code skipped} as red because a job that did not run proved nothing.
+     * That is a rule about <em>jobs</em>, and {@code external-scan.yml} slipped underneath it by
+     * skipping every <em>step</em> instead. Its target came from a repository variable nobody had
+     * set, an unset target wrote {@code skip=true}, every step carried {@code if: skip == false},
+     * and the job succeeded in five seconds having scanned nothing. One run in its whole history,
+     * green, and the alarm could not see it because the job really had succeeded.
+     *
+     * <p>So an unconfigured sweep fails now, and this is what stops the convenience being written
+     * back. It pins one spelling of the pattern rather than the idea - a sweep can still be made
+     * to do nothing by other means, and no test here can see that. What it does catch is the
+     * exact shape that already cost this repository a scan it thought it had.
+     */
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("a sweep cannot switch its own steps off and still report success")
+    @MethodSource("sweeps")
+    void theSweepCannotSkipItselfIntoSuccess(String workflow, String alarmJob) {
+        String source = read(WORKFLOWS.resolve(workflow));
+
+        assertThat(source)
+                .as("%s writes a skip flag for its own steps to read; an unconfigured sweep must "
+                        + "fail rather than pass having checked nothing", workflow)
+                .doesNotContain("skip=true");
+
+        assertThat(source)
+                .as("a step in %s is gated on a skip flag, so the sweep can run green having done "
+                        + "none of its work", workflow)
+                .doesNotContain("outputs.skip");
     }
 
     /** The inputs one alarm job forwards to the shared workflow. */
