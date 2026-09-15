@@ -11,15 +11,16 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Fails the build if the edge stops sending SNI, or stops checking the certificate it gets back,
- * when it proxies to the API.
+ * Fails the build if the edge stops speaking to the API the way a Container Apps ingress requires.
  *
  * <p><b>Why this exists, and why nothing else could have caught it.</b> The edge template is one
- * file used two ways: {@code docker-compose} sets {@code API_UPSTREAM=http://app:8080} and the
- * deployment sets {@code https://kanban-api-<env>.internal.<env-domain>}. The scheme is the single
- * difference between the stack every guard here runs against and the stack that actually serves
- * users — and it is the half nothing local exercises, because over {@code http} every directive
- * below is inert.
+ * file used two ways: {@code docker-compose} points it at a bare container
+ * ({@code API_UPSTREAM=http://app:8080}) and the deployment points it at an <em>ingress</em>
+ * ({@code https://kanban-api-<env>.internal.<env-domain>}). A bare container answers whatever
+ * arrives on its port. An ingress is a router, and it turns two requests away that the container
+ * would have accepted: one without SNI, and one whose {@code Host} names a different app. Neither
+ * rejection can happen locally, which is why the split broke twice in a row on exactly these two
+ * lines and passed every suite in this repository both times.
  *
  * <p>So it went wrong exactly there. {@code proxy_ssl_server_name} defaults to <b>off</b>, which
  * means nginx opens TLS to the ingress naming nobody; Container Apps routes by SNI, so envoy cannot
@@ -37,12 +38,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  * this deployment refused when it chose {@code sslmode=verify-full} over {@code require} for
  * Postgres. The design note claimed the hop was authenticated. It was not, and nothing said so.
  *
- * <p>This is deliberately a text assertion over the template rather than a behavioural one. A
- * behavioural test needs an https upstream with a real certificate, which is a network dependency
- * in a suite that has none. The two were verified by hand instead, with a control: the same image
- * against the same https upstream answers 403 with these directives and 502 without them.
+ * <p><b>Then the same shape again, one layer up.</b> With SNI sent, the handshake succeeded and
+ * every proxied call answered <b>404</b> — not Spring's 404, but the ingress's own
+ * "Azure Container App - Unavailable" page. nginx was forwarding the browser's {@code Host}
+ * ({@code kanban-web-<env>…}) to the API app's ingress, which routes by {@code Host} and has no
+ * such app. Verified against the real origin: a valid SNI with a deliberately wrong {@code Host}
+ * returns that same page, byte for byte. So {@code Host} has to be {@code $proxy_host} — the name
+ * the upstream answers to — and the browser's own host moves to {@code X-Forwarded-Host}, which is
+ * where anything that wants it should have been reading it anyway.
+ *
+ * <p>This is deliberately a set of text assertions over the template rather than behavioural ones.
+ * A behavioural test needs an https upstream with a real certificate and an ingress that routes by
+ * name, which is a network dependency in a suite that has none. Both were verified by hand instead,
+ * each with a control: the same image against the same https upstream answers 403 with the TLS
+ * directives and 502 without them; and against an upstream that echoes what it received, the fixed
+ * image sends {@code Host: <upstream>} where the previous one sent {@code Host: <browser>}.
  */
-class EdgeUpstreamTlsTest {
+class EdgeUpstreamTest {
 
     private static final Path TEMPLATE = Path.of("..", "frontend", "nginx", "default.conf.template");
 
@@ -69,6 +81,27 @@ class EdgeUpstreamTlsTest {
         assertThat(template)
                 .as("verification with no trust anchor configured is not verification")
                 .contains("proxy_ssl_trusted_certificate ");
+    }
+
+    @Test
+    @DisplayName("the edge sends the upstream the name the upstream answers to")
+    void sendsTheUpstreamsOwnHost() throws IOException {
+        String template = directives();
+
+        assertThat(template)
+                .as("a Container Apps ingress routes by Host. Forwarding the browser's Host to the "
+                        + "API app's ingress gets its \"Unavailable\" page - a 404 that looks like "
+                        + "a missing route in Spring and is not one.")
+                .contains("proxy_set_header Host $proxy_host;");
+        assertThat(template)
+                .as("the browser's host still has to reach the application somehow, and this is "
+                        + "the header that carries it once Host names the upstream")
+                .contains("proxy_set_header X-Forwarded-Host $host;");
+        assertThat(template)
+                .as("a leftover `Host $host` on any proxied location is the same 404 on that path "
+                        + "alone, which is worse than all of them because it looks like a routing "
+                        + "bug in the application")
+                .doesNotContain("proxy_set_header Host $host;");
     }
 
     @Test

@@ -173,8 +173,17 @@ load-bearing, and each corresponds to something in this application that would o
   catch either**, which is the point worth keeping: `docker-compose` sets
   `API_UPSTREAM=http://app:8080`, the scheme is the only difference between the stack every guard
   runs against and the stack that serves users, and over `http` all four directives are inert.
-  `EdgeUpstreamTlsTest` is the guard, and it is a text assertion over the template rather than a
+  `EdgeUpstreamTest` is the guard, and it is a text assertion over the template rather than a
   behavioural one because a behavioural test needs a real certificate and this suite has no network.
+- **`Host` is `$proxy_host`, not `$host`, and the browser's host moves to `X-Forwarded-Host`.** The
+  same shape as the SNI bug, one layer up, and it is what the split broke on second: with SNI sent,
+  the handshake succeeded and every proxied call answered **404** — the *ingress's* own "Azure
+  Container App - Unavailable" page, not Spring's. A Container Apps ingress routes by `Host`, and
+  nginx was forwarding the browser's (`kanban-web-<env>…`) to the API app's ingress, which has no
+  such app. Verified against the real origin: a valid SNI with a deliberately wrong `Host` returns
+  that page byte for byte. Locally the upstream is a bare container that answers whatever arrives on
+  its port, so neither rejection can happen — **the deployment's upstream is a router and the local
+  one is not**, which is the general form of both bugs and the reason `EdgeUpstreamTest` exists.
 - **`client_max_body_size 12m`.** nginx defaults to 1 MB and an attachment is capped at 10 MB, so
   without it every upload over 1 MB is a 413 generated at the edge — `TaskAttachmentService` never
   runs and nothing reaches the application log.
