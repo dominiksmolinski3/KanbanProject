@@ -55,20 +55,16 @@ public final class PublicPaths {
     };
 
     /*
-     * Everything a browser fetches before it holds a token.
+     * There is deliberately no list of static assets here any more.
      *
-     * The single-segment patterns cover the files Vite copies to the bundle root (favicon, logo);
-     * the two directory patterns are the ones that actually matter, because `*` does not cross a
-     * `/` and the app's own code does not sit at the root. Vite emits the bundle to
-     * `/assets/index-<hash>.js`, and i18next fetches `/locales/<lang>/translation.json` at runtime.
-     * Without both, the container serves index.html and then 403s the script that would boot it.
+     * The bundle is served by nginx in its own container and never reaches this filter chain, so
+     * the fifteen permitAll patterns that used to sit here - /assets/**, /locales/**, and a dozen
+     * single-segment extensions - now let nothing through that anything asks for. Removing them is
+     * a real narrowing rather than tidying: /*.json next to a free-text label segment was always
+     * an uncomfortable shape, and this class carried a comment saying so.
+     *
+     * PublicChainPathsTest asserts the absence, so putting them back is a deliberate act.
      */
-    public static final String[] STATIC_ASSETS = {
-            "/assets/**", "/locales/**",
-            "/*.html", "/*.js", "/*.css", "/*.ico", "/*.json",
-            "/*.png", "/*.svg", "/*.jpg", "/*.jpeg", "/*.gif",
-            "/*.webp", "/*.woff", "/*.woff2", "/*.ttf"
-    };
 
     /*
      * The one unauthenticated write in the application, and the only route here that is public
@@ -96,16 +92,13 @@ public final class PublicPaths {
 
     /**
      * Whether the given path is served without authentication, and so has nothing for
-     * {@link JwtAuthenticationFilter} to do. The SPA shell is deliberately absent: those routes
-     * are permitted by the chain, and a signed-in user loading one should still have their token
-     * resolved.
+     * {@link JwtAuthenticationFilter} to do.
      */
     public static boolean isPublic(String path) {
         return matchesAny(AUTH_ENDPOINTS, path)
                 || matchesAny(INFRA_ENDPOINTS, path)
                 || matchesAny(DOCS_ENDPOINTS, path)
-                || matchesAny(WEBHOOK_ENDPOINTS, path)
-                || matchesAny(STATIC_ASSETS, path);
+                || matchesAny(WEBHOOK_ENDPOINTS, path);
     }
 
     private static boolean matchesAny(String[] patterns, String path) {

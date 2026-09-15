@@ -101,6 +101,11 @@ docker-compose up -d
 
 4. The application will be available at [http://localhost:8080](http://localhost:8080)
 
+   That port is the `web` service -- nginx serving the built bundle and reverse-proxying `/api`,
+   `/ws` and `/v3/api-docs` to the `app` container, which is the same shape the deployment has. The
+   API container publishes `127.0.0.1:8081` as well, for poking it directly: `/actuator` is
+   deliberately not proxied, so asking `:8080` for it answers 404 by design.
+
    The stack also brings up [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite),
    the Blob Storage emulator, so task attachments work locally without an Azure subscription. It
    publishes no port -- only the app talks to it, the same way a deployed storage account answers
@@ -203,16 +208,18 @@ The project is organized as follows:
 
 ## ☁️ Deployment & Infrastructure
 
-Every push to `main` builds the root [Dockerfile](Dockerfile) -- the Vite bundle is baked into the
-Spring Boot jar, so a single container serves both -- scans the result with Trivy and publishes it to
-the GitHub Container Registry:
+Every push to `main` builds two images -- [backend/Dockerfile](backend/Dockerfile), the Spring Boot
+jar, and [frontend/Dockerfile](frontend/Dockerfile), nginx with the Vite bundle -- scans each with
+Trivy and publishes both to the GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/dominiksmolinski3/kanbanproject-app:latest
+docker pull ghcr.io/dominiksmolinski3/kanbanproject-web:latest
 ```
 
 Images are tagged with the commit SHA as well, and `:latest` is only promoted after the vulnerability
-scan passes.
+scan passes. **Both carry the same tag**, deliberately: the browser and the API it calls used to be
+one artifact and could not disagree, and one tag feeding both is what replaces that guarantee.
 
 The Azure environment behind it -- Container Apps running under a user-assigned managed identity, a
 PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, a Key
@@ -225,7 +232,7 @@ Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (bac
 Postgres service container, frontend build/lint/Jest, and an `e2e` job that runs Cypress against the
 `docker-compose` stack), `kanban-cd.yml` (build, scan, push, promote), `codeql.yml` (CodeQL analysis
 of the Java backend), `migration-order.yml` (guards Flyway migration numbering across branches),
-`terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (Dockerfile lint), and the dependency and
+`terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (both Dockerfiles), and the dependency and
 attack-surface scans (`dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`,
 `external-scan.yml`, `dast.yml`).
 

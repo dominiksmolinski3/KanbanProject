@@ -1,30 +1,18 @@
-# Stage 1: Build frontend
-FROM dhi.io/node:26-dev@sha256:76e72cc05096a00fa7a0b6797b13f47bb01df8655bebd4172562fcc5c52913c9 AS frontend-build
-WORKDIR /frontend
-COPY frontend/package*.json ./
-RUN npm ci --legacy-peer-deps
-COPY frontend/ ./
-ARG VITE_RECAPTCHA_SITE_KEY
-ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
-RUN npm run build
-
-# Stage 2: Build the backend jar with the frontend bundled in
+# Stage 1: Build the jar
 FROM eclipse-temurin:25-jdk-noble@sha256:264fafc3390db78c93dc51da0109a0d66ad1fb59f7a893f12b7e3df1f15e52da AS backend-build
 WORKDIR /build
 
 # Copy the build files first so the wrapper layer survives source-only changes
-COPY backend/pom.xml ./
-COPY backend/mvnw ./
-COPY backend/.mvn ./.mvn/
+COPY pom.xml ./
+COPY mvnw ./
+COPY .mvn ./.mvn/
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
-# Copy the backend source code, then the frontend build output on top of it
-COPY backend/src ./src/
-COPY --from=frontend-build /frontend/dist/ ./src/main/resources/static/
+COPY src ./src/
 
 RUN ./mvnw package -Dmaven.test.skip=true
 
-# Stage 3: Run the application on a JRE, with only the jar
+# Stage 2: Run the application on a JRE, with only the jar
 FROM eclipse-temurin:25-jre-noble@sha256:d120abd9d8d7dec94520ce974ece62d0e4eed8576eb00bbc84e6128307ab48ef
 WORKDIR /app
 

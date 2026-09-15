@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The untested half of the public-path problem {@link PublicBundlePathsTest} covers on the
+ * The untested half of the public-path problem {@link PublicChainPathsTest} covers on the
  * authorize side. This filter kept its own copy of the list, and both halves of that copy were
  * wrong: {@code /auth/} moved under {@code /api} when the prefix landed, and the extension regex
  * matched the end of any path, not just static assets.
@@ -76,16 +76,35 @@ class JwtAuthenticationFilterSkipTest {
             "/api/auth/resend",
             "/ws/info",
             "/error",
-            "/assets/index-BMKiHw11.js",
-            "/locales/pl/translation.json",
-            "/index.html",
-            "/kanban-logo.png"
+            "/v3/api-docs",
+            "/api/mail/delivery-reports"
     })
     @DisplayName("public paths skip the filter entirely")
     void skipsPublicPaths(String path) throws Exception {
         var chain = authenticatedRequestTo(path);
 
         verifyNoInteractions(jwtService, userDetailsService);
+        verify(chain).doFilter(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/assets/index-BMKiHw11.js",
+            "/locales/pl/translation.json",
+            "/index.html",
+            "/kanban-logo.png"
+    })
+    @DisplayName("a path that used to be the bundle is now just a path, and reads a token like any other")
+    void noLongerSkipsStaticPaths(String path) throws Exception {
+        // These skipped the filter while the jar served the bundle. nginx serves it now, so
+        // nothing asks this application for them - and the extension patterns that made the skip
+        // possible are the same ones that made a free-text label segment unusable. Asserted rather
+        // than deleted: the skip coming back would otherwise be silent, and it is the half of the
+        // old drift that no authorize-side test can see.
+        var chain = authenticatedRequestTo(path);
+
+        verify(jwtService).extractUsername("token");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         verify(chain).doFilter(any(), any());
     }
 
