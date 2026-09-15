@@ -1,7 +1,16 @@
 beforeEach(() => {
   cy.loginAsTestUser();
-  // cy.createTask needs a column to exist on the board - see task-creation.cy.js for the same
-  // fix and why.
+  // Own the board before creating a column named "Backlog" - two of the default seeded columns
+  // ("Product Backlog", "Sprint Backlog") also contain that word, and an unclean board makes
+  // `th:contains("Backlog")` ambiguous. See task-creation.cy.js for the full story.
+  cy.get('th', { timeout: 30000 }).should('exist');
+  cy.deleteTasks();
+  cy.deleteColumns();
+  // Rows are left alone and topped up rather than cleared - see cy.ensureRowExists in
+  // commands.js - because a task with no row of its own renders nowhere once the board has zero.
+  cy.ensureRowExists();
+
+  // cy.createTask needs a column to exist on the board.
   cy.createColumn('Backlog', 0);
 });
 
