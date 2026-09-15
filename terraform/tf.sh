@@ -38,6 +38,20 @@
 # now simply not read. Any leftover `*.local.auto.tfvars` stops this script outright rather than
 # being quietly loaded alongside, because the whole point is that it is no longer a file anything
 # picks up by itself.
+#
+# ---------------------------------------------------------------------------------------------
+# An apply that changes nothing observable is exactly the failure deployed-contract.yml was
+# written for: an `app_image_tag` pinned to `latest` once made the container template
+# byte-identical on every apply, so Terraform reported the environment converged while it served
+# code from eight days and fifteen merges earlier, and the only instrument that would have caught
+# it was asking the running origin a question this checkout already knows the answer to. That
+# sweep otherwise runs once a day on a cron - which means the same gap this script exists to close
+# for `*.auto.tfvars` (a hole invisible until somebody goes looking) stood open here for up to a
+# day after every apply. So `apply` (never `destroy`, and never `plan`) runs it immediately
+# afterward, against this apply's own `container_app_url` output rather than the
+# `DEPLOYED_ORIGIN` repository variable the workflow reads - the two name the same origin, but
+# this one cannot be stale relative to the state that was just written. A `destroy` has no origin
+# left to ask, and a `plan` changed nothing to go check.
 
 set -euo pipefail
 
@@ -88,6 +102,29 @@ fi
 
 terraform init -reconfigure -backend-config="key=${state_key}"
 
+# Best-effort and deliberately not `set -e`-fatal on its own absence: no `container_app_url`
+# output (a `destroy`d environment, or a root module that predates it) and no python3/python on
+# PATH both skip with a warning rather than failing an apply that already succeeded. A claim the
+# deployment fails to answer is a different matter - that exit code is left to propagate, because
+# it is the one thing on this path that would otherwise wait a day for the cron to say so.
+check_deployed_contract() {
+  local origin python_bin
+  origin=$(terraform output -raw container_app_url 2>/dev/null || true)
+  if [ -z "$origin" ]; then
+    echo "==> skipping the deployed-contract check: no container_app_url output" >&2
+    return 0
+  fi
+
+  python_bin=$(command -v python3 || command -v python || true)
+  if [ -z "$python_bin" ]; then
+    echo "==> skipping the deployed-contract check: no python3/python on PATH" >&2
+    return 0
+  fi
+
+  echo "==> checking the deployed contract against ${origin}"
+  "$python_bin" ../.github/scripts/deployed_contract_check.py "$origin"
+}
+
 subcommand=$1
 shift
 
@@ -98,9 +135,13 @@ case "$subcommand" in
     ;;
   apply|destroy)
     if [ $# -gt 0 ] && [ -f "$1" ]; then
-      exec terraform "$subcommand" "$@"
+      terraform "$subcommand" "$@"
+    else
+      terraform "$subcommand" "${var_file_args[@]}" "$@"
     fi
-    exec terraform "$subcommand" "${var_file_args[@]}" "$@"
+    if [ "$subcommand" = "apply" ]; then
+      check_deployed_contract
+    fi
     ;;
   *)
     exec terraform "$subcommand" "$@"
