@@ -91,7 +91,11 @@ public class TaskAttachmentService {
     private final BlobStore blobStore;
     private final Clock clock;
 
-    /** Bounds concurrent uploads and downloads; sized by {@code app.storage.max-concurrent-transfers}. */
+    /**
+     * Bounds concurrent uploads and downloads; sized by {@code app.storage.max-concurrent-transfers}.
+     * Per JVM: at more than one API replica the true ceiling is this value times the replica count,
+     * so the configured number means "per replica" rather than "total" past api_max_replicas = 1.
+     */
     private final Semaphore transferPermits;
     private final long maxAttachmentsPerBoard;
     private final long maxTotalBytesPerBoard;
