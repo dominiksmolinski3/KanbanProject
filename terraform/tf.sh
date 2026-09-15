@@ -103,21 +103,36 @@ fi
 terraform init -reconfigure -backend-config="key=${state_key}"
 
 # Best-effort and deliberately not `set -e`-fatal on its own absence: no `container_app_url`
-# output (a `destroy`d environment, or a root module that predates it) and no python3/python on
-# PATH both skip with a warning rather than failing an apply that already succeeded. A claim the
-# deployment fails to answer is a different matter - that exit code is left to propagate, because
-# it is the one thing on this path that would otherwise wait a day for the cron to say so.
+# output (a `destroy`d environment, or a root module that predates it) and no working python3/
+# python on PATH both skip with a warning rather than failing an apply that already succeeded. A
+# claim the deployment fails to answer is a different matter - that exit code is left to
+# propagate, because it is the one thing on this path that would otherwise wait a day for the cron
+# to say so.
+#
+# `command -v` is not enough on its own, and this was found by running it rather than by reading
+# it: Windows ships a `python3.exe`/`python.exe` "app execution alias" on PATH ahead of any real
+# interpreter even when Python was never installed, which `command -v` reports as present. Running
+# it prints a message telling you to install Python from the Store and exits non-zero - so the
+# first apply of this hook treated a no-op `terraform apply` as a failed one. Each candidate is
+# therefore actually run (`--version`, discarded) before being trusted, and the loop tries the
+# next name rather than stopping at the first `command -v` hit.
 check_deployed_contract() {
-  local origin python_bin
+  local origin python_bin candidate
   origin=$(terraform output -raw container_app_url 2>/dev/null || true)
   if [ -z "$origin" ]; then
     echo "==> skipping the deployed-contract check: no container_app_url output" >&2
     return 0
   fi
 
-  python_bin=$(command -v python3 || command -v python || true)
+  python_bin=""
+  for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" --version >/dev/null 2>&1; then
+      python_bin="$candidate"
+      break
+    fi
+  done
   if [ -z "$python_bin" ]; then
-    echo "==> skipping the deployed-contract check: no python3/python on PATH" >&2
+    echo "==> skipping the deployed-contract check: no working python3/python on PATH" >&2
     return 0
   fi
 
