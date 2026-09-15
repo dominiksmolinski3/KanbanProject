@@ -1,10 +1,29 @@
 beforeEach(() => {
   cy.loginAsTestUser();
+  // Own the board rather than inheriting one. Every fresh board ships with the eight columns
+  // BoardService.DEFAULT_COLUMNS seeds, two of which - "Product Backlog" and "Sprint Backlog" -
+  // contain the word "Backlog", so if this spec runs before anything has cleaned the board,
+  // creating a column named "Backlog" leaves three columns matching that substring and
+  // `th:contains("Backlog")` becomes ambiguous the same way complete-workflow.cy.js's
+  // "In Progress" collision was (see that spec for the full story). Cypress does not sort specs
+  // by filename, so nothing guarantees a cleaning spec runs first.
+  //
+  // Wait for the grid itself rather than assuming it is already there: on a cold start the board
+  // can still be mounting, and cy.deleteColumns' own `cy.get('th')` gives up after the default
+  // four seconds.
+  // Rows are left alone deliberately: Board.jsx only draws a grid band per row in `rows`, so a
+  // task with no row of its own renders nowhere at all once every row is gone (`enhancedRows`
+  // maps `rows`, not the tasks). None of the tests below create a row - they have always leaned
+  // on one already being there - so clearing rows here would make every task in this spec
+  // invisible on a genuinely fresh board.
+  cy.get('th', { timeout: 30000 }).should('exist');
+  cy.deleteTasks();
+  cy.deleteColumns();
+  cy.ensureRowExists();
+
   // Every test here creates a task with no column of its own, which the app refuses when the
   // board has none at all (notifications.noColumnError) - it isn't optional the way a task's own
-  // column is. The suite's own cleanup (deleteColumns) now genuinely empties the board after
-  // every test, so each test that needs one has to create it, rather than relying on a column
-  // left behind by whichever spec happened to run before this one.
+  // column is.
   cy.createColumn('Backlog', 0);
 });
 
