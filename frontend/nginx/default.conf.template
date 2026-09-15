@@ -57,7 +57,7 @@ server {
     #
     # None of this is exercised by docker-compose, where API_UPSTREAM is http://app:8080 and these
     # four directives are inert. The local stack and the deployment differ in exactly one thing -
-    # the upstream scheme - and that one thing is what broke. EdgeUpstreamTlsTest is the guard,
+    # the upstream scheme - and that one thing is what broke. EdgeUpstreamTest is the guard,
     # because no stack anybody runs locally can be.
     proxy_ssl_server_name         on;
     proxy_ssl_name                $proxy_host;
@@ -75,7 +75,8 @@ server {
 
     location /api/ {
         proxy_pass $api_upstream;
-        proxy_set_header Host              $host;
+        proxy_set_header Host              $proxy_host;
+        proxy_set_header X-Forwarded-Host  $host;
         # Appends to the header the ingress already set. $remote_addr would replace it, collapsing
         # two hops into one and breaking ClientIpResolver from the other direction - see
         # ingress_trusted_proxy_count, which has to be 2 now that nginx is the second proxy.
@@ -100,7 +101,8 @@ server {
     location /ws/ {
         proxy_pass $api_upstream;
         proxy_http_version 1.1;
-        proxy_set_header Host              $host;
+        proxy_set_header Host              $proxy_host;
+        proxy_set_header X-Forwarded-Host  $host;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade           $http_upgrade;
@@ -120,7 +122,8 @@ server {
     # the deployed-contract sweep asserts the public origin does not answer it.
     location /v3/api-docs {
         proxy_pass $api_upstream;
-        proxy_set_header Host              $host;
+        proxy_set_header Host              $proxy_host;
+        proxy_set_header X-Forwarded-Host  $host;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_http_version 1.1;
