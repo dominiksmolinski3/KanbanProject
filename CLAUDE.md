@@ -875,8 +875,10 @@ without it a queue being worked reads as a queue that is empty, and a relay kill
 as nothing at all until the lease lapses.
 
 The other three single-replica constraints are unchanged — the in-memory broker, the in-memory rate
-limiter, and the deadline sweep — so `max_replicas` stays at 1. This is the first of them lifted,
-and it went first because its failure mode is the one that leaves the building.
+limiter, and the deadline sweep — so `api_max_replicas` stays at 1. This is the first of them
+lifted, and it went first because its failure mode is the one that leaves the building. (The
+deadline sweep has since gone the same way; the broker and the limiter are what is left, and both
+need infrastructure that does not exist yet.)
 
 **Two things watch the dead letters, because moving the send off the request thread moved the
 signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert
@@ -945,8 +947,11 @@ the report names. Five things carry it.
 
 The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
 (`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module
-builds from the container app's own FQDN plus that key — so the address and the credential cannot be
-configured into disagreeing. It needs both `acs_communication_service_id` and
+builds from the **web** app's FQDN plus that key — so the address and the credential cannot be
+configured into disagreeing. It has to be the web app since the split: Event Grid calls the URL from
+outside this VNet and cannot reach an internal ingress at all, and nginx proxies
+`/api/mail/delivery-reports` like any other `/api` path, for free. It needs both
+`acs_communication_service_id` and
 `mail_delivery_report_key`, and it is **the one resource here with an ordering constraint against
 the application rather than against other Terraform**: Event Grid validates the endpoint by calling
 it at creation time, so the app has to be deployed and serving before this can apply.
@@ -1135,7 +1140,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   reached `ActivationFailed` on exactly that. With the factory set, the original reasoning holds and
   is why no cert is bundled: the roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA
   Root Certificate Authority 2017") are already in the JDK trust store.
-- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,container_app}`. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `container_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
+- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,api_app,web_app}`. **Two Container Apps in one environment**: `kanban-web-<env>` (`modules/web_app`, nginx, the only external ingress) and `kanban-api-<env>` (`modules/api_app`, the jar, `external_enabled = false`). Both land in the same `snet-backend`, so the split adds no subnet, no NSG rule and no private endpoint; the blob and Key Vault grants stay with the API identity alone, and the edge gets a second identity granted `Key Vault Secrets User` on the **`GHCR-TOKEN` secret alone** rather than on the vault — a vault-scoped grant would let the nginx container read the Postgres password. The edge proxies to `https://kanban-api-<env>.internal.<env-domain>`: internal ingress still terminates TLS and answers plain HTTP with a 301, and the certificate it presents carries `*.internal.<env-domain>` and verifies against the stock CA bundle, so the hop is authenticated rather than merely allowed by `allow_insecure_connections`. The two modules compose that name independently so neither depends on the other's resources, and a root-level `check` block asserts they still agree — the failure otherwise is a green apply and a 502 on every API call. Renaming the module is a state move, not a rebuild: `terraform state mv module.container_app module.api_app` before the first apply, or `random_password.jwt_secret_key` is regenerated and every signed-in user is signed out. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `api_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
 

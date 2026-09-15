@@ -15,7 +15,12 @@ variable "container_app_env_id" {
 }
 
 variable "container_app_env_default_domain" {
-  description = "The environment's default_domain output. Combined with this module's own app-name pattern, it gives the app's ingress FQDN before the app resource exists - which is what lets SECURITY_CORS_ALLOWED_ORIGINS include the app's own origin without a dependency cycle on azurerm_container_app.main's own fqdn."
+  description = "The environment's default_domain output. Combined with the web app's name it gives the browser's origin before either app resource exists - which is what lets SECURITY_CORS_ALLOWED_ORIGINS name the edge without a dependency cycle between the two modules."
+  type        = string
+}
+
+variable "web_app_name" {
+  description = "Name of the edge Container App, whose FQDN is the origin a browser actually holds. nginx forwards the browser's Origin header unchanged, so this - not this app's own name - is what Spring's CORS allow-list has to contain. Passed in from the web module's output rather than composed here, so there is one place the name is written."
   type        = string
 }
 
@@ -78,19 +83,23 @@ variable "app_image_tag" {
 
 variable "max_replicas" {
   description = <<-EOT
-    Upper bound on app replicas. Defaults to 1, and should stay there until two pieces of
-    in-JVM state are moved out:
+    Upper bound on API replicas. Defaults to 1, and should stay there until two pieces of in-JVM
+    state are moved out:
 
-      * The STOMP broker is registry.enableSimpleBroker("/topic", "/queue") -- in-process. A chat
-        message published on one replica never reaches a subscriber on another, so messages are
-        lost silently rather than visibly.
+      * The STOMP broker is registry.enableSimpleBroker("/topic", "/queue") -- in-process. A board
+        event or a chat message published on one replica never reaches a subscriber on another, so
+        boards stop updating for roughly half the people watching them and nothing errors.
       * The auth rate limiter holds its Caffeine buckets per JVM (AuthRateLimitProperties says so
         in its own docs), which multiplies every configured limit by the replica count.
 
+    Two others were on this list and are not any more: the outbox relay and the deadline sweep both
+    claim their rows with FOR UPDATE SKIP LOCKED now, so a second replica takes different rows
+    rather than sending the same mail twice.
+
     Ingress also declares no session affinity, which SockJS's XHR fallback transports need.
 
-    Raising this needs an external broker and a shared-state limiter first; until then a higher
-    value promises horizontal scaling the app does not have.
+    Splitting the containers did not raise this and was never going to: every blocker here is about
+    the JVM, and the edge is the half that got a movable ceiling out of it (see web_max_replicas).
   EOT
   type        = number
   default     = 1
@@ -119,24 +128,21 @@ variable "captcha_secret" {
   sensitive = true
 }
 
-variable "allowed_ingress_cidrs" {
-  description = "IPv4 CIDR ranges allowed to reach the Container App ingress. Empty leaves ingress open to the internet."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.allowed_ingress_cidrs :
-      can(cidrhost(cidr, 0)) && !strcontains(cidr, ":")
-    ])
-    error_message = "Each allowed_ingress_cidrs entry must be an IPv4 range in CIDR notation (e.g. \"203.0.113.42/32\"). Container Apps ingress restrictions reject bare addresses and do not support IPv6."
-  }
-}
-
 variable "ingress_trusted_proxy_count" {
-  description = "How many reverse proxies sit in front of the app, counted from the app outwards. Container Apps ingress is one hop; putting Front Door in front of it would make this 2. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge."
+  description = <<-EOT
+    How many reverse proxies sit in front of the app, counted from the app outwards. There are two
+    since the split - the Container Apps ingress, then nginx - and this is the easiest thing in the
+    whole arrangement to get wrong, because getting it wrong fails silently.
+
+    ClientIpResolver reads the X-Forwarded-For entry this many places from the right and ignores
+    everything to its left, which is the part a client can forge. Left at 1 with two proxies in
+    front, every request keys on nginx's own pod address: one shared escalation bucket for the
+    entire internet, and the per-IP CREDENTIALS limit stops existing. Nothing 500s and nothing logs.
+
+    Set to 0 to ignore the header entirely.
+  EOT
   type        = number
-  default     = 1
+  default     = 2
 
   validation {
     condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count

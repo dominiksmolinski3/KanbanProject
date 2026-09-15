@@ -20,19 +20,25 @@ locals {
   delivery_reports_configured = var.mail_delivery_report_key != ""
   captcha_secret_configured   = var.captcha_secret != ""
 
-  # The Container Apps FQDN pattern (<app-name>.<environment-default-domain>) is fixed once the
-  # environment exists, so this is knowable before azurerm_container_app.main is created -
-  # referencing its own ingress fqdn here would be a dependency cycle.
-  app_name    = "kanban-app-${var.env}"
-  self_origin = "https://${local.app_name}.${var.container_app_env_default_domain}"
+  # This app has no public address any more: its ingress is internal, and it is reachable only from
+  # inside the Managed Environment, at <app-name>.internal.<environment-default-domain>. The
+  # pattern is fixed once the environment exists, so the web module can compose the same string
+  # without either module depending on the other's resources.
+  app_name = "kanban-api-${var.env}"
 
+  # The browser's origin, which is now somebody else's FQDN.
+  #
   # Browsers send an Origin header - and Spring's CORS filter runs - even for a same-origin
   # request, whenever a <script>/<link> carries crossorigin (Vite sets it on every module script
-  # and its preloaded stylesheets). SecurityConfiguration's default allow-list only ever knew
-  # about the production domain and localhost, so it 403'd the app's own generated URL outright.
+  # and its preloaded stylesheets). nginx forwards that header unchanged, so what reaches this app
+  # is the address the person typed: the *web* app's FQDN. Getting it wrong is not subtle and is
+  # not a 500 either - every call from the board answers "Invalid CORS request" with a 403, which
+  # is what the compose stack did the first time it ran on a remapped port.
+  browser_origin = "https://${var.web_app_name}.${var.container_app_env_default_domain}"
+
   # Setting this always, rather than only when extra_cors_origins is non-empty, is what keeps
   # every environment's own origin covered without anyone having to remember to.
-  cors_allowed_origins = join(",", concat([local.self_origin], var.extra_cors_origins))
+  cors_allowed_origins = join(",", concat([local.browser_origin], var.extra_cors_origins))
 }
 
 resource "azurerm_container_app" "main" {
@@ -121,10 +127,14 @@ resource "azurerm_container_app" "main" {
 
   template {
     container {
-      name   = "kanban-app"
-      image  = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
-      cpu    = 0.25
-      memory = "0.5Gi"
+      name  = "kanban-api"
+      image = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
+      # Doubled with the split, which is the first item on the front-door document's list of
+      # cheaper things to try before any of that machinery - and the split is when these lines were
+      # being edited anyway. MaxRAMPercentage=60 in the Dockerfile means the heap follows the limit
+      # without a second number to keep in step.
+      cpu    = 0.5
+      memory = "1Gi"
 
       env {
         name        = "SPRING_DATASOURCE_URL"
@@ -239,20 +249,17 @@ resource "azurerm_container_app" "main" {
   }
 
 
+  # Internal. Nothing outside the Managed Environment can reach Spring at all, which is the single
+  # largest thing the split buys and the reason the ip_security_restriction blocks moved to the web
+  # module: there is no public ingress here left to restrict.
+  #
+  # `transport = "http"` describes the port the container listens on, not the wire. The internal
+  # ingress terminates TLS regardless and answers plain HTTP with a 301, which is why the edge
+  # speaks https to it rather than carrying allow_insecure_connections.
   ingress {
-    external_enabled = true
+    external_enabled = false
     target_port      = local.app_port
     transport        = "http"
-
-    dynamic "ip_security_restriction" {
-      for_each = toset(var.allowed_ingress_cidrs)
-      content {
-        name             = "allow-${replace(ip_security_restriction.value, "/[^a-zA-Z0-9]/", "-")}"
-        description      = "Allow ${ip_security_restriction.value}"
-        ip_address_range = ip_security_restriction.value
-        action           = "Allow"
-      }
-    }
 
     traffic_weight {
       percentage      = 100
@@ -267,7 +274,11 @@ resource "azurerm_container_app" "main" {
 }
 
 resource "azurerm_user_assigned_identity" "main" {
-  tags                = var.tags
+  tags = var.tags
+  # Deliberately not renamed with the app. Renaming a user-assigned identity destroys and recreates
+  # it, which means a new principal id, new role assignments against Key Vault and the storage
+  # account, and another wait on RBAC propagation - all to change a string nothing reads. The edge
+  # gets its own identity under its own name; this one keeps the name its grants were made to.
   name                = "kanban-app-identity-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
