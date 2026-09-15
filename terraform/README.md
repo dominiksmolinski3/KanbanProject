@@ -137,6 +137,16 @@ Use `tf.sh`. It takes the environment name once and derives both the backend sta
 It runs `init -reconfigure` on every invocation, so switching environments cannot leave the
 previous one's backend configured.
 
+`apply` (never `plan`, never `destroy`) also runs the same check
+`.github/workflows/deployed-contract.yml` runs on a daily cron, immediately afterward and against
+this apply's own `container_app_url` output -- an `app_image_tag` pinned to `latest` once made a
+container template byte-identical on every apply, so Terraform reported the environment converged
+while it served eight-day-old code, and asking the running origin was the only thing that would
+have caught it. See the comment above `set -euo pipefail` in `tf.sh`. It needs `python3` (or
+`python`) on `PATH`; without one, or without a `container_app_url` output, it skips with a warning
+rather than failing an apply that already succeeded -- but a claim the deployment fails to answer
+does fail the command, on the theory that finding out immediately beats waiting for the cron.
+
 <details>
 <summary>The same thing by hand, and why it is worth avoiding</summary>
 
