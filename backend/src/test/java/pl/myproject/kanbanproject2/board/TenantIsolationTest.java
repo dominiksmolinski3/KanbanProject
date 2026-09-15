@@ -123,7 +123,8 @@ class TenantIsolationTest {
                 mock(pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService.class),
                 mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder.class), mock(BoardEventPublisher.class));
         columnService = new ColumnService(columnRepository, new ColumnMapper(taskMapper),
-                taskService, boardService, mock(BoardEventPublisher.class));
+                taskService, boardService, mock(BoardEventPublisher.class),
+                mock(TaskColumnHistoryRepository.class));
         rowService = new RowService(rowRepository, new RowMapper(taskMapper), taskRepository, boardService, mock(BoardEventPublisher.class));
         fileService = new FileService(fileRepository);
     }

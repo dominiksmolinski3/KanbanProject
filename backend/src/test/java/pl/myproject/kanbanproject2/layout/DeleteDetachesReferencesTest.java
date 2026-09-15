@@ -21,6 +21,8 @@ import pl.myproject.kanbanproject2.layout.row.RowService;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
+import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
+import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -103,10 +105,12 @@ class DeleteDetachesReferencesTest {
 
         private final ColumnRepository columnRepository = Mockito.mock(ColumnRepository.class);
         private final TaskService taskService = Mockito.mock(TaskService.class);
+        private final TaskColumnHistoryRepository historyRepository =
+                Mockito.mock(TaskColumnHistoryRepository.class);
         private final ColumnService columnService =
                 new ColumnService(columnRepository,
                         new ColumnMapper(new pl.myproject.kanbanproject2.task.TaskMapper()), taskService,
-                        TENANT.boardService(), mock(BoardEventPublisher.class));
+                        TENANT.boardService(), mock(BoardEventPublisher.class), historyRepository);
 
         @Test
         @DisplayName("removes each task through the path that clears its history rows")
@@ -119,6 +123,7 @@ class DeleteDetachesReferencesTest {
             task.setBoard(BOARD);
             column.setTasks(new ArrayList<>(List.of(task)));
             when(columnRepository.findById(2)).thenReturn(Optional.of(column));
+            when(historyRepository.findByColumn(column)).thenReturn(List.of());
 
             columnService.deleteColumn(CALLER, 2);
 
@@ -126,6 +131,29 @@ class DeleteDetachesReferencesTest {
             // never have done this on its own.
             InOrder order = inOrder(taskService, columnRepository);
             order.verify(taskService).deleteTask(CALLER, 7);
+            order.verify(columnRepository).delete(column);
+        }
+
+        @Test
+        @DisplayName("clears column_id on history rows left by tasks that have since moved on")
+        void detachesStrandedHistoryFirst() {
+            Column column = new Column();
+            column.setId(2);
+            column.setBoard(BOARD);
+            column.setTasks(new ArrayList<>());
+            when(columnRepository.findById(2)).thenReturn(Optional.of(column));
+
+            // Nothing is in the column right now - the task that once passed through it moved on to
+            // a different column - but the row from that visit still points here.
+            TaskColumnHistory strandedEntry = new TaskColumnHistory();
+            strandedEntry.setColumn(column);
+            when(historyRepository.findByColumn(column)).thenReturn(List.of(strandedEntry));
+
+            columnService.deleteColumn(CALLER, 2);
+
+            assertThat(strandedEntry.getColumn()).isNull();
+            InOrder order = inOrder(historyRepository, columnRepository);
+            order.verify(historyRepository).saveAll(List.of(strandedEntry));
             order.verify(columnRepository).delete(column);
         }
 

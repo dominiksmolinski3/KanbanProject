@@ -10,6 +10,7 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskService;
+import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public class ColumnService {
     private final TaskService taskService;
     private final BoardService boardService;
     private final BoardEventPublisher boardEvents;
+    private final TaskColumnHistoryRepository taskColumnHistoryRepository;
 
     public List<ColumnDto> getAllColumns(User caller, Integer boardId) {
         var board = boardService.resolve(caller, boardId);
@@ -93,6 +95,14 @@ public class ColumnService {
      * task failed on that foreign key. {@link TaskService#deleteTask} already unwinds a task
      * properly — history, then parent and child links — so the deletion goes through it, and the
      * cascade is left with nothing to do.
+     *
+     * <p>That only accounts for tasks in the column right now. A task that passed through this
+     * column and later moved on leaves a {@code task_column_history} row behind that still points
+     * at it — that task is not among {@code column.getTasks()}, so nothing above touches its
+     * history, and the same foreign key fails on a column no live task has anything to do with.
+     * Those entries are detached rather than deleted: the task and the rest of its history are
+     * unaffected by this column going away, the same reasoning {@code TaskActivityRecorder.detachFrom}
+     * applies to a deleted task.
      */
     public void deleteColumn(User caller, Integer id) {
         var column = findColumn(caller, id);
@@ -103,6 +113,10 @@ public class ColumnService {
             }
             column.getTasks().clear();
         }
+
+        var strandedHistory = taskColumnHistoryRepository.findByColumn(column);
+        strandedHistory.forEach(entry -> entry.setColumn(null));
+        taskColumnHistoryRepository.saveAll(strandedHistory);
 
         columnRepository.delete(column);
         boardEvents.columnsChanged(column.getBoard());

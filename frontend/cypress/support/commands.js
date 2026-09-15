@@ -260,3 +260,19 @@ Cypress.Commands.add('deleteRows', () => {
   });
   cy.wait(300);
 });
+
+// Board.jsx only draws a grid band per entry in `rows` (`enhancedRows = rows.map(...)`), so a task
+// with no row of its own renders nowhere at all the moment the board has zero real rows - a task
+// still exists, the toast still says so, but there is no cell to draw its card in. A brand-new
+// board (BoardService.DEFAULT_COLUMNS seeds columns, never a row) starts at exactly zero, so any
+// spec that creates a task without first creating - or otherwise being sure of - a row of its own
+// was always leaning on one being left behind by whichever spec happened to run first. This makes
+// that assumption true rather than lucky: `.grid-row-header` is [row, row, ..., add-placeholder],
+// so length 1 means no real row exists yet.
+Cypress.Commands.add('ensureRowExists', () => {
+  cy.get('.grid-row-header').then($rowHeaders => {
+    if ($rowHeaders.length <= 1) {
+      cy.createRow('Cypress-Default-Row', 0);
+    }
+  });
+});

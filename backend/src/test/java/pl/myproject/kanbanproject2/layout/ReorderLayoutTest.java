@@ -21,6 +21,7 @@ import pl.myproject.kanbanproject2.layout.row.RowService;
 import pl.myproject.kanbanproject2.task.TaskMapper;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
+import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.util.ArrayList;
@@ -61,7 +62,8 @@ class ReorderLayoutTest {
         private final ColumnRepository columnRepository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
                 columnRepository, new ColumnMapper(new TaskMapper()),
-                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class));
+                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
+                mock(TaskColumnHistoryRepository.class));
 
         private Column column(int id, Board board, int position) {
             var column = new Column();

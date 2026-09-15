@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task.history;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.util.List;
@@ -15,5 +16,12 @@ public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHis
      * nullable and nothing cascades to it, so these rows have to go before the tasks do.
      */
     List<TaskColumnHistory> findByTaskIn(List<Task> tasks);
+
+    /**
+     * Entries left pointing at a column after the task that earned them has moved on - {@code
+     * ColumnService.deleteColumn} detaches these rather than deleting them, since the task itself
+     * (and the rest of its history) is unaffected by the column going away.
+     */
+    List<TaskColumnHistory> findByColumn(Column column);
 
 }
