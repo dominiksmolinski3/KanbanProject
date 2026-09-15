@@ -23,6 +23,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Two images since the container split, built as a matrix rather than as two jobs.
+  #
+  # That is not only tidiness. `cd-alarm` below has to name every job in `needs` *and* in the
+  # `results` string it passes, and SweepAlarmCoverageTest fails the build when those two disagree
+  # - so a second build job would be a third place to remember. A matrix leg is not a job by that
+  # reckoning: `needs.build-and-push.result` aggregates every leg, and a leg that fails fails the
+  # whole reference. One name, whatever the matrix grows to.
+  #
+  # `fail-fast: false` so that a Trivy finding in one image still tells you about the other; and
+  # `promote` needs both legs green either way, because `needs` on a matrix job waits for all of
+  # them.
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -30,8 +41,17 @@ jobs:
       packages: write
       security-events: write
       id-token: write
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kanbanproject-app
+            context: backend
+            dockerfile: backend/Dockerfile
+          - image: kanbanproject-web
+            context: frontend
+            dockerfile: frontend/Dockerfile
 
     steps:
     - name: Checkout code
@@ -47,29 +67,32 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    # The site key is only read by the frontend build; passing it to the backend context is
+    # harmless (that Dockerfile declares no such ARG) and keeps the matrix leg uniform.
     - name: Build and Push Docker Image
       id: build
       uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
       with:
-        context: .
+        context: ${{ matrix.context }}
+        file: ${{ matrix.dockerfile }}
         push: true
         build-args: |
           VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
-        tags: ghcr.io/${{ github.repository_owner }}/kanbanproject-app:${{ github.sha }}
+        tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           org.opencontainers.image.revision=${{ github.sha }}
           org.opencontainers.image.licenses=MIT
         cache-from: |
-          type=registry,ref=ghcr.io/${{ github.repository_owner }}/kanbanproject-app:latest
-          type=registry,ref=ghcr.io/${{ github.repository_owner }}/kanbanproject-app:${{ github.sha }}
+          type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
         cache-to: type=inline
 
     - name: Scan image for vulnerabilities
       id: scan
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ steps.build.outputs.digest }}
+        image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
         format: sarif
         output: trivy-results.sarif
         severity: CRITICAL,HIGH
@@ -77,24 +100,29 @@ jobs:
         ignore-unfixed: true
         exit-code: '1'
 
+    # A category per image. Uploading both under one category makes the second leg's results
+    # replace the first's, so the Security tab would show whichever leg happened to finish last
+    # and report the other image as having no findings at all.
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''
       uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
       with:
         sarif_file: trivy-results.sarif
-        category: trivy-image
+        category: trivy-image-${{ matrix.image }}
 
     - name: Generate SBOM
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ steps.build.outputs.digest }}
+        image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
         format: cyclonedx
         output: sbom.cdx.json
 
+    # Named per image for the same reason: two legs uploading one artifact name is an error, and
+    # an SBOM that does not say which image it describes is not an SBOM.
     - name: Upload SBOM artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: sbom-${{ github.sha }}
+        name: sbom-${{ matrix.image }}-${{ github.sha }}
         path: sbom.cdx.json
         if-no-files-found: error
 
@@ -107,10 +135,10 @@ jobs:
     # alongside the image in GHCR, addressed by the digest so they cannot drift onto
     # a different build the way a tag-addressed reference could.
     - name: Sign the image (keyless)
-      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ steps.build.outputs.digest }}"
+      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}"
 
     - name: Attest the SBOM
-      run: cosign attest --yes --predicate sbom.cdx.json --type cyclonedx "ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ steps.build.outputs.digest }}"
+      run: cosign attest --yes --predicate sbom.cdx.json --type cyclonedx "ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}"
 
   promote:
     needs: build-and-push
@@ -154,12 +182,24 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Promote the scanned image to :latest
+    # Both or neither, and by tag rather than by digest.
+    #
+    # A matrix job's outputs are whichever leg wrote them last, so there is no per-image digest to
+    # read here any more - `imagetools create` resolves the SHA tag instead, which is the same
+    # artifact this run built and pushed. The tag is immutable in practice because every run tags
+    # by commit.
+    #
+    # The two must move together. Terraform feeds one app_image_tag to both container apps, and the
+    # bundle disagreeing with the API it calls is the failure the split introduced - a `:latest`
+    # that is half of one commit and half of another is exactly that, with nothing to say so.
+    - name: Promote the scanned images to :latest
       if: steps.tip.outputs.is_tip == 'true'
       run: |
-        docker buildx imagetools create \
-          --tag ghcr.io/${{ github.repository_owner }}/kanbanproject-app:latest \
-          ghcr.io/${{ github.repository_owner }}/kanbanproject-app@${{ needs.build-and-push.outputs.digest }}
+        for image in kanbanproject-app kanbanproject-web; do
+          docker buildx imagetools create \
+            --tag "ghcr.io/${{ github.repository_owner }}/$image:latest" \
+            "ghcr.io/${{ github.repository_owner }}/$image:${{ github.sha }}"
+        done
 
     - name: Verify main did not move while promoting
       if: steps.tip.outputs.is_tip == 'true'
@@ -168,7 +208,7 @@ jobs:
       run: |
         tip=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" --jq .sha)
         if [ "$tip" != "${{ github.sha }}" ]; then
-          echo "::warning::main moved to $tip while this job was promoting; :latest may point at the older ${{ github.sha }} and need promoting by hand."
+          echo "::warning::main moved to $tip while this job was promoting; :latest on both images may point at the older ${{ github.sha }} and need promoting by hand."
         fi
 
   # A sweep has nobody watching it, which is the whole argument in `sweep-alarm.yml`. It matters

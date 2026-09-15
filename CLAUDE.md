@@ -1026,16 +1026,27 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   as `DeadLetterAlertTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
-- `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds the root Dockerfile, pushes the image to
-  `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
-  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
+- `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
+  `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
+  `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit
+  SHA, and scans each with Trivy
+  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags both `latest` —
   a scan failure, a ref that is not the default branch, or a commit that's no longer the tip of it
   blocks promotion, so `latest` is always a SHA on `main` that both built clean and passed the scan.
+  **The two images are one matrix job rather than two jobs, and that is load-bearing rather than
+  tidy**: `cd-alarm` has to name every job in `needs` *and* in the `results` string it passes, and
+  `SweepAlarmCoverageTest` fails the build when the two disagree — a matrix leg is not a job by that
+  reckoning, `needs.build-and-push.result` aggregates every leg, so the matrix can grow without a
+  third place to remember. The SARIF category and the SBOM artifact name carry the image name, or
+  the second leg silently replaces the first's findings. **`promote` moves both or neither**, and it
+  resolves the SHA tag rather than a digest — a matrix job's outputs are whichever leg wrote them
+  last, and Terraform feeds one `app_image_tag` to both container apps, so a `latest` that is half
+  one commit and half another is precisely the skew the split introduced, with nothing to say so.
   **The ref half of that was missing until the sweep landed**: the check asked only whether the
   commit was the tip of `github.ref_name`, which on a `workflow_dispatch` against a feature branch
   is perfectly true — so dispatching CD on a branch would have tagged that branch's build `latest`.
-  Nothing ever did. Adding a schedule was the reason to make sure nothing can. The build job also emits a CycloneDX SBOM
-  (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs the image
+  Nothing ever did. Adding a schedule was the reason to make sure nothing can. Each leg also emits a CycloneDX SBOM
+  (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs its image
   and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
   later build of the same tag.
   **The sweep is here for the same reason it is on CI, and it was measured before it was added.**
@@ -1046,7 +1057,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   those commits at all, so `latest` stops being the tip of `main` and looks exactly like a
   deployment nobody has made yet. A daily rebuild of the tip is what makes `latest` converge again
   whoever did the merging, and `cd-alarm` is what says so when it cannot. The rebuild is cheap and
-  idempotent: the SHA tag is the same tag, and `promote` re-tags `latest` at the same digest.
+  idempotent: the SHA tags are the same tags, and `promote` re-tags `latest` at the same images.
 - **`deployed-contract.yml`** — a daily sweep that asks the deployed origin whether it still
   answers what the trunk claims. It is the one direction nothing else here covers: every other
   guard reads source and compares it with source, Checkov reads what Terraform declares, and
