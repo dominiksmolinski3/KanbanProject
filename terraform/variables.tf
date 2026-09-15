@@ -62,14 +62,28 @@ variable "app_image_tag" {
   }
 }
 
-variable "max_replicas" {
-  description = "Upper bound on app replicas. Keep at 1: the STOMP broker and the auth rate limiter both hold state in the JVM, so a second replica loses chat messages and multiplies every rate limit. See the module variable of the same name."
+# Two ceilings, because the two containers are limited by different things. Splitting one variable
+# into two is most of what phase 2 of the container split is: the edge is free to move and the API
+# is not, and one number could only ever express the stricter of the two.
+variable "api_max_replicas" {
+  description = "Upper bound on API replicas. Keep at 1: the STOMP broker and the auth rate limiter both hold state in the JVM, so a second replica stops board updates reaching half the people watching and multiplies every rate limit. See the module variable of the same name."
   type        = number
   default     = 1
 
   validation {
-    condition     = var.max_replicas >= 1
-    error_message = "The max_replicas must be at least 1."
+    condition     = var.api_max_replicas >= 1
+    error_message = "The api_max_replicas must be at least 1."
+  }
+}
+
+variable "web_max_replicas" {
+  description = "Upper bound on edge replicas. nginx serving files from its own image holds no state, so nothing here has to move before this can. It is a ceiling on API throughput as well, since all /api traffic passes through it - raising it does not raise api_max_replicas, and is not a way around it."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.web_max_replicas >= 1
+    error_message = "The web_max_replicas must be at least 1."
   }
 }
 
@@ -136,7 +150,7 @@ variable "extra_cors_origins" {
 }
 
 variable "allowed_ingress_cidrs" {
-  description = "IPv4 CIDR ranges allowed to reach the Container App ingress, e.g. an office address as \"203.0.113.42/32\". Intended for locking non-prod environments to the team; unusable on an environment with real users. Empty (the default) leaves ingress open to the internet; any entry turns it into an allow-list and denies everything else."
+  description = "IPv4 CIDR ranges allowed to reach the public edge, e.g. an office address as \"203.0.113.42/32\". Intended for locking non-prod environments to the team; unusable on an environment with real users. Empty (the default) leaves ingress open to the internet; any entry turns it into an allow-list and denies everything else."
   type        = list(string)
   default     = []
 }
@@ -245,9 +259,9 @@ variable "extra_tags" {
 }
 
 variable "ingress_trusted_proxy_count" {
-  description = "How many reverse proxies sit in front of the app, counted from the app outwards. Container Apps ingress is one hop; putting Front Door in front of it makes this 2. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge. Set to 0 to ignore the header entirely."
+  description = "How many reverse proxies sit in front of the API, counted from the API outwards. Two since the container split - the Container Apps ingress, then nginx - and three if Front Door is ever put in front of that. Leaving it at 1 keys every rate-limit bucket on nginx's own pod address, which is one shared bucket for the entire internet, with nothing logged and nothing failing. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge. Set to 0 to ignore the header entirely."
   type        = number
-  default     = 1
+  default     = 2
 
   validation {
     condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count

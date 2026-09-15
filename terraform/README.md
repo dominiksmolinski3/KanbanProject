@@ -211,7 +211,7 @@ structural.
 
 ## Notes
 
-- **Password generation**: the Postgres module generates the administrator password internally, and the `container_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
+- **Password generation**: the Postgres module generates the administrator password internally, and the `api_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
 - **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
 
 ### Network layout
@@ -411,9 +411,66 @@ expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
 
+### Two container apps
+
+This deployment is two Container Apps in one Managed Environment, and only one of them has an
+address.
+
+| App | Module | Ingress | What it is |
+|---|---|---|---|
+| `kanban-web-<env>` | `modules/web_app` | **external** | nginx: the Vite bundle on disk, and a reverse proxy for `/api`, `/ws` and `/v3/api-docs` |
+| `kanban-api-<env>` | `modules/api_app` | **internal** | the Spring Boot jar; reachable only from inside the environment |
+
+Five consequences are worth having in one place:
+
+- **The public origin is the web app's FQDN.** `terraform output container_app_url` still names it,
+  so `DEPLOYED_ORIGIN` and anything else reading that output does not change. The API app has no
+  public URL output at all any more; `api_internal_fqdn` is the internal one, which nothing outside
+  the environment resolves.
+- **The edge speaks TLS to the API**, and that is measured rather than stylistic. An internal
+  ingress still terminates TLS and answers plain HTTP with a `301` to the https form of the same
+  URL — which nginx would hand back to the browser, pointing it at a name only the inside of the
+  environment resolves. The alternative is `allow_insecure_connections = true` on the API app; this
+  does not take it, because the certificate the internal ingress presents carries
+  `*.internal.<environment-domain>` as a SAN, is issued by *Microsoft TLS G2 RSA CA*, and verifies
+  against the stock CA bundle — so the hop is authenticated as well as encrypted, and nothing has
+  to be declared insecure.
+- **`ingress_trusted_proxy_count` is 2**, because there are two proxies now: the Container Apps
+  ingress, then nginx. At 1 the rate limiter keys every request on nginx's own pod address — one
+  shared bucket for the entire internet — and nothing 500s, nothing logs, and the `CREDENTIALS`
+  limit quietly stops being per-IP.
+- **`SECURITY_CORS_ALLOWED_ORIGINS` names the web app**, not the API app. nginx forwards the
+  browser's `Origin` unchanged, so what Spring sees is the address the person typed. Getting it
+  wrong is loud but confusing: every call from the board answers `Invalid CORS request` with a 403
+  while the page itself loads perfectly.
+- **One `app_image_tag` feeds both apps, deliberately.** The bundle and the API it calls used to be
+  a single artifact and could not disagree; one tag across two images is what replaces that
+  guarantee. Splitting the variable is the change that makes skew possible — don't, for convenience.
+
+Two name patterns are composed independently — `kanban-api-<env>` in the API module, and the same
+string inside the edge's upstream in the web module — so that neither module depends on the other's
+resources. A `check` block in the root module asserts they still agree, because the failure
+otherwise is a green apply and a 502 on every API call.
+
+#### Moving the state, once
+
+The module rename is not free: `modules/container_app` became `modules/api_app`, and the app it
+manages was renamed from `kanban-app-<env>` to `kanban-api-<env>`. Terraform reads that as one
+module destroyed and two created. Before the first apply on an existing environment:
+
+```bash
+terraform state mv module.container_app module.api_app
+```
+
+That keeps the identity, the role assignments and the generated JWT secret where they are — without
+it, `random_password.jwt_secret_key` is regenerated and every signed-in user is signed out. The
+container app resource itself is still replaced (its `name` changed, which forces a new resource);
+that is a normal rolling revision and the only visible effect is a restart.
+
 ### The container image
 
-The Container App pulls `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>`.
+The apps pull `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>` and
+`ghcr.io/<github_repository_owner>/kanbanproject-web:<app_image_tag>`.
 
 `github_repository_owner` has to name the account **`kanban-cd.yml` publishes to** — the
 workflow pushes under the repository owner, so on a fork that is the fork's owner, not the
@@ -427,9 +484,15 @@ managed identity, so the app's user-assigned identity cannot do the pull. Two sh
   registry and the pull is anonymous. This is the default, and it is only a choice while the
   package is genuinely public.
 - **Private package** — set both. The token (a PAT with `read:packages`) is written to Key
-  Vault as `GHCR-TOKEN` and read back through the app's identity, so it never sits in the
+  Vault as `GHCR-TOKEN` and read back through each app's identity, so it never sits in a
   Container App template in clear text. Setting `ghcr_token` without `ghcr_username` fails the
   plan.
+
+  The two apps read it through **different identities**, and the edge's grant is scoped to the
+  `GHCR-TOKEN` secret alone rather than to the vault. That is the one thing the split must not
+  make worse: a vault-scoped grant would let the nginx container read the Postgres password and
+  the JWT signing key, which is a strictly weaker posture than the monolith had, arrived at for
+  reasons that have nothing to do with secrets.
 
 A private package with neither set fails with `ImagePullBackOff` and nothing to authenticate
 with.
@@ -464,9 +527,12 @@ the local override, so it never lands in the repository or in another environmen
 **What this is for: keeping non-prod environments off the public internet. It is not
 a defence for prod.**.
 
-The Container App is internet-facing (`external_enabled = true`) and serves
-`/auth/**` -- login, signup, verification-code resend -- without authentication, with
-no rate limiting anywhere in the backend. `allowed_ingress_cidrs` renders one
+These live on the **web** app since the split, which is the only app with a public ingress. The API
+app has none to restrict, and that is the stronger control of the two: `allowed_ingress_cidrs` is
+empty in every environment today, while `external_enabled = false` is unconditional.
+
+The edge is internet-facing and proxies `/api/auth/**` -- login, signup, verification-code resend --
+which is served without authentication. `allowed_ingress_cidrs` renders one
 `ip_security_restriction` block per entry:
 
 ```hcl
