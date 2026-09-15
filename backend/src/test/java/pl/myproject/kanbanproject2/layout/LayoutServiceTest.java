@@ -24,6 +24,7 @@ import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskMapper;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
+import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.util.ArrayList;
@@ -64,7 +65,8 @@ class LayoutServiceTest {
         private final ColumnRepository repository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
                 repository, new ColumnMapper(new TaskMapper()),
-                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class));
+                mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
+                mock(TaskColumnHistoryRepository.class));
 
         private Column column(int id, Board board) {
             var column = new Column();
