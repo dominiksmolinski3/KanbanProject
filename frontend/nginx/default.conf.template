@@ -33,6 +33,38 @@ server {
     # bare trailing slash - would make nginx rewrite the path and every /api route would 404.
     set $api_upstream ${API_UPSTREAM};
 
+    # Send SNI, and check the certificate that comes back.
+    #
+    # Both of these default to OFF in nginx, and both defaults are wrong here. In the deployment
+    # API_UPSTREAM is https://kanban-api-<env>.internal.<env-domain>, and the Container Apps ingress
+    # routes by SNI - so without proxy_ssl_server_name nginx opens TLS to the ingress IP naming
+    # nobody, envoy has no way to tell which app the connection is for, and it resets the handshake.
+    # That is a 502 on every API call with a perfectly healthy API container behind it, which is
+    # what the first apply of the split produced:
+    #
+    #   peer closed connection in SSL handshake (104: Connection reset by peer)
+    #   while SSL handshaking to upstream, upstream: "https://100.100.0.208:443/api/columns"
+    #
+    # proxy_ssl_verify is the other half and is not optional either: encrypting a hop without
+    # authenticating the peer is the same mistake as sslmode=require on Postgres, which this
+    # deployment rejected in favour of verify-full for exactly this reason. The trust anchor is the
+    # image's own CA bundle - the internal ingress presents a certificate carrying
+    # *.internal.<env-domain>, issued by "Microsoft TLS G2 RSA CA", which is already in it.
+    #
+    # proxy_ssl_name defaults to $proxy_host, which is the host out of $api_upstream and is what we
+    # want; it is written out because a reader should not have to know that default to see that the
+    # name being asserted is the name we resolved.
+    #
+    # None of this is exercised by docker-compose, where API_UPSTREAM is http://app:8080 and these
+    # four directives are inert. The local stack and the deployment differ in exactly one thing -
+    # the upstream scheme - and that one thing is what broke. EdgeUpstreamTlsTest is the guard,
+    # because no stack anybody runs locally can be.
+    proxy_ssl_server_name         on;
+    proxy_ssl_name                $proxy_host;
+    proxy_ssl_verify              on;
+    proxy_ssl_verify_depth        3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
     # The web tier's own probe. The JVM's readiness and liveness groups stay on the API app and are
     # probed there directly; nothing about a healthy nginx says anything about them.
     location = /healthz {

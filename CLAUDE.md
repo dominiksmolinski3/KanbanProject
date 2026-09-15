@@ -162,6 +162,19 @@ load-bearing, and each corresponds to something in this application that would o
   coincidence that would have hidden a wrong constant until the first deploy.
 - **No URI part on `proxy_pass`.** With a variable and no URI, nginx passes the request path through
   unchanged; adding even a bare trailing slash makes it rewrite, and every `/api` route 404s.
+- **`proxy_ssl_server_name on` and `proxy_ssl_verify on`, because both default to off.** In the
+  deployment the upstream is `https://kanban-api-<env>.internal.<env-domain>`, and Container Apps
+  routes an internal ingress **by SNI** - so without the first, nginx opens TLS to the ingress IP
+  naming nobody, envoy cannot tell which app the connection is for, and it resets the handshake.
+  That is a 502 on every API call with a perfectly healthy API container behind it, and it is what
+  the first apply of the split produced. The second is the half that would have stayed invisible:
+  without it the hop is encrypted and unauthenticated, which is the trade this deployment already
+  refused when it chose `sslmode=verify-full` over `require` for Postgres. **Nothing local can
+  catch either**, which is the point worth keeping: `docker-compose` sets
+  `API_UPSTREAM=http://app:8080`, the scheme is the only difference between the stack every guard
+  runs against and the stack that serves users, and over `http` all four directives are inert.
+  `EdgeUpstreamTlsTest` is the guard, and it is a text assertion over the template rather than a
+  behavioural one because a behavioural test needs a real certificate and this suite has no network.
 - **`client_max_body_size 12m`.** nginx defaults to 1 MB and an attachment is capped at 10 MB, so
   without it every upload over 1 MB is a 413 generated at the edge — `TaskAttachmentService` never
   runs and nothing reaches the application log.
