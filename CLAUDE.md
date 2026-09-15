@@ -182,6 +182,19 @@ Splitting the tier is also what makes the bundle cacheable at last: Spring Secur
 on everything it serves, so the hashed assets had never once been cached. `/assets/` is `immutable`
 now and `/index.html` is `no-cache`.
 
+**The edge image runs `apk upgrade` on its own base, and that is not defensiveness.** The pinned
+`nginx-unprivileged:1.29-alpine` digest is the newest tag Docker Hub publishes, and its package set
+is far enough behind Alpine's security branch that Trivy found **35 fixable HIGH findings** in it —
+twenty of them `curl`/`libcurl`, in an image whose only HTTP client is a busybox `wget`. That failed
+the CD scan gate on the first run after the split and correctly blocked `:latest` on *both* images,
+since `promote` moves both or neither. After the upgrade the same scan reports zero. It does mean a
+build is no longer a pure function of the pinned digest — what varies is a set of distro package
+versions that only ever moves forward, which is the right way round: a base nobody upgrades is
+reproducibly vulnerable, and the daily CD sweep rebuilding the tip is what re-runs this. Switching
+to `dhi.io/nginx` for consistency with the node stage was the alternative and is declined: it
+carries no `/docker-entrypoint.d`, no `envsubst` and no `wget`, so it would mean hand-writing the
+templating, the resolver discovery and the healthcheck.
+
 Two guards carry the parts no compiler can see. `SecurityHeadersMatchTheEdgeTest` reads
 [frontend/nginx/security-headers.conf](frontend/nginx/security-headers.conf) and fails when it and
 `SecurityHeaders` disagree — nginx serves `index.html`, so a CSP Spring writes reaches nobody on the
