@@ -212,6 +212,75 @@ jobs:
       if: always()
       run: docker compose down -v
 
+  # kanban-cd.yml's Trivy gate only ever runs on push to main, after a PR has already merged - so
+  # a base image that picks up a fresh HIGH between when a PR was opened and when it merges goes
+  # red on `main`, not on the PR that would have carried the fix or at least the warning. #160
+  # (fix/web-image-base-cves) was exactly that shape: the gate caught it, but only after the merge,
+  # and `promote` correctly withheld `:latest` until it was fixed on a second PR. Building and
+  # scanning here does not remove that CD gate - the SHA-tagged image CD builds still gets its own
+  # scan before promotion - it just gives the same answer earlier, while an author is still looking
+  # at the PR instead of a day later on a cron.
+  #
+  # Same matrix shape as kanban-cd.yml's build-and-push, and for the same reason: a second job here
+  # would be a second place for SweepAlarmCoverageTest's `needs`/`results` coupling to drift.
+  # Nothing is pushed to GHCR - `load: true` keeps the image in the local daemon, which is all a
+  # scan needs and avoids requiring registry write access on a pull_request run.
+  image-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: kanbanproject-app
+            context: backend
+            dockerfile: backend/Dockerfile
+          - image: kanbanproject-web
+            context: frontend
+            dockerfile: frontend/Dockerfile
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+    - name: Build image (not pushed)
+      id: build
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: ${{ matrix.context }}
+        file: ${{ matrix.dockerfile }}
+        push: false
+        load: true
+        build-args: |
+          VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
+        tags: ${{ matrix.image }}:pr-${{ github.sha }}
+
+    # Same severity set, same ignore-unfixed, same exit-code as the post-merge scan in
+    # kanban-cd.yml - a PR either passes both or neither, it never sees a looser gate than main.
+    - name: Scan image for vulnerabilities
+      id: scan
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ matrix.image }}:pr-${{ github.sha }}
+        format: sarif
+        output: trivy-results.sarif
+        severity: CRITICAL,HIGH
+        limit-severities-for-sarif: true
+        ignore-unfixed: true
+        exit-code: '1'
+
+    - name: Upload scan results to the Security tab
+      if: always() && hashFiles('trivy-results.sarif') != ''
+      uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      with:
+        sarif_file: trivy-results.sarif
+        category: trivy-pr-${{ matrix.image }}
+
   # ---------------------------------------------------------------------------------------------
   # The half that tells somebody.
   #
@@ -249,12 +318,12 @@ jobs:
   # needed the same thing and four copies of one shell script is four chances to fix a bug once.
   trunk-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ backend, frontend, e2e ]
+    needs: [ backend, frontend, e2e, image-scan ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }}"
+      results: "${{ needs.backend.result }} ${{ needs.frontend.result }} ${{ needs.e2e.result }} ${{ needs.image-scan.result }}"
       subject: the trunk sweep failed
       label: trunk-red
