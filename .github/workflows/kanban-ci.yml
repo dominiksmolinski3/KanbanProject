@@ -138,10 +138,12 @@ jobs:
     - name: Build and start the stack
       run: docker compose up -d --build
 
+    # :8081 is the API container's own port. The edge deliberately does not proxy /actuator, so
+    # asking :8080 for it would be asking nginx a question it is built to refuse.
     - name: Wait for the backend to become healthy
       run: |
         for i in $(seq 1 60); do
-          if curl -fs http://localhost:8080/actuator/health/readiness | grep -q '"status":"UP"'; then
+          if curl -fs http://localhost:8081/actuator/health/readiness | grep -q '"status":"UP"'; then
             echo "backend is up"
             exit 0
           fi
@@ -150,6 +152,30 @@ jobs:
         echo "backend never became healthy" >&2
         docker compose logs app
         exit 1
+
+    # The other half, and the reason this job is worth more than it was: everything below goes
+    # through nginx on :8080, so a broken proxy rule, a missing header or a body size limit fails
+    # here rather than on the deployment.
+    - name: Check that the edge is serving the bundle and proxying the API
+      run: |
+        for i in $(seq 1 30); do
+          if curl -fs http://localhost:8080/healthz >/dev/null; then break; fi
+          sleep 2
+        done
+        set -e
+        curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
+        curl -fsS -o /dev/null http://localhost:8080/board
+        curl -fsS http://localhost:8080/v3/api-docs | grep -q '"openapi"'
+        # The shell must carry the policy nginx adds, not nothing - add_header does not inherit
+        # into a location that sets one of its own, which is the trap this catches.
+        curl -fsSI http://localhost:8080/ | grep -qi '^content-security-policy:'
+        # And the API app must not be reachable through the edge on anything but /api and /ws.
+        test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health)" = "404"
+        # A refusal rather than a 404: the request reached Spring, which turned it away.
+        case "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/columns)" in
+          401|403) ;;
+          *) echo "/api is not reaching the API container" >&2; exit 1 ;;
+        esac
 
     - name: Install frontend dependencies
       working-directory: frontend

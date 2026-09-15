@@ -1,0 +1,129 @@
+# The edge. It serves the bundle from disk and proxies everything the API owns.
+#
+# Rendered at container start by the stock nginx entrypoint, which runs envsubst over
+# /etc/nginx/templates/*.template. Only ${API_UPSTREAM} and ${NGINX_LOCAL_RESOLVERS} are
+# substituted - nginx's own variables are written without braces and envsubst leaves them alone.
+
+server {
+    listen 8080;
+    server_name _;
+    server_tokens off;
+
+    root /usr/share/nginx/html;
+
+    # Resolve the upstream per request rather than once at worker start.
+    #
+    # nginx caches a literal proxy_pass target forever, and Container Apps hands the API app a new
+    # address whenever its service is recreated. The symptom of getting this wrong is a web tier
+    # that works until the first API deploy and then 502s until something restarts it - which looks
+    # exactly like a broken API. A variable in proxy_pass forces the lookup through this resolver.
+    #
+    # The address is read out of the container's own /etc/resolv.conf rather than written down:
+    # NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 in the Dockerfile makes the stock entrypoint export
+    # NGINX_LOCAL_RESOLVERS before envsubst runs. Writing it down was the original plan and the
+    # plan's guess was wrong - 168.63.129.16 is Azure's platform DNS and is right in a VM, while
+    # a Container App says `nameserver 127.0.0.11` (measured on kanban-app-dev, 15 Sep 2026;
+    # search k8se-apps.svc.cluster.local). Docker's embedded DNS is the same address, so both
+    # environments happen to agree - which is exactly the coincidence that would have hidden a
+    # wrong constant until the first deploy. An empty resolv.conf leaves this directive malformed
+    # and nginx refuses to start, which is the loud failure rather than the silent one.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+
+    # No URI part, so nginx passes the original request URI through unchanged. Adding one - even a
+    # bare trailing slash - would make nginx rewrite the path and every /api route would 404.
+    set $api_upstream ${API_UPSTREAM};
+
+    # The web tier's own probe. The JVM's readiness and liveness groups stay on the API app and are
+    # probed there directly; nothing about a healthy nginx says anything about them.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /api/ {
+        proxy_pass $api_upstream;
+        proxy_set_header Host              $host;
+        # Appends to the header the ingress already set. $remote_addr would replace it, collapsing
+        # two hops into one and breaking ClientIpResolver from the other direction - see
+        # ingress_trusted_proxy_count, which has to be 2 now that nginx is the second proxy.
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+
+        # An attachment is capped at 10 MB by the application and nginx defaults to 1 MB. Without
+        # this, every upload over 1 MB is a 413 generated at the edge: TaskAttachmentService never
+        # runs and nothing appears in the application log.
+        client_max_body_size    12m;
+
+        # The attachment design's central claim is that nothing on either path holds a file.
+        # Buffering re-introduces exactly that here, and silently defeats the Range/206 resume the
+        # client was taught to send.
+        proxy_request_buffering off;
+        proxy_buffering         off;
+        proxy_read_timeout      300s;
+    }
+
+    # STOMP over SockJS. Not under /api: the destinations are resolved by the broker, not by MVC.
+    location /ws/ {
+        proxy_pass $api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_buffering    off;
+        # SockJS heartbeats every 25s, but its xhr-streaming fallback holds one response open far
+        # longer than the 60s default.
+        proxy_read_timeout 3600s;
+    }
+
+    # The published contract, and the one non-/api path the API app still owns from the outside.
+    #
+    # It is public because publishing it is the point - a generator or somebody wiring up a client
+    # reads it before they have an account - so an edge that did not proxy it would leave the
+    # contract published at an address only the inside of the VNet can reach. /actuator is the
+    # deliberate opposite: it is not proxied, Container Apps probes it on the API app directly, and
+    # the deployed-contract sweep asserts the public origin does not answer it.
+    location /v3/api-docs {
+        proxy_pass $api_upstream;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+    }
+
+    # Refused rather than left to fall through, which is not the same thing.
+    #
+    # `location /` ends in try_files ... /index.html, so an unproxied path does not 404 - it answers
+    # the app shell with a 200. Measured, on the compose stack, before this block existed:
+    # GET /actuator/health returned 200 and a page of HTML, which to anything checking a status
+    # code is indistinguishable from an actuator endpoint published to the internet. The sweep that
+    # asserts this origin does not serve actuator would have passed on the shell.
+    #
+    # Container Apps probes /actuator/health/readiness and /liveness on the API app directly, so
+    # nothing here needs them. Proxying them "just for a health check" is the change this refuses.
+    location /actuator {
+        access_log off;
+        return 404;
+    }
+
+    # Vite's hashed output. The name is the version, so the file can be cached forever - which it
+    # never has been, because Spring Security sends no-store on everything it serves and it served
+    # this too. Splitting the tier is what makes it fixable.
+    location ^~ /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Everything else is the app shell. try_files answers every client route - the four in
+    # SpaRoutes.ALL and any future one - with no list to keep in step, which is why the routes are
+    # deliberately not enumerated here.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}
