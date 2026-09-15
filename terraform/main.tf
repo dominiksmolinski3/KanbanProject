@@ -146,8 +146,32 @@ module "storage" {
   retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
 }
 
-module "container_app" {
-  source                           = "./modules/container_app"
+# The public edge: nginx, the bundle, and the proxy in front of the API. It holds the only external
+# ingress in this deployment, which is why the ingress restrictions and the origin everything else
+# is told about are its.
+module "web_app" {
+  source                           = "./modules/web_app"
+  resource_group_name              = azurerm_resource_group.main.name
+  location                         = azurerm_resource_group.main.location
+  env                              = var.env
+  container_app_env_id             = module.vnet.container_app_env_id
+  container_app_env_default_domain = module.vnet.container_app_env_default_domain
+  rbac_propagation_delay           = var.rbac_propagation_delay
+  app_image_tag                    = var.app_image_tag
+  max_replicas                     = var.web_max_replicas
+  allowed_ingress_cidrs            = var.allowed_ingress_cidrs
+  key_vault_uri                    = module.key_vault.uri
+  key_vault_id                     = module.key_vault.id
+  github_repository_owner          = var.github_repository_owner
+  ghcr_username                    = var.ghcr_username
+  ghcr_token                       = var.ghcr_token
+  tags                             = local.tags
+
+  depends_on = [module.key_vault]
+}
+
+module "api_app" {
+  source                           = "./modules/api_app"
   resource_group_name              = azurerm_resource_group.main.name
   location                         = azurerm_resource_group.main.location
   env                              = var.env
@@ -156,8 +180,7 @@ module "container_app" {
   extra_cors_origins               = var.extra_cors_origins
   rbac_propagation_delay           = var.rbac_propagation_delay
   app_image_tag                    = var.app_image_tag
-  max_replicas                     = var.max_replicas
-  allowed_ingress_cidrs            = var.allowed_ingress_cidrs
+  max_replicas                     = var.api_max_replicas
   key_vault_uri                    = module.key_vault.uri
   key_vault_id                     = module.key_vault.id
   github_repository_owner          = var.github_repository_owner
@@ -171,11 +194,26 @@ module "container_app" {
   storage_blob_endpoint            = module.storage.blob_endpoint
   tags                             = local.tags
 
+  # The browser's origin is the edge's FQDN, not this app's. Read from the web module's output
+  # rather than composed a second time here - see local.browser_origin in the module.
+  web_app_name = module.web_app.app_name
+
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
   depends_on = [module.key_vault, module.postgres, module.storage]
 
   mail_delivery_report_key = var.mail_delivery_report_key
+}
+
+# Two modules compose the same FQDN from the same pattern and neither reads the other's resources,
+# which is what keeps them independent and is also how they could silently disagree: rename the API
+# app and the edge goes on proxying to a name nothing answers, which is a 502 on every API call and
+# a green apply. Checked here because this is the one place both outputs are in scope.
+check "api_upstream_matches_api_app" {
+  assert {
+    condition     = strcontains(module.web_app.api_upstream, "//${module.api_app.app_name}.internal.")
+    error_message = "The edge proxies to ${module.web_app.api_upstream}, which does not name the API app (${module.api_app.app_name}). One of the two name patterns has moved without the other."
+  }
 }
 
 module "diagnostics" {
@@ -184,18 +222,27 @@ module "diagnostics" {
   env                        = var.env
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-  container_app_id           = module.container_app.container_app_id
-  container_app_env_id       = module.vnet.container_app_env_id
-  resource_group_name        = azurerm_resource_group.main.name
-  alert_email                = var.alert_email
-  tags                       = local.tags
+  # The API app. Every alert in this module is about the JVM - restarts, 5xx, the dead-letter and
+  # bounce queries - and none of them is about nginx. An edge that falls over takes the whole origin
+  # with it and shows up in the same 5xx rule from the other side, so a second set of alerts here
+  # would mostly double every page.
+  container_app_id     = module.api_app.container_app_id
+  container_app_env_id = module.vnet.container_app_env_id
+  resource_group_name  = azurerm_resource_group.main.name
+  alert_email          = var.alert_email
+  tags                 = local.tags
 
   key_vault_id                 = module.key_vault.id
   postgres_server_id           = module.postgres.postgres_server_id
   acs_communication_service_id = var.acs_communication_service_id
 
-  # The webhook's address is the app's own ingress plus the key that authenticates it, assembled in
-  # the diagnostics module so the two cannot be configured into disagreeing with each other.
-  container_app_url        = module.container_app.container_app_url
+  # The webhook's address is the *edge's* ingress plus the key that authenticates it, assembled in
+  # the diagnostics module so the two cannot be configured into disagreeing with each other. It has
+  # to be the edge: Event Grid calls this URL from outside Azure's view of this VNet and cannot
+  # reach an internal ingress at all. nginx proxies /api/mail/delivery-reports like any other /api
+  # path, for free, and the ordering constraint the README records - the endpoint must be serving
+  # before this resource can be created, because Event Grid validates it by calling it - now
+  # depends on the web app being up rather than the API app.
+  container_app_url        = module.web_app.container_app_url
   mail_delivery_report_key = var.mail_delivery_report_key
 }

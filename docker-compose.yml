@@ -1,12 +1,36 @@
 services:
-  app:
+  # The public edge: nginx serving the built bundle and reverse-proxying what the API owns. It is
+  # the only service that publishes a port a browser uses, which is what makes this stack the same
+  # shape as the deployment - and the only realistic place to catch an nginx misconfiguration
+  # before it reaches Azure.
+  web:
     build:
-      context: .
+      context: ./frontend
       args:
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
     restart: unless-stopped
     ports:
       - "8080:8080"
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      # No URI part, for the reason the template's comment gives: a trailing slash here would make
+      # nginx rewrite the path and every /api route would 404.
+      API_UPSTREAM: http://app:8080
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  app:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    # Published for poking the API directly - `curl :8081/actuator/health` - which is the one thing
+    # the edge deliberately does not proxy. A browser uses :8080 and goes through nginx.
+    ports:
+      - "127.0.0.1:8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,6 +49,12 @@ services:
       APP_MAIL_DELIVERY_REPORT_KEY: ${APP_MAIL_DELIVERY_REPORT_KEY:-}
       CAPTCHA_SECRET: ${CAPTCHA_SECRET}
       CAPTCHA_ENABLED: ${CAPTCHA_ENABLED}
+      # One proxy in front of the app now, so ClientIpResolver has to skip exactly one hop of
+      # X-Forwarded-For. Left at the default of 0 it reads getRemoteAddr(), which since the split
+      # is nginx's container address for every request in the stack - one shared escalation bucket
+      # for everybody, which is the same failure the deployment has at 1 instead of 2 and is worth
+      # having wrong in neither place. The deployment sets 2: the ingress, then nginx.
+      SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT: 1
       # Attachments go to the azurite service below rather than to Azure. The key in that default
       # is Azurite's published development account - documented, identical on every machine that has
       # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere

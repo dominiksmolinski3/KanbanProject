@@ -1,21 +1,27 @@
 package pl.myproject.kanbanproject2.config;
 
 /**
- * The paths React Router serves from the bundled single-page app.
+ * The paths React Router serves from the single-page app.
  *
- * <p>Spring knows nothing about client-side routing: a browser asking for one of these directly —
- * a refresh, a bookmark, a shared link — is a request Spring has to answer with the app shell
- * rather than a 404. Two places need the same list to make that work, so it lives here rather
- * than being written out twice:
+ * <p>This list used to be load-bearing twice over: {@code WebConfig} forwarded each route to
+ * {@code /index.html} and {@code SecurityConfiguration} permitted each one, so a route added to
+ * {@code App.jsx} and forgotten here was a deep link that 403'd. Neither is true now. nginx serves
+ * the shell with a {@code try_files} that needs no list at all — which is why the routes are
+ * deliberately <em>not</em> enumerated in the edge config, a list in two places being the drift
+ * every guard in this repository exists to catch.
+ *
+ * <p>What survives is the claim itself, and it has two readers:
  *
  * <ul>
- *   <li>{@code WebConfig} forwards each one to {@code /index.html}.</li>
- *   <li>{@code SecurityConfiguration} permits each one, because the shell is public even where
- *       the route behind it is not — the app's data sits under {@code /api/**}, which stays
- *       authenticated, and the client decides what to render once it has a token.</li>
+ *   <li>{@code .github/scripts/deployed_contract_check.py} reads this array out of the Java and
+ *       asks the deployed origin whether each route still answers with the shell. That is the one
+ *       direction nothing else covers — every other guard here compares source with source.</li>
+ *   <li>{@code SpaRoutesMatchTheClientTest} reads {@code frontend/src/App.jsx} and fails the build
+ *       when the two disagree. That check is <em>new with the split</em>, and it is what stops
+ *       this from rotting quietly: while Spring served the shell, a route missing from here
+ *       produced a 403 somebody would notice, and now it would produce nothing at all except a
+ *       contract sweep that silently checks one route fewer.</li>
  * </ul>
- *
- * <p>Adding a route to {@code App.jsx} means adding it here too, or the deep link 403s.
  */
 public final class SpaRoutes {
 

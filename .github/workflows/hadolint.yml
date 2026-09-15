@@ -4,24 +4,36 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'Dockerfile'
+      - 'backend/Dockerfile'
+      - 'frontend/Dockerfile'
       - '.github/workflows/hadolint.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'Dockerfile'
+      - 'backend/Dockerfile'
+      - 'frontend/Dockerfile'
       - '.github/workflows/hadolint.yml'
 
 permissions:
   contents: read
 
 jobs:
+  # One job per image. A matrix rather than two steps so that a failure names which Dockerfile it
+  # is about, and so that adding a third image is a line here rather than a copied block - the
+  # single Dockerfile this replaced was linted by a step that would have gone green while linting
+  # nothing had the file moved, which is exactly what happened to it.
   hadolint:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile:
+          - backend/Dockerfile
+          - frontend/Dockerfile
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Lint Dockerfile
+      - name: Lint ${{ matrix.dockerfile }}
         uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: ${{ matrix.dockerfile }}

@@ -37,7 +37,7 @@ Special cases:
 - `ops` — infrastructure (IaC), deployment scripts, CI/CD pipelines, backups, monitoring, recovery
 - `chore` — everything else (init, `.gitignore`, ...)
 
-In this repo that maps to: `terraform/**` and `.github/workflows/**` → `ops`; `Dockerfile`/`docker-compose.yml`/`pom.xml`/`package.json` → `build`; `README.md`/`CLAUDE.md` → `docs`.
+In this repo that maps to: `terraform/**` and `.github/workflows/**` → `ops`; `backend/Dockerfile`/`frontend/Dockerfile`/`frontend/nginx/**`/`docker-compose.yml`/`pom.xml`/`package.json` → `build`; `README.md`/`CLAUDE.md` → `docs`.
 
 **Scope** — optional, and project-defined (e.g. `api`, `board`, `auth`, `chat`, `i18n`, `terraform`, `ci`). Never use an issue identifier as a scope.
 
@@ -68,12 +68,12 @@ BREAKING CHANGE: ticket endpoints no longer supports list all entities.
 
 ## Commands
 
-All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and the Dockerfile runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
+All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and `backend/Dockerfile` runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
 
 ### Backend (Java 21 language level / Spring Boot 4.1.1 / Maven wrapper)
 
 The `pom.xml` pins `<java.version>21</java.version>`, so the bytecode target stays 21, but CI
-(`kanban-ci.yml`) and the Dockerfile both build and run on **JDK 25** (`eclipse-temurin:25`) — one
+(`kanban-ci.yml`) and `backend/Dockerfile` both build and run on **JDK 25** (`eclipse-temurin:25`) — one
 toolchain across both, which is what Stage 3 of the audit meant by "pin one JDK". The frontend build
 image is Node 26, matching `node-version: 26` in CI.
 
@@ -82,8 +82,8 @@ image is Node 26, matching `node-version: 26` in CI.
 ./mvnw spring-boot:run                  # run on :8080
 ./mvnw test                             # unit tests
 ./mvnw clean test jacoco:report         # tests + coverage -> target/site/jacoco/index.html
-./mvnw test -Dtest=PublicBundlePathsTest                  # one test class
-./mvnw test -Dtest=PublicBundlePathsTest#stillGuardsTheApi  # one test method
+./mvnw test -Dtest=PublicChainPathsTest                  # one test class
+./mvnw test -Dtest=PublicChainPathsTest#stillGuardsTheApi  # one test method
 ./mvnw verify                           # runs the jacoco `check` gate
 ```
 
@@ -123,25 +123,91 @@ The README documents these same commands; keep the two in sync when a script is 
 ### Full stack via Docker
 
 ```bash
-docker-compose up -d      # app on :8080, postgres on :5432
+docker-compose up -d      # nginx on :8080, the API on 127.0.0.1:8081, postgres on :5432
 docker-compose down
 ```
+
+The stack is the deployment's shape: a `web` service (nginx, the bundle, the proxy) in front of an
+`app` service (the jar). A browser uses `:8080`; `127.0.0.1:8081` is the API container itself, for
+poking the routes the edge deliberately does not proxy — `/actuator` on `:8080` answers 404 by
+design. This is the only place an nginx misconfiguration gets caught before it reaches Azure, which
+is what makes the CI `e2e` job worth materially more than it was.
 
 Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
 
 ## Architecture
 
-### One deployable, two source trees
+### Two containers, one origin
 
-This is a monolith, not two services. The Dockerfile builds `frontend/` with Vite, copies `dist/` into `backend/src/main/resources/static/`, then builds the Spring Boot jar — so in production React is served by Spring Boot from the same origin on port 8080, and `api.js` calling relative paths like `/api/columns` just works.
+There are two images and one public address. [frontend/Dockerfile](frontend/Dockerfile) builds the
+Vite bundle and copies it into `nginx-unprivileged`; [backend/Dockerfile](backend/Dockerfile) builds
+the Spring Boot jar. nginx serves the bundle from disk and reverse-proxies `/api`, `/ws` and
+`/v3/api-docs` to the API container, so the **browser still sees exactly one origin** — which is the
+whole point of proxying rather than publishing an `api.` host alongside. `api.js` calling relative
+paths like `/api/columns` just works, `apiInterceptor.js` keeps matching on substrings, both SockJS
+clients keep pointing at `window.location.origin`, and `connect-src 'self'` keeps covering the
+WebSocket. **No JavaScript changed when the deployment split, and none should have to.**
 
-Because the jar serves the bundle, Spring Security has to let the bundle through: `/assets/**` (Vite's hashed JS/CSS) and `/locales/**` (the runtime i18n files) are in `PUBLIC_STATIC_ASSETS` alongside root-level files. Single-segment patterns like `/*.js` do **not** match `/assets/index-<hash>.js` — `*` never crosses a `/` — and getting this wrong serves `index.html` and then 403s the script that boots it. `PublicBundlePathsTest` locks the whole set down; nothing else does, since Jest stubs `fetch` and Cypress runs against the Vite dev server.
+The edge config is [frontend/nginx/default.conf.template](frontend/nginx/default.conf.template),
+rendered by the stock nginx entrypoint's `envsubst` at container start so the upstream is a
+deployment fact (`API_UPSTREAM`) rather than something baked into the image. Six things in it are
+load-bearing, and each corresponds to something in this application that would otherwise break:
+
+- **`proxy_pass` goes through a variable**, with the resolver read from the container's own
+  `/etc/resolv.conf` (`NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1`). A literal target is resolved once at
+  worker start and cached forever. The plan for this work wrote `168.63.129.16` down as the
+  resolver; that is Azure's platform DNS and is right in a VM, and a Container App actually says
+  `nameserver 127.0.0.11` — measured by `az containerapp exec` into `kanban-app-dev`. Docker's
+  embedded DNS is the same address, so both environments happen to agree, which is exactly the
+  coincidence that would have hidden a wrong constant until the first deploy.
+- **No URI part on `proxy_pass`.** With a variable and no URI, nginx passes the request path through
+  unchanged; adding even a bare trailing slash makes it rewrite, and every `/api` route 404s.
+- **`client_max_body_size 12m`.** nginx defaults to 1 MB and an attachment is capped at 10 MB, so
+  without it every upload over 1 MB is a 413 generated at the edge — `TaskAttachmentService` never
+  runs and nothing reaches the application log.
+- **`proxy_buffering off` and `proxy_request_buffering off`.** The attachment design's central claim
+  is that nothing on either path holds a file; buffering re-introduces exactly that at the edge, and
+  silently defeats the `Range`/`206` resume the client was taught to send.
+- **`$proxy_add_x_forwarded_for`, never `$remote_addr`.** The former appends to the header the
+  ingress already set. The latter replaces it, collapsing two hops into one and breaking
+  `ClientIpResolver` from the other direction.
+- **`location /actuator { return 404; }`.** Not tidiness: `location /` ends in
+  `try_files $uri /index.html`, so an unproxied path does not 404 — it answers the app shell with a
+  **200**, which to anything checking a status code is indistinguishable from actuator published to
+  the internet. Measured on the compose stack before that block existed, and the deployed-contract
+  sweep now asserts the refusal. Container Apps probes the API container directly, so nothing needs
+  it proxied.
+
+Splitting the tier is also what makes the bundle cacheable at last: Spring Security sends `no-store`
+on everything it serves, so the hashed assets had never once been cached. `/assets/` is `immutable`
+now and `/index.html` is `no-cache`.
+
+Two guards carry the parts no compiler can see. `SecurityHeadersMatchTheEdgeTest` reads
+[frontend/nginx/security-headers.conf](frontend/nginx/security-headers.conf) and fails when it and
+`SecurityHeaders` disagree — nginx serves `index.html`, so a CSP Spring writes reaches nobody on the
+document, and the policy is now a rule in two files, the same trade `DeadLetterAlertTest` makes
+against the Terraform. It also pins two nginx traps: that every header is set `always` (otherwise a
+404 or a 502 from the edge arrives unprotected), and that **every location adding a header of its own
+includes the snippet**, because `add_header` does not inherit into a block that sets one — which
+would serve the shell with no policy at all and nothing in the response to say so. The second guard
+is `SpaRoutesMatchTheClientTest`, for the reason below.
+
+Because Spring no longer serves files, `PublicPaths.STATIC_ASSETS` is gone with its fifteen
+`permitAll` patterns, `WebConfig` registers no view controllers, and
+`spring.web.resources.add-mappings=false` switches the resource handler off outright. That is a real
+narrowing rather than tidying: `/*.json` sat uncomfortably next to a free-text label segment, and
+this class carried a comment saying so. `PublicChainPathsTest` (formerly `PublicBundlePathsTest`)
+asserts the absence from both sides, and `JwtAuthenticationFilterSkipTest` asserts that a path that
+used to be the bundle now reads a token like any other — so putting any of it back is a deliberate
+act rather than a merge artifact.
 
 In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (SockJS) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
 
 **Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix `ChatController` too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
-The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users` and `/sessions`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh. Client routes are listed once in [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java), which both `WebConfig` (forwards them to `index.html`) and `SecurityConfiguration` (permits them) read. **Adding a `<Route>` to `App.jsx` means adding it to `SpaRoutes.ALL`**, or the deep link 403s.
+The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users`, `/sessions` and `/activity`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
+
+[SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java) used to be load-bearing twice — `WebConfig` forwarded each route to `/index.html` and `SecurityConfiguration` permitted each one — and neither is true any more. nginx's `try_files` answers every client route with no list at all, which is why **the routes are deliberately not enumerated in the edge config**: a list in two places is the drift every guard here exists to catch. What survives is the claim, read by `deployed-contract.yml` (does the origin still answer each route with the shell?) and by `SpaRoutesMatchTheClientTest`, which parses `App.jsx`. That test is new with the split and is the reason to keep the class: while Spring served the shell, a route missing from the list was a deep link that 403'd and somebody noticed on the first try. Now it would be a contract sweep that silently checks one route fewer.
 
 ### The published contract
 
@@ -509,9 +575,10 @@ Drag payloads are typed through `dataTransfer` MIME types — `application/task`
 
 JWT bearer tokens, stateless sessions, **fifteen-minute** access-token expiry
 (`security.jwt.expiration-time`). `/api/auth/**` (signup, login, verify, resend, forgot-password,
-reset-password, refresh, logout), the health/info actuator endpoints, `/ws/**`, the SPA shell (`/`
-plus `SpaRoutes.ALL`) and the static bundle are public; everything else — the whole of `/api/**` —
-requires authentication. Signup goes through an emailed verification code before login works, and
+reset-password, refresh, logout), the health/info actuator endpoints, `/ws/**`, the published
+contract and the delivery-report webhook are public; everything else — the whole of `/api/**` —
+requires authentication. The shell and the bundle are no longer on that list because they are no
+longer served here at all; see **Two containers, one origin**. Signup goes through an emailed verification code before login works, and
 login can require a Google reCAPTCHA check. **`POST /api/auth/verify` answers with a session**,
 the same `LoginResponse` login returns: the code came from the mailbox and is spent in redeeming
 it, so asking for the password on the next screen proves nothing new. It answered `204` before,
@@ -808,8 +875,10 @@ without it a queue being worked reads as a queue that is empty, and a relay kill
 as nothing at all until the lease lapses.
 
 The other three single-replica constraints are unchanged — the in-memory broker, the in-memory rate
-limiter, and the deadline sweep — so `max_replicas` stays at 1. This is the first of them lifted,
-and it went first because its failure mode is the one that leaves the building.
+limiter, and the deadline sweep — so `api_max_replicas` stays at 1. This is the first of them
+lifted, and it went first because its failure mode is the one that leaves the building. (The
+deadline sweep has since gone the same way; the broker and the limiter are what is left, and both
+need infrastructure that does not exist yet.)
 
 **Two things watch the dead letters, because moving the send off the request thread moved the
 signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert
@@ -878,8 +947,11 @@ the report names. Five things carry it.
 
 The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
 (`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module
-builds from the container app's own FQDN plus that key — so the address and the credential cannot be
-configured into disagreeing. It needs both `acs_communication_service_id` and
+builds from the **web** app's FQDN plus that key — so the address and the credential cannot be
+configured into disagreeing. It has to be the web app since the split: Event Grid calls the URL from
+outside this VNet and cannot reach an internal ingress at all, and nginx proxies
+`/api/mail/delivery-reports` like any other `/api` path, for free. It needs both
+`acs_communication_service_id` and
 `mail_delivery_report_key`, and it is **the one resource here with an ordering constraint against
 the application rather than against other Terraform**: Event Grid validates the endpoint by calling
 it at creation time, so the app has to be deployed and serving before this can apply.
@@ -954,16 +1026,27 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   as `DeadLetterAlertTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
-- `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds the root Dockerfile, pushes the image to
-  `ghcr.io/<owner>/kanbanproject-app` tagged with the commit SHA, and scans it with Trivy
-  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags it `latest` —
+- `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
+  `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
+  `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit
+  SHA, and scans each with Trivy
+  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags both `latest` —
   a scan failure, a ref that is not the default branch, or a commit that's no longer the tip of it
   blocks promotion, so `latest` is always a SHA on `main` that both built clean and passed the scan.
+  **The two images are one matrix job rather than two jobs, and that is load-bearing rather than
+  tidy**: `cd-alarm` has to name every job in `needs` *and* in the `results` string it passes, and
+  `SweepAlarmCoverageTest` fails the build when the two disagree — a matrix leg is not a job by that
+  reckoning, `needs.build-and-push.result` aggregates every leg, so the matrix can grow without a
+  third place to remember. The SARIF category and the SBOM artifact name carry the image name, or
+  the second leg silently replaces the first's findings. **`promote` moves both or neither**, and it
+  resolves the SHA tag rather than a digest — a matrix job's outputs are whichever leg wrote them
+  last, and Terraform feeds one `app_image_tag` to both container apps, so a `latest` that is half
+  one commit and half another is precisely the skew the split introduced, with nothing to say so.
   **The ref half of that was missing until the sweep landed**: the check asked only whether the
   commit was the tip of `github.ref_name`, which on a `workflow_dispatch` against a feature branch
   is perfectly true — so dispatching CD on a branch would have tagged that branch's build `latest`.
-  Nothing ever did. Adding a schedule was the reason to make sure nothing can. The build job also emits a CycloneDX SBOM
-  (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs the image
+  Nothing ever did. Adding a schedule was the reason to make sure nothing can. Each leg also emits a CycloneDX SBOM
+  (uploaded as a build artifact) and, with `id-token: write` for keyless OIDC, cosign-signs its image
   and attests the SBOM against it — both addressed by digest, not tag, so they can't drift onto a
   later build of the same tag.
   **The sweep is here for the same reason it is on CI, and it was measured before it was added.**
@@ -974,7 +1057,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   those commits at all, so `latest` stops being the tip of `main` and looks exactly like a
   deployment nobody has made yet. A daily rebuild of the tip is what makes `latest` converge again
   whoever did the merging, and `cd-alarm` is what says so when it cannot. The rebuild is cheap and
-  idempotent: the SHA tag is the same tag, and `promote` re-tags `latest` at the same digest.
+  idempotent: the SHA tags are the same tags, and `promote` re-tags `latest` at the same images.
 - **`deployed-contract.yml`** — a daily sweep that asks the deployed origin whether it still
   answers what the trunk claims. It is the one direction nothing else here covers: every other
   guard reads source and compares it with source, Checkov reads what Terraform declares, and
@@ -990,7 +1073,9 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   cron is why it is not in `SweepAlarmCoverageTest`'s list: its findings go to the Security tab,
   which has its own notifications, and there is no job result an alarm could add anything to.
 - `migration-order.yml` — on PRs: fails a branch that adds a Flyway migration numbered at or below the highest version already on the base branch, forcing a stale branch to renumber before it merges (see the Flyway section). Its cheaper companion is the database-free `MigrationOrderTest`, which catches a duplicated or skipped `V<n>` after a sloppy merge.
-- `hadolint.yml` — Dockerfile lint, on push and PR.
+- `hadolint.yml` — Dockerfile lint, on push and PR, as a matrix over `backend/Dockerfile` and
+  `frontend/Dockerfile`. A matrix rather than two steps so a failure names the image it is about,
+  and so a third image is a line rather than a copied block.
 - `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR (comment only).
 - `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI, and **only
   `semver-patch` and `semver-minor`**: majors are held for a person. That rule has held every time
@@ -1066,7 +1151,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   reached `ActivationFailed` on exactly that. With the factory set, the original reasoning holds and
   is why no cert is bundled: the roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA
   Root Certificate Authority 2017") are already in the JDK trust store.
-- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,container_app}`. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `container_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
+- [terraform/](terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,api_app,web_app}`. **Two Container Apps in one environment**: `kanban-web-<env>` (`modules/web_app`, nginx, the only external ingress) and `kanban-api-<env>` (`modules/api_app`, the jar, `external_enabled = false`). Both land in the same `snet-backend`, so the split adds no subnet, no NSG rule and no private endpoint; the blob and Key Vault grants stay with the API identity alone, and the edge gets a second identity granted `Key Vault Secrets User` on the **`GHCR-TOKEN` secret alone** rather than on the vault — a vault-scoped grant would let the nginx container read the Postgres password. The edge proxies to `https://kanban-api-<env>.internal.<env-domain>`: internal ingress still terminates TLS and answers plain HTTP with a 301, and the certificate it presents carries `*.internal.<env-domain>` and verifies against the stock CA bundle, so the hop is authenticated rather than merely allowed by `allow_insecure_connections`. The two modules compose that name independently so neither depends on the other's resources, and a root-level `check` block asserts they still agree — the failure otherwise is a green apply and a 502 on every API call. Renaming the module is a state move, not a rebuild: `terraform state mv module.container_app module.api_app` before the first apply, or `random_password.jwt_secret_key` is regenerated and every signed-in user is signed out. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `api_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ### i18n
 

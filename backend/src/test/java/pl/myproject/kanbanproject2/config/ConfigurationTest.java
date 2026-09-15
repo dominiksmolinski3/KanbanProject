@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code CAPTCHA_SECRET} was plumbed through docker-compose, Terraform, Key Vault and the container
  * template to a verifier that did not exist (SEC-06). Both were found by hand, one round late.
  *
- * <p>Four sources are read and compared:
+ * <p>Six sources are read and compared:
  *
  * <ul>
  *   <li>{@code application.properties} - every {@code ${VAR}} placeholder, and whether it carries
@@ -45,8 +45,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       {@code SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT} reaches
  *       {@link AuthRateLimitProperties#trustedProxyCount()}. Leave those out and the audit reports
  *       live configuration as dead.</li>
- *   <li>{@code docker-compose.yml} - what the local stack passes the app container.</li>
- *   <li>{@code terraform/modules/container_app/main.tf} - what the deployment passes it.</li>
+ *   <li>{@code docker-compose.yml} - what the local stack passes each container.</li>
+ *   <li>{@code terraform/modules/api_app/main.tf} - what the deployment passes the API.</li>
+ *   <li>{@code terraform/modules/web_app/main.tf} and
+ *       {@code frontend/nginx/default.conf.template} - the same audit for the edge, which the
+ *       split added a second container's worth of. Its configuration is one variable, which is
+ *       exactly why it needs checking: a bidirectional audit that does not know the module exists
+ *       is how a variable ends up passed and unread, and this one is not read by any Java at
+ *       all.</li>
  * </ul>
  *
  * <p>Same shape as {@code DeadLetterAlertTest} and {@code SupportedLocalesMatchClientTest}: a rule
@@ -61,7 +67,22 @@ class ConfigurationTest {
     private static final Path APP_PROPERTIES = Path.of("src", "main", "resources", "application.properties");
     private static final Path COMPOSE = REPO.resolve("docker-compose.yml");
     private static final Path ENV_EXAMPLE = REPO.resolve(".env.example");
-    private static final Path CONTAINER_APP = REPO.resolve(Path.of("terraform", "modules", "container_app", "main.tf"));
+    private static final Path API_APP = REPO.resolve(Path.of("terraform", "modules", "api_app", "main.tf"));
+    private static final Path WEB_APP = REPO.resolve(Path.of("terraform", "modules", "web_app", "main.tf"));
+    private static final Path EDGE_TEMPLATE = REPO.resolve(Path.of("frontend", "nginx", "default.conf.template"));
+    private static final Path EDGE_DOCKERFILE = REPO.resolve(Path.of("frontend", "Dockerfile"));
+
+    /**
+     * The one placeholder in the edge template that no deployment supplies, because the image does.
+     *
+     * <p>{@code NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1} in {@code frontend/Dockerfile} makes the stock
+     * nginx entrypoint read {@code /etc/resolv.conf} and export this before {@code envsubst} runs,
+     * which is what keeps the resolver address out of this repository - it differs between Docker
+     * and Container Apps in principle even though both answer {@code 127.0.0.11} today. Drop that
+     * line from the Dockerfile and the substitution produces {@code resolver ;}, which nginx
+     * refuses to start on, so {@link #theEdgeImageEnablesTheResolverEntrypoint()} asserts it.
+     */
+    private static final Set<String> EDGE_ENTRYPOINT_PROVIDED = Set.of("NGINX_LOCAL_RESOLVERS");
 
     /**
      * The records Spring binds, named rather than discovered by scanning.
@@ -79,7 +100,7 @@ class ConfigurationTest {
     /** {@code ${VAR}} or {@code ${VAR:default}} - the default may be empty, which still counts as one. */
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]*)(:[^}]*)?}");
 
-    /** An {@code env { ... }} block in the container-app module. These never nest, so this is enough. */
+    /** An {@code env { ... }} block in a container-app module. These never nest, so this is enough. */
     private static final Pattern TERRAFORM_ENV_BLOCK = Pattern.compile("\\benv\\s*\\{([^}]*)}");
     private static final Pattern TERRAFORM_ENV_NAME = Pattern.compile("name\\s*=\\s*\"([A-Z][A-Z0-9_]*)\"");
 
@@ -112,6 +133,60 @@ class ConfigurationTest {
         assertThat(unread)
                 .as("Terraform supplies these and no property binds them - this is the shape MAIL-02 had")
                 .isEmpty();
+    }
+
+    // ------------------------------------------------------------------------------- the edge
+    //
+    // The same audit, for the container with no Java in it. There is one variable, and one variable
+    // is the case this is most needed for rather than least: nothing here is bound by a record, so
+    // a rename on either side compiles, applies, and produces a 502 on every API call.
+
+    @Test
+    @DisplayName("the web module supplies every variable the edge template substitutes")
+    void theWebModuleSuppliesEveryEdgeVariable() throws IOException {
+        Set<String> needed = new TreeSet<>(edgeTemplatePlaceholders());
+        needed.removeAll(EDGE_ENTRYPOINT_PROVIDED);
+
+        assertThat(needed)
+                .as("envsubst leaves an unset placeholder empty rather than failing, so a variable "
+                        + "the template needs and Terraform does not pass renders a directive with "
+                        + "a hole in it")
+                .isSubsetOf(terraformWebAppEnvironment());
+    }
+
+    @Test
+    @DisplayName("the web module passes nothing the edge template does not substitute")
+    void theWebModulePassesNothingUnread() throws IOException {
+        Set<String> unread = new TreeSet<>(terraformWebAppEnvironment());
+        unread.removeAll(edgeTemplatePlaceholders());
+
+        assertThat(unread)
+                .as("Terraform passes these to nginx and its config names none of them")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("docker-compose supplies the edge the same variables the deployment does")
+    void dockerComposeSuppliesTheEdge() throws IOException {
+        Set<String> needed = new TreeSet<>(edgeTemplatePlaceholders());
+        needed.removeAll(EDGE_ENTRYPOINT_PROVIDED);
+
+        assertThat(needed)
+                .as("the local stack is the only place an nginx misconfiguration gets caught "
+                        + "before it reaches Azure, which it cannot do while it is configured "
+                        + "differently")
+                .isSubsetOf(composeWebEnvironment().keySet());
+    }
+
+    @Test
+    @DisplayName("the edge image enables the entrypoint that fills in the resolver")
+    void theEdgeImageEnablesTheResolverEntrypoint() throws IOException {
+        assertThat(read(EDGE_DOCKERFILE))
+                .as("without NGINX_ENTRYPOINT_LOCAL_RESOLVERS the stock entrypoint exports no "
+                        + "NGINX_LOCAL_RESOLVERS, envsubst renders an empty resolver directive, and "
+                        + "nginx refuses to start - which is at least loud, unlike everything else "
+                        + "on this page")
+                .contains("NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1");
     }
 
     @Test
@@ -214,8 +289,17 @@ class ConfigurationTest {
     }
 
     /** The {@code environment:} mapping on the compose file's {@code app} service. */
-    @SuppressWarnings("unchecked")
     private static Map<String, String> composeAppEnvironment() throws IOException {
+        return composeServiceEnvironment("app");
+    }
+
+    /** The same, for the {@code web} service the split added. */
+    private static Map<String, String> composeWebEnvironment() throws IOException {
+        return composeServiceEnvironment("web");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> composeServiceEnvironment(String service) throws IOException {
         assertThat(COMPOSE).as("the compose file has moved or gone").isRegularFile();
 
         Map<String, Object> compose;
@@ -225,11 +309,11 @@ class ConfigurationTest {
 
         Map<String, Object> services = (Map<String, Object>) compose.get("services");
         assertThat(services).as("the compose file declares no services").isNotNull();
-        Map<String, Object> app = (Map<String, Object>) services.get("app");
-        assertThat(app).as("the compose file no longer has an `app` service").isNotNull();
+        Map<String, Object> app = (Map<String, Object>) services.get(service);
+        assertThat(app).as("the compose file no longer has a `%s` service", service).isNotNull();
 
         Object environment = app.get("environment");
-        assertThat(environment).as("the `app` service passes no environment at all").isNotNull();
+        assertThat(environment).as("the `%s` service passes no environment at all", service).isNotNull();
 
         Map<String, String> variables = new LinkedHashMap<>();
         if (environment instanceof Map<?, ?> mapping) {
@@ -254,12 +338,21 @@ class ConfigurationTest {
         return interpolated;
     }
 
-    /** The names in the container-app module's {@code env} blocks, and not its Key Vault secret names. */
+    /** The names in the API module's {@code env} blocks, and not its Key Vault secret names. */
     private static Set<String> terraformContainerAppEnvironment() throws IOException {
-        assertThat(CONTAINER_APP).as("the container-app module has moved or gone").isRegularFile();
+        return terraformEnvironment(API_APP, "the API module");
+    }
+
+    /** The same, for the edge. One entry today, and the point is that it is checked at all. */
+    private static Set<String> terraformWebAppEnvironment() throws IOException {
+        return terraformEnvironment(WEB_APP, "the web module");
+    }
+
+    private static Set<String> terraformEnvironment(Path module, String what) throws IOException {
+        assertThat(module).as("%s has moved or gone", what).isRegularFile();
 
         Set<String> names = new TreeSet<>();
-        Matcher blocks = TERRAFORM_ENV_BLOCK.matcher(read(CONTAINER_APP));
+        Matcher blocks = TERRAFORM_ENV_BLOCK.matcher(read(module));
         while (blocks.find()) {
             Matcher name = TERRAFORM_ENV_NAME.matcher(blocks.group(1));
             if (name.find()) {
@@ -268,8 +361,23 @@ class ConfigurationTest {
         }
 
         assertThat(names)
-                .as("no env blocks were found in the container-app module, which means this test "
-                        + "is reading the wrong file or the wrong shape rather than that the app needs no configuration")
+                .as("no env blocks were found in %s, which means this test is reading the wrong "
+                        + "file or the wrong shape rather than that the container needs no configuration", what)
+                .isNotEmpty();
+        return names;
+    }
+
+    /** Every placeholder the nginx entrypoint's envsubst will replace in the edge config. */
+    private static Set<String> edgeTemplatePlaceholders() throws IOException {
+        Set<String> names = new TreeSet<>();
+        Matcher matcher = PLACEHOLDER.matcher(read(EDGE_TEMPLATE));
+        while (matcher.find()) {
+            names.add(matcher.group(1));
+        }
+
+        assertThat(names)
+                .as("the edge template substitutes nothing at all, which means this is reading the "
+                        + "wrong file rather than that the edge needs no configuration")
                 .isNotEmpty();
         return names;
     }

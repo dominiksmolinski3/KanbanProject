@@ -15,11 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
-import org.springframework.web.servlet.mvc.ParameterizableViewController;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-import pl.myproject.kanbanproject2.config.SpaRoutes;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -105,16 +104,27 @@ class ApiPathPrefixTest {
     }
 
     @Test
-    @DisplayName("every client route forwards to the shell, so a refresh does not 404")
-    void forwardsClientRoutesToTheShell() {
+    @DisplayName("nothing forwards to a shell this application no longer has")
+    void forwardsNothingToTheShell() {
+        // The inverse of what this asserted until the split. WebConfig used to register one view
+        // controller per SpaRoutes entry, forwarding to classpath:/static/index.html; nginx answers
+        // those paths with try_files now and there is no index.html in the jar to forward to. A
+        // forward that survived would resolve to nothing and answer 500 rather than 404, which is
+        // worse than either.
         contextRunner.run(context -> {
-            SimpleUrlHandlerMapping viewControllers =
-                    context.getBean("viewControllerHandlerMapping", SimpleUrlHandlerMapping.class);
+            // With nothing registered, Spring MVC leaves the bean as a NullBean rather than as an
+            // empty mapping — so this asks for it untyped and reads whichever of the two it gets.
+            // Naming the type would make the test throw on the very state it is asserting.
+            Object viewControllers = context.getBean("viewControllerHandlerMapping");
 
-            assertThat(viewControllers.getUrlMap()).containsOnlyKeys(SpaRoutes.ALL);
-            assertThat(viewControllers.getUrlMap().values())
-                    .allSatisfy(handler -> assertThat(((ParameterizableViewController) handler).getViewName())
-                            .isEqualTo("forward:/index.html"));
+            Map<String, ?> forwards = viewControllers instanceof SimpleUrlHandlerMapping mapping
+                    ? mapping.getUrlMap()
+                    : Map.of();
+
+            assertThat(forwards)
+                    .withFailMessage("WebConfig still forwards %s to a shell this jar does not "
+                            + "carry; nginx answers the client routes now", forwards.keySet())
+                    .isEmpty();
         });
     }
 

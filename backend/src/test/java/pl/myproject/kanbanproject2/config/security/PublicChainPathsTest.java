@@ -25,49 +25,54 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Guards the path every user takes into the packaged application.
+ * What the filter chain lets through, and — since the split — what it no longer has any reason to.
  *
- * <p>The jar serves the React bundle itself, so the browser's first requests after {@code /} are
- * for files Spring Security has to let through before anyone holds a token. Nothing else in the
- * suite covers that: Jest replaces {@code fetch}, so no frontend test resolves a real URL, and
- * Cypress runs against the Vite dev server, which serves its own assets and never consults this
- * filter chain. A pattern that silently stops matching therefore shows up first as a blank page
- * in production — which is what {@code /*.js} did, because {@code *} does not cross a {@code /}
- * and Vite emits to {@code /assets/}.
+ * <p>This class used to guard the opposite claim. The jar served the React bundle, so fifteen
+ * static patterns had to be permitted before anyone held a token, and a pattern that silently
+ * stopped matching showed up first as a blank page in production — which is what {@code /*.js} did,
+ * because {@code *} does not cross a {@code /} and Vite emits to {@code /assets/}. nginx serves all
+ * of it now, from its own container, and those patterns are gone.
+ *
+ * <p>Deleting a guard rather than replacing it would leave nothing saying the patterns are meant to
+ * be absent, and a merge that puts one back is not a thing anybody would notice. So the assertions
+ * are inverted: the chain must refuse the bundle, refuse the client routes, and still refuse the
+ * API behind them. The last of those is the part that was always the point.
  */
-class PublicBundlePathsTest {
+class PublicChainPathsTest {
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withUserConfiguration(TestCollaborators.class);
 
     @Test
-    @DisplayName("an anonymous browser can fetch everything it needs to boot the app")
-    void servesTheBundleToAnonymousCallers() {
-        // Hashed filenames stand in for whatever Vite emits; only the directory is fixed.
-        assertPermitted(
-                "/",
+    @DisplayName("the chain serves none of the bundle, because it no longer has one")
+    void permitsNothingStatic() {
+        // Hashed filenames stand in for whatever Vite emits; only the directory ever mattered.
+        assertDenied(
                 "/index.html",
                 "/assets/index-BMKiHw11.js",
                 "/assets/index-DGz0kgfl.css",
-                "/assets/browser-ponyfill-l-ovD2rm.js",
                 "/icon.svg",
-                "/kanban-logo.png");
-    }
-
-    @Test
-    @DisplayName("i18next can fetch every locale before login")
-    void servesTheLocalesToAnonymousCallers() {
-        // The language detector picks one of these before the app has rendered anything.
-        assertPermitted(
+                "/kanban-logo.png",
                 "/locales/en/translation.json",
-                "/locales/pl/translation.json",
-                "/locales/ja/translation.json");
+                "/locales/pl/translation.json");
     }
 
     @Test
-    @DisplayName("a deep link to a client route reaches the app shell rather than a 403")
-    void servesTheShellOnClientRoutes() {
-        assertPermitted(SpaRoutes.ALL);
+    @DisplayName("the chain serves none of the client routes either")
+    void permitsNoClientRoute() {
+        // try_files answers these at the edge. Permitting them here would be permitting paths this
+        // application has no handler for, which is how /*.json got next to a free-text label.
+        assertDenied(SpaRoutes.ALL);
+        assertDenied("/");
+    }
+
+    @Test
+    @DisplayName("what a caller with no token still has to reach is still reachable")
+    void stillPermitsWhatNeedsNoToken() {
+        // The published contract and the probes: neither is behind a token, and narrowing the
+        // chain must not have taken either with it. The auth routes are deliberately absent from
+        // this list - AuthRateLimitFilter sits in front of them and a burst here would be flaky.
+        assertPermitted("/v3/api-docs", "/actuator/health", "/actuator/health/readiness");
     }
 
     @Test
@@ -85,16 +90,12 @@ class PublicBundlePathsTest {
     }
 
     @Test
-    @DisplayName("the shell being public did not make the data behind it public")
-    void separatesTheShellFromItsData() {
-        // /users is the one path that is both: the page is public, because the browser has to load
-        // it before it has a token to load anything else with. The list of users it renders is not.
-        assertPermitted("/users");
-        assertDenied("/api/users");
-
-        // Nothing is served on the other unprefixed API paths now, and nothing opened them up
-        // either — a matcher drifting back to them would be silent otherwise.
-        assertDenied("/tasks", "/columns", "/rows", "/subtasks", "/files");
+    @DisplayName("nothing is served on the unprefixed paths the API used to answer")
+    void guardsTheUnprefixedPaths() {
+        // /users was the one path that was both: a client route the chain permitted, and the name
+        // UserController answered before the /api prefix existed. Neither is true here now, and a
+        // matcher drifting back to any of them would otherwise be silent.
+        assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks", "/files");
     }
 
     private void assertPermitted(String... uris) {
