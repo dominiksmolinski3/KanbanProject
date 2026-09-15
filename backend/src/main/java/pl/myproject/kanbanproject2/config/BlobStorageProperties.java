@@ -55,9 +55,13 @@ public record BlobStorageProperties(
 
         /*
          * How many uploads and downloads may stream through this application at once. Each one
-         * holds a thread and a buffer for as long as the transfer takes, and a replica count pinned
-         * to 1 has no second process to absorb a burst - comfortably under Tomcat's 200-thread
-         * default, with room left for ordinary request serving.
+         * holds a thread and a buffer for as long as the transfer takes, comfortably under Tomcat's
+         * 200-thread default, with room left for ordinary request serving.
+         *
+         * This is a per-JVM Semaphore, not a global one: at api_max_replicas > 1, the true ceiling
+         * is this value times the replica count. Benign in effect - it only ever grants more
+         * concurrent transfers than the name promises - but it means the name reads "per replica"
+         * rather than "total" the moment a second API replica exists.
          */
         @DefaultValue("8") int maxConcurrentTransfers,
 
