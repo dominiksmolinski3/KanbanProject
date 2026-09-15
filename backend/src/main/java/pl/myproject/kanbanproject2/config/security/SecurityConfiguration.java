@@ -21,7 +21,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
-import pl.myproject.kanbanproject2.config.SpaRoutes;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
@@ -130,15 +129,14 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/").permitAll()
-                        // The shell only; every route behind it reads its data from /api/**.
-                        .requestMatchers(SpaRoutes.ALL).permitAll()
+                        // No shell and no bundle: nginx serves both from its own container and
+                        // neither reaches this chain. What is left is the API, and every entry
+                        // below is public because a caller that has no token has to reach it.
                         // Shared with JwtAuthenticationFilter so the two lists cannot drift apart.
                         .requestMatchers(PublicPaths.AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.INFRA_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.DOCS_ENDPOINTS).permitAll()
                         .requestMatchers(PublicPaths.WEBHOOK_ENDPOINTS).permitAll()
-                        .requestMatchers(PublicPaths.STATIC_ASSETS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)

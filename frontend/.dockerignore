@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.vite/
+cypress/screenshots/
+cypress/videos/
+.env
+.env.*
+*.log
