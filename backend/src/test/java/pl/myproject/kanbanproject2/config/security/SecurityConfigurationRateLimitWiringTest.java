@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
@@ -100,7 +101,9 @@ class SecurityConfigurationRateLimitWiringTest {
 
         @Bean
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
-            return new AuthRateLimiter(properties);
+            // This suite proves the filter's position in the chain, not the escalation itself, so
+            // a mock Redis template is enough - nothing here ever calls tryConsume.
+            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class));
         }
 
         @Bean

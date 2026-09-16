@@ -12,6 +12,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -151,7 +152,9 @@ class PublicChainPathsTest {
 
         @Bean
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
-            return new AuthRateLimiter(properties);
+            // This suite is about path matching in the security chain, not the escalation itself,
+            // so a mock Redis template is enough - nothing here ever calls tryConsume.
+            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class));
         }
 
         @Bean

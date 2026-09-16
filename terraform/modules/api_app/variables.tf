@@ -83,18 +83,18 @@ variable "app_image_tag" {
 
 variable "max_replicas" {
   description = <<-EOT
-    Upper bound on API replicas. Defaults to 1, and should stay there until two pieces of in-JVM
-    state are moved out:
+    Upper bound on API replicas. Defaults to 1, and should stay there until the one remaining
+    piece of in-JVM state is moved out:
 
       * The STOMP broker is registry.enableSimpleBroker("/topic", "/queue") -- in-process. A board
         event or a chat message published on one replica never reaches a subscriber on another, so
         boards stop updating for roughly half the people watching them and nothing errors.
-      * The auth rate limiter holds its Caffeine buckets per JVM (AuthRateLimitProperties says so
-        in its own docs), which multiplies every configured limit by the replica count.
 
-    Two others were on this list and are not any more: the outbox relay and the deadline sweep both
-    claim their rows with FOR UPDATE SKIP LOCKED now, so a second replica takes different rows
-    rather than sending the same mail twice.
+    Three others were on this list and are not any more: the outbox relay and the deadline sweep
+    both claim their rows with FOR UPDATE SKIP LOCKED now, so a second replica takes different
+    rows rather than sending the same mail twice, and the auth rate limiter's escalation now lives
+    in Redis (see modules/redis and AuthRateLimiter) rather than in each replica's own process
+    memory.
 
     Ingress also declares no session affinity, which SockJS's XHR fallback transports need.
 
@@ -163,6 +163,16 @@ variable "storage_account_id" {
 variable "storage_blob_endpoint" {
   description = "Blob service endpoint the app stores task attachments in, e.g. \"https://stkanbanprod123456.blob.core.windows.net/\". Not a secret: it is reached with a token, and the account allows no anonymous access."
   type        = string
+}
+
+variable "redis_hostname" {
+  description = "Hostname of the Azure Cache for Redis instance backing AuthRateLimiter's escalation. Not a secret - the access key is (REDIS-ACCESS-KEY, read from Key Vault by name, the same pattern the Postgres password uses)."
+  type        = string
+}
+
+variable "redis_ssl_port" {
+  description = "TLS port of the Redis instance (6380, not the plaintext 6379 - shared_access_key_enabled has no equivalent here, so the access key is the only thing standing in for auth and must not cross the wire in clear)."
+  type        = number
 }
 
 variable "mail_delivery_report_key" {

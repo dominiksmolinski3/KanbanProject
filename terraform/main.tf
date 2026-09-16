@@ -134,6 +134,23 @@ module "storage" {
   retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
 }
 
+# Backs AuthRateLimiter's escalation (phase 3 of the container split plan): the one remaining
+# multi-replica blocker that costs a mailbox nothing to get wrong, unlike the outbox and the
+# deadline sweep already fixed. Shares the private-endpoint subnet with Key Vault rather than
+# getting one of its own - no new subnet, no new NSG rule.
+module "redis" {
+  source                     = "./modules/redis"
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  env                        = var.env
+  vnet_id                    = module.vnet.id
+  private_endpoint_subnet_id = module.vnet.private_endpoint_subnet_id
+  key_vault_id               = module.key_vault.id
+  tags                       = local.tags
+
+  depends_on = [module.key_vault]
+}
+
 # The public edge: nginx, the bundle, and the proxy in front of the API. It holds the only external
 # ingress in this deployment, which is why the ingress restrictions and the origin everything else
 # is told about are its.
@@ -180,6 +197,8 @@ module "api_app" {
   captcha_secret                   = var.captcha_secret
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint
+  redis_hostname                   = module.redis.hostname
+  redis_ssl_port                   = module.redis.ssl_port
   tags                             = local.tags
 
   # The browser's origin is the edge's FQDN, not this app's. Read from the web module's output
@@ -188,7 +207,11 @@ module "api_app" {
 
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
-  depends_on = [module.key_vault, module.postgres, module.storage]
+  # module.redis is here for the same reason module.postgres and module.storage are: the container
+  # app references REDIS-ACCESS-KEY by a Key Vault secret name it builds as a string, not as a
+  # Terraform attribute reference, so nothing but this depends_on orders the secret's creation
+  # ahead of the app that reads it.
+  depends_on = [module.key_vault, module.postgres, module.storage, module.redis]
 
   mail_delivery_report_key = var.mail_delivery_report_key
 }
