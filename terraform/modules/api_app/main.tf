@@ -65,6 +65,11 @@ resource "azurerm_container_app" "main" {
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "JWT-SECRET-KEY")
     identity            = azurerm_user_assigned_identity.main.id
   }
+  secret {
+    name                = "redis-access-key"
+    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "REDIS-ACCESS-KEY")
+    identity            = azurerm_user_assigned_identity.main.id
+  }
   dynamic "secret" {
     for_each = local.acs_mail_configured ? [1] : []
     content {
@@ -173,6 +178,25 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
         value = tostring(var.ingress_trusted_proxy_count)
+      }
+      # AuthRateLimiter's escalation - see modules/redis. SSL is not conditional: this account has
+      # no non-TLS endpoint exposed at all (non_ssl_port_enabled = false), unlike attachment
+      # storage's connection-string/managed-identity fork, which exists only for local Azurite.
+      env {
+        name  = "SECURITY_RATE_LIMIT_REDIS_HOST"
+        value = var.redis_hostname
+      }
+      env {
+        name  = "SECURITY_RATE_LIMIT_REDIS_PORT"
+        value = tostring(var.redis_ssl_port)
+      }
+      env {
+        name  = "SECURITY_RATE_LIMIT_REDIS_SSL"
+        value = "true"
+      }
+      env {
+        name        = "SECURITY_RATE_LIMIT_REDIS_PASSWORD"
+        secret_name = "redis-access-key"
       }
       env {
         name  = "SECURITY_CORS_ALLOWED_ORIGINS"

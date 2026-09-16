@@ -20,7 +20,7 @@ import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimi
 class AuthRateLimiterTest {
 
     private final AuthRateLimitTestSupport.FakeClock clock = new AuthRateLimitTestSupport.FakeClock();
-    private final AuthRateLimiter limiter = new AuthRateLimiter(properties(), clock);
+    private final AuthRateLimiter limiter = new AuthRateLimiter(properties(), new InMemoryEscalationStore(), clock);
 
     @Test
     @DisplayName("a key is allowed through its burst and asked to wait after it")
@@ -195,6 +195,26 @@ class AuthRateLimiterTest {
     }
 
     @Test
+    @DisplayName("a blank Redis host or an out-of-range port is refused at startup")
+    void rejectsUnusableRedisConfiguration() {
+        assertThatThrownBy(() -> new AuthRateLimitProperties(
+                true, 0, 1000,
+                4, 2, Duration.ofSeconds(15), Duration.ofMinutes(5), Duration.ofMinutes(15),
+                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
+                " ", 6379, "", false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("redis-host");
+
+        assertThatThrownBy(() -> new AuthRateLimitProperties(
+                true, 0, 1000,
+                4, 2, Duration.ofSeconds(15), Duration.ofMinutes(5), Duration.ofMinutes(15),
+                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
+                "localhost", 70000, "", false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("redis-port");
+    }
+
+    @Test
     @DisplayName("a ceiling below the base, or a window below the ceiling, is refused too")
     void rejectsAnEscalationThatCouldNotEscalate() {
         // A ceiling under the base would make the first wait the longest one there is.
@@ -207,7 +227,8 @@ class AuthRateLimiterTest {
         assertThatThrownBy(() -> new AuthRateLimitProperties(
                 true, 0, 1000,
                 4, 2, Duration.ofSeconds(15), Duration.ofMinutes(30), Duration.ofMinutes(15),
-                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1)))
+                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
+                "localhost", 6379, "", false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("credential-window");
     }
@@ -263,6 +284,7 @@ class AuthRateLimiterTest {
         return new AuthRateLimitProperties(
                 true, 0, 1000,
                 credentialAttemptsPerIp, credentialAttemptsPerAccount, base, max, Duration.ofMinutes(15),
-                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1));
+                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
+                "localhost", 6379, "", false);
     }
 }

@@ -113,6 +113,10 @@ docker-compose up -d
    somewhere else; with storage unconfigured entirely the app still starts and refuses uploads with
    a clear 503.
 
+   A plain `redis` service backs the auth rate limiter's escalation (`security.rate-limit.redis-*`),
+   so the login/signup limits mean what their numbers say even if you run more than one `app`
+   replica locally. Nothing to configure -- the app finds it by service name.
+
 5. To stop the application:
 
 ```bash

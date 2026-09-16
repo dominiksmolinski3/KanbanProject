@@ -727,6 +727,44 @@ An environment that sets no storage endpoint at all still runs: the app starts, 
 storage is not configured. That is the same allowance mail makes, and it is what lets CI and a fresh
 clone run without an Azure subscription.
 
+### Rate limiter Redis
+
+`modules/redis` provisions the Azure Cache for Redis instance `AuthRateLimiter`'s escalation lives
+in — phase 3 of the container split plan, and the first of its two remaining multi-replica blockers
+to be cleared. Three decisions carry it.
+
+**Basic, not Standard or Premium, and that is not a cost shortcut being excused after the fact.** A
+Basic cache has no replica and no SLA; Checkov's `CKV_AZURE_230` flags exactly that and is skipped
+deliberately, because what this cache holds is disposable by design. `RedisEscalationStore` fails
+every attempt **open** when it cannot reach Redis or cannot read what it answered — a connection
+refused, a timeout, a malformed script result — so losing the cache costs whoever is mid-escalation
+their burst back, never a request that should have been refused and was not blocked by anything the
+application actually relies on. Paying for a replica would buy availability for state the code
+already treats as expendable.
+
+**It answers nobody but the application, the same posture attachment storage and Key Vault have.**
+`public_network_access_enabled = false` and a private endpoint in the same subnet Key Vault's
+already uses — no new subnet, no new NSG rule, because this is a second private endpoint into an
+existing one rather than a service that needed its own. `non_ssl_port_enabled = false` and
+`minimum_tls_version = "1.2"`: there is no managed-identity data plane for Redis the way blob storage
+has one, so the access key is the only thing standing in for authentication, and it must never cross
+the wire unencrypted.
+
+**The access key is a secret Terraform creates and the module owns, the same pattern
+`modules/postgres` uses for `POSTGRES-PASSWORD`.** `azurerm_key_vault_secret.redis_access_key` is
+written here, not in `api_app`; the API module references it by name
+(`format("%s/secrets/%s", ..., "REDIS-ACCESS-KEY")`), which is why `module.api_app`'s `depends_on`
+in the root module names `module.redis` explicitly — nothing else orders the secret's creation ahead
+of the container app that reads it, since a string built from a Key Vault URI is not a Terraform
+attribute reference the graph can see.
+
+Locally and in CI, `security.rate-limit.redis-host` defaults to `localhost`: docker-compose runs a
+plain `redis:7-alpine` with no password and no TLS (the same trust boundary Postgres and Azurite
+already have on that network), and the CI backend job runs one as a service container next to
+Postgres. Nothing about the escalation's behaviour differs between that and the deployment's TLS
+Azure Cache — only the connection does, which is exactly what `security.rate-limit.redis-ssl`
+switches.
+
 ### Key Vault authorization
 
 The vault is created with `rbac_authorization_enabled = true`, so **Azure RBAC is the

@@ -1,8 +1,10 @@
 package pl.myproject.kanbanproject2.config.security.ratelimit;
 
-import com.github.benmanes.caffeine.cache.Ticker;
-
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 /** Shared fixtures for the rate-limit tests. */
 final class AuthRateLimitTestSupport {
@@ -10,22 +12,28 @@ final class AuthRateLimitTestSupport {
     private AuthRateLimitTestSupport() {
     }
 
-    /**
-     * A clock the tests move by hand, so a cooldown can be asserted without waiting one out. Starts
-     * negative on purpose: a limiter that misreads an unset field as "no cooldown" only misbehaves
-     * on the half of the number line a test starting at zero never visits.
-     */
-    static final class FakeClock implements Ticker {
+    /** A clock the tests move by hand, so a cooldown can be asserted without waiting one out. */
+    static final class FakeClock extends Clock {
 
-        private long nanos = -5_000_000_000L;
+        private long millis = 5_000_000L;
 
         void advance(Duration duration) {
-            nanos += duration.toNanos();
+            millis += duration.toMillis();
         }
 
         @Override
-        public long read() {
-            return nanos;
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            throw new UnsupportedOperationException("tests only ever read this clock in UTC");
+        }
+
+        @Override
+        public Instant instant() {
+            return Instant.ofEpochMilli(millis);
         }
     }
 
@@ -40,6 +48,7 @@ final class AuthRateLimitTestSupport {
                 trustedProxyCount,
                 1000,
                 4, 2, Duration.ofSeconds(15), Duration.ofMinutes(5), Duration.ofMinutes(15),
-                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1));
+                3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
+                "localhost", 6379, "", false);
     }
 }
