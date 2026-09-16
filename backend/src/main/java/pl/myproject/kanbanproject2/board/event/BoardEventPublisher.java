@@ -36,9 +36,17 @@ public class BoardEventPublisher {
 
     /**
      * One destination per board rather than one topic filtered by payload: a subscriber receives
-     * only the boards it asked for, and what it may ask for is decided once, on SUBSCRIBE.
+     * only the boards it asked for, and what it may ask for is decided once, on SUBSCRIBE. A dot,
+     * not a slash: the STOMP broker relay forwards this string to RabbitMQ's STOMP plugin as-is,
+     * and RabbitMQ parses everything after {@code /topic/} as one AMQP topic-exchange routing key -
+     * a routing key may contain dots (that's how {@code *}/{@code #} wildcards would work if this
+     * ever needed them), but a further {@code /} makes the whole destination invalid and the
+     * SUBSCRIBE is refused with a STOMP ERROR frame that closes the connection. Spring's in-JVM
+     * {@code enableSimpleBroker} never enforced this, so it was invisible until the broker relay
+     * replaced it - see {@code /topic/room.} in {@code WebSocketEventListener}, which already used
+     * a dot for the same reason.
      */
-    public static final String DESTINATION_PREFIX = "/topic/boards/";
+    public static final String DESTINATION_PREFIX = "/topic/boards.";
 
     /** Key for the set of events collected against the current transaction. */
     private static final String PENDING = BoardEventPublisher.class.getName() + ".pending";

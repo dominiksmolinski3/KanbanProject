@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.yaml.snakeyaml.Yaml;
 import pl.myproject.kanbanproject2.config.security.captcha.CaptchaProperties;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
+import pl.myproject.kanbanproject2.config.websocket.StompRelayProperties;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,7 +68,8 @@ class ConfigurationTest {
             AcsMailProperties.class,
             AllowedOriginsProperties.class,
             CaptchaProperties.class,
-            AuthRateLimitProperties.class);
+            AuthRateLimitProperties.class,
+            StompRelayProperties.class);
 
     /** {@code ${VAR}} or {@code ${VAR:default}} - the default may be empty, which still counts as one. */
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]*)(:[^}]*)?}");

@@ -163,6 +163,19 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
+        <!--
+          WebSocketConfig.enableStompBrokerRelay's TCP client to the STOMP broker
+          (ReactorNettyTcpClient) is the one place Netty is not excluded on purpose - unlike Lettuce
+          above and azure-core-http-netty, Spring Framework has no non-Netty implementation of the
+          relay's TcpOperations, and writing one would mean reimplementing part of
+          spring-messaging's own TCP layer for a synchronous-app codebase that otherwise avoids Netty
+          on principle. The footprint stays scoped to this one relay client rather than the whole
+          servlet stack moving to WebFlux.
+        -->
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
