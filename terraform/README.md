@@ -729,30 +729,41 @@ clone run without an Azure subscription.
 
 ### Rate limiter Redis
 
-`modules/redis` provisions the Azure Cache for Redis instance `AuthRateLimiter`'s escalation lives
+`modules/redis` provisions the **Azure Managed Redis** instance `AuthRateLimiter`'s escalation lives
 in — phase 3 of the container split plan, and the first of its two remaining multi-replica blockers
-to be cleared. Three decisions carry it.
+to be cleared. It is Managed Redis rather than the classic Cache for Redis this module shipped with
+first: the first apply against dev of `azurerm_redis_cache` was refused outright —
+`Azure Cache for Redis is retiring, create Azure Managed Redis instance instead` — on a subscription
+that had never created either kind before. Managed Redis is Redis Enterprise underneath (still
+`Microsoft.Cache`, so `providers.tf` needed no new namespace registration), which is why several
+shapes below differ from a classic cache at once: there is no top-level access-key/TLS toggle,
+because those live on `default_database` instead, and the private endpoint's subresource and DNS
+zone both name `redisEnterprise` rather than `redis`. Four decisions carry it.
 
-**Basic, not Standard or Premium, and that is not a cost shortcut being excused after the fact.** A
-Basic cache has no replica and no SLA; Checkov's `CKV_AZURE_230` flags exactly that and is skipped
-deliberately, because what this cache holds is disposable by design. `RedisEscalationStore` fails
+**`Balanced_B0`, the smallest SKU in the smallest family, and that is not a cost shortcut being
+excused after the fact.** It has no replica and no SLA beyond the single node; nothing here asks
+for either, because what this cache holds is disposable by design. `RedisEscalationStore` fails
 every attempt **open** when it cannot reach Redis or cannot read what it answered — a connection
 refused, a timeout, a malformed script result — so losing the cache costs whoever is mid-escalation
 their burst back, never a request that should have been refused and was not blocked by anything the
-application actually relies on. Paying for a replica would buy availability for state the code
+application actually relies on. Paying for a larger SKU would buy availability for state the code
 already treats as expendable.
 
 **It answers nobody but the application, the same posture attachment storage and Key Vault have.**
-`public_network_access_enabled = false` and a private endpoint in the same subnet Key Vault's
-already uses — no new subnet, no new NSG rule, because this is a second private endpoint into an
-existing one rather than a service that needed its own. `non_ssl_port_enabled = false` and
-`minimum_tls_version = "1.2"`: there is no managed-identity data plane for Redis the way blob storage
-has one, so the access key is the only thing standing in for authentication, and it must never cross
-the wire unencrypted.
+`public_network_access = "Disabled"` and a private endpoint in the same subnet Key Vault's already
+uses — no new subnet, no new NSG rule, because this is a second private endpoint into an existing
+one rather than a service that needed its own. `default_database.client_protocol = "Encrypted"` is
+Managed Redis's equivalent of a classic cache's `minimum_tls_version`: there is no managed-identity
+data plane for Redis the way blob storage has one, so the access key is the only thing standing in
+for authentication, and it must never cross the wire unencrypted. The database answers on port
+`10000`, not the `6379`/`6380` a classic cache would have used — `modules/redis`'s `port` output
+names it rather than a literal anywhere else, precisely so this detail doesn't have to be re-learned
+by a second failed apply.
 
 **The access key is a secret Terraform creates and the module owns, the same pattern
 `modules/postgres` uses for `POSTGRES-PASSWORD`.** `azurerm_key_vault_secret.redis_access_key` is
-written here, not in `api_app`; the API module references it by name
+written here, not in `api_app`, reading `azurerm_managed_redis.main.default_database[0]
+.primary_access_key`; the API module references the secret by name
 (`format("%s/secrets/%s", ..., "REDIS-ACCESS-KEY")`), which is why `module.api_app`'s `depends_on`
 in the root module names `module.redis` explicitly — nothing else orders the secret's creation ahead
 of the container app that reads it, since a string built from a Key Vault URI is not a Terraform
@@ -761,9 +772,9 @@ attribute reference the graph can see.
 Locally and in CI, `security.rate-limit.redis-host` defaults to `localhost`: docker-compose runs a
 plain `redis:7-alpine` with no password and no TLS (the same trust boundary Postgres and Azurite
 already have on that network), and the CI backend job runs one as a service container next to
-Postgres. Nothing about the escalation's behaviour differs between that and the deployment's TLS
-Azure Cache — only the connection does, which is exactly what `security.rate-limit.redis-ssl`
-switches.
+Postgres. Nothing about the escalation's behaviour differs between that and the deployment's
+encrypted Managed Redis — only the connection does, which is exactly what
+`security.rate-limit.redis-ssl` switches.
 
 ### Key Vault authorization
 
