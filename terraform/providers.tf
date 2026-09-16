@@ -22,35 +22,14 @@ terraform {
   }
 }
 
-# Every Azure service this deployment touches, named so a subscription that has never used one
-# registers it rather than refusing the resource.
-#
-# A resource provider is registered per *subscription*, and an ARM request against an unregistered
-# namespace is refused outright:
-#
-#   creating System Topic (...): unexpected status 409 (409 Conflict) with error:
-#   MissingSubscriptionRegistration: The subscription is not registered to use namespace
-#   'Microsoft.EventGrid'.
-#
-# That is not hypothetical - it is what the first apply of the delivery-report work did, on the one
-# environment that exists. Every other namespace here happened to be registered already, because
-# something had previously created a resource in it; Event Grid was the first genuinely new service
-# added since the subscription was set up, so it was the first to find out. The azurerm provider's
-# own default registration set does not cover it.
-#
-# Listing all of them rather than only the one that failed is deliberate. The alternative is a list
-# of "the ones the provider's defaults miss", which is a property of the provider version rather
-# than of this deployment, is not readable from here, and changes under a `~> 5.3` bump without
-# anything saying so. Registering a namespace that is already registered is a no-op, so an
-# exhaustive list costs nothing and says something true: these are the Azure services this
-# deployment is made of.
-#
-# TerraformResourceProvidersRegisteredTest derives this same set from the `resource "azurerm_*"`
-# blocks and fails the build when the two disagree - because the cost of forgetting is not a red
-# build, it is an apply that dies partway through against a real environment.
-#
-# Microsoft.Resources and Microsoft.Authorization are deliberately absent: they are the control
-# plane itself and cannot be unregistered, so there is nothing for a registration to do.
+# Every Azure service this deployment uses, so a subscription that has never used one registers it
+# rather than the resource failing with `MissingSubscriptionRegistration` (hit for
+# Microsoft.EventGrid on the first delivery-report apply - the provider's own defaults didn't cover
+# it). Listed exhaustively rather than just the gap, since registering an already-registered
+# namespace is a no-op and the list should describe this deployment, not one provider version's
+# blind spots. TerraformResourceProvidersRegisteredTest derives the same set from `resource
+# "azurerm_*"` blocks and fails the build if they disagree. Microsoft.Resources/Authorization are
+# the control plane itself and can't be unregistered, so they're absent deliberately.
 provider "azurerm" {
   use_cli         = true
   subscription_id = var.subscription_id

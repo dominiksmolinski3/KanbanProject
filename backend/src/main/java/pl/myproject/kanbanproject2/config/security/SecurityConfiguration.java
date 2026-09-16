@@ -66,21 +66,13 @@ public class SecurityConfiguration {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 /*
-                 * Spring Security already sends nosniff, X-Frame-Options and a no-store
-                 * Cache-Control by default, and the ZAP baseline sweep does not flag any of them.
-                 * What it does flag - and what has been true since the first revision of this
-                 * application - is that there is no Content-Security-Policy at all. On a monolith
-                 * that serves its own bundle, its API and its users' uploads from one origin, that
-                 * is the header worth having: everything an injected script could reach is
-                 * same-origin with the token that reaches it.
+                 * A Content-Security-Policy is worth having here because one origin serves the
+                 * bundle, the API and every uploaded attachment, so anything an injected script
+                 * could reach is same-origin with the token that reaches it.
                  *
-                 * Cross-Origin-Embedder-Policy is deliberately *not* set, and it is the one ZAP
-                 * finding here that is declined rather than fixed. `require-corp` buys cross-origin
-                 * isolation, which is worth having if you use SharedArrayBuffer or high-resolution
-                 * timers; this application uses neither, and it would break the reCAPTCHA frame,
-                 * which is served without a CORP header of its own. Turning on a control that
-                 * breaks sign-in to satisfy a Low-severity line in a scan report is the wrong
-                 * trade, and writing that down is the alternative to re-deciding it every sweep.
+                 * Cross-Origin-Embedder-Policy is deliberately *not* set: `require-corp` would
+                 * break the reCAPTCHA frame (which sends no CORP header) for cross-origin
+                 * isolation this application has no use for.
                  */
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp ->
@@ -97,27 +89,14 @@ public class SecurityConfiguration {
                         .crossOriginResourcePolicy(corp ->
                                 corp.policy(CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_ORIGIN))
                         /*
-                         * Spring Security sends this by default and had never sent it once. Its
-                         * default writer is gated on request.isSecure(), and TLS terminates at the
-                         * Container Apps ingress - declared `transport = "http"` - so every request
-                         * this application has ever served arrived as plain HTTP. A default that
-                         * fires on nothing looks exactly like a default that works, which is why
-                         * this was found by a scanner asking the real hostname rather than by any
-                         * of the suites.
-                         *
-                         * Written unconditionally rather than made conditional on a forwarded
-                         * header: a user agent must ignore an HSTS header received over plain
-                         * HTTP, and the ingress redirects, so there is no case where writing it is
-                         * wrong.
-                         *
-                         * `server.forward-headers-strategy` is the other way to fix this and is
-                         * declined. It would rewrite getRemoteAddr() from X-Forwarded-For for the
-                         * whole application, which is precisely the decision
-                         * security.rate-limit.trusted-proxy-count exists to make deliberately -
-                         * ClientIpResolver reads that header itself, counting hops from the right,
-                         * and a deployment that sets the count to 0 means "ignore it". Changing
-                         * what that knob means as a side effect of adding a header is a worse
-                         * trade than one extra writer.
+                         * Spring's default HSTS writer is gated on request.isSecure(), but TLS
+                         * terminates at the Container Apps ingress (`transport = "http"`), so it
+                         * had never actually fired. Written unconditionally instead: a user agent
+                         * ignores HSTS received over plain HTTP, so there's no case where sending
+                         * it is wrong. `server.forward-headers-strategy` is declined as the fix
+                         * because it would also rewrite getRemoteAddr() from X-Forwarded-For,
+                         * which is what security.rate-limit.trusted-proxy-count exists to control
+                         * deliberately via ClientIpResolver.
                          */
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .requestMatcher(AnyRequestMatcher.INSTANCE)

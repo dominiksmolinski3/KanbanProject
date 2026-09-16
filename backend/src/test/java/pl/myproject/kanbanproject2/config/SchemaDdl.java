@@ -20,12 +20,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The schema Hibernate would create from the entities, without needing a database to ask.
- *
- * <p>This is the other half of moving to {@code ddl-auto=validate}: the baseline migration has to
- * say exactly what the entities say, and the only authority on that is Hibernate's own mapping
- * metadata. Reading it here rather than dumping a live database also means the answer does not
- * depend on which environment happened to be running when someone looked.
+ * The schema Hibernate would create from the entities, without needing a database to ask - the
+ * other half of moving to {@code ddl-auto=validate}, so the answer does not depend on which
+ * environment happened to be running when someone looked.
  */
 public final class SchemaDdl {
 

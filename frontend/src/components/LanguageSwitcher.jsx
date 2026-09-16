@@ -30,10 +30,9 @@ function LanguageSwitcher() {
     i18n.changeLanguage(lng);
     setIsOpen(false);
 
-    // The switcher is the language control, so it sets the language of the mail too. Mail is the
-    // one place the client is not there to pick - a verification code is composed by a route and a
-    // deadline notice by a scheduler - so the account has to carry the answer, and this is where a
-    // person says it. Signed out there is no account to say it to; signup sends the same value.
+    // The switcher also sets the account's mail language: mail is composed by a route or a
+    // scheduler with no client to ask, so the account has to carry the answer, and this is where a
+    // person sets it. Signed out there is no account to say it to.
     if (!user?.id) {
       return;
     }

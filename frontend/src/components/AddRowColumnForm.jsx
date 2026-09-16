@@ -10,7 +10,7 @@ function AddRowColumnForm({ onClose, defaultTab = 'column' }) {
   const [wipLimit, setWipLimit] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState(defaultTab); // Default to column
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const { t } = useTranslation();
 
   const handleSubmit = async (e) => {

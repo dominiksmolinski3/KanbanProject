@@ -29,18 +29,13 @@ import static org.mockito.Mockito.when;
 
 /**
  * The relay is where every failure that used to be a caller's problem now lives, so its failure
- * behaviour is most of what is worth testing.
+ * behaviour is most of what's worth testing: an accepted message is marked sent and never reposted;
+ * a refusal waits and retries rather than being lost; enough refusals stop; and one bad row doesn't
+ * take the rest of the batch with it.
  *
- * <p>Four claims: a message the provider takes is marked sent and never posted twice; a refusal
- * waits and comes back rather than being lost or retried immediately; enough refusals stop; and one
- * bad row does not take the rest of the batch with it - which is the property the old synchronous
- * path could not have, because there was no batch.
- *
- * <p>What this cannot show, and no unit test can: that the relay's schedule fires, that the claim
- * transaction is a transaction, and that {@code SKIP LOCKED} makes two relays take disjoint rows.
- * The first two are Spring's; the third is the database's, and {@code OutboxClaimQueryTest} guards
- * only that the clause is still in the query. What is testable here is that the relay claims rather
- * than reads, and that a lapsed claim comes back.
+ * <p>What no unit test can show: that the schedule fires, that the claim transaction is real, and
+ * that {@code SKIP LOCKED} makes two relays take disjoint rows - the first two are Spring's, the
+ * third the database's, guarded only by {@code OutboxClaimQueryTest} pinning the clause.
  */
 class OutboxRelayTest {
 

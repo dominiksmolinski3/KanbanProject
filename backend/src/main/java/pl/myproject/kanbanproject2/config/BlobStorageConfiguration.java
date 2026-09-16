@@ -18,14 +18,10 @@ import pl.myproject.kanbanproject2.storage.BlobStore;
 import pl.myproject.kanbanproject2.storage.DisabledBlobStore;
 
 /**
- * Builds the attachment store from {@link BlobStorageProperties}.
- *
- * <p>The same shape as {@link EmailConfiguration}, and for the same reasons: one place decides
- * which implementation the application gets, nothing downstream knows whether storage is
- * configured, and an unconfigured deployment starts rather than refusing to. The trade is the same
- * too - a deployment that forgets the endpoint boots and then refuses every upload - so the startup
- * warning below names the properties, and {@code StorageHealthIndicator} says so on
- * {@code /actuator/health} for as long as it stays that way.
+ * Builds the attachment store from {@link BlobStorageProperties}. Same shape as
+ * {@link EmailConfiguration}: an unconfigured deployment starts and refuses uploads rather than
+ * failing to boot, and {@code StorageHealthIndicator} reports that state on
+ * {@code /actuator/health}.
  */
 @Slf4j
 @Configuration
@@ -49,14 +45,10 @@ public class BlobStorageConfiguration {
     }
 
     /**
-     * Retries, bounded.
-     *
-     * <p>The SDK's default is four attempts four seconds apart and doubling, which is forty-odd
-     * seconds before an unreachable account is admitted to be unreachable - spent inside bean
-     * creation on the first start, and inside a request for every upload after it. Three tries with
-     * a second or two between them keeps a transient failure recoverable and a real outage quick to
-     * report. The per-try timeout is generous because the biggest thing that goes through this
-     * client is a ten-megabyte upload.
+     * Retries, bounded. The SDK's default (four attempts, doubling) is forty-odd seconds before an
+     * unreachable account is admitted to be unreachable, spent inside every upload request; three
+     * tries a second or two apart keeps a transient failure recoverable without making a real
+     * outage slow to report.
      */
     private static final RequestRetryOptions RETRY_OPTIONS = new RequestRetryOptions(
             RetryPolicyType.EXPONENTIAL, 3, 30, 500L, 2000L, null);
@@ -71,11 +63,8 @@ public class BlobStorageConfiguration {
 
     /**
      * The user-assigned identity when one is named, and whatever the environment offers otherwise.
-     *
-     * <p>Naming it matters on Container Apps: an app may carry several assigned identities, and
-     * {@code DefaultAzureCredential} cannot guess which of them the storage role was granted to. It
-     * is the fallback rather than the default because it is what picks up a developer's Azure CLI
-     * login, which is how you point a laptop at a real account without an Azurite container.
+     * Naming it matters on Container Apps: an app may carry several assigned identities, and
+     * {@code DefaultAzureCredential} cannot guess which one the storage role was granted to.
      */
     static TokenCredential credential(BlobStorageProperties properties) {
         if (StringUtils.hasText(properties.identityClientId())) {
@@ -87,17 +76,11 @@ public class BlobStorageConfiguration {
     }
 
     /**
-     * Terraform provisions the storage account; the application provisions its own container.
-     *
-     * <p>That split is what lets the account set {@code shared_access_key_enabled = false}. Creating
-     * a container from Terraform is a data-plane call, which would mean either leaving the account
-     * key enabled or granting whoever runs {@code apply} a blob data role - and the whole point of
-     * the delegation-key arrangement is that no key exists. The identity that writes blobs can make
-     * the container it writes them into, and doing so is idempotent.
-     *
-     * <p>A failure here is logged and not thrown. The container almost always already exists, this
-     * runs while the context is starting, and an unreachable storage account should cost the
-     * deployment its uploads rather than its ability to serve the board at all.
+     * Terraform provisions the storage account; the application provisions its own container,
+     * idempotently, because creating one is a data-plane call and keeping Terraform off the data
+     * plane is what lets the account set {@code shared_access_key_enabled = false}. A failure here
+     * is logged and not thrown: an unreachable storage account should cost the deployment its
+     * uploads, not its ability to serve the board at all.
      */
     private static void createContainerIfMissing(BlobContainerClient container) {
         try {

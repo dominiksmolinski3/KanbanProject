@@ -17,19 +17,12 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Moving to {@code ddl-auto=validate} means a mismatch between the entities and the schema is a
- * startup failure. That is the right behaviour and the wrong moment to find out: the app has been
- * built, pushed and scheduled by then, and on Container Apps a failed start is a revision that
- * never becomes healthy.
- *
- * <p>So the same comparison runs here. The DDL Hibernate would emit is regenerated from the entity
- * mappings on every build and checked against what the migrations actually create. Adding a field
- * without a migration fails this test, which is the point where it is cheap to fix.
- *
- * <p>What this deliberately does <em>not</em> check is types, nullability or constraints. Those
- * belong to {@code validate} against a real database, and asserting them by comparing DDL text
- * would fail on formatting rather than on substance. Tables and columns are the part that catches
- * the mistake people actually make.
+ * With {@code ddl-auto=validate}, a mismatch between entities and schema is a startup failure - the
+ * right behaviour and the wrong moment to find out, since a failed start on Container Apps is a
+ * revision that never becomes healthy. So the same comparison runs here: the DDL Hibernate would
+ * emit is regenerated from the entity mappings and checked against what the migrations create,
+ * catching a missing migration at build time instead. Types, nullability and constraints are
+ * deliberately not checked - comparing DDL text for those would fail on formatting, not substance.
  */
 class FlywayMigrationsMatchEntitiesTest {
 

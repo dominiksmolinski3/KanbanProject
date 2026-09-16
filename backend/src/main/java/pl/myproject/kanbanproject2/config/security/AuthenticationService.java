@@ -41,18 +41,11 @@ public class AuthenticationService {
     private final RefreshTokenService refreshTokenService;
 
     /**
-     * Registers the address if it is new, and does nothing at all if it is not.
-     *
-     * <p>Answering {@code 409 USER_ALREADY_EXISTS} made this endpoint a membership oracle: it told
-     * an unauthenticated caller, one address at a time, which of them have accounts here. The rate
-     * limiter slowed that down without closing it — a list is worth checking slowly.
-     *
-     * <p>So the caller is told nothing either way. It follows that the collision cannot be reported
-     * to the person who hit it, which is a real cost: someone who genuinely forgot they had an
-     * account gets a verification mail that never arrives, and no explanation. That is what the
-     * password-reset flow is for, and it is the reason this trade is only worth making once that
-     * flow exists to point them at. Until then the client's wording carries it, and the branch
-     * below is logged so the collision is at least visible from the server side.
+     * Registers the address if it is new, and does nothing at all if it is not. Answering
+     * {@code 409 USER_ALREADY_EXISTS} made this endpoint a membership oracle - an unauthenticated
+     * caller could check addresses one at a time - so the caller is told nothing either way, and the
+     * password-reset flow is what a genuine account owner is meant to fall back to. The branch below
+     * is logged so the collision is at least visible server-side.
      */
     @Transactional
     public void signup(RegisterUserDto input) {
@@ -62,10 +55,8 @@ public class AuthenticationService {
         }
 
         User user = new User(input.getUsername(), input.getEmail(), passwordEncoder.encode(input.getPassword()));
-        // A guess, and the only one available: the browser signing up is the best evidence there
-        // is of what language this person reads, and it is wrong the moment they sign up from
-        // somebody else's machine. SupportedLocales.normalise falls back to English rather than
-        // refusing, because a signup is not the place to argue about a header.
+        // A guess, and the only one available - SupportedLocales.normalise falls back to English
+        // rather than refusing, since a signup is not the place to argue about a header.
         user.setLocale(SupportedLocales.normalise(input.getLocale()));
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
@@ -75,14 +66,10 @@ public class AuthenticationService {
     }
 
     /**
-     * An unknown address is reported as an invalid code rather than as an unknown user — the two
-     * are the same fact from the caller's side, and only one of them names an account.
-     *
-     * <p>Answers with a session, exactly as {@link #login} does, because the code is a credential:
-     * it was sent to the mailbox and it is spent here. Verifying used to answer {@code 204} and
-     * leave the client to ask for the password again, which is a second credential for a fact the
-     * caller has just proved — and the client had nowhere to go with a body it did not get, so
-     * the person who had just verified sat on the verification screen with a verified account.
+     * An unknown address is reported as an invalid code rather than an unknown user - the same fact
+     * from the caller's side. Answers with a session, exactly as {@link #login} does, because the
+     * code is a credential spent on redemption; asking for the password again afterwards would be a
+     * second credential for a fact the caller has just proved.
      */
     public LoginResponse verifyUser(VerifyUserDto input, DeviceContext device) {
         User user = userRepository.findByEmail(input.getEmail())
@@ -103,17 +90,11 @@ public class AuthenticationService {
     }
 
     /**
-     * Every failure here is one status: {@code 401 INVALID_CREDENTIALS}.
-     *
-     * <p>An unverified account is included in that, and not by omission. {@code
-     * DaoAuthenticationProvider} runs its pre-authentication checks before it compares the
-     * password, so {@link User#isEnabled()} being false throws {@code DisabledException} whether
-     * the password was right or wrong — and {@code GlobalExceptionHandler} maps every
-     * {@code AuthenticationException} to the same 401. A distinct "account not verified" status
-     * would therefore be readable without knowing the password, which is the enumeration oracle
-     * this route does not have. The explicit {@code enabled} check that used to sit here after
-     * {@code authenticate()} could never run for that same reason, and is gone rather than left
-     * looking like a control.
+     * Every failure here is one status: {@code 401 INVALID_CREDENTIALS}, deliberately including an
+     * unverified account. {@code DaoAuthenticationProvider} throws {@code DisabledException} for a
+     * disabled user before comparing the password, and {@code GlobalExceptionHandler} maps every
+     * {@code AuthenticationException} to the same 401 - so a distinct "not verified" status would be
+     * readable without knowing the password, the enumeration oracle this route avoids.
      */
     public LoginResponse login(LoginUserDto input, DeviceContext device) {
         try {
@@ -131,12 +112,9 @@ public class AuthenticationService {
     }
 
     /**
-     * Exchanges a refresh token for a new pair, without asking for the password again.
-     *
-     * <p>This is the route that makes a short access token affordable. Rotation happens inside
-     * {@link RefreshTokenService#rotate}, which withdraws the presented token as part of the same
-     * transaction that issues its replacement - so the token the client sends here is spent by the
-     * time it reads the answer.
+     * Exchanges a refresh token for a new pair, without asking for the password again - the route
+     * that makes a short access token affordable. {@link RefreshTokenService#rotate} withdraws the
+     * presented token in the same transaction that issues its replacement.
      */
     public LoginResponse refresh(String refreshToken, DeviceContext device) {
         RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken, device);
@@ -177,9 +155,8 @@ public class AuthenticationService {
 
     /**
      * Sends a fresh code when the address has an account still waiting to be verified, and does
-     * nothing otherwise. The two "otherwise" cases — no such account, and an account that is
-     * already verified — were a 404 and a 400, so between them they partitioned every address in
-     * the world into three answerable states. Now they are one.
+     * nothing otherwise - the "otherwise" cases used to be a 404 and a 400, partitioning every
+     * address into three answerable states instead of the one this collapses them to.
      */
     @Transactional
     public void resendVerificationCode(String email) {

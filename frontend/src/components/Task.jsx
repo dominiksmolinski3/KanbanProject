@@ -114,7 +114,6 @@ function Task({ task, columnId, rowId }) {
 
   useEffect(() => {
     if (showDescription) {
-      // When showing description, fetch data if not already loaded
       if (!taskSubtasks.length) {
         setLoadingDescription(true);
         
@@ -125,8 +124,7 @@ function Task({ task, columnId, rowId }) {
         .catch(error => console.error('Error fetching task details:', error))
         .finally(() => setLoadingDescription(false));
       }
-      
-      // Dispatch event to close other popovers
+
       window.dispatchEvent(new CustomEvent('close-all-popovers', {
         detail: { exceptTaskId: task.id }
       }));
@@ -296,17 +294,12 @@ function Task({ task, columnId, rowId }) {
   const heldByKeyboard = keyboardMove.isHeld(task.id);
 
   /**
-   * The keyboard's half of drag-and-drop.
-   *
-   * HTML5 DnD has no keyboard equivalent - there is no key that begins a drag - so without this
-   * the card cannot be moved at all without a pointer. Space picks it up, the arrows choose a
-   * cell, Space or Enter drops it, Escape puts it back, which is the ARIA authoring-practice set
-   * rather than one invented here.
-   *
-   * Enter opens the task when nothing is held, because that is what a click does and the card is
-   * a button first. The keys are only bound on the card itself: anything a person is typing into
-   * - the inline title, a textarea in the panel - is a different element, so this never has to
-   * guess whether a keystroke was meant for it.
+   * The keyboard's half of drag-and-drop: HTML5 DnD has no keyboard equivalent, so without this
+   * the card cannot be moved without a pointer. Space picks it up, arrows choose a cell, Space or
+   * Enter drops it, Escape puts it back (the ARIA authoring-practice set); Enter opens the task
+   * when nothing is held, since that's what a click does and the card is a button first. Keys are
+   * bound on the card itself, so typing into the inline title or a panel textarea never gets
+   * mistaken for a shortcut.
    */
   const onKeyDown = (e) => {
     if (e.target !== e.currentTarget) {
@@ -583,7 +576,6 @@ function Task({ task, columnId, rowId }) {
           </div>
         )}
         
-        {/* Footer with description dropdown button */}
         <div className="task-footer">
           <button 
             ref={descriptionBtnRef}
@@ -595,7 +587,6 @@ function Task({ task, columnId, rowId }) {
           </button>
         </div>
         
-        {/* Error and warning messages */}
         {assignmentError && (
           <div className="assignment-error">
             {assignmentError}
@@ -661,7 +652,6 @@ function Task({ task, columnId, rowId }) {
         />
       )}
 
-      {/* Description popover */}
       {showDescription && createPortal(
       <div 
         className="description-popover" 

@@ -27,23 +27,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Every URL the client asks for against every URL the server answers on, compared at build time.
- *
- * <p>This is the coupling an OpenAPI document exists to make visible, and it is the one the two
- * test suites are each blind to from their own side. Jest stubs {@code fetch}, so a frontend test
- * asserts that a request was made to a string and never that anything serves it; the backend suite
- * asserts routes that no client necessarily calls. Between them a route can be renamed, moved or
- * removed and both suites stay green while the feature is dead in the browser - which is not
- * hypothetical here: {@code POST /api/boards/{id}/members} was deliberately removed when
- * invitations landed, and finding the client calls that went with it was a manual read.
- *
- * <p>What it does <em>not</em> check is the other direction. A backend route nothing calls is not a
- * defect - {@code FileController} has been owned and unused for several revisions on purpose - so
- * this is a subset assertion, not an equality.
- *
- * <p>Same shape as {@link ConfigurationTest}, {@code DeadLetterAlertTest} and
- * {@code SupportedLocalesMatchClientTest}: a rule spanning two trees, checked in one, needing no
- * database, no bundle and no running container. It does not skip when the files are missing,
- * because a guard that turns itself off leaves the build green either way.
+ * Jest stubs {@code fetch}, so a frontend test asserts a request was made to a string and never
+ * that anything serves it, while the backend suite asserts routes no client necessarily calls -
+ * between them a route can be renamed or removed and both suites stay green while the feature is
+ * dead in the browser. It does <em>not</em> check the other direction: a backend route nothing
+ * calls is not a defect ({@code FileController} is owned and unused on purpose), so this is a
+ * subset assertion. Same shape as {@link ConfigurationTest}: a rule spanning two trees, checked in
+ * one, and it does not skip when files are missing, since a guard that turns itself off leaves the
+ * build green either way.
  */
 class ClientRoutesExistTest {
 
@@ -53,13 +44,10 @@ class ClientRoutesExistTest {
     private static final Path SERVICES = Path.of("..", "frontend", "src", "services");
 
     /**
-     * The calls whose path is decided by the caller, with the routes each one stands for.
-     *
-     * <p>Named rather than skipped. {@code reorder(endpoint, ...)} takes the container as an
-     * argument precisely so that one function serves three routes, which is the right shape and is
-     * also the one shape this file cannot resolve by reading. Listing them here means a
-     * <em>fourth</em> unresolvable call - a genuinely new way of building a URL - fails the build
-     * and has to be looked at, rather than quietly joining a set nothing asserts about.
+     * The calls whose path is decided by the caller, with the routes each one stands for. Named
+     * rather than skipped: {@code reorder(endpoint, ...)} serves three routes through one function,
+     * a shape this file cannot resolve by reading, so listing it here means a genuinely new
+     * unresolvable call fails the build rather than quietly joining a set nothing asserts about.
      */
     private static final Map<String, List<String>> CALLER_SUPPLIED_PATHS = Map.of(
             "{}/positions", List.of("/api/tasks/positions", "/api/columns/positions", "/api/rows/positions"));
@@ -120,10 +108,9 @@ class ClientRoutesExistTest {
     @Test
     @DisplayName("no fetch call is quietly skipped on the way")
     void everyFetchCallIsAccountedFor() throws IOException {
-        // The assertion that stops this test from reading less than it claims to. Every fetch in
-        // the source is either inside a comment - the stripper blanked it, and there is one, in
-        // the prose above downloadTaskAttachment - or it produced a path. Anything else means the
-        // scanner walked past a call, which looks exactly like a client with fewer calls.
+        // Stops this test from reading less than it claims to: every fetch is either inside a
+        // comment (blanked already) or produces a path - anything else means the scanner walked
+        // past a call, which looks exactly like a client with fewer calls.
         Map<String, List<String>> skipped = new TreeMap<>();
         for (Path file : serviceFiles()) {
             String source = Files.readString(file);
@@ -206,12 +193,9 @@ class ClientRoutesExistTest {
             Pattern.compile("([A-Za-z_$][\\w$]*)\\s*:\\s*'([^']*)'");
 
     /**
-     * Every path {@code fetch} is called with, against the first place it is called from.
-     *
-     * <p>The call site is carried so a failure names a line rather than a normalised string. The
-     * first draft reported the string alone, and the first thing it reported was a placeholder
-     * that turned out to be a {@code fetch()} written inside a doc comment - which cost more to
-     * find than the fix did.
+     * Every path {@code fetch} is called with, against the first place it is called from - carried
+     * so a failure names a line rather than a normalised string, after a first draft's bare string
+     * turned out to be a {@code fetch()} written inside a doc comment.
      */
     private static Map<String, String> clientCalls() throws IOException {
         Map<String, String> calls = new TreeMap<>();
@@ -232,21 +216,13 @@ class ClientRoutesExistTest {
     }
 
     /**
-     * The source with its comments blanked out, keeping every offset where it was.
-     *
-     * <p>Blanked rather than removed so the line numbers a failure reports still point at the
-     * file.
-     *
-     * <p>Scanned character by character rather than matched with a pattern, and the reason is a
-     * bug this test had on its first run. {@code /\*.*?\*​/} finds a comment start inside a string
-     * literal: {@code 'Accept': 'image/*, application/json'} in {@code getUserAvatar} opened one,
-     * the next real {@code *​/} a hundred lines below closed it, and four {@code fetch} calls in
-     * between were blanked and never checked. The test stayed green while reading less than it
-     * claimed to - which is the one failure mode a guard must not have, and is not visible from
-     * its result.
-     *
-     * <p>The remaining limit, stated rather than hidden: a regular-expression literal containing a
-     * quote would confuse this the same way. There is none in these files, and
+     * The source with its comments blanked out, keeping every offset where it was (so line numbers
+     * a failure reports still point at the file). Scanned character by character rather than
+     * matched with a pattern: a regex comment matcher found a comment start inside the string
+     * literal {@code 'Accept': 'image/*, application/json'} in {@code getUserAvatar} and blanked
+     * four real {@code fetch} calls before the next real close, leaving the test green while
+     * reading less than it claimed to. The remaining limit: a regex literal containing a quote
+     * would confuse this the same way - there is none in these files, and
      * {@code everyFetchCallIsAccountedFor} is what would notice.
      */
     private static String withoutComments(String source) {
@@ -359,11 +335,9 @@ class ClientRoutesExistTest {
     }
 
     /**
-     * A request expression reduced to a path.
-     *
-     * <p>Wrappers that only add a query string are unwrapped, names are looked up, and anything
-     * that is still an expression becomes {@code {}} - which is what a path variable is on the
-     * server side too, so the two normalise onto the same string.
+     * A request expression reduced to a path. Wrappers that only add a query string are unwrapped,
+     * names are looked up, and anything still an expression becomes {@code {}} - what a path
+     * variable is on the server side too, so the two normalise onto the same string.
      */
     private static String resolve(String expression, Map<String, String> names) {
         String text = expression.trim();

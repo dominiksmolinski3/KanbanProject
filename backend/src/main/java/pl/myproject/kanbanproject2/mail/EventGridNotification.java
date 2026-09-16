@@ -5,19 +5,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 
 /**
- * One entry of an Event Grid POST, in the only two shapes this application cares about.
+ * One entry of an Event Grid POST (always sent as an array), in the two shapes this application
+ * cares about - the validation handshake and a delivery report - sharing one envelope with a
+ * {@code data} union rather than a polymorphic hierarchy.
  *
- * <p>Event Grid posts an <em>array</em> of these, always, even for a single event and even for the
- * handshake it performs before it will send anything at all. Both shapes share one envelope and
- * differ only in {@code eventType} and in what {@code data} carries, so this is one record with a
- * {@code data} object holding the union rather than a polymorphic hierarchy - two event types do
- * not earn a type hierarchy, and the fields that do not apply are simply null.
- *
- * <p>Unknown properties are ignored deliberately, and it is not laziness. The envelope carries
- * {@code topic}, {@code metadataVersion}, {@code dataVersion} and more that nothing here reads, and
- * the provider is free to add to both the envelope and the data. A webhook that refuses a payload
- * because it grew a field is a webhook that stops recording deliveries on the day Azure ships a
- * change, silently, with the only symptom being that the outbox stops learning anything.
+ * <p>Unknown properties are ignored deliberately: Azure is free to add fields to the envelope or
+ * the data, and a webhook that refuses a grown payload silently stops recording deliveries the day
+ * it ships.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record EventGridNotification(String id, String eventType, Data data) {
@@ -49,11 +43,8 @@ public record EventGridNotification(String id, String eventType, Data data) {
             /* Whatever the provider has to say about a failure, when it says anything. */
             StatusDetails deliveryStatusDetails,
 
-            /*
-             * When the provider attempted it. The report's own clock rather than ours, which is
-             * what lets two reports about one message be ordered without trusting the order they
-             * arrived in.
-             */
+            /* The provider's own clock, so two reports about one message can be ordered regardless
+             * of arrival order. */
             Instant deliveryAttemptTimestamp) {
     }
 

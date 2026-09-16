@@ -1,15 +1,11 @@
 import * as api from '../../services/api';
 
 /**
- * The attachment client, and the two things about it that are easy to get quietly wrong.
- *
- * The upload must not set a Content-Type header — only the browser knows the multipart boundary it
- * is about to write, and a hand-set header produces a body the server cannot parse into a file.
- *
- * The download must go through `fetch` rather than a link click. The route is authenticated and an
- * `<a href>` carries no `Authorization` header, so a plain link would 401; fetching is what lets
- * the interceptor attach the token. The object URL it produces has to be revoked, or every
- * download pins its file in memory for the life of the tab.
+ * The attachment client, and the two things about it that are easy to get quietly wrong: the
+ * upload must not set a Content-Type header, since only the browser knows the multipart boundary
+ * it is about to write, and the download must go through `fetch` rather than a link click, because
+ * the route is authenticated and an `<a href>` carries no `Authorization` header. The object URL
+ * it produces has to be revoked, or every download pins its file in memory for the tab's life.
  */
 describe('task attachments', () => {
   beforeEach(() => {

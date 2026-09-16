@@ -4,52 +4,40 @@ WORKDIR /frontend
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY . ./
-# Baked into the bundle at build time, which is why it is an ARG and not an environment variable:
-# the site key is fixed when the image is built and cannot be changed by restarting the container.
-# Its other half, CAPTCHA_SECRET, is read by the API at startup - set one without the other and the
-# check either never renders or is decorative.
+# Baked into the bundle at build time (ARG, not an env var) - fixed once the image is built, and
+# can't change by restarting the container. Its server-side half, CAPTCHA_SECRET, is read at API
+# startup; set one without the other and the check either never renders or is decorative.
 ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
 # Stage 2: Serve it, and proxy what the API owns
 #
-# Unprivileged rather than the stock nginx image: this replaces a jar that ran as UID 10001, and
-# dropping to a root nginx would be a regression nothing here checks. The image runs as UID 101 and
-# listens on 8080 already, which is the port the ingress and docker-compose both expect.
+# Unprivileged rather than the stock nginx image: this replaces a jar that ran as UID 10001, and a
+# root nginx would be a regression nothing here checks. Runs as UID 101, listening on 8080 already -
+# the port the ingress and docker-compose both expect.
 FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
 
-# Bring the base's package set up to Alpine's security branch, then drop back to the image's own
-# non-root user.
+# Bring the base's package set up to Alpine's security branch, then drop back to non-root.
 #
-# Not defensive and not optional. The digest pinned above is the newest `1.29-alpine` Docker Hub
-# publishes, and its packages are far enough behind Alpine 3.23's security branch that Trivy found
-# 35 fixable HIGH findings across eight packages - curl and libcurl alone were 20 of them, in an
-# image whose only HTTP client is the busybox wget at the bottom of this file. That failed the CD
-# scan gate on the first run after the container split, correctly, and blocked `:latest` on both
-# images. This is the fix rather than an exception to it: after the upgrade the same scan reports
-# zero.
+# Not defensive: the pinned digest is the newest `1.29-alpine` tag, but its packages were far enough
+# behind Alpine's security branch that Trivy found 35 fixable HIGH findings (20 in curl/libcurl
+# alone, unused here) - which failed the CD scan gate and blocked `:latest` on both images. After the
+# upgrade the scan reports zero; the digest still fixes a reproducible starting point, and only
+# distro package versions move (forward only) between builds.
 #
-# The tension with pinning a digest is real and is resolved in favour of patching. The digest still
-# fixes the starting point and the build stays reproducible in the way that matters - what varies
-# between two builds is a set of distro package versions that only ever moves forward. A base image
-# nobody upgrades is reproducibly vulnerable.
+# `dhi.io/nginx` was considered for consistency with the node stage and declined: it has no
+# /docker-entrypoint.d, envsubst or wget, so it would mean hand-writing the templating, resolver
+# discovery and healthcheck this image already has verified end to end.
 #
-# `dhi.io/nginx` was the other candidate, for consistency with the node stage above, and is
-# declined: it has no /docker-entrypoint.d, no envsubst and no wget, so taking it would mean
-# hand-writing the templating, the resolver discovery and the healthcheck - redesigning the half of
-# this that was verified end to end, to avoid one RUN line.
-#
-# Numeric on both lines, because hadolint's DL3066 flags a name a host system may not resolve -
-# and `backend/Dockerfile` already writes its user as `10001:10001` for the same reason.
+# Numeric UID/GID on both lines: hadolint's DL3066 flags a name a host system may not resolve.
 USER 0
 RUN apk upgrade --no-cache
 USER 101
 
-# The stock entrypoint runs envsubst over /etc/nginx/templates/*.template into /etc/nginx/conf.d,
-# so the upstream is a deployment fact supplied at start rather than baked into the image - the
-# same image runs against dev's internal FQDN and against http://app:8080 in docker-compose. No
-# custom entrypoint is needed for either this or the resolver.
+# The stock entrypoint runs envsubst over /etc/nginx/templates/*.template into /etc/nginx/conf.d, so
+# the upstream is a deployment fact supplied at start rather than baked into the image - the same
+# image runs against dev's internal FQDN and against http://app:8080 in docker-compose.
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf

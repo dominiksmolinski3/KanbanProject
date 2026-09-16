@@ -12,26 +12,13 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The two halves of the sweep's claim, neither of which any other test here can see.
- *
- * <p>Every suite in this package mocks {@link TaskRepository}, so the claim query's text reaches
- * nothing that could object to it, and {@code QueryStringsResolveTest} deliberately skips native
- * queries - it compiles HQL and has no parser for SQL. So this is a string that runs for the first
- * time in a deployment, and what it says is worth pinning even though what it does is not checkable
- * from here.
- *
- * <p>Both halves fail silently and identically at one replica, which is the whole problem:
- *
- * <ul>
- *   <li><b>{@code FOR UPDATE SKIP LOCKED}.</b> Without it, two schedulers flip the same tasks,
- *       record the same expiries, and mail every assignee twice. With a plain {@code FOR UPDATE}
- *       the second sweep is correct and useless - it waits out the first one's mail run.</li>
- *   <li><b>A transaction around the sweep.</b> Row locks end with the transaction that took them.
- *       {@code TaskService} is {@code @Transactional} at the class level and the claim depends on
- *       it entirely; without it the lock is released at the end of its own statement and the claim
- *       is decoration. Nothing else in this repository would notice its removal, because every
- *       write here works perfectly well in Spring Data's own per-call transaction.</li>
- * </ul>
+ * The two halves of the sweep's claim, neither of which any other test here can see: every suite
+ * mocks {@link TaskRepository}, so this native query never reaches a database that could object to
+ * it, and {@code QueryStringsResolveTest} deliberately skips native queries. Both halves fail
+ * silently and identically at one replica — {@code FOR UPDATE SKIP LOCKED}, without which two
+ * schedulers flip the same tasks and mail every assignee twice, and the class-level
+ * {@code @Transactional} on {@code TaskService}, without which the row lock releases at the end of
+ * its own statement and the claim protects nothing.
  */
 class DeadlineSweepClaimTest {
 

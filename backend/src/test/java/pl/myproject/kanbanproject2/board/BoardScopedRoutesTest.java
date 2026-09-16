@@ -25,13 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The rule that makes the ownership model hard to forget: <b>every REST handler either takes the
- * caller, or is on a path served without a token.</b>
- *
- * <p>This is the guard the previous shape of the code had no way to express. Authorization was
- * "the filter chain proved a token exists", so a new route was authorized by default and nobody
- * had to think about it; the one hand-written check on {@code /api/users/{id}} did not generalise
- * because there was nothing to check against. Now the caller is a parameter, and a route that does
- * not ask for one is either public or a hole — and this test decides which, from
+ * caller, or is on a path served without a token.</b> The caller is a parameter, so a route that
+ * does not ask for one is either public or a hole — and this test decides which, from
  * {@link PublicPaths}, rather than from a list somebody remembered to update.
  *
  * <p>It runs by reflection over the compiled classes rather than by booting a context, so it costs
@@ -90,22 +85,12 @@ class BoardScopedRoutesTest {
                 .toList();
 
         /*
-         * Two groups, and the second one has to be named here rather than waved through, because
-         * this assertion is the only thing standing between "a route was deliberately made public"
-         * and "a board route lost its token check".
-         *
-         * The first group is the pre-authentication routes: signup, login, verify, resend, the two
-         * password-reset routes and the two session ones. A caller reaching those has no token yet
-         * by definition.
-         *
-         * The second is the delivery-report webhook, and it is public for the opposite reason - the
-         * caller is Azure Event Grid, which is not a person, has no account here, and never will.
-         * It is also the only unauthenticated *write* in the application, so what makes it safe is
-         * not on this list: a shared key in the URL, compared without an early exit, and a route
-         * that answers 404 to everything when no key is configured - which is its state on every
-         * fresh clone and in CI. MailDeliveryReportControllerHttpTest is where that is asserted.
-         *
-         * Anything else appearing here is a mistake.
+         * Two groups, named here rather than waved through, since this assertion is what stands
+         * between "deliberately public" and "a board route lost its token check": the
+         * pre-authentication auth routes, and the delivery-report webhook, whose caller is Azure
+         * Event Grid rather than a person. The webhook is the only unauthenticated *write* here;
+         * what makes it safe (a shared key, a 404 when unconfigured) is asserted separately in
+         * MailDeliveryReportControllerHttpTest. Anything else appearing here is a mistake.
          */
         assertThat(publicRoutes).allMatch(path ->
                 path.startsWith("/api/auth/") || Arrays.asList(PublicPaths.WEBHOOK_ENDPOINTS).contains(path));

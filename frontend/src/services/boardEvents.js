@@ -4,15 +4,10 @@ import { getAccessToken, isAccessTokenExpired, refreshSession } from './session'
 
 /**
  * The board's live connection: one STOMP subscription that says "this board changed, re-read it".
- *
- * Deliberately **not** the connection `chatApi` holds. That one is opened when somebody opens the
- * chat panel and closed when they close it, so a board riding on it would stop updating the moment
- * anyone tidied their screen - and would never start for the people who never open chat at all.
- * Two connections is the cost of the two features having genuinely different lifetimes.
- *
- * What arrives is `{ type, boardId }` and nothing else. The re-read goes back through the REST
- * routes, which are what decide what this account may see; see `BoardEvent` on the server for why
- * the frame carries no task in it.
+ * Deliberately not the connection `chatApi` holds, since that one opens and closes with the chat
+ * panel and a board riding on it would stop updating whenever anyone closed the panel. What
+ * arrives is `{ type, boardId }` only - the re-read goes back through the REST routes, which are
+ * what decide what this account may see.
  */
 export default class BoardEvents {
   constructor() {
@@ -46,12 +41,10 @@ export default class BoardEvents {
       heartbeatOutgoing: 10000,
 
       /*
-       * The access token is good for fifteen minutes and the CONNECT frame is the only place it is
-       * ever checked. A client that reconnects an hour later - a laptop that slept, a proxy that
-       * dropped an idle socket - would otherwise present the token it was constructed with, be
-       * refused, and retry with the same dead token every five seconds forever. `beforeConnect`
-       * runs on every attempt, including the retries, which is the only hook that can hold a live
-       * token.
+       * The CONNECT frame is the only place the fifteen-minute access token is checked, so a
+       * client reconnecting later (a laptop that slept, a dropped idle socket) would otherwise
+       * retry with the same dead token forever. `beforeConnect` runs on every attempt, including
+       * retries, so it can refresh first and hold a live token.
        */
       beforeConnect: async () => {
         if (isAccessTokenExpired()) {
@@ -68,10 +61,9 @@ export default class BoardEvents {
       onConnect: () => this.resubscribe(),
 
       /*
-       * A refused SUBSCRIBE - somebody else's board - arrives here rather than as an exception at
-       * the call site, because STOMP answers a frame with an ERROR frame. There is nothing useful
-       * to tell the person: they are looking at a board they can see over HTTP, so a refusal here
-       * means it stopped being theirs while they watched, and the next re-read will say so.
+       * A refused SUBSCRIBE arrives here as a STOMP ERROR frame rather than an exception at the
+       * call site. Nothing useful to tell the person - a refusal here means the board stopped
+       * being theirs while they watched, and the next re-read will say so.
        */
       onStompError: () => {},
       onWebSocketError: () => {},

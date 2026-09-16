@@ -51,13 +51,6 @@ public class ColumnService {
     }
 
     /**
-     * The next free position on this board, taken from the highest one in use rather than from a
-     * row count. A count drops after any delete, so the next create hands out a position that is
-     * still taken, and two concurrent creates read the same count. It is per board because a
-     * position is what the board renders in order, and two boards number their stages
-     * independently.
-     */
-    /**
      * Saves a column, tells the board's other viewers, and maps it. See
      * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
      */
@@ -67,6 +60,11 @@ public class ColumnService {
         return columnMapper.apply(saved);
     }
 
+    /**
+     * The next free position on this board, taken from the highest one in use rather than from a
+     * row count, since a count drops after any delete and two concurrent creates would read the
+     * same one.
+     */
     private int nextPosition(Board board) {
         return columnRepository.findMaxPosition(board).orElse(0) + 1;
     }
@@ -87,22 +85,15 @@ public class ColumnService {
     }
 
     /**
-     * Removes the column and, with it, the tasks that were still in it.
+     * Removes the column and, with it, the tasks still in it. {@code Column.tasks} cascades ALL,
+     * but the cascade alone fails on the foreign key from each task's {@code task_column_history}
+     * rows (not nullable), so the deletion goes through {@link TaskService#deleteTask} instead,
+     * which already unwinds history and parent/child links.
      *
-     * <p>That is what {@code Column.tasks} has always declared with {@code cascade = ALL} — but the
-     * cascade alone could not do it, because each of those tasks owns {@code task_column_history}
-     * rows whose {@code task_id} is {@code nullable = false}. Deleting a column that still held a
-     * task failed on that foreign key. {@link TaskService#deleteTask} already unwinds a task
-     * properly — history, then parent and child links — so the deletion goes through it, and the
-     * cascade is left with nothing to do.
-     *
-     * <p>That only accounts for tasks in the column right now. A task that passed through this
-     * column and later moved on leaves a {@code task_column_history} row behind that still points
-     * at it — that task is not among {@code column.getTasks()}, so nothing above touches its
-     * history, and the same foreign key fails on a column no live task has anything to do with.
-     * Those entries are detached rather than deleted: the task and the rest of its history are
-     * unaffected by this column going away, the same reasoning {@code TaskActivityRecorder.detachFrom}
-     * applies to a deleted task.
+     * <p>A task that passed through this column and later moved on leaves a
+     * {@code task_column_history} row behind that the loop above never touches, hitting the same
+     * foreign key. Those entries are detached rather than deleted, leaving the task and the rest of
+     * its history unaffected — the same reasoning {@code TaskActivityRecorder.detachFrom} applies.
      */
     public void deleteColumn(User caller, Integer id) {
         var column = findColumn(caller, id);
@@ -134,11 +125,8 @@ public class ColumnService {
 
     /**
      * Renumbers a board's stages in one transaction, from the ids in the order they should read.
-     *
-     * <p>Dragging a stage used to send one PATCH per column and swallow each failure separately,
-     * which since the {@code @Version} landed can leave the board half-reordered: the columns whose
-     * write went through keep their new place and the rest keep their old one. One call is one
-     * transaction, so either the whole order takes or none of it does.
+     * One PATCH per column, the previous shape, could leave the board half-reordered once
+     * {@code @Version} made one write in the batch fail and the rest succeed.
      */
     public List<ColumnDto> reorderColumns(User caller, List<Integer> orderedIds) {
         if (orderedIds.size() != Set.copyOf(orderedIds).size()) {

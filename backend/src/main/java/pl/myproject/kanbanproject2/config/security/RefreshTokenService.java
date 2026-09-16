@@ -29,18 +29,11 @@ import java.util.List;
 /**
  * Issues, rotates and withdraws refresh tokens - the half of the session an access token cannot be.
  *
- * <p>It lives here beside {@link JwtService}, {@link AuthenticationService} and
- * {@link PasswordResetService} because this is where the project keeps the machinery that decides
- * who is signed in; the entity and its repository sit in {@code user.auth} with the rest of the
- * auth model, following the same split those services already use.
- *
  * <p><strong>Rotation, and what happens when a rotated token comes back.</strong> Every successful
  * refresh withdraws the token it was given and issues a new one, so a refresh token is worth
- * exactly one use. That makes replay detectable: a token presented after it has already been
- * rotated means two parties hold the same chain, and the honest reading is that one of them stole
- * it. There is no way to tell which, so the whole chain goes - every live token the account holds
- * is withdrawn and the person signs in again. Anything gentler here would leave the thief in
- * possession of a working session.
+ * exactly one use; a token presented after it was already rotated means two parties hold the same
+ * chain, read as theft. There is no way to tell which party is the thief, so the whole chain is
+ * withdrawn and the person signs in again.
  */
 @Service
 @Slf4j
@@ -93,16 +86,11 @@ public class RefreshTokenService {
     }
 
     /**
-     * Issues a fresh token for an account that has just proved who it is.
-     *
-     * <p>This starts a new chain, so both of the instants a chain carries are set here: the
-     * absolute deadline at {@code now} plus the configured ceiling, and the sign-in at {@code now}.
-     * Every rotation after this carries the same two forward.
-     *
-     * <p>Returns the raw token, which is the only moment it exists anywhere outside the caller's
-     * hands - what is stored is its digest - alongside the id of the row it was written to, which
-     * is the client's answer to which of these sessions is mine. The id names a row, not a
-     * credential: it is worth nothing to anyone not already signed in as this account.
+     * Issues a fresh token for an account that has just proved who it is, starting a new chain: the
+     * absolute deadline and the sign-in instant are both set here and carried forward by every
+     * rotation. Returns the raw token - the only moment it exists outside the caller's hands, since
+     * what is stored is its digest - alongside the row id the client uses to recognise its own
+     * session.
      */
     @Transactional
     public Issued issue(User user, DeviceContext device) {
@@ -111,11 +99,9 @@ public class RefreshTokenService {
     }
 
     /**
-     * Every session the account can still use, as something a person can read.
-     *
-     * <p>Lives here rather than in a service of its own because this class is the only thing in the
-     * application that reads {@code refresh_tokens}, and that is worth keeping true: a second
-     * reader is a second place where "live" could come to mean something slightly different.
+     * Every session the account can still use, as something a person can read. Lives here rather
+     * than in a service of its own because this class is the only thing that reads
+     * {@code refresh_tokens} - a second reader would be a second place "live" could drift.
      */
     @Transactional
     public List<ActiveDeviceDto> listSessionsFor(User user) {
@@ -127,18 +113,11 @@ public class RefreshTokenService {
     }
 
     /**
-     * Ends one named session, and refuses to say anything about a row that is not the caller's.
-     *
-     * <p>{@code SESSION_NOT_FOUND} covers three cases on purpose: no such row, somebody else's row,
-     * and a row already withdrawn or expired. Separating them would turn sequential ids into a way
-     * to count other people's sessions - the reasoning the board routes already follow. A caller
-     * can only act on what the list handed them.
-     *
-     * <p>Unlike {@code /auth/logout}, this one does report failure. Logging out asks to end the
-     * session you are holding, and a caller who is already signed out has what they asked for;
-     * pressing "sign out" beside a device in a list asks about one specific session, and answering
-     * 204 for a row nothing touched would tell somebody their lost phone had been signed out when
-     * it had not.
+     * Ends one named session. {@code SESSION_NOT_FOUND} covers no-such-row, somebody-else's-row and
+     * already-withdrawn on purpose - separating them would turn sequential ids into a way to count
+     * other people's sessions. Unlike {@code /auth/logout}, this one does report failure: pressing
+     * "sign out" beside a device asks about one specific session, and a silent 204 for a row nothing
+     * touched would misreport a lost phone as signed out.
      */
     @Transactional
     public void revokeSession(User user, Long sessionId) {
@@ -155,13 +134,10 @@ public class RefreshTokenService {
     }
 
     /**
-     * Writes one token into an existing (or new) chain.
-     *
-     * <p>{@code expiresAt} is the earlier of the sliding window and {@code chainDeadline}: while the
-     * window is the earlier one the token renews normally, and once the chain has run long enough
-     * that the window would reach past its ceiling the token is capped at the ceiling instead. A
-     * token issued at that point expires when the chain does, and the rotation after it is refused
-     * by the same expiry check that rejects any lapsed token.
+     * Writes one token into an existing (or new) chain. {@code expiresAt} is the earlier of the
+     * sliding window and {@code chainDeadline}, so once the chain has run long enough that the
+     * window would reach past its ceiling, the token is capped at the ceiling instead and the next
+     * rotation is refused by the same expiry check that rejects any lapsed token.
      */
     private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, Instant now,
                                DeviceContext device) {
@@ -174,12 +150,9 @@ public class RefreshTokenService {
     }
 
     /**
-     * Exchanges a live token for a new one, and answers with the account it belongs to.
-     *
-     * <p>Every failure is one status - {@code 401 INVALID_CREDENTIALS} - for the reason the rest of
-     * this package already follows: an unknown token, an expired one and a withdrawn one are three
-     * facts about the session and one answer to the caller, and separating them would say which
-     * tokens have ever existed.
+     * Exchanges a live token for a new one, and answers with the account it belongs to. Every
+     * failure is one status, {@code 401 INVALID_CREDENTIALS} - separating unknown, expired and
+     * withdrawn would say which tokens have ever existed.
      */
     @Transactional
     public Rotation rotate(String presented, DeviceContext device) {
@@ -211,12 +184,10 @@ public class RefreshTokenService {
     }
 
     /**
-     * Withdraws one token, and says nothing about whether it existed.
-     *
-     * <p>Logging out is not a place to fail. A token that is unknown, already spent or expired
-     * leaves the caller in exactly the state they asked for, so every case answers the same
-     * {@code 204} - and answering differently would turn logout into a way to test whether a token
-     * is live.
+     * Withdraws one token, and says nothing about whether it existed. An unknown, already-spent or
+     * expired token leaves the caller in exactly the state they asked for, so every case answers
+     * the same {@code 204} - answering differently would turn logout into a way to test token
+     * liveness.
      */
     @Transactional
     public void revoke(String presented) {
@@ -229,11 +200,9 @@ public class RefreshTokenService {
     }
 
     /**
-     * Withdraws every live session an account holds.
-     *
-     * <p>Called when the password changes, by either route. A password change that left older
-     * sessions running would mean the person who changed it because somebody else had their
-     * password had not actually locked them out - which is the whole reason they changed it.
+     * Withdraws every live session an account holds, called on a password change by either route -
+     * leaving older sessions running would defeat the reason somebody changes a password they
+     * suspect is compromised.
      */
     @Transactional
     public int revokeAllFor(User user) {

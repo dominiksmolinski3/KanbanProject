@@ -10,15 +10,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * One board, its owner, and a {@link BoardService} that hands that board to whatever asks.
+ * One board, its owner, and a {@link BoardService} that hands that board to whatever asks — every
+ * unit test written before boards existed now needs a caller and a board, named once here.
  *
- * <p>Threading the caller through every service signature is what makes the ownership check
- * impossible to forget; it also means every unit test that was written before boards existed now
- * needs a caller and a board to hand it. This is that pair, named once.
- *
- * <p>{@code requireSameBoard} deliberately calls through to the real implementation. It is an
- * invariant rather than a lookup, and a mock that silently passes would take the teeth out of the
- * tests that move a task between cells.
+ * <p>{@code requireSameBoard} deliberately calls through to the real implementation, since it is an
+ * invariant rather than a lookup and a mock that silently passes would defang the tests that move a
+ * task between cells.
  */
 public final class TenancyFixtures {
 

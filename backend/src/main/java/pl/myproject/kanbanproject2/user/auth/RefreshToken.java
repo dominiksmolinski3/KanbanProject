@@ -13,39 +13,31 @@ import pl.myproject.kanbanproject2.user.User;
 import java.time.Instant;
 
 /**
- * One issued refresh token, as a row that can be withdrawn.
+ * One issued refresh token, as a row that can be withdrawn — unlike an access token, a signed claim
+ * that only its own expiry can end, a refresh token is a row that the server can delete, which is
+ * what makes a session something it can end.
  *
- * <p>This is the whole point of the type. An access token is a signed claim: once it is out, the
- * only thing that ends it is its own expiry, which is why the hour on the JWT was simultaneously a
- * hard session cap and the only bound on a stolen one. A refresh token is a row, and a row can be
- * deleted, so a session becomes something the server can end.
+ * <p>Only a SHA-256 digest is stored, never the token, for the same reason {@code password_reset_code}
+ * is hashed: the table is exactly what an attacker with read access has. Not password hashing and
+ * no slow KDF, since the input is 256 bits from {@link java.security.SecureRandom} with no
+ * dictionary to run.
  *
- * <p>Only a SHA-256 digest of the token is stored, never the token. The reasoning is the one
- * {@code password_reset_code} already follows: this value is a credential, and the table is exactly
- * what an attacker with read access has. A digest is enough to recognise a token presented back and
- * useless to anyone who only has the table. It is not password hashing and does not want a slow
- * KDF — the input is 256 bits from {@link java.security.SecureRandom}, so there is no dictionary to
- * run and nothing for a work factor to buy.
+ * <p>Rows are kept rather than deleted on revocation, since {@code revokedAt} being set is what
+ * makes replay of an already-rotated token detectable — turning a stolen token into a signal
+ * instead of a silent second session.
  *
- * <p>Rows are kept rather than deleted on revocation. {@code revokedAt} being set is what makes
- * replay of an already-rotated token detectable, and detecting it is what turns a stolen token into
- * a signal instead of a silent second session.
+ * <p>{@code expiresAt} slides on every rotation so a chain in use never reaches it;
+ * {@code absoluteExpiresAt} is stamped once at login and copied forward unchanged, and the
+ * effective expiry is the earlier of the two — the only thing that ends a stolen token whose thief
+ * refreshes ahead of the real client and is never seen.
  *
- * <p>{@code expiresAt} slides: every rotation issues a replacement dated the sliding window from
- * now, so a chain in use never reaches it. {@code absoluteExpiresAt} does not - it is stamped once,
- * at the login that starts the chain, and copied forward unchanged on each rotation. The effective
- * expiry a check reads is the earlier of the two, so once the sliding window catches up to the
- * absolute deadline the chain is finished no matter how often it rotates. That ceiling is the only
- * thing that ends a stolen token whose thief refreshes ahead of the real client and is never seen.
- *
- * <p>{@code chainStartedAt} is carried forward the same way and for a different audience. Rotation
- * writes a new row, so {@code issuedAt} on the live row is the last renewal - which is the right
- * answer to "last seen" and the wrong one to "signed in since". Keeping both is what lets a
- * person look at a list of their own sessions and recognise one.
+ * <p>{@code chainStartedAt} is carried forward the same way for a different audience: rotation
+ * writes a new row, so {@code issuedAt} on the live row answers "last seen" but not "signed in
+ * since", and keeping both lets a person recognise a session in their own list.
  *
  * <p>{@code ipAddress} and {@code userAgent} are stamped on every issue rather than carried
- * forward, so they describe where the session is now. They are labels: nothing checks them, because
- * both are supplied by the caller and a session that moves between networks is ordinary.
+ * forward, so they describe where the session is now; they are labels only, since both are
+ * caller-supplied and a session moving between networks is ordinary.
  */
 @Entity
 @Table(name = "refresh_tokens")
@@ -59,10 +51,8 @@ public class RefreshToken {
     @jakarta.persistence.Column(name = "token_hash", nullable = false, unique = true, length = 64)
     private String tokenHash;
 
-    /*
-     * LAZY because the only caller that needs the user is the rotation path, and it is on the
-     * critical path of every request the client makes after an access token lapses.
-     */
+    /* LAZY because only the rotation path needs the user, and it is on the critical path of every
+     * request after an access token lapses. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

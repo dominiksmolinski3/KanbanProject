@@ -17,14 +17,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * The board is edited by every member at once and the client sends one position PATCH per card in
  * a reordered cell, so two people dragging in the same column race by construction. The
- * {@code @Version} columns added alongside this test make the losing write fail its
- * {@code UPDATE ... WHERE version = ?}; Hibernate raises that as an
- * {@link ObjectOptimisticLockingFailureException}, which Spring's persistence layer hands to the
- * advice as a {@code DataAccessException}.
+ * {@code @Version} columns make the losing write fail its {@code UPDATE ... WHERE version = ?};
+ * Hibernate raises that as an {@link ObjectOptimisticLockingFailureException}, handed to the advice
+ * as a {@code DataAccessException}.
  *
- * <p>Without a handler it reaches the catch-all and is answered 500 - logged at {@code error} and
- * counted against the alert on the error rate, for what is really the caller holding a stale copy.
- * This pins it to 409, the same way {@link ClientErrorStatusTest} pins the request mistakes.
+ * <p>Without a handler it reaches the catch-all as a 500, logged and alerted on for what is really a
+ * stale copy; this pins it to 409, as {@link ClientErrorStatusTest} pins the request mistakes.
  */
 class OptimisticLockConflictTest {
 

@@ -18,18 +18,11 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A build-time guard over a wiring that fails at startup rather than at compile time.
- *
- * <p>There are two {@code EmailSender} beans now, which is one more than Spring will resolve on
- * its own. {@link OutboxEmailSender} carries {@code @Primary} so everything above the queue gets
- * it, and {@link OutboxRelay} names {@code mailTransport} so it gets the real one. Drop either
- * annotation and the compiler is perfectly happy: what happens instead is a
- * {@code NoUniqueBeanDefinitionException} on the context, which on Container Apps is a revision
- * that never goes healthy - the same failure mode {@code InjectableConstructorsTest} was written
- * for, and caught the same way.
- *
- * <p>Swapping them silently would be worse than either: the relay would post rows into the outbox
- * it is meant to be draining, and every signup would enqueue a message nothing ever sends.
+ * A build-time guard over wiring that fails at startup, not compile time. Two {@code EmailSender}
+ * beans exist: {@link OutboxEmailSender} is {@code @Primary}, {@link OutboxRelay} names
+ * {@code mailTransport}. Drop either annotation and the compiler is happy but the context fails
+ * with a {@code NoUniqueBeanDefinitionException}; swap them silently and the relay would post into
+ * the outbox it's meant to drain, with every signup enqueuing a message nothing ever sends.
  */
 class OutboxWiringTest {
 
@@ -51,10 +44,8 @@ class OutboxWiringTest {
         assertThat(transportBean.getAnnotation(Bean.class).value()).containsExactly("mailTransport");
 
         assertTakesTheTransportByName(OutboxRelay.class);
-        // The indicator asks the transport whether mail is configured at all. Handed the primary
-        // sender instead it would be asking the outbox, which always answers yes because writing a
-        // row always works - and the one status that says "this deployment sends nothing" would
-        // never be reported.
+        // Handed the primary sender instead, the indicator would be asking the outbox - which
+        // always answers yes - and the "sends nothing" status would never be reported.
         assertTakesTheTransportByName(MailHealthIndicator.class);
     }
 

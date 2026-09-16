@@ -34,14 +34,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The service-layer tests assert the service contract; nothing until now asserted the HTTP one -
- * the status a controller answers with, the shape it serialises, or that a
- * {@link GlobalException} reaches the client as the status its identifier declares.
- *
- * <p>A standalone MockMvc setup is used rather than {@code @WebMvcTest}: the slice would pull in
- * the security chain and the rate limiter, which have their own suites, and the {@code /api}
- * prefix is applied centrally and already guarded by {@code ApiPathPrefixTest}. Paths here are
- * therefore the controller's own mapping, without the prefix.
+ * The service-layer tests assert the service contract; this asserts the HTTP one — status codes,
+ * serialised shape, and that a {@link GlobalException} reaches the client as the status its
+ * identifier declares. Standalone MockMvc rather than {@code @WebMvcTest}, since the slice would
+ * pull in security and rate limiting that have their own suites; paths here are the controller's
+ * own mapping, without the centrally-applied {@code /api} prefix.
  */
 class TaskControllerHttpTest {
 

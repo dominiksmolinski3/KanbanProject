@@ -229,10 +229,8 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   };
 
   /**
-   * The attachment list, kept out of loadTaskData's error handling on purpose.
-   *
-   * A deployment with no storage account configured still has boards, tasks and subtasks; failing
-   * to read attachments should cost the panel its attachment list and nothing else, so this
+   * The attachment list, kept out of loadTaskData's error handling on purpose: a deployment with
+   * no storage configured should only lose its attachment list, not the whole panel, so this
    * swallows rather than throws. The empty-array fallback also covers a mocked api module, where
    * every call answers undefined.
    */
@@ -1139,9 +1137,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
               )}
             </div>
 
-            {/* Attachments Section
-                The files live in Azure Blob Storage; this list is the rows that name them, and a
-                download is a fresh signed link the browser follows straight to storage. */}
+            {/* Attachments Section */}
             <div
               className={`attachments-section${draggingFileOver ? ' drop-target' : ''}`}
               onDragOver={handleAttachmentDragOver}

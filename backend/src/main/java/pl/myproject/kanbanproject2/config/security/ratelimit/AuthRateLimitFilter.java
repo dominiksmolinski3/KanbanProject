@@ -23,16 +23,11 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * Throttles the four unauthenticated {@code /api/auth/**} endpoints.
- *
- * <p>Every request is charged twice, once against the caller's address and once against the email
- * it targets, and either bucket running dry ends the request with {@code 429} and a
- * {@code Retry-After}. The address bucket is checked first so a caller flooding the endpoint is
- * turned away before the filter spends anything reading their body.
- *
- * <p>It runs inside the Spring Security chain just after the CORS filter: early enough to sit in
- * front of everything these endpoints do, late enough that a rejection still carries the CORS
- * headers a cross-origin caller needs to read the status.
+ * Throttles the unauthenticated {@code /api/auth/**} endpoints. Every request is charged twice,
+ * once against the caller's address and once against the email it targets, and either bucket
+ * running dry ends the request with {@code 429} and a {@code Retry-After}; the address bucket is
+ * checked first so a flooding caller is turned away before the body is read. Runs just after the
+ * CORS filter so a rejection still carries the CORS headers a cross-origin caller needs.
  */
 @Slf4j
 public class AuthRateLimitFilter extends OncePerRequestFilter {

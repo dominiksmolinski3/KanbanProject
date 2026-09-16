@@ -15,20 +15,14 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Two branches that each add a migration have an order between them, and it is invisible to every
- * other guard here: the compiler cannot see it, {@link FlywayMigrationsMatchEntitiesTest} compares
- * names and not the order anything ran in, and a wrong-order merge produces a green build and a
- * contiguous {@code V1..Vn} on {@code main}. The trap is at deploy time on the revision <em>after</em>
- * the merge: Flyway has the higher version in its history, sees the lower one turn up pending, and
- * refuses (default {@code out-of-order=false}).
- *
- * <p>This test cannot see that trap either -- by the time both are on {@code main} the damage is a
- * property of what already ran against the deployed database, not of any file. What it <em>can</em>
- * do is fail the sloppy merge that produces it: a duplicated version, a gap, a file that does not
- * parse as {@code V<n>__<description>.sql}. Paired with the pull-request check in
- * {@code .github/workflows/migration-order.yml} -- which fails a PR that adds a migration numbered at
- * or below the highest version already on the base branch -- the order stops mattering, because a
- * branch that has fallen behind must renumber before it can merge.
+ * Two branches that each add a migration have an order between them, invisible to every other
+ * guard here: a wrong-order merge produces a green build and a contiguous {@code V1..Vn} on
+ * {@code main}, but Flyway refuses at deploy time on the revision after the merge (default
+ * {@code out-of-order=false}) once it sees a lower version turn up pending after a higher one
+ * already ran. This test cannot see that trap either, but it can fail the sloppy merge that
+ * produces it - a duplicated version, a gap, a malformed filename - and is paired with the
+ * pull-request check in {@code .github/workflows/migration-order.yml}, which forces a branch that
+ * has fallen behind to renumber before it can merge.
  */
 class MigrationOrderTest {
 

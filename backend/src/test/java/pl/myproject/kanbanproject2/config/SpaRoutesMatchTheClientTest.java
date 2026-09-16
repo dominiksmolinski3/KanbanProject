@@ -16,18 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Fails the build when {@link SpaRoutes} and {@code App.jsx} stop naming the same client routes.
- *
- * <p>The list was kept by hand and had a natural enforcer: Spring permitted exactly these paths, so
- * a route added to the client and forgotten here answered 403 on a refresh, and somebody noticed on
- * the first deep link. Splitting the deployment removed that enforcer - nginx answers every path
- * with the shell whether or not this list knows about it - which leaves the array with one real
- * consumer, the deployed-contract sweep, and no way to tell that it has quietly fallen behind. A
- * sweep that checks three of four routes reports the same green as one that checks four.
- *
- * <p>So the rule moves from "the deployment punishes you" to "the build does", which is the shape
- * {@code CspMatchesTheClientTest} and {@code SupportedLocalesMatchClientTest} already have. It
- * reads the client rather than the other way round because the client is where a route is really
- * declared; this array is the copy.
+ * The list used to have a natural enforcer - Spring permitted exactly these paths, so a route
+ * forgotten here answered 403 on a refresh - but nginx now answers every path with the shell
+ * regardless, leaving the array's only consumer (the deployed-contract sweep) with no way to tell
+ * it has quietly fallen behind. Reads the client rather than the other way round, since the client
+ * is where a route is really declared and this array is the copy.
  */
 class SpaRoutesMatchTheClientTest {
 

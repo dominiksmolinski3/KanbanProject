@@ -18,13 +18,10 @@ jest.mock('react-i18next', () => ({
 }));
 
 /**
- * The panel's behaviour, and the three things about a search box that are always the bugs.
- *
- * <b>The debounce</b>, because a request per keystroke is what an unguarded search-as-you-type is.
- * <b>The page reset</b>, because changing a filter while on page three shows an empty list for a
- * search that matched plenty, and reads as "nothing found". And <b>the out-of-order answer</b>,
- * because a slow response to an old query landing after a fast response to the current one leaves
- * the list showing results nobody asked for and no error anywhere.
+ * The panel's behaviour, and the three things about a search box that are always the bugs: <b>the
+ * debounce</b> (a request per keystroke otherwise), <b>the page reset</b> (staying on page three
+ * of a replaced result set reads as "nothing found"), and <b>the out-of-order answer</b> (a slow
+ * response to an old query landing after a fast one to the current query).
  */
 describe('TaskSearch', () => {
   const context = {

@@ -30,12 +30,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The feed, from both ends.
- *
- * <p>Two things here are worth more than the rest. The bound on a page is a refusal rather than a
- * clamp, for the reason the search route already establishes - a caller handed fewer rows than it
- * asked for cannot tell that from a short last page. And an entry has to survive its task, which
- * is the whole reason the title and the actor's name are copies rather than references.
+ * The feed, from both ends. Two things matter most: the page bound is a refusal rather than a
+ * clamp, for the same reason the search route establishes — a caller handed fewer rows than it
+ * asked for can't tell that from a short last page — and an entry must survive its task, which is
+ * why the title and actor's name are copies rather than references.
  */
 class TaskActivityServiceTest {
 
@@ -94,9 +92,8 @@ class TaskActivityServiceTest {
         }
 
         /**
-         * The reason the two names are columns rather than joins. A renamed task would otherwise
-         * rewrite the history of what it used to be called, and a deleted one would take the entry
-         * saying it was deleted with it.
+         * The reason the two names are columns rather than joins: a renamed task would rewrite
+         * history, and a deleted one would take the entry with it.
          */
         @Test
         @DisplayName("the title and the actor's name are copied, so a later rename does not rewrite history")
@@ -135,11 +132,9 @@ class TaskActivityServiceTest {
             assertThat(captureSaved().getTaskTitle()).isEmpty();
         }
 
-        /*
-         * A feed entry is a side effect of somebody else's operation. Nothing in this application
-         * makes a boardless task - board_id is not null - but if one ever reached here, throwing
-         * would turn a failure to record into a failed edit, which is the wrong trade.
-         */
+        // A feed entry is a side effect of somebody else's operation; nothing here makes a
+        // boardless task, but if one reached this, throwing would turn a failed recording into a
+        // failed edit.
         @Test
         @DisplayName("a task with no board records nothing rather than throwing into somebody else's edit")
         void aBoardlessTaskIsIgnored() {
@@ -195,9 +190,9 @@ class TaskActivityServiceTest {
         }
 
         /**
-         * A clamp is the obvious alternative and the worse one: 500 rows silently answered with
-         * 100 is indistinguishable from a short last page, so the caller pages past rows it never
-         * saw. Same trade, same refusal as {@code INVALID_SEARCH}.
+         * A clamp is the worse alternative: 500 rows silently answered with 100 reads like a short
+         * last page, so the caller pages past rows it never saw — same trade as
+         * {@code INVALID_SEARCH}.
          */
         @ParameterizedTest(name = "page={0} size={1}")
         @CsvSource({"-1,25", "0,0", "0,101", "0,-5"})

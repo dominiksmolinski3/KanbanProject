@@ -11,30 +11,18 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Holds one escalation per (rule, dimension, key) triple and hands out permission to proceed.
+ * Holds one escalation per (rule, dimension, key) triple and hands out permission to proceed. A key
+ * gets a burst of attempts free, then each attempt costs a doubling cooldown (15s, 30s, 60s, ... to
+ * a ceiling), forgotten after a whole window of quiet - replacing a token bucket whose refusal fell
+ * hardest on whoever had just made an honest mistake rather than on an attacker, who spends the
+ * ceiling's sustained rate cheaply either way.
  *
- * <p>A key gets a burst of attempts for free. After that each attempt costs a cooldown, and the
- * cooldown doubles every time one is spent: fifteen seconds, thirty, a minute, two, up to a
- * ceiling. Being quiet for a whole window forgets the escalation and hands the burst back.
+ * <p>Escalation is charged on the way <em>out</em>: an allowed attempt sets the wait for the next
+ * one, so hammering a key already in cooldown neither extends it nor escapes it.
  *
- * <p>This replaced a token bucket, and the difference is what it does to the person who is not
- * attacking anything. A quota of five mails an hour is five mails and then a wall: the sixth
- * request was refused for the eleven minutes until a token trickled back, which is a long time to
- * stare at a form when the address you mistyped is sitting in the field in front of you. Doubling
- * spends an attacker's time just as effectively - the ceiling is a lower sustained rate than the
- * quota was - while the first wait a real person meets is fifteen seconds.
- *
- * <p>Escalation is charged on the way <em>out</em>: an attempt that is allowed sets the wait for
- * the next one. An attempt that is refused changes nothing at all, so hammering a key that is in
- * cooldown neither extends it nor escapes it - the answer is the same countdown it was already
- * serving.
- *
- * <p>Entries live in a {@link Caffeine} cache rather than a plain map for a reason: every distinct
- * address and every distinct email in a request creates one, both of them attacker-chosen, so an
- * unbounded map turns the limiter into a way to exhaust a 0.5Gi heap. The cache is bounded by
- * {@code maxTrackedKeys} and drops entries idle for longer than the widest window - which is
- * exactly when the escalation would have been forgiven anyway, making eviction a no-op rather than
- * a reprieve.
+ * <p>Entries live in a {@link Caffeine} cache, not a plain map, because every distinct
+ * attacker-chosen address or email creates one; it is bounded by {@code maxTrackedKeys} and drops
+ * entries idle past the widest window, exactly when the escalation would have been forgiven anyway.
  */
 @Component
 public class AuthRateLimiter {
@@ -44,11 +32,8 @@ public class AuthRateLimiter {
     private final Ticker ticker;
 
     /*
-     * @Autowired is load-bearing, not decoration. There are two constructors here, so Spring stops
-     * looking for the single obvious one and falls back to a no-arg constructor that does not
-     * exist - the context then fails to start with "No default constructor found", and every bean
-     * downstream of the security chain fails with it. Nothing caught that, because until
-     * SpringContextStartsTest nothing in the suite ever built a context.
+     * @Autowired is load-bearing, not decoration: with two constructors here, Spring otherwise
+     * looks for a no-arg one that does not exist and the context fails to start.
      */
     @Autowired
     public AuthRateLimiter(AuthRateLimitProperties properties) {
@@ -128,12 +113,8 @@ public class AuthRateLimiter {
 
         /**
          * Free while the burst lasts, then {@code base}, {@code 2 x base}, {@code 4 x base} and so
-         * on to the ceiling. The wait is charged after the attempt that earns it, so a burst of
-         * {@code freeAttempts} goes through untouched and the one after it is the first to wait.
-         *
-         * <p>Doubling is a shift, so the exponent is clamped before it can overflow into a negative
-         * wait - at fifteen seconds that would take about thirty spent cooldowns, which is well
-         * within what a determined attacker will sit through.
+         * on to the ceiling, charged after the attempt that earns it. Doubling is a shift, so the
+         * exponent is clamped before it can overflow into a negative wait.
          */
         private static long cooldownAfter(Limit limit, long attempts) {
             long spent = attempts - limit.freeAttempts() + 1;

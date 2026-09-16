@@ -63,10 +63,8 @@ class BoardDataIntegrityTest {
         historyRepository = Mockito.mock(TaskColumnHistoryRepository.class);
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
-        // The next position is now a MAX aggregate rather than a fold over fetched rows, so
-        // these stub the aggregate. What each test asserts is unchanged: the number handed out.
-        // It is keyed by ids rather than by the entities, because a null cell has to reach the
-        // query as a null id it can test for - see TaskRepository.findMaxPosition.
+        // The next position is a MAX aggregate rather than a fold over fetched rows, keyed by ids
+        // since a null cell needs a null id the query can test for - see TaskRepository.findMaxPosition.
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
@@ -115,9 +113,8 @@ class BoardDataIntegrityTest {
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
 
             assertThat(created.position()).isEqualTo(1);
-            // The old count()-based number is what made a delete anywhere on the board collide
-            // with the next create here. Nor is the cell's own list fetched any more - the
-            // database answers the max, rather than handing over rows to fold in Java.
+            // The old count()-based number let a delete anywhere on the board collide with the next
+            // create; the cell's own list isn't fetched either, since the database answers the max.
             verify(taskRepository, never()).count();
             verify(taskRepository, never()).findByBoardAndColumnAndRow(any(), any(), any());
         }

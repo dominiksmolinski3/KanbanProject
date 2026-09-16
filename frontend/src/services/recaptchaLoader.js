@@ -1,13 +1,8 @@
 /**
- * Loads Google's reCAPTCHA api.js once per page and resolves when the widget API
- * is actually callable.
- *
- * Readiness is decided by polling for `grecaptcha.render` rather than by the
- * `?onload=` callback that api.js offers. The callback is not trustworthy: when
- * api.js comes from the browser cache - which is every reload - it invokes the
- * callback during its own execution, before the browser dispatches `load` on the
- * script element. Anything that arms itself in the load handler therefore misses
- * it. Polling for the function we are about to call has no such ordering to lose.
+ * Loads Google's reCAPTCHA api.js once per page and resolves when the widget API is actually
+ * callable, decided by polling for `grecaptcha.render` rather than trusting the `?onload=`
+ * callback: a cached api.js invokes that callback during its own execution, before the browser
+ * dispatches `load`, so anything arming itself in the load handler misses it.
  */
 const API_SRC = 'https://www.google.com/recaptcha/api.js?render=explicit';
 const API_SELECTOR = 'script[src*="recaptcha/api.js"]';
@@ -23,12 +18,9 @@ function apiIfCallable() {
 }
 
 /**
- * Drops the cached attempt so the next `loadRecaptcha()` starts over. A script
- * tag that errored is removed with it, otherwise the retry would poll a corpse.
- *
- * An attempt still in flight is abandoned rather than settled: nothing is left
- * polling on a timer behind the caller's back, and the caller that asked for the
- * reset is about to request a fresh attempt anyway.
+ * Drops the cached attempt so the next `loadRecaptcha()` starts over, removing an errored script
+ * tag with it so the retry doesn't poll a corpse. An attempt still in flight is abandoned rather
+ * than settled, so nothing keeps polling on a timer behind the caller's back.
  */
 export function resetRecaptchaLoader() {
   abandonPending?.();

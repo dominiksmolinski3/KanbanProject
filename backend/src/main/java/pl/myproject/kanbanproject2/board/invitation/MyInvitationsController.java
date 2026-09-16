@@ -14,16 +14,13 @@ import pl.myproject.kanbanproject2.user.User;
 import java.util.List;
 
 /**
- * The invitee's half: what am I being asked to join, and my answer.
+ * The invitee's half: what am I being asked to join, and my answer. A second controller rather
+ * than more methods on {@link BoardInvitationController}, because these routes aren't scoped by a
+ * board — the caller has, by definition, no access to the board an invitation names.
  *
- * <p>A second controller rather than three more methods on {@link BoardInvitationController},
- * because these routes are not scoped by a board. The caller has, by definition, no access to the
- * board an invitation names - that is what the invitation is for - so a path that started
- * {@code /boards/{boardId}} would have to answer 404 for the only case it exists to serve.
- *
- * <p>Authenticated, like everything outside {@code PublicPaths}. An invitation is redeemed by
- * whoever holds the account at that address, not by whoever holds a link: there is no token in
- * the mail, so a forwarded message gives nobody anything.
+ * <p>Authenticated, like everything outside {@code PublicPaths}: an invitation is redeemed by
+ * whoever holds the account at that address, not by whoever holds a link, so there is no token in
+ * the mail and a forwarded message gives nobody anything.
  */
 @RestController
 @RequestMapping("/invitations")

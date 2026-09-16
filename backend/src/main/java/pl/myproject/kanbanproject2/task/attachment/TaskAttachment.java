@@ -18,16 +18,10 @@ import pl.myproject.kanbanproject2.user.User;
 import java.time.Instant;
 
 /**
- * A file attached to a task: everything about it except the bytes.
- *
- * <p>The bytes are in Azure Blob Storage under {@link #blobName}, and this row is the only thing
- * that knows which blob is which file. That split is the point of the feature - the existing
- * {@code files} table stores uploads as a {@code @Lob} in Postgres, which puts every attachment
- * into the database's storage, its backups and its restore time, for data no query ever looks
- * inside.
- *
- * <p>There is no {@code @Version} here and no way to edit one. An attachment is written once and
- * deleted; there is no second writer for an optimistic lock to catch.
+ * A file attached to a task: everything about it except the bytes, which live in Azure Blob
+ * Storage under {@link #blobName} — this row is the only thing that knows which blob is which
+ * file, unlike the existing {@code files} table's {@code @Lob}-in-Postgres approach. There is no
+ * {@code @Version}: an attachment is written once and deleted, with no second writer to catch.
  */
 @Getter
 @Setter
@@ -49,14 +43,9 @@ public class TaskAttachment {
     private Task task;
 
     /**
-     * The blob's name in the container - {@code tasks/<taskId>/<uuid>}, with no extension and
-     * nothing a person typed in it.
-     *
-     * <p>Opaque on purpose. A blob named after the upload would put an attacker-chosen string into
-     * a URL path on a storage account shared by every board here, and an extension there is a hint
-     * to the service about how to serve the content. The name a person should see is
-     * {@link #fileName}, and the link the browser follows carries it as a signed content
-     * disposition instead.
+     * The blob's name in the container — {@code tasks/<taskId>/<uuid>}, no extension, nothing a
+     * person typed — kept opaque so an attacker-chosen string never reaches a URL path on a storage
+     * account shared by every board. {@link #fileName} is what a person actually sees.
      */
     @Column(name = "blob_name", nullable = false, unique = true, length = 200)
     private String blobName;
@@ -72,9 +61,8 @@ public class TaskAttachment {
     private long sizeBytes;
 
     /**
-     * Who uploaded it. Nullable because an account can be deleted while its uploads stay on a board
-     * that is still in use - the attachment belongs to the task, not to the person, and losing the
-     * name is better than losing the file.
+     * Who uploaded it. Nullable because an account can be deleted while its uploads stay on a
+     * board still in use — the attachment belongs to the task, not the person.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by")

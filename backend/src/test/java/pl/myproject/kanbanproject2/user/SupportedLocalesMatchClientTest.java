@@ -13,22 +13,13 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A guard over two lists of languages that have to be the same list.
- *
- * <p>{@code frontend/public/locales} is what {@code i18next-http-backend} loads at runtime, and
- * {@link SupportedLocales#TAGS} is what an account may be set to and what the mail bundles answer
- * for. Adding a tenth language to the client is a directory and a dropdown entry; nothing about
- * either of those reaches Java, so without this the tenth language would show on screen, be
- * unsettable on an account, and mail in English forever - which is the exact failure this whole
- * branch exists to fix, one language later.
- *
- * <p>The other direction matters too, and is the cheaper mistake to make: a tag added here with no
- * bundle behind it means an account can be set to a language the client cannot render and the mail
- * silently falls back to English.
- *
- * <p>Same shape as {@code PublicBundlePathsTest} and {@code SessionRoutesTest}: a rule that lives
- * in two places, checked in one. It does not skip when the directory is missing, because a guard
- * that turns itself off leaves the build green either way.
+ * A guard over two lists of languages that have to be the same list: {@code frontend/public/locales}
+ * is what the client loads at runtime, and {@link SupportedLocales#TAGS} is what an account may be
+ * set to and what the mail bundles answer for. Nothing connects a new client directory to Java, so
+ * without this a tenth language would show on screen, be unsettable on an account, and mail in
+ * English forever — the same rule-in-two-places shape as {@code SessionRoutesTest}. It does not skip
+ * when the directory is missing, since a guard that turns itself off leaves the build green either
+ * way.
  */
 class SupportedLocalesMatchClientTest {
 

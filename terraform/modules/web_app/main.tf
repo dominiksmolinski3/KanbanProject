@@ -5,23 +5,14 @@ locals {
   # restrictions and the CORS origin below are computed from its name rather than the API app's.
   app_name = "kanban-web-${var.env}"
 
-  # Where nginx sends /api, /ws and /v3/api-docs.
-  #
-  # https, not http, and that is measured rather than assumed. A Container App with
-  # external_enabled = false still terminates TLS on its internal ingress and answers plain HTTP
-  # with a 301 to the https form of the same URL - verified against kanban-app-dev on 15 Sep 2026,
-  # which is a redirect nginx would hand straight back to the browser, pointing it at a hostname
-  # only the inside of the environment can resolve. The two ways out are
-  # `allow_insecure_connections = true` on the API app, or speaking TLS to it; this takes the
-  # second, because the certificate the internal ingress presents carries
-  # `*.internal.<environment-domain>` as a SAN, is issued by "Microsoft TLS G2 RSA CA" and verifies
-  # against the stock CA bundle with return code 0 - so nginx can authenticate the hop rather than
-  # merely encrypting it, and nothing here has to declare a connection insecure to make it work.
-  #
-  # The FQDN is composed rather than read from the API app's own `ingress[0].fqdn`, so the two
-  # modules stay independent of each other's resources; the pattern is fixed once the environment
-  # exists. It has to agree with api_app's local.app_name, which is what api_upstream_matches_api_app
-  # in the root module asserts.
+  # Where nginx sends /api, /ws and /v3/api-docs. https, not http: a Container App with
+  # external_enabled = false still terminates TLS on its internal ingress and 301-redirects plain
+  # HTTP to https (verified against kanban-app-dev), which nginx would otherwise hand straight back
+  # to the browser as a hostname it can't resolve. The internal ingress cert carries
+  # `*.internal.<environment-domain>` and verifies against the stock CA bundle, so this authenticates
+  # the hop instead of declaring it insecure. Composed from the fixed name pattern rather than read
+  # from api_app's own output, so the two modules stay independent - `api_upstream_matches_api_app`
+  # in the root module asserts they still agree.
   api_upstream = "https://kanban-api-${var.env}.internal.${var.container_app_env_default_domain}"
 
   ghcr_credentials_configured = var.ghcr_token != ""
@@ -151,13 +142,9 @@ resource "azurerm_user_assigned_identity" "web" {
   resource_group_name = var.resource_group_name
 }
 
-# Scoped to the one secret rather than to the vault, which is the whole reason this is a second
-# identity instead of a reuse of the API app's.
-#
-# The edge needs exactly one thing from Key Vault: the token that pulls its own image. A
-# vault-scoped grant would let the nginx container read the Postgres password and the JWT signing
-# key - a strictly worse posture than the monolith had, arrived at by splitting a deployment for
-# reasons that had nothing to do with secrets.
+# Scoped to the one secret, not the vault - the reason this is a second identity rather than reusing
+# the API app's. The edge needs only the token that pulls its own image; a vault-scoped grant would
+# let nginx read the Postgres password and JWT signing key too.
 resource "azurerm_role_assignment" "ghcr_token_reader" {
   count = local.ghcr_credentials_configured ? 1 : 0
 

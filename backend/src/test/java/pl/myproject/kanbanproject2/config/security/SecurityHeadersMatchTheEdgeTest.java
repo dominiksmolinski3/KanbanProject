@@ -15,28 +15,15 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Fails the build when the edge stops sending what {@link SecurityHeaders} declares.
+ * Fails the build when the edge stops sending what {@link SecurityHeaders} declares. nginx serves
+ * {@code index.html} from its own container now, so a CSP Spring writes reaches nobody on the
+ * document - the policy is one rule living in two files, and this class stops them disagreeing.
  *
- * <p>Splitting the deployment moved the document response. nginx serves {@code index.html} from its
- * own container now, and a {@code Content-Security-Policy} Spring writes reaches nobody on it —
- * which is the response a CSP is actually for. Spring keeps writing the same headers on API and
- * attachment responses, so the policy is one rule living in two files: this class is the thing that
- * stops them disagreeing, the same trade {@code DeadLetterAlertTest} makes against the Terraform
- * and {@code CspMatchesTheClientTest} makes against the client.
- *
- * <p>Two of the assertions here are about nginx rather than about the policy, and both are traps
- * this repository would otherwise hit exactly once:
- *
- * <ul>
- *   <li><b>{@code add_header} does not inherit.</b> A location that adds a header of its own — both
- *       of the file-serving locations add a {@code Cache-Control} — silently discards every header
- *       set at the level above. The shell would then be served with no policy at all, and nothing
- *       about the response would say so. Hence the snippet, and hence the check that every location
- *       adding a header includes it.</li>
- *   <li><b>{@code always}.</b> Without it a header is written on 2xx and 3xx only, so a 404 or a
- *       502 from the edge arrives unprotected — which are exactly the responses an injected script
- *       would like to be framed in.</li>
- * </ul>
+ * <p>Two assertions here are about nginx rather than the policy itself: {@code add_header} does
+ * not inherit into a location that sets a header of its own (both file-serving locations add a
+ * {@code Cache-Control}), which would silently serve the shell with no policy at all unless every
+ * such location includes the snippet; and without {@code always}, a header is written on 2xx/3xx
+ * only, leaving a 404 or 502 from the edge unprotected.
  */
 class SecurityHeadersMatchTheEdgeTest {
 

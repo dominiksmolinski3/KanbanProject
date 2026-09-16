@@ -13,19 +13,14 @@ import org.springframework.context.annotation.Configuration;
 import pl.myproject.kanbanproject2.service.EmailSender;
 
 /**
- * Builds the mail transport from {@link AcsMailProperties}.
- *
- * <p>Mail leaves this application through the Azure Communication Services Email API. It used to
- * leave over SMTP to Gmail, on a connection this package held open and nursed - see the history of
- * {@code PersistentSmtpMailSender} for how much of it there was. The reasons for the change are
- * that the deployment is already on Azure, that a personal Gmail account is not a sending quota
- * anyone should build on, and that an HTTPS request has no session to keep alive in the first
- * place.
+ * Builds the mail transport from {@link AcsMailProperties}. Mail leaves over the Azure
+ * Communication Services Email API rather than the held SMTP connection this replaced, because the
+ * deployment is already on Azure and an HTTPS request has no session to keep alive.
  *
  * <p>With no credentials the bean is a {@link DisabledEmailSender} rather than an absence, so
- * nothing downstream needs to know whether mail is configured. That is a deliberate trade: a
- * deployment that forgets the connection string starts up and silently sends nothing. The startup
- * warning below is the only thing standing between that and a mystery, so it names the properties.
+ * nothing downstream needs to know whether mail is configured - a deployment that forgets the
+ * connection string starts up and silently sends nothing, and the startup warning below naming the
+ * properties is the only thing standing between that and a mystery.
  */
 @Slf4j
 @Configuration

@@ -19,12 +19,9 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 /**
- * Recovering an account, and changing a password from inside one.
- *
- * <p>Until this existed a forgotten password was an unrecoverable account: nothing reset it, and
- * the admin path ({@code PATCH /api/users/{id}}) does not touch the password field either. It is
- * also what the uniform signup response depends on — signup can no longer tell someone they
- * already have an account, so this is the path that has to be able to reach them instead.
+ * Recovering an account, and changing a password from inside one. This is also what the uniform
+ * signup response depends on: signup can no longer tell someone they already have an account, so
+ * this is the path that has to be able to reach them instead.
  */
 @RequiredArgsConstructor
 @Transactional
@@ -47,12 +44,9 @@ public class PasswordResetService {
     private final RefreshTokenService refreshTokenService;
 
     /**
-     * Mails a reset code if the address has an account, and does nothing if it does not.
-     *
-     * <p>Answering differently for the two would make this a membership oracle on an endpoint that
-     * needs no authentication at all — the same reason signup and resend answer uniformly. The
-     * caller is told the same thing either way, and the difference is only ever visible to whoever
-     * reads the mailbox.
+     * Mails a reset code if the address has an account, and does nothing if it does not - answering
+     * differently would make this a membership oracle on an endpoint that needs no authentication
+     * at all, the same reason signup and resend answer uniformly.
      */
     public void requestReset(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
@@ -73,11 +67,9 @@ public class PasswordResetService {
     }
 
     /**
-     * Redeems a reset code and sets the new password.
-     *
-     * <p>Every failure is one status. An unknown address, an unrequested reset, an expired code and
-     * a wrong code are four different facts and one answer, because three of them describe the
-     * account rather than the request.
+     * Redeems a reset code and sets the new password. Every failure is one status - an unknown
+     * address, an unrequested reset, an expired code and a wrong code are four facts and one
+     * answer, since three of them describe the account rather than the request.
      */
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.email())
@@ -98,21 +90,13 @@ public class PasswordResetService {
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         clearResetCode(user);
-        /*
-         * Every session the account had is withdrawn here, and this is the route where it matters
-         * most: somebody resetting a password they did not lose is doing it because another person
-         * has it, and leaving that person's sessions running would mean the reset changed nothing
-         * they were using. What the reset cannot do is retract the access tokens already issued -
-         * those run to their own expiry, which is the reason that expiry is now short.
-         */
+        // Withdraws every session the account had - the route where it matters most, since a
+        // password reset usually means someone else has it. The reset cannot retract access
+        // tokens already issued, which is why that expiry is short.
         refreshTokenService.revokeAllFor(user);
 
-        /*
-         * Redeeming the code proves control of the mailbox, which is the same thing the
-         * verification flow proves and the only thing it proves. Leaving an unverified account
-         * disabled here would strand the one person who has just demonstrated they own it, with
-         * a working password they still cannot use.
-         */
+        // Redeeming the code proves control of the mailbox, the same thing verification proves;
+        // leaving an unverified account disabled would strand someone who just demonstrated that.
         if (!user.isEnabled()) {
             log.info("Password reset completed for an unverified account; enabling it");
             user.setEnabled(true);
@@ -124,13 +108,10 @@ public class PasswordResetService {
     }
 
     /**
-     * Changes the password of the account the caller is already signed in as.
-     *
-     * <p>Requires the current password rather than trusting the token alone. That was a workaround
-     * while a token could not be withdrawn at all; it stays because it is still the right rule for
-     * this one route - knowledge of the password is a stronger claim than possession of a token,
-     * and this is the operation that would let a borrowed one lock the owner out. What has changed
-     * is what happens afterwards: the change now ends every other session the account holds.
+     * Changes the password of the account the caller is already signed in as. Requires the current
+     * password rather than trusting the token alone, since knowledge of the password is a stronger
+     * claim than possession of a token and this is the operation a borrowed one could otherwise use
+     * to lock the owner out.
      */
     public void changePassword(User currentUser, ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
@@ -144,13 +125,8 @@ public class PasswordResetService {
         // A reset in flight is stale the moment the password changes deliberately.
         clearResetCode(user);
         userRepository.save(user);
-        /*
-         * Including the caller's own session. Changing a password is the one moment where signing
-         * everyone out is the point, and there is no way to tell the caller's refresh token from
-         * anybody else's here - the request carries an access token, not a refresh one. The client
-         * asks for a new pair with the new password, which is a login it was going to be shown
-         * anyway.
-         */
+        // Including the caller's own session: there is no way to tell it from anybody else's here,
+        // since the request carries an access token rather than a refresh one.
         refreshTokenService.revokeAllFor(user);
     }
 

@@ -101,25 +101,13 @@ resource "azurerm_key_vault_secret" "postgres_password" {
   key_vault_id = var.key_vault_id
 }
 
-# sslmode=verify-full authenticates the server rather than only encrypting the link, which is the
-# whole point of it over `require`. sslfactory is what makes that work on the JDK, and leaving it
-# out is not a no-op:
-#
-# pgjdbc's default for a verifying mode is LibPQFactory, which follows libpq's convention and reads
-# the root certificate from ~/.postgresql/root.crt on disk. It never consults the JDK trust store.
-# So a container with no such file does not fall back - it refuses to connect at all:
-#
-#   Could not open SSL root certificate file /home/appuser/.postgresql/root.crt
-#   Caused by: java.io.FileNotFoundException: /home/appuser/.postgresql/root.crt
-#
-# Measured on dev, 13 Sep 2026, on the first revision ever to use this connection string: Flyway
-# could not open a connection, the context never built, and the revision reached ActivationFailed.
-# The claim this replaces - "no cert is bundled, Azure's roots are already in the JDK trust store" -
-# was true about the JDK and irrelevant to the driver, which was not reading it.
-#
-# DefaultJavaSSLFactory is what points the driver at the JDK trust store, and there the claim holds:
-# "DigiCert Global Root G2" and "Microsoft RSA Root Certificate Authority 2017" ship in cacerts, so
-# there is still no certificate to bundle, mount or rotate.
+# sslmode=verify-full authenticates the server, not just encrypts the link - which needs sslfactory
+# too: pgjdbc's default verifying factory (LibPQFactory) reads ~/.postgresql/root.crt off disk and
+# never falls back to the JDK trust store, so with no such file it refuses to connect ("Could not
+# open SSL root certificate file"), as measured on dev's first revision using this URL.
+# DefaultJavaSSLFactory points the driver at the JDK trust store instead, where Azure's roots
+# (DigiCert Global Root G2, Microsoft RSA Root CA 2017) already live - so no certificate needs
+# bundling, mounting or rotating.
 resource "azurerm_key_vault_secret" "postgres_connection_string" {
   tags         = var.tags
   name         = "POSTGRES-CONNECTION-STRING"

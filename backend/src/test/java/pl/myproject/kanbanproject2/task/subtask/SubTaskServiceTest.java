@@ -24,11 +24,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@code task/subtask} had no test that reached it at all, which is what held the per-package
- * JaCoCo floor at zero. The two behaviours worth pinning rather than merely executing are the
- * position scoping - the next position comes from the parent task's own subtasks, not from a count
- * of the whole table - and the tri-state patch, where "absent" and "explicitly null" have to stay
- * distinguishable or a body of {@code {"description": ...}} silently un-ticks the subtask.
+ * {@code task/subtask} had no test at all, which held the per-package JaCoCo floor at zero. The
+ * two behaviours worth pinning are position scoping — the next position comes from the parent
+ * task's own subtasks, not a count of the whole table — and the tri-state patch, where "absent"
+ * and "explicitly null" must stay distinguishable or a body of {@code {"description": ...}}
+ * silently un-ticks the subtask.
  */
 class SubTaskServiceTest {
 

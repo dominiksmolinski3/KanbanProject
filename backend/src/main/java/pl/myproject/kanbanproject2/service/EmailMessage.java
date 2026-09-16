@@ -1,14 +1,11 @@
 package pl.myproject.kanbanproject2.service;
 
 /**
- * One message, composed and ready to post: a recipient, a subject, and the same content twice.
- *
- * <p>The two bodies are the point of the record existing at all. Every message this application
- * sends used to be an HTML string built inline at the call site, which meant a client that will
- * not render HTML - a screen reader working from the plain part, a text-only mail client, a spam
- * filter comparing the two - saw either nothing or the markup. A multipart message with an
- * {@code text/plain} alternative is the ordinary shape for transactional mail, and it is a field
- * on the provider's message rather than anything this application has to assemble.
+ * One message, composed and ready to post: a recipient, a subject, and the same content twice. Two
+ * bodies exist because messages used to be an HTML string built inline at the call site, leaving a
+ * client that won't render HTML - a screen reader, a text-only client, a spam filter - seeing
+ * nothing or markup; a multipart message with a {@code text/plain} alternative is the ordinary shape
+ * for transactional mail.
  *
  * <p>Both bodies are required rather than the text one being optional, because an optional
  * alternative part is one that gets left out. {@link MailTemplates} is the only thing that builds

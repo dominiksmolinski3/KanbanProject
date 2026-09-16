@@ -12,47 +12,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Fails the build if the edge stops speaking to the API the way a Container Apps ingress requires.
+ * The edge template is one file used two ways: {@code docker-compose} points it at a bare
+ * container, and the deployment points it at an <em>ingress</em>, which is a router and turns away
+ * two requests a bare container would have accepted - one without SNI, one whose {@code Host}
+ * names a different app. Neither rejection can happen locally, which is why the container split
+ * broke twice in a row on exactly these two lines and passed every suite in this repository both
+ * times: first a 502 on every API call (SNI defaults off, so envoy can't tell which app the TLS
+ * connection is for), then, once SNI was fixed, a 404 that was really the ingress's own
+ * "Unavailable" page because {@code Host} still carried the browser's name instead of
+ * {@code $proxy_host}.
  *
- * <p><b>Why this exists, and why nothing else could have caught it.</b> The edge template is one
- * file used two ways: {@code docker-compose} points it at a bare container
- * ({@code API_UPSTREAM=http://app:8080}) and the deployment points it at an <em>ingress</em>
- * ({@code https://kanban-api-<env>.internal.<env-domain>}). A bare container answers whatever
- * arrives on its port. An ingress is a router, and it turns two requests away that the container
- * would have accepted: one without SNI, and one whose {@code Host} names a different app. Neither
- * rejection can happen locally, which is why the split broke twice in a row on exactly these two
- * lines and passed every suite in this repository both times.
- *
- * <p>So it went wrong exactly there. {@code proxy_ssl_server_name} defaults to <b>off</b>, which
- * means nginx opens TLS to the ingress naming nobody; Container Apps routes by SNI, so envoy cannot
- * tell which app the connection belongs to and resets the handshake. The first apply of the
- * container split produced a perfectly healthy API container, a perfectly healthy edge, a deployed
- * contract sweep that passed every static claim, and a 502 on every single API call:
- *
- * <pre>
- *   peer closed connection in SSL handshake (104: Connection reset by peer)
- *   while SSL handshaking to upstream, upstream: "https://100.100.0.208:443/api/columns"
- * </pre>
- *
- * <p>{@code proxy_ssl_verify} is the other default, and it is the one that would have been worse
- * for being invisible: without it the hop is encrypted and unauthenticated, which is the same trade
- * this deployment refused when it chose {@code sslmode=verify-full} over {@code require} for
- * Postgres. The design note claimed the hop was authenticated. It was not, and nothing said so.
- *
- * <p><b>Then the same shape again, one layer up.</b> With SNI sent, the handshake succeeded and
- * every proxied call answered <b>404</b> — not Spring's 404, but the ingress's own
- * "Azure Container App - Unavailable" page. nginx was forwarding the browser's {@code Host}
- * ({@code kanban-web-<env>…}) to the API app's ingress, which routes by {@code Host} and has no
- * such app. Verified against the real origin: a valid SNI with a deliberately wrong {@code Host}
- * returns that same page, byte for byte. So {@code Host} has to be {@code $proxy_host} — the name
- * the upstream answers to — and the browser's own host moves to {@code X-Forwarded-Host}, which is
- * where anything that wants it should have been reading it anyway.
- *
- * <p>This is deliberately a set of text assertions over the template rather than behavioural ones.
- * A behavioural test needs an https upstream with a real certificate and an ingress that routes by
- * name, which is a network dependency in a suite that has none. Both were verified by hand instead,
- * each with a control: the same image against the same https upstream answers 403 with the TLS
- * directives and 502 without them; and against an upstream that echoes what it received, the fixed
- * image sends {@code Host: <upstream>} where the previous one sent {@code Host: <browser>}.
+ * <p>This is deliberately a set of text assertions over the template rather than behavioural ones -
+ * a behavioural test needs a real https upstream and an ingress that routes by name, a network
+ * dependency this suite has none of. Both directives were verified by hand instead: the same image
+ * against the same https upstream answers 403 with the TLS directives and 502 without them.
  */
 class EdgeUpstreamTest {
 
@@ -114,11 +87,8 @@ class EdgeUpstreamTest {
     }
 
     /**
-     * The template with runs of whitespace collapsed.
-     *
-     * <p>nginx directives in that file are column-aligned, and a guard that breaks when somebody
-     * re-aligns them is a guard people learn to edit rather than obey. What is being asserted is
-     * that the directive is present and set, not how it is spaced.
+     * The template with runs of whitespace collapsed, since the directives in it are column-aligned
+     * and what is being asserted is that a directive is present, not how it is spaced.
      */
     private static String directives() throws IOException {
         assertThat(TEMPLATE).as("the edge template has moved or gone").isRegularFile();

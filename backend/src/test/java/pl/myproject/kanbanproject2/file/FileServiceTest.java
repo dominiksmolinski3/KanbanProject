@@ -23,17 +23,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Who may read an upload, and what counts as one.
+ * Who may read an upload, and what counts as one. The ownership half is the part that matters: file
+ * ids are small sequential integers, so before there was an owner column, {@code GET /api/files/1..n}
+ * walked every upload in the deployment and {@code DELETE} destroyed them — these pin the check onto
+ * every path that reaches a row, and that a row with no owner belongs to nobody.
  *
- * <p>The ownership half is the part that matters. File ids are small sequential integers, so before
- * there was an owner column, {@code GET /api/files/1..n} walked every upload in the deployment and
- * {@code DELETE} destroyed them. The column exists now; these say that the check on it is on every
- * path that reaches a row, and that a row with no owner belongs to nobody rather than to everybody -
- * which is the reading that keeps the pre-migration uploads from being the same hole again.
- *
- * <p>The validation half is ordinary, and covered here because the rules are the only thing
- * standing between a multipart body and the database: an empty file, a traversal in the name, and
- * a missing content type each have to be refused before anything is written.
+ * <p>The validation half is ordinary, covered here because the rules are the only thing standing
+ * between a multipart body and the database.
  */
 class FileServiceTest {
 
