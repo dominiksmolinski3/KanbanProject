@@ -83,23 +83,17 @@ variable "app_image_tag" {
 
 variable "max_replicas" {
   description = <<-EOT
-    Upper bound on API replicas. Defaults to 1, and should stay there until the one remaining
-    piece of in-JVM state is moved out:
+    Upper bound on API replicas. Defaulted to 1 through phase 3 of the container-split plan, while
+    the JVM held state no second replica could see: the outbox relay and the deadline sweep now
+    claim their rows with FOR UPDATE SKIP LOCKED, the auth rate limiter's escalation lives in Redis
+    (see modules/redis and AuthRateLimiter) rather than each replica's own process memory, and
+    WebSocketConfig relays STOMP through a real broker (see modules/broker) instead of holding one
+    in-process - a board event or a chat message published on one replica now reaches a subscriber
+    on another the same way it would from a single JVM.
 
-      * The STOMP broker is registry.enableSimpleBroker("/topic", "/queue") -- in-process. A board
-        event or a chat message published on one replica never reaches a subscriber on another, so
-        boards stop updating for roughly half the people watching them and nothing errors.
-
-    Three others were on this list and are not any more: the outbox relay and the deadline sweep
-    both claim their rows with FOR UPDATE SKIP LOCKED now, so a second replica takes different
-    rows rather than sending the same mail twice, and the auth rate limiter's escalation now lives
-    in Redis (see modules/redis and AuthRateLimiter) rather than in each replica's own process
-    memory.
-
-    Ingress also declares no session affinity, which SockJS's XHR fallback transports need.
-
-    Splitting the containers did not raise this and was never going to: every blocker here is about
-    the JVM, and the edge is the half that got a movable ceiling out of it (see web_max_replicas).
+    Ingress declares no session affinity, which SockJS's XHR fallback transports need - unaffected
+    by this ceiling, since the broker relay is what makes which replica a given subscriber landed
+    on stop mattering.
   EOT
   type        = number
   default     = 1

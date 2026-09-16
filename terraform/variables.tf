@@ -57,7 +57,7 @@ variable "app_image_tag" {
 # into two is most of what phase 2 of the container split is: the edge is free to move and the API
 # is not, and one number could only ever express the stricter of the two.
 variable "api_max_replicas" {
-  description = "Upper bound on API replicas. Keep at 1: the STOMP broker and the auth rate limiter both hold state in the JVM, so a second replica stops board updates reaching half the people watching and multiplies every rate limit. See the module variable of the same name."
+  description = "Upper bound on API replicas. Phase 4 of the container-split plan: safe to raise once all state that used to live in one JVM has moved somewhere every replica can see it - the outbox claim, the deadline sweep claim, AuthRateLimiter's Redis-backed escalation, and the STOMP broker relay. See the module variable of the same name."
   type        = number
   default     = 1
 
