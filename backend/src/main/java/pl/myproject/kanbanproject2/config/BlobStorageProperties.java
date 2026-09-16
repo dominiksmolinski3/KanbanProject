@@ -44,12 +44,25 @@ public record BlobStorageProperties(
         String identityClientId,
 
         /*
-         * How many uploads and downloads may stream through this application at once, each holding
-         * a thread and a buffer for the transfer's duration. A per-JVM Semaphore, not a global one:
-         * at api_max_replicas > 1 the true ceiling is this value times the replica count, so the
-         * name reads "per replica" once a second API replica exists.
+         * How many uploads and downloads may stream through the whole fleet at once, each holding a
+         * thread and a buffer for the transfer's duration. Enforced with a per-JVM Semaphore, so
+         * TaskAttachmentService divides it by {@link #replicaCountHint} before sizing its own
+         * permits - without that division the true ceiling would be this value times the replica
+         * count rather than this value.
          */
         @DefaultValue("8") int maxConcurrentTransfers,
+
+        /*
+         * How many API replicas this deployment currently runs, at most - Terraform passes its own
+         * max_replicas here. Used only to divide maxConcurrentTransfers back down to a real
+         * fleet-wide ceiling: each replica gets an equal share, sized for every replica being busy
+         * at once. That undercounts capacity while the deployment is scaled below this number, which
+         * is the conservative direction to be wrong in. A true fleet-wide bound would need a shared
+         * counter (Redis, the same move AuthRateLimiter's escalation made) rather than division;
+         * this is the cheap version, worth it only because attachment transfers are not the
+         * high-frequency path the rate limiter guards. Defaults to 1, under which this is a no-op.
+         */
+        @DefaultValue("1") int replicaCountHint,
 
         /*
          * A per-board ceiling on how many attachments may exist at once, checked alongside

@@ -32,7 +32,7 @@ class BlobStorageConfigurationTest {
     private static BlobStorageProperties properties(String endpoint, String connectionString,
                                                     String identityClientId) {
         return new BlobStorageProperties(endpoint, connectionString, "task-attachments",
-                identityClientId, 8, 500, 1_073_741_824L);
+                identityClientId, 8, 1, 500, 1_073_741_824L);
     }
 
     @Test
