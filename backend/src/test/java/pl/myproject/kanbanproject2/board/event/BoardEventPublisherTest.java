@@ -59,7 +59,7 @@ class BoardEventPublisherTest {
     void sendsImmediatelyWithNoTransaction() {
         publisher.tasksChanged(board);
 
-        verify(messagingTemplate).convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.TASKS, 7));
+        verify(messagingTemplate).convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
     }
 
     @Test
@@ -74,7 +74,7 @@ class BoardEventPublisherTest {
         verifyNoInteractions(messagingTemplate);
 
         commit();
-        verify(messagingTemplate).convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.TASKS, 7));
+        verify(messagingTemplate).convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
     }
 
     @Test
@@ -99,7 +99,7 @@ class BoardEventPublisherTest {
         }
         commit();
 
-        verify(messagingTemplate).convertAndSend(eq("/topic/boards/7"), any(BoardEvent.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/boards.7"), any(BoardEvent.class));
     }
 
     @Test
@@ -114,9 +114,9 @@ class BoardEventPublisherTest {
         publisher.rowsChanged(other);
         commit();
 
-        verify(messagingTemplate).convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.TASKS, 7));
-        verify(messagingTemplate).convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.COLUMNS, 7));
-        verify(messagingTemplate).convertAndSend("/topic/boards/9", new BoardEvent(BoardEventType.ROWS, 9));
+        verify(messagingTemplate).convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
+        verify(messagingTemplate).convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.COLUMNS, 7));
+        verify(messagingTemplate).convertAndSend("/topic/boards.9", new BoardEvent(BoardEventType.ROWS, 9));
     }
 
     @Test
@@ -133,7 +133,7 @@ class BoardEventPublisherTest {
         publisher.rowsChanged(board);
         commit();
 
-        verify(messagingTemplate).convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.ROWS, 7));
+        verify(messagingTemplate).convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.ROWS, 7));
     }
 
     @Test
@@ -162,7 +162,7 @@ class BoardEventPublisherTest {
         publisher.rowsChanged(board);
 
         verify(messagingTemplate, never())
-                .convertAndSend("/topic/boards/7", new BoardEvent(BoardEventType.TASKS, 7));
+                .convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
     }
 
     /**

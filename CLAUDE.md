@@ -787,10 +787,12 @@ server on a separate host would need a configured URL rather than the page's.
 ### Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'
-screens without a reload. The server announces it on **`/topic/boards/{id}`** and the client
-re-reads; `board/event/` holds the publisher, `config/websocket/BoardSubscriptionInterceptor` holds
-the check on who may listen, and [boardEvents.js](frontend/src/services/boardEvents.js) holds the
-client's own connection.
+screens without a reload. The server announces it on **`/topic/boards.{id}`** — a dot, not a slash:
+the STOMP broker relay forwards the destination to RabbitMQ's STOMP plugin as-is, and RabbitMQ
+parses everything after `/topic/` as one AMQP routing key, refusing the whole destination the
+moment it contains a further `/` — and the client re-reads; `board/event/` holds the publisher,
+`config/websocket/BoardSubscriptionInterceptor` holds the check on who may listen, and
+[boardEvents.js](frontend/src/services/boardEvents.js) holds the client's own connection.
 
 Six decisions carry it, and none of them is visible from the destination name:
 

@@ -19,8 +19,8 @@ import pl.myproject.kanbanproject2.user.User;
 import java.security.Principal;
 
 /**
- * Decides who may listen to a board - the only thing standing between {@code /topic/boards/{id}}
- * and every signed-in account, since the simple broker has no notion of who is allowed on a topic.
+ * Decides who may listen to a board - the only thing standing between {@code /topic/boards.{id}}
+ * and every signed-in account, since the broker has no notion of who is allowed on a topic.
  * Visibility is asked of {@link BoardService}, the same place the REST routes answer it.
  *
  * <p><b>A refused subscription is dropped rather than answered</b>, this application's 404-not-403

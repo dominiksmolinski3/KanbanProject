@@ -57,7 +57,7 @@ describe('BoardEvents', () => {
   it('subscribes to the board it was asked to watch', async () => {
     const { client } = await watch(7);
 
-    expect(client.subscriptions.map((s) => s.destination)).toEqual(['/topic/boards/7']);
+    expect(client.subscriptions.map((s) => s.destination)).toEqual(['/topic/boards.7']);
   });
 
   it('hands the parsed event to the caller', async () => {
@@ -96,8 +96,8 @@ describe('BoardEvents', () => {
     await client.completeConnect();
 
     expect(client.subscriptions.map((s) => s.destination)).toEqual([
-      '/topic/boards/7',
-      '/topic/boards/7',
+      '/topic/boards.7',
+      '/topic/boards.7',
     ]);
   });
 
@@ -108,7 +108,7 @@ describe('BoardEvents', () => {
     events.watch(9, jest.fn());
 
     expect(first.unsubscribe).toHaveBeenCalled();
-    expect(client.subscriptions.at(-1).destination).toBe('/topic/boards/9');
+    expect(client.subscriptions.at(-1).destination).toBe('/topic/boards.9');
     expect(clientInstances).toHaveLength(1);
   });
 

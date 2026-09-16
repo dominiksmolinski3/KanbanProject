@@ -81,7 +81,10 @@ export default class BoardEvents {
     if (!this.client || !this.client.connected || this.boardId == null) {
       return;
     }
-    this.subscription = this.client.subscribe(`/topic/boards/${this.boardId}`, (frame) => {
+    // A dot, not a slash: RabbitMQ's STOMP plugin (the broker relay this now goes through - see
+    // BoardEventPublisher.DESTINATION_PREFIX) parses everything after /topic/ as one routing key,
+    // and a further slash makes the whole destination invalid, refusing the SUBSCRIBE outright.
+    this.subscription = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
       if (!this.onEvent) {
         return;
       }
