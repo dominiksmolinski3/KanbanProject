@@ -14,25 +14,18 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The guard over the one mistake this feature makes easy, and it is a silent one.
+ * The guard over the one mistake this feature makes easy, and it is a silent one: a mutation that
+ * forgets to announce still works, every existing test passes, and the only symptom is
+ * <em>somebody else's</em> browser sitting on a board that is quietly wrong — which no unit test
+ * can see, since there is no second browser in one.
  *
- * <p>A mutation that forgets to announce still works: the row is written, the response is right,
- * every existing test passes, and the caller's own screen updates because it applied the change
- * optimistically. The only symptom is <em>somebody else's</em> browser sitting on a board that is
- * quietly wrong until they reload - which no unit test here can see, because there is no second
- * browser in a unit test.
+ * <p>So the three services funnel every save-and-map through a private {@code saveAndAnnounce}, and
+ * this reads their source and fails when a save-and-map appears outside it — the same
+ * rule-in-two-places shape as {@code DeadLetterAlertTest} and {@code ClientRoutesExistTest}.
  *
- * <p>So the three services funnel every save-and-map through a private {@code saveAndAnnounce},
- * and this reads their source and fails when a save-and-map appears outside it. That turns
- * "somebody forgot a line" into "somebody wrote a different method call", which is a thing a
- * regular expression can see. It is the same shape as {@code DeadLetterAlertTest} and
- * {@code ClientRoutesExistTest}: a rule that lives in two places, checked in the one place that
- * can see both.
- *
- * <p><b>What it cannot see</b>, stated rather than implied: a mutation that neither saves nor maps
- * - a delete, or a change written through a different repository - has to call the publisher by
- * hand, and this only checks that each such file calls it at all, not that every one of its
- * branches does. It is a tripwire on the common shape, not a proof.
+ * <p><b>What it cannot see:</b> a mutation that neither saves nor maps (a delete, or a write through
+ * a different repository) has to call the publisher by hand, and this only checks that such a file
+ * calls it at all, not that every branch does. A tripwire on the common shape, not a proof.
  */
 class BoardEventCoverageTest {
 

@@ -9,20 +9,11 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The three ways refresh tokens could go back to being decorative, checked at build time.
- *
- * <p>The first is a route that is not reachable. {@code /auth/refresh} exists for the caller whose
- * access token has just lapsed, so requiring one would make it useless precisely when it is needed;
- * {@code /auth/logout} has the same problem from the other end, since a session nobody can end is
- * the state this whole change was about.
- *
- * <p>The second is a public route with no limit. Both of these present a secret, which is the shape
- * {@link AuthRateLimitRule#CREDENTIALS} exists for - and the limiter is opt-in by path, so a route
- * is unprotected until somebody lists it.
- *
- * <p>The third is the quiet one: the login response dropping its refresh token. The client would go
- * on signing in and would simply never be able to renew, which reads as "sessions are short" rather
- * than as a bug, and would have looked exactly like the behaviour before this existed.
+ * The three ways refresh tokens could go back to being decorative, checked at build time: a route
+ * that is not reachable ({@code /auth/refresh} and {@code /auth/logout} must stay public, or they
+ * are useless exactly when needed), a public route with no limit (both present a secret, the shape
+ * {@link AuthRateLimitRule#CREDENTIALS} exists for), and the login response quietly dropping its
+ * refresh token, which would read as "sessions are short" rather than as a bug.
  */
 class SessionRoutesTest {
 

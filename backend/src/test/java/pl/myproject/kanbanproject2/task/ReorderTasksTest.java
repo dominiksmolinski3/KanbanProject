@@ -22,17 +22,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Why a batch route exists at all, stated as tests.
- *
- * <p>One PATCH per card was merely wasteful while a lost update was silent. Since the tasks gained
- * a {@code @Version} it is worse than that: a card somebody else moved makes one call a 409, the
- * calls before it stay applied, and the board is left in an order nobody asked for. The batch is
- * one transaction, so the interesting assertions here are about what it refuses rather than about
- * what it renumbers - a request that cannot mean anything must not half-apply either.
- *
- * <p>What these cannot show is the rollback itself: a mocked repository has no transaction to roll
- * back. That the boundary exists is a property of {@code @Transactional} on the service, and the
- * 409 the client sees is pinned by {@code OptimisticLockConflictTest}.
+ * Why a batch route exists at all, stated as tests. One PATCH per card was merely wasteful until
+ * tasks gained a {@code @Version}: now a card somebody else moved makes one call a 409 while the
+ * calls before it stay applied, leaving the board in an order nobody asked for. The batch is one
+ * transaction, so what matters here is what it refuses rather than what it renumbers; what these
+ * tests can't show is the rollback itself, which {@code OptimisticLockConflictTest} pins.
  */
 class ReorderTasksTest {
 

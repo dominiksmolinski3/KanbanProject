@@ -14,13 +14,10 @@ import java.util.Optional;
 public interface BoardRepository extends JpaRepository<Board, Integer> {
 
     /**
-     * Every board {@code user} may see, owned or joined, oldest first.
-     *
-     * <p>{@code DISTINCT} because the membership join multiplies the owner's row by the number of
-     * members. The owner is matched separately from the membership rather than relying on the join
-     * table alone: the owner is a member by definition, and a board whose owner had somehow been
-     * removed from its own member list would otherwise become invisible to the only account that
-     * can repair it.
+     * Every board {@code user} may see, owned or joined, oldest first. {@code DISTINCT} collapses
+     * the duplicate rows the membership join produces per member; the owner is matched separately
+     * so a board whose owner was somehow dropped from the join table doesn't become invisible to
+     * the only account that can fix it.
      */
     @Query("""
             SELECT DISTINCT board FROM Board board

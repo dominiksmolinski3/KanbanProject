@@ -30,14 +30,10 @@ public class RegisterUserDto {
     private CaptchaDto captcha;
 
     /**
-     * The language to mail this account in, as the client's own i18next tag.
-     *
-     * <p>Unvalidated here on purpose, like the captcha above it and for a different reason: an
+     * The language to mail this account in, as the client's own i18next tag. Unvalidated here: an
      * unrecognised tag is a guess that missed rather than a request that is wrong, and
-     * {@code SupportedLocales.normalise} answers it with English. Rejecting a signup because a
-     * browser reported a language this application has no bundle for would be refusing an account
-     * over a detail the person signing up never chose. Setting it deliberately, later, does
-     * answer 400 - see {@code UNSUPPORTED_LOCALE}.
+     * {@code SupportedLocales.normalise} answers it with English rather than refusing the signup.
+     * Setting it deliberately, later, does answer 400 - see {@code UNSUPPORTED_LOCALE}.
      */
     private String locale;
 }

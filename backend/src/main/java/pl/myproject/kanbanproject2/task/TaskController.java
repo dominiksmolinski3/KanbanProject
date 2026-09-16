@@ -43,16 +43,11 @@ public class TaskController {
     }
 
     /**
-     * Finding a task, rather than reading a board.
-     *
-     * <p>Sits above {@code /{id}} in this file and below it in the URL space, which is fine because
-     * a literal segment beats a template one - the same arrangement {@code /daily-focus} and
-     * {@code /get/all/labels} already rely on here.
-     *
-     * <p>{@code boardId} keeps the convention every other listing uses: absent means the board the
-     * caller works on. The rest are facets, all optional, repeatable where they are collections -
-     * {@code ?label=bug&label=ux} - and combined the way a row of filter chips reads. Paging is
-     * this route's alone; see {@code TaskService.searchTasks} for why the board listing has none.
+     * Finding a task, rather than reading a board. Sits above {@code /{id}} in this file because a
+     * literal segment beats a template one — the same arrangement {@code /daily-focus} and
+     * {@code /get/all/labels} rely on. {@code boardId} means the caller's own board when absent;
+     * the rest are optional, repeatable facets, and paging is this route's alone (see
+     * {@code TaskService.searchTasks}).
      */
     @GetMapping("/search")
     public ResponseEntity<TaskSearchResults> searchTasks(
@@ -124,11 +119,9 @@ public class TaskController {
     }
 
     /**
-     * Reorders one cell in a single call, which is what the route above should have been all along.
-     *
-     * <p>Dragging a card sends one PATCH per card in the cell; with a {@code @Version} on the task
-     * a card somebody else moved turns one of those into a 409 and leaves the earlier ones applied.
-     * This is one transaction: the whole order takes, or none of it does and the caller reloads.
+     * Reorders one cell in a single call. Dragging sends one PATCH per card, and with a
+     * {@code @Version} on the task, one card moved elsewhere turns a PATCH into a 409 while earlier
+     * ones stay applied; this is one transaction, so the whole order takes or none of it does.
      */
     @PatchMapping("/positions")
     public ResponseEntity<List<TaskDto>> reorderTasks(

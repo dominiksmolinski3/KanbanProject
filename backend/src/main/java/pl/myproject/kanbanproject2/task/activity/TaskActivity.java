@@ -20,21 +20,12 @@ import pl.myproject.kanbanproject2.user.User;
 import java.time.LocalDateTime;
 
 /**
- * One thing that happened to one task, and who did it.
- *
- * <p>{@code task_column_history} already records moves, and this does not replace it. The two
- * answer different questions and are shaped for them: the history table is an <em>interval</em>
- * series - one row per arrival, ordered, folded by the task panel into "how long in each column" -
- * and it has never recorded <b>who</b>. An activity feed with no actor is not an activity feed, so
- * that column is the reason this table exists rather than a query over the other one. Both are
- * written from the same method in {@code TaskService}, which is the only thing keeping them from
- * drifting.
- *
- * <p><b>Two fields are copies on purpose.</b> {@code taskTitle} and {@code actorName} are what
- * they were when the entry was written, exactly as {@code TaskColumnHistory.columnName} is. An
- * event log that resolved names on read would show a renamed task under its new title in an entry
- * about the old one - and, worse, would have nothing at all to show once the task is deleted,
- * which is precisely the entry nobody can afford to lose.
+ * One thing that happened to one task, and who did it. {@code task_column_history} already
+ * records moves as an interval series with no actor, so it doesn't replace this table — both are
+ * written from the same method in {@code TaskService}, which is what keeps them from drifting.
+ * {@code taskTitle} and {@code actorName} are copies rather than references, since an entry that
+ * resolved names on read would misrepresent a renamed task and lose everything once the task
+ * itself is deleted.
  */
 @NoArgsConstructor
 @Setter
@@ -88,10 +79,9 @@ public class TaskActivity {
     }
 
     /**
-     * A task has no NOT NULL on its title, and an untitled card is a real thing a person can make.
-     * The column here is not null because an entry with no subject is unreadable, so the stand-in
-     * is chosen at write time - and it is a marker rather than a sentence, because the client
-     * writes the sentence in whichever of nine languages it is showing.
+     * A task has no NOT NULL on its title, so the stand-in is chosen at write time — a marker
+     * rather than a sentence, since the client renders it in whichever of nine languages it's
+     * showing.
      */
     private static String titleOf(Task task) {
         String title = task == null ? null : task.getTitle();

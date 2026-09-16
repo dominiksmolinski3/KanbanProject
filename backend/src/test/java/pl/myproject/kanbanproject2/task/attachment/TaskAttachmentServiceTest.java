@@ -46,21 +46,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * Who may attach a file, who may read one back, and what happens to the bytes when a row goes.
- *
- * <p>Three things are being pinned here, and they are the three that would be expensive to get
- * wrong.
- *
- * <p><b>The task is the only thing that grants access.</b> An attachment has no board of its own,
- * so every path has to reach one through the task - and a task on somebody else's board must answer
- * as a task that does not exist. The nested id case is the subtle one: an attachment id from
- * another board, presented under a task the caller <em>does</em> own, has to be a 404 rather than a
- * hit, or the task in the path is decoration.
- *
- * <p><b>The blob and the row are two systems and the order between them is a choice.</b> These say
- * which failure the code chose: an orphaned blob, never a row whose bytes are gone.
- *
- * <p><b>An unconfigured store refuses rather than pretends.</b> That is the state CI and a fresh
- * clone run in, and it has to be a clear 503 rather than a row pointing at nothing.
+ * The task is the only thing that grants access — an attachment has no board of its own, so an
+ * attachment id from another board, presented under a task the caller does own, must be a 404 or
+ * the task in the path is decoration. The blob and the row are two systems whose write order
+ * chooses which failure is possible: an orphaned blob, never a row whose bytes are gone. An
+ * unconfigured store — the state CI and a fresh clone run in — refuses with a clear 503 rather
+ * than pretending.
  */
 class TaskAttachmentServiceTest {
 

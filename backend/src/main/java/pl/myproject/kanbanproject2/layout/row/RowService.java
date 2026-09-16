@@ -48,11 +48,6 @@ public class RowService {
     }
 
     /**
-     * The next free position on this board, taken from the highest one in use rather than from a
-     * row count. A count drops after any delete, so the next create hands out a position that is
-     * still taken, and two concurrent creates read the same count.
-     */
-    /**
      * Saves a row, tells the board's other viewers, and maps it. See
      * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
      */
@@ -62,6 +57,11 @@ public class RowService {
         return rowMapper.apply(saved);
     }
 
+    /**
+     * The next free position on this board, taken from the highest one in use rather than from a
+     * row count, since a count drops after any delete and two concurrent creates would read the
+     * same one.
+     */
     private int nextPosition(Board board) {
         return rowRepository.findMaxPosition(board).orElse(0) + 1;
     }

@@ -14,28 +14,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The three things that make the outbox safe at more than one replica, none of which any other test
- * in this suite can see.
- *
- * <p>Every suite here mocks {@link OutboxEmailRepository}, so the claim query's text reaches nothing
- * that could object to it. {@code QueryStringsResolveTest} compiles the hand-written HQL and skips
- * native queries deliberately - it has no parser for SQL and Hibernate would need a database to
- * check one. So the query is a string that runs for the first time in a deployment, and what it
- * <em>says</em> is worth pinning even though what it <em>does</em> is not checkable from here.
- *
- * <p>Losing any of the three is silent and looks like nothing at one replica, which is the whole
- * problem:
+ * in this suite can see: every other suite mocks {@link OutboxEmailRepository}, and
+ * {@code QueryStringsResolveTest} skips native queries deliberately, so this query text runs for the
+ * first time in a real deployment. Losing any of the three is silent at one replica:
  *
  * <ul>
- *   <li><b>{@code FOR UPDATE SKIP LOCKED}.</b> Without the lock, two relays select the same rows
- *       and every message goes out twice. Without {@code SKIP LOCKED}, the second relay blocks
- *       behind the first instead of working - correct, and a queue that drains at one replica's
- *       speed however many are running.</li>
- *   <li><b>A transaction around the claim.</b> The lock is released when the transaction ends, so
- *       a select and a mark in two transactions leave a window in which both relays see
- *       {@code PENDING}. The lock would be doing nothing at all.</li>
+ *   <li><b>{@code FOR UPDATE SKIP LOCKED}.</b> Without the lock, two relays select the same rows and
+ *       every message goes out twice; without {@code SKIP LOCKED}, the second relay blocks behind
+ *       the first instead of working, draining at one replica's speed however many are running.</li>
+ *   <li><b>A transaction around the claim.</b> The lock releases at transaction end, so splitting
+ *       the select and the mark into two transactions leaves a window where both relays see
+ *       {@code PENDING} - the lock does nothing.</li>
  *   <li><b>Public methods.</b> Spring's {@code AnnotationTransactionAttributeSource} considers
- *       public methods only; {@code @Transactional} on a package-private one is ignored without a
- *       word, which is the previous point with no code change to notice.</li>
+ *       public methods only; {@code @Transactional} on a package-private one is silently ignored.</li>
  * </ul>
  */
 class OutboxClaimQueryTest {

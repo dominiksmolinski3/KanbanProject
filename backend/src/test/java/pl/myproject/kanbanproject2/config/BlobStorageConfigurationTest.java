@@ -8,16 +8,12 @@ import pl.myproject.kanbanproject2.storage.DisabledBlobStore;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Which store a given configuration produces, decided without an Azure account.
- *
- * <p>Wiring is the part of this feature nothing else can check. The credential choice in particular
- * has no compiler on either side: a deployment that names a user-assigned identity and gets
- * {@code DefaultAzureCredential} anyway fails at the first upload with an authentication error that
- * says nothing about which identity it tried, and only on a container that is already running.
- *
- * <p>Everything here is local. The one case that reaches the network - the container check on
- * startup - is pointed at a closed port on purpose, because what is being asserted is that a
- * storage account it cannot reach costs the deployment its uploads and not its ability to start.
+ * Which store a given configuration produces, decided without an Azure account. The credential
+ * choice has no compiler on either side: a deployment naming a user-assigned identity but getting
+ * {@code DefaultAzureCredential} instead fails only at the first upload, on a container already
+ * running. The one case that reaches the network - the container check on startup - is pointed at
+ * a closed port on purpose, asserting that an unreachable account costs uploads, not the ability
+ * to start.
  */
 class BlobStorageConfigurationTest {
 

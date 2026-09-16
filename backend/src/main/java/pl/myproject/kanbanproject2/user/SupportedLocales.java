@@ -5,22 +5,15 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * The languages an account can be set to, and the one thing that decides what counts as one.
+ * The languages an account can be set to, and the one thing that decides what counts as one. These
+ * are the nine directories under {@code frontend/public/locales}, kept in step by
+ * {@code SupportedLocalesMatchClientTest}, since adding a tenth bundle is a directory and a dropdown
+ * entry that no compiler connects to this file.
  *
- * <p>These are the nine directories under {@code frontend/public/locales} - the bundles
- * {@code i18next-http-backend} loads at runtime - and they are the same nine because a language
- * the screen speaks and the mail does not is the gap this exists to close.
- * {@code SupportedLocalesMatchClientTest} reads that directory and fails the build when the two
- * lists drift, which is the only thing that can: adding a tenth bundle is a directory and a
- * dropdown entry, neither of which any compiler connects to this file.
- *
- * <p>{@link #normalise} is deliberately forgiving in one direction and strict in the other.
- * Anything that names a supported language is taken - {@code "pl"}, {@code "PL"},
- * {@code "pl-PL"}, {@code "pl_PL"} all mean Polish, because a browser tag arrives in whichever
- * of those shapes the browser feels like - while anything else is rejected rather than silently
- * turned into English. The two callers want opposite things from that: signup falls back to
- * {@link #DEFAULT} for an unrecognised browser, and the account setting answers 400, because one
- * is a guess and the other is somebody's explicit choice.
+ * <p>{@link #normalise} is forgiving on the shape of a tag ({@code "pl"}, {@code "PL"},
+ * {@code "pl-PL"}, {@code "pl_PL"} all mean Polish) but strict on whether it names a supported
+ * language at all: signup falls back to {@link #DEFAULT} for a guess, while the account setting
+ * answers 400 for somebody's explicit, unrecognised choice.
  */
 public final class SupportedLocales {
 
@@ -45,11 +38,8 @@ public final class SupportedLocales {
 
     /**
      * The stored form of a tag: its language subtag, lower-cased, or {@link #DEFAULT} when the tag
-     * names no language this application has messages for.
-     *
-     * <p>Only the language is kept. Nine bundles with no regional variants between them means
-     * {@code "de-AT"} and {@code "de-DE"} would select the same messages, and a column holding the
-     * distinction anyway is a column that invites somebody to believe it is honoured.
+     * names no language this application has messages for. Only the language is kept, since no
+     * bundle here has a regional variant to distinguish {@code "de-AT"} from {@code "de-DE"}.
      */
     public static String normalise(String tag) {
         String language = languageOf(tag);
@@ -63,12 +53,8 @@ public final class SupportedLocales {
 
     /**
      * The first tag in a browser's {@code Accept-Language} list that names a language we have, or
-     * {@code null} when it names none.
-     *
-     * <p>Quality values are ignored on purpose: they order preferences a browser sends in
-     * preference order anyway, and parsing them properly is more code than the one place this is
-     * called for is worth. What it is called for is a better first guess at signup than
-     * {@link #DEFAULT}, and it is overwritten the moment anybody says otherwise.
+     * {@code null} when it names none. Quality values are ignored — parsing them properly is more
+     * code than this one-time guess at signup is worth.
      */
     public static String fromAcceptLanguage(String header) {
         if (header == null || header.isBlank()) {

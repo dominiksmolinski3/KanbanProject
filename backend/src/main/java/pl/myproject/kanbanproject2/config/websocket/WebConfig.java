@@ -22,23 +22,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * Puts every REST endpoint under {@code /api} from one place, so no controller carries the
-     * prefix itself and none can be added without it.
-     *
-     * <p>This is what keeps the API off the paths React Router owns: the SPA serves {@code /board}
-     * and {@code /users}, and before the prefix existed {@code /users} resolved to
-     * {@link pl.myproject.kanbanproject2.user.UserController} instead of the page. It also means
-     * the Vite dev proxy needs a single {@code /api} entry rather than one per top-level route.
-     *
-     * <p>The predicate matches {@code @RestController} only, so the STOMP destinations on
-     * {@code ChatController} — a plain {@code @Controller} — are left alone.
-     *
-     * <p>It is also scoped to {@link #PRODUCTION_PACKAGE}, which matters the moment a library
-     * contributes a controller of its own. springdoc's {@code OpenApiWebMvcResource} is a
-     * {@code @RestController}, so an unscoped predicate quietly moves the published contract from
-     * {@code /v3/api-docs} to {@code /api/v3/api-docs} — a path no generator, no scanner and no
-     * reader of the springdoc documentation would think to ask for. The prefix exists to keep
-     * <em>this</em> API off React Router's paths; relocating somebody else's endpoint is not part
-     * of that job.
+     * prefix itself. This keeps the API off the paths React Router owns — before the prefix,
+     * {@code /users} resolved to {@link pl.myproject.kanbanproject2.user.UserController} instead of
+     * the page. Scoped to {@link #PRODUCTION_PACKAGE} as well as {@code @RestController}, or an
+     * unscoped predicate would quietly move springdoc's own {@code @RestController} contract from
+     * {@code /v3/api-docs} to {@code /api/v3/api-docs}.
      */
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
@@ -46,14 +34,11 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * Package-visible so {@code ApiPathPrefixTest} can ask it about a class directly.
-     *
-     * <p>Composed with {@code and} rather than built from one {@link HandlerTypePredicate}, because
-     * that builder's selectors are <em>alternatives</em>: {@code .annotation(X).basePackage(Y)}
-     * matches anything annotated {@code X} <strong>or</strong> anything under {@code Y}, which here
-     * would prefix {@code ChatController} - a plain {@code @Controller} in this package - and
-     * rewrite the STOMP destinations the browser subscribes to. The existing cases in
-     * {@code ApiPathPrefixTest} caught that on the first run, which is what they are for.
+     * Package-visible so {@code ApiPathPrefixTest} can ask it about a class directly. Composed with
+     * {@code and} rather than built from one {@link HandlerTypePredicate}, because that builder's
+     * selectors are <em>alternatives</em>: {@code .annotation(X).basePackage(Y)} means X
+     * <strong>or</strong> Y, which would prefix {@code ChatController} and rewrite the STOMP
+     * destinations the browser subscribes to.
      */
     static Predicate<Class<?>> prefixedControllers() {
         return HandlerTypePredicate.forAnnotation(RestController.class)

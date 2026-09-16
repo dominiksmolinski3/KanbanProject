@@ -15,13 +15,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
- * Two things are worth pinning here, and neither is that mail gets sent.
- *
- * <p>The first is that each named send composes its own message and posts exactly one of them -
- * this class is the composing half of the seam, and a caller that produced two mails from one call
- * would find out from a user. The second is that a refusal from the transport reaches the caller:
- * {@code AuthenticationService} and {@code PasswordResetService} both turn it into {@code
- * EMAIL_SEND_FAILED}, which they can only do if it gets past this class.
+ * Two things are worth pinning here, and neither is that mail gets sent: each named send composes
+ * its own message and posts exactly one of them, and a refusal from the transport reaches the caller
+ * - {@code AuthenticationService} and {@code PasswordResetService} both turn it into
+ * {@code EMAIL_SEND_FAILED}, which they can only do if it gets past this class.
  */
 class EmailServiceTest {
 

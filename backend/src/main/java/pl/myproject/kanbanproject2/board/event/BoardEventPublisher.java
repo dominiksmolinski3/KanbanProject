@@ -13,29 +13,21 @@ import java.util.Set;
 
 /**
  * Tells a board's other viewers that it changed, so they re-read it instead of sitting on a screen
- * that is quietly wrong.
+ * that is quietly wrong. Shaped after
+ * {@link pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder} and keeps its rule:
+ * <b>this never throws</b> — a board with no id, or a broker that refuses the frame, is a viewer
+ * who finds out a little later, not a move that gets rejected.
  *
- * <p>Shaped after {@link pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder}, which is
- * called from the same places for the same reason, and it keeps that class's rule: <b>this never
- * throws.</b> A broadcast is a side effect of somebody else's operation, and a side effect that can
- * throw turns a failed notification into a failed edit. A board with no id, or a broker that
- * refuses the frame, is a viewer who finds out a little later - not a move that is rejected.
+ * <p><b>The frame is sent after the commit</b>, or a subscriber's re-read could win the race against
+ * the commit and read stale state permanently, having already spent its one notification; the same
+ * ordering means a rolled-back transaction broadcasts nothing.
  *
- * <p><b>The frame is sent after the commit, and that is correctness rather than tidiness.</b>
- * Published inside the transaction, a frame can reach a subscriber whose {@code GET} then wins the
- * race against the commit and reads the state from <em>before</em> the change. That client is not
- * briefly stale, it is permanently stale: it has already spent the only notification it was going
- * to get. The same ordering means a transaction that rolls back broadcasts nothing, so an edit the
- * server refused does not send every other viewer to re-read a board that never changed.
+ * <p><b>One frame per board per transaction, however many rows moved</b> — events are collected
+ * against the transaction and sent once at the end, so reordering twelve cards doesn't send twelve
+ * frames for a burst the client would coalesce into one re-read anyway.
  *
- * <p><b>One frame per board per transaction, however many rows moved.</b> Reordering a cell of
- * twelve cards saves twelve tasks; the subscribers' answer to all twelve is the same single
- * re-read, so the events are collected against the transaction and sent once at the end. Without
- * that, the busiest operation on the board would be the noisiest one on the wire.
- *
- * <p>Outside a transaction the frame goes immediately, because there is no commit to wait for.
- * That is a case tests exercise and the application does not reach: every service method here that
- * changes anything is {@code @Transactional}.
+ * <p>Outside a transaction the frame goes immediately; the application never hits this since every
+ * mutating service method here is {@code @Transactional}.
  */
 @Component
 @RequiredArgsConstructor

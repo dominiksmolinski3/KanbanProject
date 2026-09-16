@@ -10,14 +10,11 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 /**
- * The read side of the feed: one board, newest first, paged.
- *
- * <p>Paged for the reason the search route is and the board listing is not. A board renders every
- * card it has and is bounded by what a team will put on one; a feed is bounded by nothing at all -
- * it only ever grows, and a board a year old would return a year of entries to draw twenty of
- * them. So the same numbers and the same refusal: 25 by default, {@link #MAX_PAGE_SIZE} at most,
- * and asking for more is a {@code 400} rather than a silent clamp, because a caller handed fewer
- * rows than it asked for cannot tell that from a short last page.
+ * The read side of the feed: one board, newest first, paged for the reason the search route is
+ * and the board listing is not — a feed only grows, unlike a board bounded by what a team puts on
+ * it. Same numbers and refusal as search: 25 by default, {@link #MAX_PAGE_SIZE} at most, and
+ * asking for more is a {@code 400} rather than a silent clamp, since a caller can't tell that from
+ * a short last page.
  */
 @RequiredArgsConstructor
 @Transactional

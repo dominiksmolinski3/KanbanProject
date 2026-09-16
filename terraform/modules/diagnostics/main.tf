@@ -279,25 +279,15 @@ resource "azurerm_monitor_metric_alert" "postgres_connections" {
   }
 }
 
+# The one alert here that reads a log line rather than a metric - the failure it watches has no
+# metric. A message refused 5 times becomes an `email_outbox` row with status = 'FAILED' (before the
+# outbox this was a 500 on /api/auth/register, which http_5xx already covers); moving the send off
+# the request thread moved that signal with it.
 #
-# The one alert here that reads a log line rather than a metric, because the failure it watches for
-# does not have a metric.
+# Matches OutboxRelay.DEAD_LETTER_MARKER (MAIL_DEAD_LETTER), a token rather than a log phrase so a
+# reworded sentence can't silently stop the match. DeadLetterAlertTest pins the two strings together.
 #
-# A message the mail provider refuses five times ends up as an `email_outbox` row with
-# status = 'FAILED', and before the outbox landed that same refusal was a 500 on /api/auth/register
-# - which the http_5xx alert above already fires on. Moving the send off the request thread moved
-# that signal with it, so this puts it back. What it costs a person who cannot verify their account
-# is identical either way; only the thing that notices changed.
-#
-# It matches OutboxRelay.DEAD_LETTER_MARKER, a token the relay logs precisely so that something
-# outside the process can find the line. Matching a phrase from the sentence would work until
-# somebody reworded the sentence, at which point the alert would stop firing and nothing would
-# fail. DeadLetterAlertTest reads this file and fails the build if the two strings stop agreeing.
-#
-# ContainerAppConsoleLogs_CL is the app's own stdout: the environment ships it here because
-# azurerm_container_app_environment.main sets log_analytics_workspace_id, and this workspace has
-# one application writing to it.
-#
+# ContainerAppConsoleLogs_CL is the app's own stdout, shipped here by the diagnostic setting below.
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
   count               = var.alert_email != "" ? 1 : 0
   tags                = var.tags
@@ -331,12 +321,9 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
     action_groups = [azurerm_monitor_action_group.main[0].id]
   }
 
-  # ContainerAppConsoleLogs_CL is a custom log table: Azure Monitor only creates its schema once
-  # the container app has actually shipped a log line through the diagnostic setting below, so a
-  # rule querying it can't validate until both exist and at least one log has landed. Waiting on
-  # the diagnostic setting orders this after the plumbing exists; on a genuinely first-ever apply
-  # (no prior revision has logged anything yet) the table itself can still be missing for a few
-  # minutes after the app starts, and this resource needs a re-apply once it has.
+  # ContainerAppConsoleLogs_CL is a custom log table Azure Monitor creates only after the app has
+  # shipped a log line through the diagnostic setting - so this depends on that setting, and a
+  # genuinely first-ever apply may still need a re-apply once the table exists.
   depends_on = [azurerm_monitor_diagnostic_setting.container_app]
 }
 
@@ -402,56 +389,25 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
   depends_on = [azurerm_monitor_diagnostic_setting.acs]
 }
 
+# Delivery reports: closes the gap where email_outbox only ever knew "the provider took it" (V10),
+# never what happened after. Event Grid publishes a report per recipient naming the message by the
+# id EmailSender.send returns, and MailDeliveryReportController writes the outcome onto that row.
 #
-# Delivery reports, pushed to the application rather than only landing in a log table.
+# Gating is deliberate: off unless mail_delivery_report_key is set (an unchosen key would be a
+# public write endpoint); the webhook URL is assembled here from the container app's own FQDN and
+# that same key rather than pasted in, so they can't be configured into disagreeing; and only the
+# delivery-report event type is included, not the ACS topic's SMS/chat/engagement-tracking events.
 #
-# The alert above tells a person when a message bounces. That is the operator's half and it is the
-# half that was built first, because it needed no application change at all. What it cannot do is
-# tell the application: `email_outbox` has said "the provider took it" since V10 and nothing more,
-# so a row for a mail that bounced an hour ago still reads exactly like a row for one that arrived.
+# Ordering constraint against the app itself, not just other Terraform: Event Grid validates the
+# endpoint at creation and refuses a subscription that doesn't answer, so the app must already be
+# deployed and serving.
 #
-# Event Grid closes that. Azure publishes a delivery report per recipient naming the message by the
-# id the send returned, and MailDeliveryReportController writes it back onto the row that id came
-# from. Two resources: a system topic on the Communication Services resource, which is where Azure
-# publishes from, and one subscription pointing at this deployment's own webhook.
-#
-# Three things about the gating are deliberate:
-#
-#   * It is off unless mail_delivery_report_key is set, exactly like the bounce alert is off unless
-#     acs_communication_service_id is. A key nobody has chosen would be a public write endpoint.
-#   * The URL is built here from the container app's own FQDN and that same key, rather than being
-#     a variable somebody pastes. A URL and a key configured separately are two things that can
-#     disagree, and the failure when they do is a subscription that exists and delivers nothing.
-#   * Only the delivery-report event type is included. The Communication Services topic also
-#     publishes SMS, chat and engagement-tracking events, none of which this endpoint is for, and
-#     a subscription that received them would be asking the application to ignore traffic it never
-#     needed to see.
-#
-# What this cannot do is apply before the application is deployed and serving. Event Grid performs
-# a validation handshake against the URL at creation time and refuses to create a subscription
-# whose endpoint does not answer it - so this resource is the one piece of the deployment with an
-# ordering constraint against the app itself, rather than only against other Terraform.
-#
-# The group the system topic has to live in, which is the ACS resource's own and not this
-# deployment's.
-#
-#   InvalidRequest: System topic resource group must match with source resource group.
-#
-# The Communication Services resource is created by hand, outside Terraform and outside this
-# deployment's resource group - `acs-kanbanproject` sits in `rg-kanbanproject` while dev is
-# `kanban-dev-rg` - so `var.resource_group_name` is the one value it is guaranteed not to be.
-# Reading the group out of the id Terraform is already given is the same argument the webhook URL
-# is built on: a group configured separately from the resource it must match is two things that can
-# disagree, and the failure when they do is an apply that stops halfway.
-#
-# So Terraform writes two resources into a resource group it does not own. That is not a choice
-# this module gets to make - Azure refuses any other arrangement - and it is worth knowing before
-# a second environment points at the same Communication Services resource, because these two would
-# then be sharing a group with another environment's pair.
-#
-# An ARM id is /subscriptions/<sub>/resourceGroups/<rg>/providers/..., so element 4 of the split is
-# the group. `try` keeps a malformed id from failing with a message about a list index instead of
-# about the id, and the precondition below says what is actually wrong.
+# The system topic must live in the ACS resource's own resource group, not this deployment's -
+# Azure rejects anything else ("System topic resource group must match with source resource group").
+# The Communication Services resource is created by hand outside this deployment's group, so both
+# Event Grid resources land in a group Terraform does not own; a second environment sharing the same
+# ACS resource would share this group with its pair too. `try` on the id's 4th segment (the group)
+# avoids a "list index" error on a malformed id in favor of the precondition's own message.
 locals {
   acs_resource_group = try(split("/", var.acs_communication_service_id)[4], "")
 }
@@ -489,17 +445,10 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "mail_delivery_repo
   webhook_endpoint {
     url = "${var.container_app_url}/api/mail/delivery-reports?key=${var.mail_delivery_report_key}"
 
-    # Azure's own defaults, written down because leaving them out does not mean "leave them alone".
-    # Event Grid fills them in at creation - 1 and 64 - and Terraform then reads back two values the
-    # configuration does not set, so every subsequent plan proposes setting them to null and every
-    # apply puts them back. The result is a deployment that can never report "no changes" again,
-    # which is worse than it sounds: `terraform plan` is the only thing this project has that says
-    # whether an environment matches its description, and a permanent one-resource diff is how
-    # people learn to skim it.
-    #
-    # One report per delivery attempt is also what the endpoint is written for: the controller
-    # takes a batch, but the ordering rule that makes a later report win is per-row and per-clock,
-    # not per-batch, so batching buys nothing here and costs the retry granularity.
+    # Azure's own defaults (1, 64), written down explicitly - leaving them out doesn't mean "leave
+    # them alone": Event Grid fills them in at creation, so Terraform would read back values the
+    # config never set and every plan would propose nulling them, forever. One report per attempt
+    # also matches the endpoint: the last-report-wins rule is per-row and per-clock, not per-batch.
     max_events_per_batch              = 1
     preferred_batch_size_in_kilobytes = 64
   }

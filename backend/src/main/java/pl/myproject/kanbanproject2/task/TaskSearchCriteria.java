@@ -8,21 +8,12 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * What a caller asked to find, normalised once so the service and the query agree about it.
- *
- * <p>Every field is optional and an absent one is not a filter - so criteria with nothing set match
- * the whole board, which is what an empty search box should do. The facets combine with AND across
- * kinds and OR within one: a search for two labels and one assignee finds the tasks that carry
- * <em>either</em> label <em>and</em> have that person on them. That is how a person reads a row of
- * filter chips, and the alternative - AND within a facet - makes a second chip almost always narrow
- * the result to nothing.
- *
- * <p><b>The page size is bounded here rather than clamped.</b> PERF-02 asked for a decision about
- * what "large enough" means before somebody found out the hard way; this is it. {@value
- * #DEFAULT_PAGE_SIZE} is a screenful, {@value #MAX_PAGE_SIZE} is the most a caller may ask for, and
- * asking for more is a {@code 400} rather than a silent {@value #MAX_PAGE_SIZE}. Serving something
- * other than what was asked for is how a client ends up paging through a list it believes it has
- * already read.
+ * What a caller asked to find, normalised once so the service and the query agree about it. Every
+ * field is optional, and facets combine with AND across kinds but OR within one — two labels and
+ * one assignee finds tasks with either label <em>and</em> that assignee, the way a row of filter
+ * chips reads. The page size is bounded rather than clamped (PERF-02): {@value #DEFAULT_PAGE_SIZE}
+ * default, {@value #MAX_PAGE_SIZE} max, and asking for more is a {@code 400} rather than a silent
+ * clamp that would leave a client paging through a list it believes it already read.
  */
 public record TaskSearchCriteria(String text,
                                  Set<String> labels,
@@ -37,22 +28,15 @@ public record TaskSearchCriteria(String text,
     public static final int DEFAULT_PAGE_SIZE = 25;
 
     /**
-     * The most one request may ask for.
-     *
-     * <p>A hundred rows is far more than a person reads at once and still a bounded amount of work
-     * for the two queries behind it. The point of the ceiling is not the rendering cost - it is
-     * that without one, {@code size} is a caller-chosen multiplier on how much of the database a
-     * single request can make the server assemble.
+     * The most one request may ask for — not for the rendering cost, but because without a
+     * ceiling, {@code size} is a caller-chosen multiplier on how much of the database a single
+     * request can make the server assemble.
      */
     public static final int MAX_PAGE_SIZE = 100;
 
     /**
-     * The escape character for the {@code LIKE} pattern.
-     *
-     * <p>Not a backslash: this has to survive being written as a JPQL string literal next to the
-     * pattern it applies to, and a backslash in a literal is a quoting question in every layer it
-     * passes through. An exclamation mark has no meaning to either JPQL or SQL and needs no
-     * quoting.
+     * The escape character for the {@code LIKE} pattern. Not a backslash, since that's a quoting
+     * question in a JPQL string literal; an exclamation mark needs no quoting in JPQL or SQL.
      */
     static final char LIKE_ESCAPE = '!';
 
@@ -100,13 +84,9 @@ public record TaskSearchCriteria(String text,
     }
 
     /**
-     * The free-text filter as a {@code LIKE} pattern, or {@code null} for "no text filter".
-     *
-     * <p><b>The wildcards a person typed are escaped rather than honoured.</b> Searching for
-     * {@code 100%} without this builds the pattern {@code %100%%}, which matches every task on the
-     * board and reads as a search that has quietly stopped working; {@code _} is the same mistake
-     * one character wide. Lower-cased here because the query compares against a lower-cased title -
-     * doing it in the pattern is one call rather than one per row.
+     * The free-text filter as a {@code LIKE} pattern, or {@code null} for none. Wildcards a person
+     * typed are escaped rather than honoured — without it, searching {@code 100%} matches every
+     * task on the board. Lower-cased here, since doing it once in the pattern beats once per row.
      */
     String likePattern() {
         if (text == null) {
@@ -122,23 +102,11 @@ public record TaskSearchCriteria(String text,
         return "%" + escaped + "%";
     }
 
-    /*
-     * Binds for a filter that is switched off, and the reason none of them may be null.
-     *
-     * Every optional filter in the search query is a boolean flag plus a value, rather than the
-     * `:param IS NULL OR ...` form used elsewhere in this repository. That form does not survive
-     * contact with PostgreSQL here: a parameter whose *only* appearance is `? IS NULL` gives the
-     * planner nothing to infer a type from, and the query dies at runtime with
-     * `could not determine data type of parameter $7`. It works in `findMaxPosition` only because
-     * every parameter there is also compared against a typed column in the same clause.
-     *
-     * Nothing above sees it, either: the mapping-level guard compiles HQL rather than running the
-     * SQL, and every unit test here mocks the repository. It was found by running a search against
-     * a real database and by nothing else.
-     *
-     * So each of these hands back something typed and non-null when its facet is off. What that
-     * something is cannot matter, because the flag beside it already makes the whole clause true.
-     */
+    // Binds for a filter that's switched off. Each is a boolean flag plus a typed, non-null value
+    // rather than the `:param IS NULL OR ...` form used elsewhere, since a parameter appearing only
+    // as `? IS NULL` gives PostgreSQL nothing to infer a type from and fails at runtime — found
+    // only by running a search against a real database. What the value is doesn't matter, since the
+    // flag beside it already makes the whole clause true.
     private static final LocalDateTime UNFILTERED_INSTANT = LocalDateTime.of(1970, 1, 1, 0, 0);
 
     String textOrPlaceholder() {

@@ -208,13 +208,8 @@ class BoardServiceTest {
     @DisplayName("members")
     class Members {
 
-        /*
-         * There is no addMember test here any more, and no addMember. Putting somebody on a board
-         * is now the last step of accepting an invitation, and the checks that used to live on
-         * this route - who may ask, and what an unknown address answers - moved with it to
-         * BoardInvitationServiceTest. What is left on this service is the one line that mutates
-         * the list, which has no access check of its own on purpose.
-         */
+        // Putting somebody on a board is now the last step of accepting an invitation; the checks
+        // that used to live here moved to BoardInvitationServiceTest.
         @Test
         @DisplayName("an accepted invitee joins the list, and joining twice does not double them up")
         void acceptedInviteeJoins() {

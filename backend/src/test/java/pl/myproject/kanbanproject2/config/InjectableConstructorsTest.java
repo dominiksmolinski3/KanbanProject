@@ -17,19 +17,12 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Every Spring-managed bean has to have a constructor Spring can actually pick.
- *
- * <p>The rule is narrow and easy to trip: with exactly one constructor Spring uses it, no
- * annotation needed. Add a second - a package-private one "visible for tests" is the usual way -
- * and Spring stops guessing, looks for {@code @Autowired}, then for a no-arg constructor, and
- * fails with "No default constructor found" when it finds neither.
- *
- * <p>That is not a startup warning. It is the context failing to build, and every bean downstream
- * of it failing with it. {@code AuthRateLimiter} shipped in exactly that state and nothing noticed,
- * because no test in the suite built a context - the rate limiter's own 53 tests construct it
- * directly, which is precisely the path that keeps working while the application cannot start.
- *
- * <p>This runs without a database, so it holds even where a full context test cannot.
+ * Every Spring-managed bean has to have a constructor Spring can actually pick. With exactly one
+ * constructor Spring uses it; add a second and Spring looks for {@code @Autowired}, then a no-arg
+ * constructor, and fails the whole context with "No default constructor found" if it finds neither.
+ * {@code AuthRateLimiter} shipped in exactly that state unnoticed, because its own unit tests
+ * construct it directly rather than through a context. This runs without a database, so it holds
+ * even where a full context test cannot.
  */
 class InjectableConstructorsTest {
 

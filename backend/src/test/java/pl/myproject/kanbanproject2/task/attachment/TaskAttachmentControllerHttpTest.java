@@ -43,14 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * The download response, which is the whole reason the storage account can be shut off.
- *
- * <p>{@code TaskAttachmentServiceTest} proves who may reach an attachment; this proves what the
- * response looks like once they may, and that is where the risk moved when the bytes came back onto
- * the request path. Serving them from Azure's origin made a rendered upload somebody else's
- * problem. Serving them from <em>this</em> origin means an HTML or SVG file that renders instead of
- * downloading is same-origin with the board and every token in it — so
- * {@code Content-Disposition: attachment} is a security control here, not a convenience, and it is
- * asserted rather than assumed.
+ * {@code TaskAttachmentServiceTest} proves who may reach an attachment; this proves what the
+ * response looks like once they may — serving bytes from this origin means a rendered HTML or SVG
+ * upload would be same-origin with the board and every token in it, so
+ * {@code Content-Disposition: attachment} is a security control here, asserted rather than assumed.
  */
 class TaskAttachmentControllerHttpTest {
 

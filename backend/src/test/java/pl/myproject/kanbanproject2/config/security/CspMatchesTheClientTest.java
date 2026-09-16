@@ -17,27 +17,16 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A guard over the way a Content-Security-Policy actually fails.
+ * A guard over the way a Content-Security-Policy actually fails: not on the day it's written, but
+ * later, when somebody adds a font or a widget and a browser silently refuses one request on a
+ * screen nobody in CI visits. Jest cannot see it (jsdom enforces no CSP) and the backend suite
+ * cannot either (the new host lives in a stylesheet in another tree), so this reads that tree:
+ * every {@code https://host} the client mentions has to be a host
+ * {@link SecurityHeaders#CONTENT_SECURITY_POLICY} names.
  *
- * <p>A policy is almost never wrong on the day it is written - it is written by reading the client.
- * It goes wrong later, when somebody adds a font, an analytics snippet or an embedded widget, and
- * the symptom is not a failing test or a red build. It is a browser silently refusing one request
- * on one screen, usually a screen nobody in CI visits. Jest cannot see it, because jsdom enforces
- * no CSP; the backend suite cannot see it, because the host being added is in a stylesheet in
- * another tree.
- *
- * <p>So this reads that tree. Every {@code https://host} the client source mentions has to be a
- * host {@link SecurityHeaders#CONTENT_SECURITY_POLICY} names. It is the same shape as
- * {@code SupportedLocalesMatchClientTest} reading {@code frontend/public/locales} and
- * {@code DeadLetterAlertTest} reading the Terraform: a rule that lives in two trees, checked in
- * one, needing no browser and no running container.
- *
- * <p><b>What it cannot see, stated rather than implied.</b> A host reached only at runtime by
- * somebody else's script leaves no literal to find - {@code www.gstatic.com} is in the policy
- * because reCAPTCHA's own {@code api.js} fetches its implementation from there, and no file in this
- * repository says so. That is a real limit: this catches the host somebody adds to the client, not
- * the host a third party adds to itself. The ZAP baseline sweep and a browser console are what
- * catch the other kind.
+ * <p><b>What it cannot see:</b> a host reached only at runtime by somebody else's script leaves no
+ * literal to find - {@code www.gstatic.com} is in the policy only because reCAPTCHA's own
+ * {@code api.js} fetches from there. The ZAP baseline sweep and a browser console catch that kind.
  */
 class CspMatchesTheClientTest {
 

@@ -16,19 +16,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * The half of the published contract springdoc cannot derive: which routes need a token.
- *
- * <p>Shapes and paths come from the mappings and the DTO records, so they cannot drift from the
- * code - change a record and the document changes with it. The security requirement has no such
- * anchor. It is a statement <em>about</em> the filter chain written somewhere else, and a wrong
- * one is discovered by whoever wrote a client against it: a contract that marks
- * {@code /api/auth/login} as authenticated sends people looking for a token they are trying to
- * obtain, and one that marks {@code /api/auth/devices} as public describes a 401 as a feature.
- *
- * <p>{@link OpenApiConfiguration} answers that by reading {@link PublicPaths} rather than listing
- * anything, so the two cannot disagree. This test is what checks the reading, and it is written
- * against the traps rather than against the happy path - {@code /auth} is the prefix where
- * "public" and "not public" sit next to each other.
+ * The half of the published contract springdoc cannot derive: which routes need a token. Shapes
+ * and paths come from the mappings and DTO records so they cannot drift, but the security
+ * requirement has no such anchor - it's a statement about the filter chain written elsewhere.
+ * {@link OpenApiConfiguration} answers it by reading {@link PublicPaths} rather than listing
+ * anything, so this test checks the reading, written against the traps rather than the happy path
+ * - {@code /auth} is the prefix where "public" and "not public" sit next to each other.
  */
 class OpenApiContractTest {
 

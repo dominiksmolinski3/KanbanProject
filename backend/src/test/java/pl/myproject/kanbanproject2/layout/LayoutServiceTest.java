@@ -40,15 +40,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The two layout services, which between them were the least covered code in the project.
- *
- * <p>They are also where three rules that were argued about elsewhere have to hold again, and
- * nothing was checking that they did: the next position comes from the highest one in use rather
- * than from a row count, a patch treats {@code null} as "leave it alone" rather than as "clear it",
- * and an object on somebody else's board answers 404 rather than 403.
- *
- * <p>The delete paths are covered by {@code DeleteDetachesReferencesTest}, which is about the
- * foreign keys they used to fail on; these are about the rest of each service.
+ * The two layout services, which between them were the least covered code in the project, and
+ * where three rules argued about elsewhere have to hold again: the next position comes from the
+ * highest one in use rather than a row count, a patch treats {@code null} as "leave it alone", and
+ * an object on somebody else's board answers 404 rather than 403. Delete paths are covered
+ * separately by {@code DeleteDetachesReferencesTest}.
  */
 class LayoutServiceTest {
 

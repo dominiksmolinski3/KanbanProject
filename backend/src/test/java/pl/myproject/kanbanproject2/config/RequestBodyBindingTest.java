@@ -19,16 +19,11 @@ import java.util.TreeSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Fails the build if a controller binds a JPA entity straight off the wire.
- *
- * <p>Lombok puts a public setter on every entity id, so an entity request body lets a create call
- * carry a primary key — {@code save} then issues a merge instead of an insert, overwriting whatever
- * record holds that key and nulling every field the request left out. The same shape hands a client
- * every other column too: {@code completed} would route around the parent-task rule, and a nested
- * {@code subTasks} list would cascade-persist.
- *
- * <p>This is a scan rather than a review note because nothing else catches it: the shape only shows
- * up at runtime, and the frontend never sends an id, so no existing test would go red.
+ * Fails the build if a controller binds a JPA entity straight off the wire. Lombok puts a public
+ * setter on every entity id, so an entity request body lets a create call carry a primary key -
+ * {@code save} then merges instead of inserting, overwriting whatever record holds that key. A scan
+ * rather than a review note because the shape only shows up at runtime and the frontend never sends
+ * an id, so no existing test would go red.
  */
 class RequestBodyBindingTest {
 

@@ -18,31 +18,22 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Invitations: an owner offers membership, and the person offered decides.
+ * Invitations: an owner offers membership, and the person offered decides. This replaces
+ * {@code BoardService.addMember}, which put an account on a board immediately and answered with the
+ * member list — letting an owner diff it to learn whether an address had an account here. The
+ * response to an invite is the invitation and never the board.
  *
- * <p>This replaces {@code BoardService.addMember}, which put an account on a board the moment an
- * owner typed its address and answered with the board's member list - so an owner could diff that
- * list and learn whether an address had an account here, which is the membership oracle the
- * unauthenticated routes are all written to avoid. Both halves are closed here: the response to an
- * invite is the invitation and never the board, and nothing happens to the member list until the
- * invitee acts.
+ * <p><b>The access checks are still {@link BoardService}'s</b>: this depends on it, never the other
+ * way round, so an invitation gets the same 404-not-403 answer every other board route gives.
  *
- * <p><b>The access checks are still {@link BoardService}'s.</b> This depends on it, never the
- * other way round, so an invitation cannot be created or read without the same 404-not-403 answer
- * every other route on a board gives.
- *
- * <p>Two deliberate asymmetries worth knowing about:
+ * <p>Two deliberate asymmetries:
  *
  * <ul>
- *   <li><b>Re-inviting an address that already has a pending invitation sends no second mail.</b>
- *       It answers the invitation that already exists. An owner clicking twice is the common case,
- *       and a route that mails on every click is a way to have this application post somebody
- *       else's mailbox on request. It is not a complete answer - a determined caller can make one
- *       board per invitation - and the honest bound for that is a limit on boards, which does not
- *       exist yet.</li>
- *   <li><b>An address that is already on the board is refused, and that refusal discloses
- *       nothing.</b> Only the board's owner can reach it, and the owner is already looking at the
- *       member list on the same screen.</li>
+ *   <li><b>Re-inviting an address with a pending invitation sends no second mail</b> — it answers
+ *       the existing row, since mailing on every click would let this application post somebody
+ *       else's mailbox on request.</li>
+ *   <li><b>An address already on the board is refused with no disclosure</b>, since only the
+ *       board's owner can reach that refusal and they're already looking at the member list.</li>
  * </ul>
  */
 @RequiredArgsConstructor
@@ -60,12 +51,9 @@ public class BoardInvitationService {
     // --------------------------------------------------------------- the owner ---
 
     /**
-     * Offers membership of {@code boardId} to an address.
-     *
-     * <p>The address is not looked up before the row is written, and the answer does not depend on
-     * whether it belongs to an account. What the lookup below decides is only which of two
-     * wordings goes to the mailbox and which language it is written in - facts the recipient can
-     * see and the inviter cannot.
+     * Offers membership of {@code boardId} to an address. The address isn't looked up before the
+     * row is written, and the response doesn't depend on whether it belongs to an account — the
+     * lookup below only decides the mail's wording and language.
      */
     public BoardInvitationDto invite(User caller, Integer boardId, InviteRequest request) {
         Board board = boardService.requireOwned(caller, boardId);
@@ -97,9 +85,8 @@ public class BoardInvitationService {
     }
 
     /**
-     * The owner's second thought. Anything that is not a pending invitation on this board - a
-     * wrong id, another board's invitation, one already answered - is one {@code 404}, for the
-     * reason every id in this application answers 404: they are small and sequential.
+     * The owner's second thought. Anything that is not a pending invitation on this board — a
+     * wrong id, another board's invitation, one already answered — is one {@code 404}.
      */
     public void revoke(User caller, Integer boardId, Integer invitationId) {
         Board board = boardService.requireOwned(caller, boardId);
@@ -150,11 +137,8 @@ public class BoardInvitationService {
     }
 
     /**
-     * An invitation that is pending and addressed to this caller, or a {@code 404}.
-     *
-     * <p>Matched by address rather than by id, because in the general case the row was written
-     * before the account existed - which is also why an invitation is never "the caller's" in the
-     * database's own sense and the check has to be made here on every call.
+     * An invitation that is pending and addressed to this caller, or a {@code 404}. Matched by
+     * address rather than by id, since the row is often written before the account existed.
      */
     private BoardInvitation mineOrNotFound(User caller, Integer invitationId) {
         String email = BoardInvitation.normaliseEmail(caller == null ? null : caller.getEmail());
@@ -165,12 +149,9 @@ public class BoardInvitationService {
     }
 
     /**
-     * Tells the mailbox, which is the only party that learns anything here.
-     *
-     * <p>The language is the recipient's when there is an account to read it from and the
-     * inviter's when there is not - a guess, in the same spirit as signup guessing from
-     * {@code Accept-Language}, and a better one than English: somebody inviting a colleague is
-     * usually inviting them into their own language.
+     * Tells the mailbox, which is the only party that learns anything here. The language is the
+     * recipient's when there is an account to read it from, and the inviter's otherwise — a better
+     * guess than English, since somebody inviting a colleague usually shares their language.
      */
     private void announce(BoardInvitation invitation, User inviter) {
         var account = userRepository.findByEmail(invitation.getEmail());

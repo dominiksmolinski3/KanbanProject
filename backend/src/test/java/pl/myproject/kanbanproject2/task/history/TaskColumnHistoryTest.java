@@ -10,13 +10,9 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The record of a card moving between stages, and the shape it reaches a client in.
- *
- * <p>Small, and worth pinning for one reason: the entity copies the column's <em>name</em> at the
- * moment of the move rather than reading it through the association. A stage that is renamed later
- * would otherwise rewrite history - every past move through it would report the new name, and a
- * stage that was deleted would report nothing at all. The mapper reads both, so it is the place the
- * distinction is visible.
+ * The record of a card moving between stages, and the shape it reaches a client in. Worth pinning
+ * because the entity copies the column's name at the moment of the move rather than reading it
+ * through the association — a renamed or deleted stage would otherwise rewrite or erase history.
  */
 class TaskColumnHistoryTest {
 

@@ -18,28 +18,20 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Every hand-written {@code @Query} in the repositories, compiled against the mapping metadata.
- *
- * <p>Derived queries are covered by {@code BoardDataIntegrityTest} through {@code PartTree}, which
- * is the parser Spring Data itself uses. A {@code @Query} is checked by nothing comparable: its
- * string is opaque until a JPA context boots, and nothing in this suite boots one - so a renamed
- * field or a typo inside one of them surfaced as a failure to start, which is the worst place to
- * find it. Hibernate will compile HQL without a database as long as it is told not to ask one for
- * metadata, so this asks it to, and fails the build instead.
- *
- * <p>It checks that a query resolves, not that it returns the right rows. What a query means is
- * still something only a database can answer - the null-cell branches in
- * {@code TaskRepository.findMaxPosition} are there because a real one was asked.
+ * Every hand-written {@code @Query} in the repositories, compiled against the mapping metadata. A
+ * {@code @Query} string is opaque until a JPA context boots, so a renamed field or a typo inside
+ * one used to surface only as a failure to start; Hibernate can compile HQL without a database as
+ * long as it is told not to ask one for metadata, so this asks it to and fails the build instead.
+ * It checks that a query resolves, not that it returns the right rows.
  */
 class QueryStringsResolveTest {
 
     private record RepositoryQuery(String owner, String method, String hql) {
 
         /**
-         * {@code createQuery} is for selects only and rejects an {@code UPDATE} or {@code DELETE}
-         * outright, so a {@code @Modifying} query would have gone unchecked - or worse, been read
-         * as a broken query. Hibernate compiles those through {@code createMutationQuery}, which
-         * is the same parser and the same failure for a typo.
+         * {@code createQuery} rejects an {@code UPDATE} or {@code DELETE} outright, so a
+         * {@code @Modifying} query is compiled through {@code createMutationQuery} instead - the
+         * same parser and the same failure for a typo.
          */
         boolean isMutation() {
             String start = hql.stripLeading().toUpperCase(java.util.Locale.ROOT);

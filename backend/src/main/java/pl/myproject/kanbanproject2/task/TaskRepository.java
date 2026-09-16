@@ -18,17 +18,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * The {@code @EntityGraph} on the listings names the to-one associations {@link TaskMapper} reads.
- *
- * <p>They are {@code LAZY} on the entity, which is right for the paths that never touch them; every
- * listing here does touch them, so naming them fetches them alongside the tasks in one join instead
- * of one query per task. The collections are deliberately not named: joining two of them in the
- * same query multiplies rows into a cartesian product, and because they are {@code Set}s Hibernate
- * would allow it rather than refusing. {@code @BatchSize} on the entity covers those instead.
- *
- * <p>Every listing is also scoped to one board. That is the authorization boundary rather than a
- * convenience: an unscoped listing hands the caller every task in the deployment, which is what
- * {@code findAll()} used to do here.
+ * The {@code @EntityGraph} on the listings fetches the to-one associations {@link TaskMapper}
+ * reads in one join instead of one query per task; the collections are deliberately left out since
+ * joining two {@code Set}s multiplies rows into a cartesian product, so {@code @BatchSize} on the
+ * entity covers those instead. Every listing is also scoped to one board — the authorization
+ * boundary, not a convenience: an unscoped listing hands the caller every task in the deployment,
+ * which is what {@code findAll()} used to do here.
  */
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Integer> {
@@ -41,38 +36,15 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 
     /**
      * The ids of the tasks whose {@code expired} flag no longer matches their deadline, locked for
-     * the sweep that is about to write them.
-     *
-     * <p>The one query here that is deliberately not board-scoped. It backs the scheduled sweep,
-     * which runs as the system rather than as a caller and has to see the whole deployment; there
-     * is no user on whose behalf it could be narrowed.
-     *
-     * <p><b>It asks for the rows that change, not for every task with a deadline.</b> The sweep used
-     * to load all of them and fold the comparison in Java, which is a growing read every half hour
-     * for an answer that is nearly always "nothing". Moving the predicate into SQL is worth a little
-     * on its own and is what makes the lock affordable: the rows locked are exactly the rows the
-     * next statement updates, which any update would have locked anyway.
-     *
-     * <p><b>{@code FOR UPDATE SKIP LOCKED} is what makes a second replica safe.</b> Two schedulers
-     * sweeping at once is not a harmless duplicate: each flips the same tasks, each writes an
-     * activity entry, and each asks {@code DeadlineNotifier} to mail every assignee - so an overdue
-     * task is announced N times to N people who cannot tell which is the real one. With the lock,
-     * two sweeps partition the work and each row is answered for once. {@code SKIP LOCKED} rather
-     * than a plain {@code FOR UPDATE} because a second sweep should take the rows the first is not
-     * holding rather than queue behind it for the length of a mail run.
-     *
-     * <p><b>The lock lasts as long as the transaction, which is the whole sweep.</b> That is why
-     * {@code TaskService} is {@code @Transactional} and why {@code DeadlineSweepClaimTest} asserts
-     * it: without a transaction the lock is released at the end of this statement and the next
-     * replica reads the same rows a moment later, unflipped.
-     *
-     * <p>{@code COALESCE} because the column is nullable and the entity's field is a primitive that
-     * defaults to {@code false} - the two have to agree on what a null means, or the sweep selects
-     * rows it then declines to change, every half hour, forever.
-     *
-     * <p>Native, because {@code SKIP LOCKED} has no JPQL spelling. The cost is the same one
-     * {@code OutboxEmailRepository} names: {@code QueryStringsResolveTest} compiles the hand-written
-     * HQL and skips native queries, so nothing but a database checks this string.
+     * the sweep about to write them. Deliberately not board-scoped: the sweep runs as the system,
+     * with no caller to narrow it to. Selecting only the rows that disagree (rather than every task
+     * with a deadline) is what makes the lock affordable, and {@code FOR UPDATE SKIP LOCKED} is what
+     * makes a second replica safe — it partitions the work instead of double-mailing every assignee.
+     * The lock lasts as long as the transaction, which is why {@code TaskService} is
+     * {@code @Transactional} ({@code DeadlineSweepClaimTest} asserts it), and {@code COALESCE}
+     * reconciles the nullable column with the entity's primitive default. Native, because
+     * {@code SKIP LOCKED} has no JPQL spelling — {@code QueryStringsResolveTest} skips native
+     * queries, so nothing but a database checks this string.
      */
     @Query(value = """
             SELECT id FROM task
@@ -92,46 +64,27 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Task> findByBoardAndColumnAndRow(Board board, Column column, Row row);
 
     /**
-     * Every label in use on one board, as a projection.
-     *
-     * <p>This used to load every task row and every task's label collection with it, to fold a set
-     * together in Java. The database answers it with one query over the join table, and the answer
-     * is a handful of short strings rather than the whole board.
+     * Every label in use on one board, as a projection over the join table rather than loading
+     * every task and its label collection to fold a set together in Java.
      */
     @Query("SELECT DISTINCT label FROM Task task JOIN task.labels label WHERE task.board = :board")
     Set<String> findDistinctLabels(Board board);
 
 
     /**
-     * The ids of the tasks on one board that match a search, one page at a time.
-     *
-     * <p><b>Ids, and then a second query for the rows.</b> A single paged query that also fetched
-     * the to-one associations would be pagination over a join whose rows multiply - the label and
-     * assignee joins below are what the facets filter on, and a task with three labels is three
-     * rows before {@code DISTINCT}. Hibernate answers that by paginating in memory and says so in a
-     * warning, which means reading the whole matching set to hand back twenty-five of them. Two
-     * queries keep the {@code LIMIT} in SQL where it belongs, and the second one is
-     * {@link #findByIdIn} with the same entity graph every other listing here uses.
-     *
-     * <p><b>Every filter is optional, and each is a flag plus a value rather than a nullable
-     * one.</b> The obvious form - {@code :param IS NULL OR ...}, which {@link #findMaxPosition}
-     * uses - does not work here. A parameter whose only appearance is {@code ? IS NULL} gives
-     * PostgreSQL nothing to infer a type from, and the query fails at runtime with
-     * {@code could not determine data type of parameter}; {@code findMaxPosition} escapes it only
-     * because each of its parameters is also compared against a typed column. <b>Nothing in this
-     * repository could have caught that</b> - {@code QueryStringsResolveTest} compiles HQL rather
-     * than executing SQL, and every service test mocks this interface - so it was found by running
-     * a search against a real database, and the shape below is what it left behind. The collection
-     * facets needed a flag anyway, for a different reason: a bare {@code IN} against an empty list
-     * is not a clause that is skipped, it is a clause that matches nothing.
-     *
-     * <p><b>{@code ESCAPE '!'} is not decoration.</b> The pattern is built from something a person
-     * typed, and without it a search for {@code 100%} is a pattern that matches the whole board.
-     * {@code TaskSearchCriteria.likePattern()} does the escaping; this is the half of that
-     * agreement the database has to be told about.
-     *
-     * <p>Ordered by id, which is creation order and is stable. Any order that ties would make
-     * paging skip and repeat rows across pages, silently, and only on boards big enough to page.
+     * The ids of the tasks on one board that match a search, one page at a time. Ids first, then a
+     * second query for the rows: paginating a join directly multiplies rows before
+     * {@code DISTINCT} (a task with three labels is three rows), which forces Hibernate to paginate
+     * in memory; two queries keep the {@code LIMIT} in SQL, and the second is {@link #findByIdIn}.
+     * Every filter is a flag plus a value rather than a nullable parameter, because a bind used only
+     * in {@code ? IS NULL} gives PostgreSQL no type to infer and fails at runtime (unlike
+     * {@link #findMaxPosition}, whose parameters are also compared against a typed column) — found
+     * only by running a search against a real database, since {@code QueryStringsResolveTest}
+     * compiles HQL rather than executing it and every service test mocks this interface. The
+     * collection facets need a flag anyway: a bare {@code IN} against an empty list matches nothing
+     * rather than being skipped. {@code ESCAPE '!'} stops a literal {@code 100%} from being read as
+     * a wildcard, and ordering by id keeps paging stable — any tie would skip or repeat rows across
+     * pages.
      */
     @Query(value = """
             SELECT DISTINCT task.id FROM Task task
@@ -177,38 +130,20 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 
     /**
      * The rows behind one page of {@link #findMatchingIds}, with the associations the mapper reads.
-     *
-     * <p>Not board-scoped, and that is safe only because of how it is called: the ids come from
-     * {@link #findMatchingIds}, which is scoped, so this never widens what the caller can see. It
-     * is deliberately not a route's entry point for that reason.
-     *
-     * <p>The deadline sweep is the second caller and the exception that proves the rule - it has no
-     * caller to be scoped to, runs as the system, and its ids come from
-     * {@link #claimTasksCrossingDeadline}, which is unscoped for the same reason. Nothing that
-     * takes a {@code currentUser} may reach either.
+     * Not board-scoped itself — safe only because both callers already scope their own ids:
+     * {@link #findMatchingIds} for search, {@link #claimTasksCrossingDeadline} for the deadline
+     * sweep (unscoped for the same reason: it runs as the system, with no caller). Nothing that
+     * takes a {@code currentUser} may reach this directly.
      */
     @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
     List<Task> findByIdIn(Collection<Integer> ids);
 
     /**
-     * The highest position in use in one cell, or empty when the cell is empty.
-     *
-     * <p>Scoping positions to their cell was the right fix by the wrong route: it fetched the
-     * cell's tasks and folded them in Java, so computing one number got more expensive exactly as
-     * a column filled up. The aggregate belongs in the database.
-     *
-     * <p>The board is part of the key because a task can sit in no column and no swimlane, and
-     * without it two boards' loose tasks would be handing each other positions.
-     *
-     * <p>The null branches on the other two are the whole reason this is written out rather than
-     * left as {@code task.column = :column AND task.row = :row}. A null argument means what it
-     * means on the board - the backlog, or no swimlane - and an equality against a null bind is
-     * never true in SQL, so that form answered "empty cell" for every cell without a swimlane and
-     * handed out position 1 forever. A derived query would have written {@code IS NULL} on its own;
-     * this one has to say so. The board takes no such branch because a task always has one - the
-     * column on {@code Task} is {@code NOT NULL} since V5.
-     *
-     * <p>Ids rather than entities because an id is what the comparison needs, and
+     * The highest position in use in one cell, computed as an aggregate rather than by fetching the
+     * cell's tasks and folding them in Java. The board is part of the key because a task can sit in
+     * no column and no swimlane, and the explicit null branches on column/row matter because an
+     * equality against a null bind is never true in SQL — without them every swimlane-less cell
+     * would read as empty and hand out position 1 forever. Ids rather than entities because
      * {@code :columnId IS NULL} has a type Hibernate can infer.
      */
     @Query("""

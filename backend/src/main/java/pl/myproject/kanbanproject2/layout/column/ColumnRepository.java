@@ -12,11 +12,9 @@ import java.util.Optional;
 public interface ColumnRepository extends JpaRepository<Column, Integer> {
 
     /**
-     * The stages of one board, in the order they are meant to read.
-     *
-     * <p>Every listing is scoped this way now. {@code findAll()} still exists on the interface, and
-     * calling it would hand one caller every board in the deployment, which is the bug this whole
-     * change is about — {@code BoardScopedQueriesTest} fails the build if a service reaches for it.
+     * The stages of one board, in the order they are meant to read. {@code findAll()} still exists
+     * on the interface and would hand one caller every board in the deployment —
+     * {@code BoardScopedQueriesTest} fails the build if a service reaches for it.
      */
     List<Column> findByBoardOrderByPositionAsc(Board board);
 

@@ -109,7 +109,6 @@ export function ChatProvider({ children }) {
       chatApiRef.current = new ChatApi(onMessageReceived, onError);
       await chatApiRef.current.connect(chatUsername, token);
       dispatch({ type: 'SET_CONNECTED', payload: true });
-      //toast.info(t('chat.connected'));
     } catch (error) {
       onError(error);
     }
@@ -128,7 +127,6 @@ export function ChatProvider({ children }) {
   const joinRoom = (roomId) => {
     if (!chatApiRef.current || !state.isConnected) return;
     
-    // Leave current room if any
     if (state.currentRoom) {
       leaveRoom();
     }

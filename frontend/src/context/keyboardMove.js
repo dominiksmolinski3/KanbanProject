@@ -1,22 +1,11 @@
 import { useCallback, useState } from 'react';
 
 /**
- * Moving a card without a pointer.
- *
- * The board's drag-and-drop is HTML5 DnD, which has no keyboard equivalent at all - there is no
- * key that starts a drag, and no amount of `tabIndex` produces one. So a card that can only be
- * moved by dragging cannot be moved by anybody who does not use a mouse, which on a Kanban board
- * is the one thing the board is for.
- *
- * This is the ARIA authoring-practice shape rather than a new one: Space picks a card up, the
- * arrow keys choose a cell, Space or Enter drops it there, Escape puts it back. The important part
- * is that **nothing happens until the drop**. Committing on each arrow press would be simpler and
- * would fire a request per keystroke, and a person crossing four columns would move their card
- * four times, each one a toast, a refresh and a row in the activity feed. The pending target lives
- * here; only `drop` calls the server, and only when the cell actually changed.
- *
- * The card is not re-parented while it is held, which is what keeps the keyboard focus on it: the
- * element never unmounts, so there is nothing to restore focus to afterwards.
+ * HTML5 drag-and-drop has no keyboard equivalent, so a card that can only be dragged is unusable
+ * without a pointer; this follows the ARIA authoring-practice pattern instead (Space picks up,
+ * arrows choose a cell, Space/Enter drops, Escape cancels). Nothing reaches the server until the
+ * drop, or crossing four columns would fire four requests, four toasts and four activity rows; the
+ * card stays in its cell while held so its element never unmounts and focus isn't lost.
  */
 
 /** The four directions an arrow key can mean, as offsets into the column and row lists. */
@@ -28,11 +17,9 @@ const STEPS = {
 };
 
 /**
- * The neighbour of `id` in `items`, clamped at both ends.
- *
- * Clamped rather than wrapped: a card at the last column that jumps to the first on one more
- * press has moved the length of the board on a keystroke that looked like a small adjustment, and
- * the person holding it may not be looking at the screen at all.
+ * The neighbour of `id` in `items`, clamped rather than wrapped: wrapping would let one more
+ * keypress move a card the length of the board, which looks like a small adjustment to someone
+ * who may not be watching the screen.
  */
 export const neighbourOf = (items, id, offset) => {
   const index = items.findIndex(item => String(item.id) === String(id));
@@ -73,11 +60,9 @@ export function useKeyboardMove({ columns, rows, moveTask }) {
   const [held, setHeld] = useState(null);
 
   /**
-   * What to say, as a key and its values rather than a sentence.
-   *
-   * The same rule the activity feed follows, and for the same reason: a message composed here is a
-   * message the other eight languages cannot translate. Board.jsx renders this through `t()` into
-   * the live region.
+   * A key and its values rather than a sentence, the same rule the activity feed follows: a
+   * message composed here is one the other eight languages cannot translate. Board.jsx renders it
+   * through `t()` into the live region.
    */
   const [announcement, setAnnouncement] = useState(null);
 

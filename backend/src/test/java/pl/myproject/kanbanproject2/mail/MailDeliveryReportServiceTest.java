@@ -103,10 +103,8 @@ class MailDeliveryReportServiceTest {
     @Test
     @DisplayName("an older report cannot overwrite a newer one, whichever arrives first")
     void reportsAreOrderedByTheProvidersClockRatherThanByArrival() {
-        // This is the case a webhook has no defence against other than the timestamp: Azure sends
-        // one report per attempt, they travel over a network, and a retry can overtake the thing
-        // it is retrying. Taking the last to arrive would let OutForDelivery land on top of
-        // Delivered and leave the row saying something that stopped being true.
+        // A retry can overtake the report it's retrying; taking the last to arrive would let
+        // OutForDelivery land on top of Delivered.
         OutboxEmail row = sentMessage("op-3");
         when(outbox.findByProviderMessageId("op-3")).thenReturn(Optional.of(row));
 

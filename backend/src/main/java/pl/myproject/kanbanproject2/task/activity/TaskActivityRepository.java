@@ -11,9 +11,8 @@ import java.util.List;
 public interface TaskActivityRepository extends JpaRepository<TaskActivity, Integer> {
 
     /**
-     * The feed. Ordered by instant and then by id, because a batch written in one transaction ties
-     * on the instant and any order with ties makes paging skip and repeat rows - silently, and
-     * only on a board busy enough to page. The same reasoning put the search route in id order.
+     * The feed. Ordered by instant then id, since a batch written in one transaction ties on the
+     * instant and any tie makes paging skip or repeat rows, silently.
      */
     Page<TaskActivity> findByBoardOrderByOccurredAtDescIdDesc(Board board, Pageable pageable);
 

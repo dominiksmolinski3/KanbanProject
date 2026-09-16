@@ -54,11 +54,9 @@ export const deleteBoard = async (boardId) => {
 };
 
 /**
- * Invites the person at this address to the board.
- *
- * Nothing happens to the member list here: the invitation is an offer, and the person it names
- * has to accept it. The answer is the invitation and never the board, which is the fix for the
- * route this replaced - that one answered with the member list, so an owner could diff it and
+ * Invites the person at this address to the board; nothing happens to the member list here, since
+ * an invitation is an offer the person still has to accept. The answer is the invitation and never
+ * the board - the route this replaced answered with the member list, letting an owner diff it to
  * learn whether an address had an account here.
  */
 export const inviteToBoard = async (boardId, email) => {

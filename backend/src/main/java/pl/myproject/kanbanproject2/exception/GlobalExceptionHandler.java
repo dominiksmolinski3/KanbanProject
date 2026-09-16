@@ -45,10 +45,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Constraints declared on a handler parameter rather than on a body object - the {@code @Email}
-     * on the resend route's query parameter is the only one today. Spring raises these from the
-     * {@code @Validated} proxy rather than from binding, so they arrive here as a different type
-     * than {@link MethodArgumentNotValidException} and used to fall through to the catch-all.
+     * Constraints declared on a handler parameter rather than a body object - the {@code @Email} on
+     * the resend route's query parameter is the only one today. These arrive from the
+     * {@code @Validated} proxy as a different type than {@link MethodArgumentNotValidException} and
+     * used to fall through to the catch-all.
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
@@ -62,13 +62,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * A body the converter cannot read at all: not JSON, truncated, or a value of the wrong shape
-     * for the field it lands on.
-     *
-     * <p>The message is deliberately fixed rather than taken from the exception. Jackson's own text
-     * names the target class, the field and a source excerpt, which tells an unauthenticated caller
-     * the shape of a request record it has never seen. The status is the whole answer the client
-     * needs: it got the body wrong.
+     * A body the converter cannot read at all: not JSON, truncated, or the wrong shape for its
+     * field. The message is fixed rather than taken from the exception, since Jackson's own text
+     * names the target class, field and a source excerpt - details an unauthenticated caller
+     * shouldn't get about a record it has never seen.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
@@ -115,9 +112,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Nothing is mapped at the requested path. The SPA forward covers the client routes, so what
-     * reaches here is an API path that does not exist - a 404, which is what an unmatched route has
-     * always meant, rather than the 500 the catch-all was reporting.
+     * Nothing is mapped at the requested path - the SPA forward covers client routes, so this is an
+     * API path that doesn't exist, a 404 rather than the 500 the catch-all used to report.
      */
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex) {
@@ -134,13 +130,11 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * A bearer token that will not parse or verify — expired, tampered, signed with a key we no
-     * longer hold. {@code JwtAuthenticationFilter} catches these and hands them here through the
-     * {@code HandlerExceptionResolver}, where without this they fell to {@link #handleGeneric}: a
-     * 500, logged at {@code error}, for the single most routine event in the system — a token
-     * reaching its fifteen-minute expiry while the tab sat open. It is a 401 like any other
-     * rejected credential, and the client renews on it and retries; the reason is not the caller's
-     * to know, so every JWT failure is the one status and the one message.
+     * A bearer token that will not parse or verify — expired, tampered, signed with a retired key.
+     * Without this handler these fell to {@link #handleGeneric}: a 500 at error level for the single
+     * most routine event in the system, a token hitting its fifteen-minute expiry. It's a 401 like
+     * any rejected credential, and the client renews and retries — the reason is not the caller's to
+     * know, so every JWT failure gets the same status and message.
      */
     @ExceptionHandler(JwtException.class)
     public ResponseEntity<ErrorResponse> handleInvalidJwt(JwtException ex) {

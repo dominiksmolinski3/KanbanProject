@@ -3,22 +3,12 @@ package pl.myproject.kanbanproject2.task.attachment;
 import java.io.InputStream;
 
 /**
- * One attachment's bytes, still in the store, plus what the response should call them.
- *
- * <p>An open stream rather than an array: this is handed to the response and copied through, so a
- * ten-megabyte download never exists in the heap all at once. <b>The caller closes it</b> - the
- * controller does that by handing it to Spring, which closes the resource after writing it.
- *
- * <p>The name and type are the ones from Postgres, not from storage. The blob is stored under an
- * opaque name with no extension precisely so that nothing a person typed ever reaches the storage
- * account; this record is where the two halves are put back together.
- *
- * <p><b>Two lengths, and they are not the same number.</b> {@link #sizeBytes} is the whole
- * attachment, which is what a {@code Content-Range} has to name whatever was asked for;
- * {@link #rangeLength} is what this particular response carries, which is what
- * {@code Content-Length} has to name. They differ exactly when {@link #partial} is set, and
- * conflating them is how a resumed download ends up truncated at the length of its own first
- * chunk.
+ * One attachment's bytes, still in the store, plus what the response should call them. An open
+ * stream rather than an array, so a large download never sits in the heap at once — the caller
+ * closes it, which the controller does by handing it to Spring. The name and type come from
+ * Postgres rather than storage, since the blob itself is opaque. {@link #sizeBytes} is the whole
+ * attachment, for {@code Content-Range}; {@link #rangeLength} is what this response carries, for
+ * {@code Content-Length} — conflating the two is how a resumed download ends up truncated.
  */
 public record TaskAttachmentContent(InputStream stream,
                                     String fileName,
@@ -35,11 +25,8 @@ public record TaskAttachmentContent(InputStream stream,
     }
 
     /**
-     * One satisfiable range of it.
-     *
-     * <p>Built even when the range happens to cover the whole file, because a client that asked
-     * with a {@code Range} is answered with a {@code 206} and a {@code Content-Range} it can check.
-     * RFC 9110 allows either answer there; the one that says what was served is the more useful.
+     * One satisfiable range of it, built even when it covers the whole file, so a client that sent
+     * a {@code Range} always gets back a {@code 206} with a {@code Content-Range} it can check.
      */
     static TaskAttachmentContent part(InputStream stream, String fileName, String contentType,
                                       long sizeBytes, long rangeStart, long rangeLength) {

@@ -19,12 +19,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Setting the language on an account, which is the one place the tag is a choice rather than a
- * guess - and therefore the one place an unsupported one is refused rather than quietly replaced.
- *
- * <p>Signup does the opposite with the same helper, and deliberately: it reads a browser header
- * that nobody chose, so a tag it cannot use costs the person nothing to have wrong and would cost
- * them an account to have refused over.
+ * Setting the language on an account, the one place the tag is a choice rather than a guess, and
+ * therefore the one place an unsupported one is refused rather than quietly replaced — unlike
+ * signup, which reads an unchosen browser header and would rather guess wrong than refuse an account
+ * over it.
  */
 class UserServiceLocaleTest {
 

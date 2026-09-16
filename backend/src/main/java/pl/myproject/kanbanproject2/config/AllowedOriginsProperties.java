@@ -6,21 +6,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import java.util.List;
 
 /**
- * The browser origins allowed to reach this app, held in one place.
- *
- * <p>Two configurations need the same list: {@code SecurityConfiguration.corsConfigurationSource}
- * for the REST surface, and {@code WebSocketConfig.registerStompEndpoints} for the SockJS
- * handshake. They used to hold a copy each, and the copies had already drifted — the WebSocket
- * one additionally allowed {@code http://kanbanproject.pl} and {@code http://www.kanbanproject.pl},
- * plaintext variants the HTTP side rejected. The stricter list is the one kept: a site served over
- * HTTPS has no reason to accept a plaintext origin, and the drift was not a decision anyone made.
- *
- * <p>Which origins are right is a deployment fact, not a source-code one — a new domain should not
- * need a rebuild — so this binds from configuration, with today's list as the default. Set
- * {@code security.cors.allowed-origins} (or {@code SECURITY_CORS_ALLOWED_ORIGINS}, comma-separated)
- * to replace it.
- *
- * <p>This is the same single-sourcing {@link SpaRoutes} does for the client routes.
+ * The browser origins allowed to reach this app, single-sourced because
+ * {@code SecurityConfiguration.corsConfigurationSource} and {@code WebSocketConfig}'s SockJS
+ * handshake used to hold a copy each and had drifted (the WebSocket list also allowed plaintext
+ * {@code http://kanbanproject.pl} variants). Binds from {@code security.cors.allowed-origins}
+ * ({@code SECURITY_CORS_ALLOWED_ORIGINS}, comma-separated) so a new origin is a deployment change,
+ * not a rebuild — the same single-sourcing {@link SpaRoutes} does for client routes.
  */
 @ConfigurationProperties(prefix = "security.cors")
 public record AllowedOriginsProperties(

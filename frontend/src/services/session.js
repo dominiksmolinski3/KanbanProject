@@ -1,27 +1,19 @@
 import { authService } from './authService';
 
 /**
- * Where the two halves of a session live, and the one place that renews them.
- *
- * The access token is a signed claim the server cannot take back, so it is short-lived; the refresh
- * token is a row the server can withdraw, so it is what actually keeps someone signed in. Both were
- * previously spread across `AuthContext` and `apiInterceptor` as bare `localStorage` calls with the
- * key names written out by hand in each place — which was survivable while there was one key and
- * stops being so at three.
+ * Where the two halves of a session live, and the one place that renews them: the access token is
+ * a signed claim the server cannot take back, so it is short-lived, while the refresh token is a
+ * row the server can withdraw and is what actually keeps someone signed in.
  */
 
 export const TOKEN_KEY = 'token';
 export const TOKEN_EXPIRY_KEY = 'tokenExpiration';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 /**
- * Which row on the server this browser's session is.
- *
- * It exists so the device list can say "this device". The server could mark it instead, but
- * only by putting the chain in the access token and looking it up on every request; the client
- * was handed the id at login and is handed a new one on every rotation, so it already knows.
- * Rotation is what makes storing it necessary rather than optional - the id changes roughly
- * every fifteen minutes of use, and localStorage is shared across tabs, so whichever tab
- * renewed last leaves the current answer here for all of them.
+ * Which row on the server this browser's session is, so the device list can say "this device".
+ * The client already gets the id at login and a new one on every rotation, cheaper than the
+ * server marking it in the access token and looking it up per request; storing it matters because
+ * the id changes roughly every fifteen minutes and localStorage is shared across tabs.
  */
 export const SESSION_ID_KEY = 'sessionId';
 
@@ -35,11 +27,10 @@ export const SESSION_ID_KEY = 'sessionId';
 const EXPIRY_SKEW_MS = 10_000;
 
 /**
- * `expiresIn` is **milliseconds**, as `LoginResponse` sends it and every `/auth` test asserts it —
- * it is `jwtService.getExpirationTime()` passed straight through. Multiplying it by 1000 (reading it
- * as seconds) put the stored expiry ten days out, so `isAccessTokenExpired` never tripped and the
- * proactive renewal in the interceptor never ran: the fifteen-minute token only ever failed by
- * reaching the server dead, which is a 401 to recover from at best and a 500 at worst.
+ * `expiresIn` is **milliseconds**, as `LoginResponse` sends it and every `/auth` test asserts —
+ * `jwtService.getExpirationTime()` passed straight through. Treating it as seconds once put the
+ * stored expiry ten days out, so `isAccessTokenExpired` never tripped and the token only ever
+ * failed by reaching the server already dead.
  */
 export function storeSession({ token, expiresIn, refreshToken, sessionId }) {
   localStorage.setItem(TOKEN_KEY, token);
@@ -71,13 +62,9 @@ export function isAccessTokenExpired() {
 }
 
 /**
- * One renewal at a time, however many callers ask for it.
- *
- * A board load fires a dozen requests at once, and if the access token has lapsed every one of them
- * would otherwise start its own refresh. That is not merely wasteful: refresh tokens rotate, so the
- * second call would present a token the first has already spent, which the server reads as replay
- * and answers by withdrawing every session the account has. Sharing the in-flight promise is what
- * keeps a normal page load from looking like a stolen token.
+ * One renewal at a time, however many callers ask for it: a board load fires a dozen requests at
+ * once, and since refresh tokens rotate, two concurrent refreshes would present the same spent
+ * token twice - which the server reads as theft and withdraws every session on the account.
  */
 let inFlight = null;
 

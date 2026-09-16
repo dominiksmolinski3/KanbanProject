@@ -31,13 +31,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * A forgotten password used to be an unrecoverable account. These pin the three properties that
- * make the recovery path worth having rather than a second way in: the code is stored hashed, it
- * is single-use and time-bounded, and asking for one tells the caller nothing about whether the
- * address has an account.
- *
- * <p>A real {@link BCryptPasswordEncoder} is used rather than a mock. The point of hashing the
- * code is that the stored value is not the code, and only a real encoder can demonstrate that.
+ * These pin the three properties that make the recovery path worth having rather than a second way
+ * in: the code is stored hashed, it is single-use and time-bounded, and asking for one tells the
+ * caller nothing about whether the address has an account. A real {@link BCryptPasswordEncoder} is
+ * used rather than a mock, since only a real encoder can demonstrate the stored value isn't the code.
  */
 class PasswordResetServiceTest {
 

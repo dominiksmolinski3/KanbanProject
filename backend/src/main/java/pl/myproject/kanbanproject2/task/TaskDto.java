@@ -5,10 +5,8 @@ import java.util.Set;
 
 /**
  * {@code version} is the task's {@code @Version}, carried out so the client can send it back on a
- * later PATCH. The row-level lock already stops two overlapping transactions from clobbering each
- * other; this is for the slower race the lock cannot see - a task read into a form, changed by
- * someone else, and saved from that form minutes later, by which point the stale request's own
- * transaction reads the already-current version and the overwrite is silent.
+ * later PATCH — for the slower race the row lock can't see, where a form saved after someone
+ * else's change has already committed would otherwise overwrite it silently.
  */
 public record TaskDto(Integer id, Integer version, String title, Integer position, Integer columnId, Integer rowId,
                       Set<Integer> userIds, Set<String> labels, boolean completed, String description,

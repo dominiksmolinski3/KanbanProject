@@ -13,27 +13,17 @@ import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
 import java.util.List;
 
 /**
- * Checks a captcha token with the provider that issued it.
- *
- * <p>Until this class existed the widget was decorative end to end: the client rendered it, sent
- * {@code captcha: { token }}, and the token landed on a DTO with no such field - which Spring Boot
- * drops silently, because it disables {@code FAIL_ON_UNKNOWN_PROPERTIES}. Nothing read it and
- * nothing said so, which is worse than having no captcha at all: it reads as a control.
- *
- * <p>Three decisions worth stating, because each of them is a way this could have kept looking
- * like a control without being one.
+ * Checks a captcha token with the provider that issued it. Before this class existed the token
+ * landed on a DTO with no matching field and Spring silently dropped it, so the widget was
+ * decorative end to end - worse than no captcha, since it read as a control.
  *
  * <ul>
- *   <li><b>A missing token is a failure, not a skip.</b> When verification is on, absent and wrong
- *       are the same answer. Otherwise omitting the field is the bypass.
- *   <li><b>An unanswerable check fails closed.</b> A timeout, a 500 from the provider or an
- *       unparseable body all refuse the request. The alternative lets anyone who can keep the
- *       provider from answering walk past. The escape hatch for a real provider outage is
- *       {@code security.captcha.enabled=false}, which is a deliberate act and says so in the
- *       configuration rather than happening quietly under load.
- *   <li><b>Enabled with no secret refuses to start.</b> Every request would fail verification, so
- *       the deployment is broken either way; failing at startup makes it a revision that never goes
- *       healthy rather than a login page nobody can get past.
+ *   <li><b>A missing token is a failure, not a skip</b>, or omitting the field would be the bypass.
+ *   <li><b>An unanswerable check fails closed</b> - a timeout or provider error refuses the
+ *       request rather than waving it through; the escape hatch for a real outage is
+ *       {@code security.captcha.enabled=false}, a deliberate act.
+ *   <li><b>Enabled with no secret refuses to start</b>, so the deployment fails at boot rather than
+ *       as a login page nobody can get past.
  * </ul>
  */
 @Component

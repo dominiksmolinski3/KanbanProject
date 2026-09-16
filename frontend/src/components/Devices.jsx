@@ -7,17 +7,11 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/components/Devices.css';
 
 /**
- * Every session the account can still use, and a button that ends one.
- *
- * The point of the screen is the gap the refresh-token work left: logging out ends the session you
- * are holding, and changing a password ends all of them, so the case in between — a laptop you no
- * longer have, and a session you would rather keep — had no answer that did not sign you out
- * everywhere.
- *
- * "This device" is decided here rather than by the server. The id came back with the session and is
- * replaced on every rotation, so `getSessionId()` is the current answer even when another tab did
- * the renewing; marking it server-side would mean the access token carrying its chain and a lookup
- * on every request, for a fact the client already has.
+ * Every session the account can still use, and a button that ends one — the gap logging out (ends
+ * the current session) and a password change (ends all of them) left, for a laptop you no longer
+ * have but a session you'd rather keep. "This device" is decided here rather than by the server:
+ * the id came back with the session and is replaced on every rotation, so `getSessionId()` stays
+ * current even after another tab renews, without the access token needing to carry it.
  */
 function Devices() {
   const [sessions, setSessions] = useState([]);

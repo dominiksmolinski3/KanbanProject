@@ -28,12 +28,9 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    /*
-     * Optimistic lock. The board is edited by every member at once and the client sends one
-     * position PATCH per card in a reordered cell, so two people dragging in the same column race
-     * by construction. Without this the second write silently wins; with it the stale transaction
-     * fails its UPDATE ... WHERE version = ? and the caller is told 409 instead of losing the move.
-     */
+    // Optimistic lock: a reordered cell sends one position PATCH per card, so concurrent drags race
+    // by construction. Without this the second write silently wins; with it the stale transaction
+    // fails and the caller gets a 409 instead of losing the move.
     @Version
     private Integer version;
     private String title;
@@ -46,33 +43,18 @@ public class Task {
     private boolean expired = false;
     @jakarta.persistence.Column(name = "daily_focus")
     private boolean dailyFocus = false;
-    /*
-     * Fetching, deliberately.
-     *
-     * The to-one associations are LAZY because @ManyToOne defaults to EAGER, and the default made
-     * every listing fetch a column and a row per task whether or not anything read them. What does
-     * read them is TaskMapper, and it reads only getId() - so the ones a listing genuinely needs
-     * are named in an @EntityGraph on the query instead, which fetches them in one join rather
-     * than one query each.
-     *
-     * The collections were already LAZY and were the other half of the problem: the mapper touches
-     * users and childTasks on every task, which is a query each. @BatchSize turns that into one
-     * query per fifty tasks. It is the right shape here precisely because they cannot all be
-     * joined in the same query - two collection joins multiply into a cartesian product, and
-     * these are Sets, so Hibernate would let it happen rather than refusing.
-     */
+    // To-one associations are LAZY because @ManyToOne defaults to EAGER, which fetched a column and
+    // row per task whether or not anything read them; the ones a listing needs are named in an
+    // @EntityGraph instead. Collections use @BatchSize rather than being joined, since two Set
+    // joins would multiply into a cartesian product Hibernate won't refuse on its own.
     @ElementCollection
     @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
     @jakarta.persistence.Column(name = "label")
     @BatchSize(size = 50)
     private Set<String> labels;
-    /*
-     * The board is carried on the task itself rather than read through the column, because the
-     * column is nullable - a task can be taken off the board and still exist - and a task with no
-     * column would then have no owner at all. It is set once, from the board the task is created
-     * on, and TaskService refuses any move that would put the task in a column or row belonging to
-     * a different one.
-     */
+    // Carried on the task itself, not read through the column, because the column is nullable — a
+    // task removed from the board would otherwise have no owner at all. TaskService refuses any
+    // move that would put the task in a column or row on a different board.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;

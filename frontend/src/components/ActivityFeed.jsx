@@ -5,16 +5,12 @@ import { fetchActivity } from '../services/activityApi';
 import '../styles/components/ActivityFeed.css';
 
 /**
- * What has happened on this board, newest first.
+ * What has happened on this board, newest first — the question `TaskColumnHistory` never answered,
+ * since it recorded moves only and never who made them.
  *
- * <p>The board itself answers "where is everything now" and says nothing about how it got there.
- * `TaskColumnHistory` recorded moves and only moves, was never surfaced anywhere except as a bar
- * chart in the task panel, and has never known <em>who</em>. This is the other question.
- *
- * <p><b>The sentences are built here, not on the server.</b> The API returns a type name and a
- * detail string; the wording is a translation key, because a feed whose text was composed in Java
- * would be a screen the other eight languages cannot translate. That is the same reason the entry
- * carries a copy of the task's title rather than a rendered phrase.
+ * <p>Sentences are built here, not on the server: the API returns a type name and a detail string,
+ * and the wording is a translation key, because a feed composed in Java would be a screen the
+ * other eight languages cannot translate.
  */
 function ActivityFeed() {
   const { activeBoardId } = useKanban();
