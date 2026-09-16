@@ -94,8 +94,16 @@ class TaskAttachmentServiceTest {
     private static BlobStorageProperties properties(int maxConcurrentTransfers,
                                                      long maxAttachmentsPerBoard,
                                                      long maxTotalBytesPerBoard) {
+        return properties(maxConcurrentTransfers, 1, maxAttachmentsPerBoard, maxTotalBytesPerBoard);
+    }
+
+    private static BlobStorageProperties properties(int maxConcurrentTransfers,
+                                                     int replicaCountHint,
+                                                     long maxAttachmentsPerBoard,
+                                                     long maxTotalBytesPerBoard) {
         return new BlobStorageProperties("https://example.blob.core.windows.net", "",
-                "task-attachments", "", maxConcurrentTransfers, maxAttachmentsPerBoard, maxTotalBytesPerBoard);
+                "task-attachments", "", maxConcurrentTransfers, replicaCountHint,
+                maxAttachmentsPerBoard, maxTotalBytesPerBoard);
     }
 
     private TaskAttachmentService serviceWith(BlobStorageProperties storageProperties) {
@@ -580,6 +588,48 @@ class TaskAttachmentServiceTest {
             // Nothing was handed a stream to close, so the permit must already be free.
             var content = singleSlot.content(caller, 42, 1L, null);
             assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
+        }
+
+        @Test
+        @DisplayName("the configured total is divided by the replica count hint, not applied per replica")
+        void dividesTheConfiguredTotalByTheReplicaCountHint() throws Exception {
+            // 4 configured, 4 replicas -> 1 permit per JVM, the same shape as properties(1, ...).
+            var divided = serviceWith(properties(4, 4, 500, 1_073_741_824L));
+
+            CountDownLatch uploadStarted = new CountDownLatch(1);
+            CountDownLatch releaseUpload = new CountDownLatch(1);
+            doAnswer(invocation -> {
+                uploadStarted.countDown();
+                releaseUpload.await();
+                return null;
+            }).when(blobStore).put(anyString(), anyString(), any(InputStream.class), anyLong());
+
+            Thread first = new Thread(() ->
+                    divided.upload(caller, 42, upload("a.txt", "text/plain", CONTENT)));
+            first.start();
+            assertThat(uploadStarted.await(5, TimeUnit.SECONDS))
+                    .as("the first upload never reached the store")
+                    .isTrue();
+
+            assertThatThrownBy(() -> divided.upload(caller, 42, upload("b.txt", "text/plain", CONTENT)))
+                    .as("4 / 4 replicas must leave exactly one permit per JVM")
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+
+            releaseUpload.countDown();
+            first.join(5000);
+        }
+
+        @Test
+        @DisplayName("a replica count hint higher than the configured total still leaves at least one permit")
+        void neverDividesDownToZeroPermits() {
+            // 1 configured, 8 replicas -> floor of 1 rather than a Semaphore that can never be acquired.
+            var flooredAtOne = serviceWith(properties(1, 8, 500, 1_073_741_824L));
+
+            flooredAtOne.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
+
+            verify(blobStore, times(1)).put(anyString(), anyString(), any(InputStream.class), anyLong());
         }
     }
 
