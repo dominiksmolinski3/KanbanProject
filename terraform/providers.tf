@@ -36,6 +36,7 @@ provider "azurerm" {
 
   resource_providers_to_register = [
     "Microsoft.App",                 # container app + its managed environment
+    "Microsoft.Cache",               # the rate limiter's Redis instance
     "Microsoft.DBforPostgreSQL",     # flexible server
     "Microsoft.EventGrid",           # mail delivery-report system topic and subscription
     "Microsoft.Insights",            # action group, metric alerts, scheduled query rules, diagnostics

@@ -32,6 +32,32 @@ class AuthRateLimitPropertiesBindingTest {
     }
 
     @Test
+    @DisplayName("with nothing configured Redis defaults to a plain local connection")
+    void redisDefaultsAreLocal() {
+        AuthRateLimitProperties properties = bind(Map.of());
+
+        assertThat(properties.redisHost()).isEqualTo("localhost");
+        assertThat(properties.redisPort()).isEqualTo(6379);
+        assertThat(properties.redisPassword()).isEmpty();
+        assertThat(properties.redisSsl()).isFalse();
+    }
+
+    @Test
+    @DisplayName("SECURITY_RATE_LIMIT_REDIS_* is the name the API module's env block sets")
+    void bindsRedisFromTheEnvironment() {
+        AuthRateLimitProperties properties = bind(Map.ofEntries(
+                Map.entry("SECURITY_RATE_LIMIT_REDIS_HOST", "kanban-redis.privatelink.redis.cache.windows.net"),
+                Map.entry("SECURITY_RATE_LIMIT_REDIS_PORT", "6380"),
+                Map.entry("SECURITY_RATE_LIMIT_REDIS_PASSWORD", "s3cret"),
+                Map.entry("SECURITY_RATE_LIMIT_REDIS_SSL", "true")));
+
+        assertThat(properties.redisHost()).isEqualTo("kanban-redis.privatelink.redis.cache.windows.net");
+        assertThat(properties.redisPort()).isEqualTo(6380);
+        assertThat(properties.redisPassword()).isEqualTo("s3cret");
+        assertThat(properties.redisSsl()).isTrue();
+    }
+
+    @Test
     @DisplayName("SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT is the name the Container App env block sets")
     void bindsTheTrustedProxyCountFromTheEnvironment() {
         AuthRateLimitProperties properties = bind(Map.of("SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT", "1"));

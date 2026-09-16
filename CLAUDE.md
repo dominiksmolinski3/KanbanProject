@@ -667,9 +667,27 @@ kinder at the start and stricter at the end. Three invariants hold it together: 
 charged on the way **out**, so a refused attempt changes nothing and hammering neither extends the
 wait nor escapes it; a refused attempt still counts as *activity*, so only real quiet (the
 per-rule window) forgives a key; and the window must be at least the ceiling, or sitting out the
-longest wait would hand the whole burst back. The clock is Caffeine's `Ticker` and readings are
-compared as `now - deadline < 0` — `System.nanoTime` has an arbitrary origin and is routinely
-negative, so a zero-valued deadline is a point in time, not "no cooldown".
+longest wait would hand the whole burst back.
+
+**The escalation lives in Redis, not process memory (phase 3 of the container split).** Each
+(rule, dimension, key) triple is one Redis hash, read, scored and rewritten by
+`redis/auth-rate-limit.lua` in a single `EVAL` — the same reason the outbox claim and the deadline
+sweep are native SQL rather than JPQL: the atomic unit has to live where the shared state lives, and
+Redis running a script to completion before serving anything else on the keyspace is what makes two
+replicas hitting the same key at once score it exactly once between them, the way two Caffeine
+caches on two pods never could. "Now" is supplied by the caller as an epoch-millisecond `long` —
+`AuthRateLimiter` reads `java.time.Clock`, not Redis's own clock — which is what lets a test drive
+the escalation without waiting a cooldown out and keeps every replica scoring the same key against
+the same reading rather than against its own uptime. `RedisEscalationStore` **fails the attempt
+open** on anything Redis-shaped going wrong — an unreachable connection, a script the response
+shape does not match — because the limiter is defence in depth, not the control that stops a stolen
+password working, and losing the escalation for the length of an outage is a smaller cost than an
+outage that also locks every caller out of authentication. `security.rate-limit.redis-host`
+defaults to `localhost` (docker-compose and CI both run a plain `redis:7-alpine`); the deployment
+points it at an Azure Cache for Redis Basic instance reached over the private endpoint the storage
+account and Key Vault already have, authenticated with an access key from `REDIS-ACCESS-KEY` — Basic
+has no replica and that is deliberate (see the Checkov skip for `CKV_AZURE_230`), since what it
+holds is exactly the state the store already fails open on losing.
 
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
 `window.fetch` at module load to attach `Authorization`, skipping the URLs that name an
@@ -1157,7 +1175,11 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   than the absence of one. The attachment storage account adds two: `CKV_AZURE_33`, because
   there is no queue service on that account to log, and `CKV2_AZURE_1`, customer-managed encryption
   keys, which is the same trade `CKV_AZURE_41` names — a key nothing rotates buys the appearance of
-  control and a scheduled outage. **It briefly needed two more and earned both back**, which is the
+  control and a scheduled outage. The rate limiter's Redis adds one more: `CKV_AZURE_230`, standard
+  replication, declined because Basic has none to enable and that absence is the point — the cache
+  holds nothing but escalation counters `AuthRateLimiter` already fails open on losing, so a replica
+  would buy availability for state that costs a burst of free attempts to lose, not user data.
+  **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
   closed to the internet outright. If either fires again, the account has been reopened somewhere —

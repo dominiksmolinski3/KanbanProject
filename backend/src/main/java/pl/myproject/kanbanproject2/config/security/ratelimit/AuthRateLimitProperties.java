@@ -11,9 +11,12 @@ import java.time.Duration;
  * replacing a fixed quota per window whose worst refusal fell on whoever had just made an honest
  * mistake rather than on an attacker, who spends the wait cheaply.
  *
- * <p>State is held in process memory, so every limit below is <em>per replica</em> - the effective
- * ceiling scales with replica count, and the defaults are sized with that in mind. A shared store
- * is the only way to make a limit exact across replicas.
+ * <p>The escalation lives in Redis, not process memory - every replica of the API reads and writes
+ * the same key, so the burst and the cooldown mean what their numbers say regardless of which pod a
+ * caller's next attempt lands on. The four {@code redis*} fields point at it; {@code redisHost}
+ * defaults to {@code localhost} so a fresh clone with no Redis running still starts (the filter
+ * fails open on a connection it cannot reach - see {@link AuthRateLimiter}), and docker-compose and
+ * the deployment each set their own.
  */
 @ConfigurationProperties(prefix = "security.rate-limit")
 public record AuthRateLimitProperties(
@@ -52,7 +55,14 @@ public record AuthRateLimitProperties(
         @DefaultValue("3") long emailRequestsPerAccount,
         @DefaultValue("15s") Duration emailBaseCooldown,
         @DefaultValue("15m") Duration emailMaxCooldown,
-        @DefaultValue("1h") Duration emailWindow
+        @DefaultValue("1h") Duration emailWindow,
+
+        /* Where the escalation lives. Never blank in a deployment; blank locally means "no Redis
+         * configured", which the filter treats as a reason to allow rather than to refuse startup. */
+        @DefaultValue("localhost") String redisHost,
+        @DefaultValue("6379") int redisPort,
+        @DefaultValue("") String redisPassword,
+        @DefaultValue("false") boolean redisSsl
 ) {
 
     public AuthRateLimitProperties {
@@ -68,6 +78,12 @@ public record AuthRateLimitProperties(
         requirePositive(emailRequestsPerIp, "email-requests-per-ip");
         requirePositive(emailRequestsPerAccount, "email-requests-per-account");
         requireEscalation(emailBaseCooldown, emailMaxCooldown, emailWindow, "email");
+        if (redisHost == null || redisHost.isBlank()) {
+            throw new IllegalArgumentException("security.rate-limit.redis-host must not be blank");
+        }
+        if (redisPort < 1 || redisPort > 65535) {
+            throw new IllegalArgumentException("security.rate-limit.redis-port must be a valid port number");
+        }
     }
 
     /**

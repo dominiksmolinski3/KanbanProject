@@ -129,6 +129,31 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!--
+          AuthRateLimiter's escalation lives in Redis so every replica reads and writes the same
+          key (see RedisEscalationStore) rather than each pod keeping its own count.
+
+          Jedis rather than the starter's default Lettuce: Lettuce is built on Netty, and this is a
+          synchronous Tomcat application making one blocking call per request - the same reasoning
+          that keeps Netty off the Azure SDK's transport (see the exclusions above and
+          AzureTransportTest) applies here too, and Jedis's blocking client needs no event loop for
+          a single command per filter invocation.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.lettuce</groupId>
+                    <artifactId>lettuce-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>

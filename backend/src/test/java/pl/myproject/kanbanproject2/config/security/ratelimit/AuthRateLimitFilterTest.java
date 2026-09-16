@@ -37,7 +37,8 @@ class AuthRateLimitFilterTest {
     @BeforeEach
     void setUp() {
         // Test capacities: CREDENTIALS 4 per address / 2 per account, EMAIL 3 per address / 2 per account.
-        limiter = spy(new AuthRateLimiter(properties(), new AuthRateLimitTestSupport.FakeClock()));
+        limiter = spy(new AuthRateLimiter(
+                properties(), new InMemoryEscalationStore(), new AuthRateLimitTestSupport.FakeClock()));
         filter = new AuthRateLimitFilter(limiter, new ClientIpResolver(properties()), OBJECT_MAPPER);
     }
 
