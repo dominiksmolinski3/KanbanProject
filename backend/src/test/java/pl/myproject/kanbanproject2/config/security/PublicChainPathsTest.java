@@ -26,17 +26,11 @@ import static org.mockito.Mockito.mock;
 
 /**
  * What the filter chain lets through, and — since the split — what it no longer has any reason to.
- *
- * <p>This class used to guard the opposite claim. The jar served the React bundle, so fifteen
- * static patterns had to be permitted before anyone held a token, and a pattern that silently
- * stopped matching showed up first as a blank page in production — which is what {@code /*.js} did,
- * because {@code *} does not cross a {@code /} and Vite emits to {@code /assets/}. nginx serves all
- * of it now, from its own container, and those patterns are gone.
- *
- * <p>Deleting a guard rather than replacing it would leave nothing saying the patterns are meant to
- * be absent, and a merge that puts one back is not a thing anybody would notice. So the assertions
- * are inverted: the chain must refuse the bundle, refuse the client routes, and still refuse the
- * API behind them. The last of those is the part that was always the point.
+ * This class used to guard the opposite claim, when the jar served the bundle and fifteen static
+ * patterns had to be permitted before anyone held a token. nginx serves all of it now from its own
+ * container, so the assertions are inverted: the chain must refuse the bundle, refuse the client
+ * routes, and still refuse the API behind them - deleting the guard outright would leave a merge
+ * that puts a pattern back unnoticed.
  */
 class PublicChainPathsTest {
 

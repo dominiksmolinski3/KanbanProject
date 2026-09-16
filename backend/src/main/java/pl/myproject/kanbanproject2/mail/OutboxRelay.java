@@ -14,36 +14,19 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * The worker on the other side of the outbox: it reads rows and posts them.
+ * The worker on the other side of the outbox: it reads due rows and posts them, so the HTTPS call,
+ * retry and give-up decision happen here instead of on the request thread. A {@code FAILED} row is
+ * the dead letter, watched by {@link MailHealthIndicator} and by the {@link #DEAD_LETTER_MARKER}
+ * log line a Log Analytics rule matches.
  *
- * <p>Everything the request thread used to wait for happens here instead - the HTTPS call, the
- * timeout, the retry, and the decision that a message is not going to be delivered. That is the
- * whole trade of the pattern, and it has a cost worth naming: a refused message used to be a 500
- * somebody saw, and is now a row. A {@code FAILED} row is the dead letter, and a dead-letter queue
- * nobody watches is a silently dropped mail with extra steps - so two things watch it now.
- * {@link MailHealthIndicator} answers for anyone who asks, and the {@link #DEAD_LETTER_MARKER} on
- * the give-up line below is what the Log Analytics rule matches for the far more common case of
- * nobody asking.
+ * <p>Sending is not transactional — wrapping the loop would hold a connection across up to fifty
+ * HTTPS calls and roll back forty-nine successful sends over one refusal. Claiming is transactional
+ * and separate: {@link OutboxClaimer} claims with {@code FOR UPDATE SKIP LOCKED} and commits before
+ * any send, which is what lets a second relay run without resending.
  *
- * <p><b>The sending is not transactional, deliberately.</b> The batch is claimed, then each row is
- * posted and saved on its own. Wrapping the loop in a transaction would hold one open across up to
- * fifty HTTPS round trips - a connection held for minutes against a pool sized for requests - and
- * would roll back the record of forty-nine sent messages because the fiftieth was refused. Every
- * one of those messages really was sent; the row saying so has to survive the one that was not.
- *
- * <p><b>The claiming is, and it is a different transaction.</b> {@link OutboxClaimer} selects
- * {@code FOR UPDATE SKIP LOCKED} and marks the rows {@code SENDING} in one short transaction that
- * commits before any message is posted, which is what lets a second relay run at all: it steps over
- * the rows this one is holding instead of sending them again. Without a claim two replicas post
- * every verification code, reset code, overdue notice and invitation twice - externally, to a
- * person, with nothing able to recall it - which is why this was the first of the single-replica
- * constraints to be lifted and not the last.
- *
- * <p><b>At least once, and that is the choice.</b> A relay that dies between the claim and the
- * answer leaves rows in {@code SENDING}; their lease lapses and a later pass puts them back. A row
- * that was already posted when the process died is then posted again. The other ordering - mark
- * sent, then send - trades that duplicate for a message nobody ever receives, and for a mailbox
- * holding a verification code, arriving twice is the better failure.
+ * <p>Delivery is at-least-once: a relay that dies mid-batch leaves rows whose lease lapses and gets
+ * reclaimed, so a message may be posted twice - the better failure than a verification code nobody
+ * receives.
  */
 @Slf4j
 @Component
@@ -58,38 +41,26 @@ public class OutboxRelay {
     static final Duration FIRST_BACKOFF = Duration.ofMinutes(1);
 
     /**
-     * How many rows one pass takes.
-     *
-     * <p>Bounded because a relay that wakes to ten thousand rows should send fifty and come back
-     * rather than hold one thread for an hour; the next pass is a minute away. It bounds the
-     * reclaim pass too, for the same reason and with the same effect - a backlog is worked through
-     * a batch at a time rather than in one long transaction.
+     * Bounded because a relay with ten thousand queued rows should send fifty and come back rather
+     * than hold a thread for an hour; the next pass is a minute away. Also bounds the reclaim pass,
+     * for the same reason.
      */
     static final int BATCH_SIZE = 50;
 
     /**
-     * How long a claimed row stays claimed before another relay may assume the claimer is gone.
-     *
-     * <p><b>Not a timeout on one send.</b> Every row in a batch is claimed at the same instant and
-     * the fiftieth is posted last, so the lease has to outlast a whole pass - ten minutes is twelve
-     * seconds a message, against a provider that answers in well under one. Too short and a slow
-     * afternoon becomes duplicate mail; too long and a relay killed mid-batch leaves its messages
-     * unsent for that long. Ten minutes errs toward the second, which is the recoverable one.
+     * How long a claimed row stays claimed before another relay may assume the claimer is gone. Not
+     * a timeout on one send - the whole batch is claimed at once and the last row is posted last, so
+     * the lease must outlast a full pass. Ten minutes trades a slower recovery for fewer duplicate
+     * sends, since a stalled relay is the recoverable failure.
      */
     static final Duration CLAIM_LEASE = Duration.ofMinutes(10);
 
     /**
-     * The token the give-up line carries so that something outside this process can find it.
-     *
-     * <p>{@code MailHealthIndicator} answers "is mail working" to anyone who asks; this is the
-     * other half, for the far more common case of nobody asking. The Log Analytics rule in {@code
-     * terraform/modules/diagnostics/main.tf} matches console log lines containing this string and
-     * mails whoever the alert address names, which is where the 5xx and restart alerts already go.
-     *
-     * <p>A marker rather than a phrase from the sentence because the sentence is prose and prose
-     * gets reworded, and a reworded log line is an alert that stops firing without anything
-     * failing. {@code DeadLetterAlertTest} reads the Terraform and fails the build if the two stop
-     * agreeing - the coupling is real and nothing else can see it.
+     * The token the give-up line carries so something outside this process can find it. The Log
+     * Analytics rule in {@code terraform/modules/diagnostics/main.tf} matches this string in
+     * console logs and mails the alert address. A marker rather than a phrase from the sentence,
+     * because reworded prose is an alert that silently stops firing - {@code DeadLetterAlertTest}
+     * keeps the two in sync.
      */
     static final String DEAD_LETTER_MARKER = "MAIL_DEAD_LETTER";
 
@@ -144,18 +115,11 @@ public class OutboxRelay {
     }
 
     /**
-     * Puts back anything a previous relay claimed and never answered for.
-     *
-     * <p>It runs first, before this pass claims anything, so a row recovered here is due again for
-     * the pass a minute from now rather than being re-posted a millisecond after the process that
-     * may already have posted it died. That gap is free and it is the cheapest form of the
-     * duplicate-suppression this design does not otherwise have.
-     *
-     * <p><b>Loud, because it should not happen.</b> A lapsed claim means a relay was killed holding
-     * a batch - a rollout at the wrong moment, an OOM, a node drained - and that is worth knowing
-     * even though the outcome is recovery rather than loss. A row that has now run out of attempts
-     * is a dead letter like any other and carries the same marker, so the alert that watches
-     * refusals watches this too.
+     * Puts back anything a previous relay claimed and never answered for. Runs before this pass
+     * claims anything, so a recovered row is due next pass rather than reposted immediately after
+     * the process that may have already sent it died. Logged at warn because a lapsed claim means a
+     * relay was killed holding a batch; a row that has run out of attempts here is a dead letter
+     * like any other and carries the same marker.
      */
     private void reclaimLapsedClaims(Instant now) {
         List<OutboxEmail> lapsed = claimer.reclaimLapsed(now, BATCH_SIZE);
@@ -174,10 +138,8 @@ public class OutboxRelay {
 
     private void deliver(OutboxEmail row, Instant now) {
         try {
-            // What comes back is the provider's own id for the message, which is the only thing a
-            // delivery report arriving later has to match against. Null is ordinary and is stored
-            // as null: it means this row can never be matched to a report, not that the send
-            // failed.
+            // The provider's id for the message, which a later delivery report matches against;
+            // null is ordinary and means this row can never be matched, not that the send failed.
             row.accepted(now, transport.send(row.asMessage()));
         } catch (EmailDeliveryException refusal) {
             row.refused(reasonOf(refusal), now, FIRST_BACKOFF);

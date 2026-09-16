@@ -1,20 +1,14 @@
 package pl.myproject.kanbanproject2.user.auth;
 
 /**
- * Where a session is being used from, as far as one HTTP request can say.
+ * Where a session is being used from, as far as one HTTP request can say. Both values are advisory
+ * and attacker-controlled on an unauthenticated route, so they are a label and never a check —
+ * nothing here decides whether a token is valid, the row does.
  *
- * <p>Both values are advisory and both are attacker-controlled on an unauthenticated route, which
- * is why they are a label and never a check. Nothing here decides whether a token is valid; the row
- * decides that. This is what a person reads when they are looking at their own list of sessions and
- * trying to work out which one is the browser they are not sitting in front of.
- *
- * <p>The address is resolved by {@code ClientIpResolver} — the same answer the rate limiter bills,
- * so a deployment behind a proxy gets the caller's address rather than the proxy's in both places,
- * and a deployment that is not configured for proxies ignores {@code X-Forwarded-For} in both.
- *
- * <p>The user agent is truncated rather than rejected. It is free text of unbounded length, and the
- * column is 255 characters; a header longer than that is a browser being verbose or somebody
- * probing, and neither is a reason to refuse a login.
+ * <p>The address is resolved by {@code ClientIpResolver}, the same answer the rate limiter bills,
+ * so a deployment behind a proxy gets the caller's address rather than the proxy's in both places.
+ * The user agent is truncated rather than rejected: a header longer than the 255-character column
+ * is a browser being verbose or somebody probing, and neither is a reason to refuse a login.
  */
 public record DeviceContext(String ipAddress, String userAgent) {
 

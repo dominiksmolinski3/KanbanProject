@@ -31,13 +31,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * That the feed is actually fed.
- *
- * <p>{@link pl.myproject.kanbanproject2.task.activity.TaskActivityServiceTest} covers what an
- * entry is and how the feed is read; this covers the half that can silently stop happening. A
- * recording call is a side effect nothing else depends on, so deleting one breaks no test, changes
- * no response, and leaves a feed that quietly stops mentioning a whole kind of event. These are
- * the assertions that notice.
+ * That the feed is actually fed. {@link pl.myproject.kanbanproject2.task.activity.TaskActivityServiceTest}
+ * covers what an entry is and how the feed is read; this covers the half that can silently stop
+ * happening — a recording call is a side effect nothing else depends on, so deleting one breaks no
+ * test and just leaves a feed that quietly stops mentioning an event.
  */
 class TaskServiceActivityTest {
 
@@ -141,9 +138,9 @@ class TaskServiceActivityTest {
     }
 
     /**
-     * The order is the assertion. The entry is written while the task is still there - so it can
-     * copy the title - and the remaining entries are detached before the row goes, because there
-     * is no cascade on that column and the delete would otherwise fail on the foreign key.
+     * The order is the assertion: the entry is written while the task still exists, so it can
+     * copy the title, and remaining entries are detached before the row goes, since there is no
+     * cascade on that column.
      */
     @Test
     @DisplayName("a deletion is recorded before the task goes, and its entries are detached rather than deleted")
@@ -168,10 +165,9 @@ class TaskServiceActivityTest {
     }
 
     /**
-     * The move is the one event with two records, and both are written in the same three lines of
-     * {@code moveToColumn}. They are not duplicates: {@code task_column_history} is the interval
-     * series the task panel folds into time-per-column and has never recorded who did it. Writing
-     * them together is the only thing keeping them from drifting.
+     * The move is the one event with two records, written together in {@code moveToColumn} so
+     * they can't drift — {@code task_column_history} is an interval series with no actor, and this
+     * is the actor log.
      */
     @Test
     @DisplayName("a move writes a history row and a feed entry, and the entry names the column")

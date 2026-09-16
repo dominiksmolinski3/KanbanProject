@@ -21,17 +21,11 @@ export class SessionExpiredError extends Error {
 }
 
 /**
- * The auth routes that are reachable without a token, and so must not carry one.
- *
- * This used to be `url.includes('/auth/')` - every route under the prefix, on the assumption that
- * everything there is pre-authentication. `/auth/devices` is not: it lists an account's sessions,
- * so proving whose account it is is the entire precondition, and a blanket skip sent it out with
- * no `Authorization` header and no way to tell why the server refused.
- *
- * It is the same list `PublicPaths` holds on the server, and the same failure the server-side
- * version was written to end - one copy of the rule drifting away from the other. Keeping them in
- * step is a manual job across two languages; what makes that survivable is that the cost of
- * forgetting is now a 401 on one route rather than a token attached to a public one.
+ * The auth routes reachable without a token, and so must not carry one. This used to be
+ * `url.includes('/auth/')` — every route under the prefix — until `/auth/devices` needed a token
+ * to prove whose sessions it was listing, so a blanket skip sent it out bare. It is the client's
+ * copy of the server's `PublicPaths`, kept in step by hand; the cost of forgetting is a 401 on one
+ * route rather than a token leaking onto a public one.
  */
 const PUBLIC_AUTH_PATHS = [
   '/auth/signup',
@@ -106,11 +100,10 @@ export function setupApiInterceptors() {
     const response = await send(input, options, token);
 
     /*
-     * A 401 the client did not see coming: the token was withdrawn, or the server came back with a
-     * different signing key. One retry, and only when there is a refresh token to retry with, so a
-     * genuinely unauthorised request cannot loop. The request is replayed with the same `options`,
-     * which is safe for the string and FormData bodies this app sends and would not be for a
-     * one-shot stream.
+     * A 401 the client did not see coming - the token was withdrawn, or the server rotated its
+     * signing key. One retry only, and only with a refresh token in hand, so a genuinely
+     * unauthorised request can't loop; replaying with the same `options` is safe here because this
+     * app only ever sends string and FormData bodies, not a one-shot stream.
      */
     if (response.status === 401 && getRefreshToken()) {
       return send(input, options, await renewOrEnd());

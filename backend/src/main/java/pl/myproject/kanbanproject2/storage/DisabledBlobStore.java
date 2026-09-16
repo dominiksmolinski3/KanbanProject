@@ -7,17 +7,12 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import java.io.InputStream;
 
 /**
- * What runs when no storage account is configured.
- *
- * <p>The same allowance {@code DisabledEmailSender} makes, and the opposite behaviour, because the
- * two failures are not alike. A dropped mail is invisible to the person who caused it and there is
- * nothing useful to tell them; an upload that goes nowhere is something the person is standing in
- * front of, waiting for. So this refuses rather than pretends: {@code 503 ATTACHMENT_STORAGE_
- * UNAVAILABLE}, which says the deployment is missing something rather than that the file was wrong.
- *
- * <p>Refusing here rather than at startup is what lets a fresh clone and the CI job run the whole
- * application without an Azure subscription. The startup warning in {@code BlobStorageConfiguration}
- * names the properties to set.
+ * What runs when no storage account is configured - the same allowance {@code DisabledEmailSender}
+ * makes, but the opposite behaviour: a dropped mail is invisible to whoever caused it, while a
+ * stalled upload has somebody watching a progress bar, so this refuses with
+ * {@code 503 ATTACHMENT_STORAGE_UNAVAILABLE} rather than pretending. Refusing here rather than at
+ * startup is what lets a fresh clone and CI run without an Azure subscription;
+ * {@code BlobStorageConfiguration}'s startup warning names the missing properties.
  */
 @Slf4j
 public class DisabledBlobStore implements BlobStore {
@@ -29,9 +24,8 @@ public class DisabledBlobStore implements BlobStore {
 
     @Override
     public void remove(String blobName) {
-        // Nothing was ever written, so there is nothing to remove. Reachable only through a row
-        // that predates the account being switched off, which is a state worth a line rather than
-        // an exception - the caller is deleting something and deleting it succeeds.
+        // Nothing was ever written, so there's nothing to remove; reachable only via a row that
+        // predates the account being switched off, so deletion should still succeed.
         log.debug("No storage account is configured; nothing to remove for {}", blobName);
     }
 

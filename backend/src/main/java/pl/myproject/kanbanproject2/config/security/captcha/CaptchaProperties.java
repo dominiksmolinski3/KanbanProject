@@ -7,15 +7,9 @@ import java.time.Duration;
 
 /**
  * Whether the captcha token the client sends is actually checked, and what to check it against.
- *
- * <p>The names are bound from {@code CAPTCHA_ENABLED} and {@code CAPTCHA_SECRET} in
- * {@code application.properties} because those two variables were already carried all the way
- * through docker-compose, Terraform, Key Vault and the Container App template - to a verifier that
- * did not exist. This is that verifier; the chain is unchanged.
- *
- * <p>{@code enabled} is the escape hatch as well as the switch. A captcha provider having an
- * outage would otherwise be an outage here too, because a token that cannot be checked is refused
- * rather than waved through - see {@link CaptchaVerifier}.
+ * {@code enabled} doubles as the escape hatch: a token that cannot be checked is refused rather
+ * than waved through (see {@link CaptchaVerifier}), so a captcha provider outage would otherwise
+ * become an outage here too.
  */
 @ConfigurationProperties(prefix = "security.captcha")
 public record CaptchaProperties(

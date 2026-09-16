@@ -13,18 +13,10 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The two ways this could go back to being decorative, checked at build time.
- *
- * <p>The first is the one it was in: a client sending {@code captcha: { token }} at a DTO with no
- * such field. Spring Boot disables {@code FAIL_ON_UNKNOWN_PROPERTIES}, so that is not an error
- * anywhere - the token is dropped in silence and the widget goes on looking like a control. A
- * field being deleted, renamed, or a third credential route being added without one, all land in
- * exactly the same silence.
- *
- * <p>The second is a handler that takes a body carrying a token and never asks anyone about it.
- * Whether {@code verify} is reached is asserted by {@code AuthenticationControllerHttpTest} through
- * a real request; what this adds is that no <em>new</em> route can quietly skip the step, because
- * a route whose body carries a captcha has to be in the list below.
+ * The two ways this could go back to being decorative, checked at build time: a DTO field being
+ * deleted or renamed (Spring Boot disables {@code FAIL_ON_UNKNOWN_PROPERTIES}, so a token sent to a
+ * DTO with no matching field is dropped in silence), and a new route taking a body with a captcha
+ * that never verifies it - which the list below forces to be a deliberate omission.
  */
 class CaptchaCoverageTest {
 

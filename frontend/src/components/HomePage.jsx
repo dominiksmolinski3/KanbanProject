@@ -127,10 +127,9 @@ const HomePage = () => {
     setLoading(true);
     
     try {
-  // The language this form is being read in. It is the only evidence available at the one moment
-  // the account has no setting of its own, and it decides which language the verification mail
-  // arrives in. The server falls back to Accept-Language and then to English, so a caller that
-  // sends nothing still gets a sensible answer rather than a refusal.
+  // The language this form is being read in - the only evidence available before the account has
+  // a setting of its own, and what decides which language the verification mail arrives in. The
+  // server falls back to Accept-Language and then English if this is missing.
   const payload = { username, email, password, locale: (i18n.language || 'en').split('-')[0] };
   if (isCaptchaRequired && captchaToken) payload.captcha = { token: captchaToken };
   await authService.register(payload);

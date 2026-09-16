@@ -21,10 +21,8 @@ public class File {
     private byte[] data;
 
     /*
-     * Who uploaded it, which is the only thing that decides who may read or delete it. Nullable
-     * for the rows that predate this column: the V5 migration can recover the owner of an avatar
-     * from users.avatar_id and has nothing to go on for anything else, so an unowned file is
-     * treated as belonging to nobody rather than to everybody - see FileService.
+     * Who uploaded it, the only thing that decides who may read or delete it. Nullable for rows
+     * that predate this column, treated as belonging to nobody rather than to everybody.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")

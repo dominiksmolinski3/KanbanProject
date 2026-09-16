@@ -4,15 +4,9 @@ import org.springframework.util.AntPathMatcher;
 
 /**
  * The single list of paths reachable without a token, in the same form the filter chain uses.
- *
- * <p>These lived as private arrays on {@link SecurityConfiguration} while
- * {@link JwtAuthenticationFilter} kept a second, hand-rolled copy — which promptly drifted: the
- * filter still skipped {@code /auth/**} after the {@code /api} prefix landed, and skipped anything
- * whose path merely <em>ended</em> in a static-asset extension, which a free-text label segment
- * can. Both sides read this class now so the two cannot disagree again.
- *
- * <p>Patterns are Ant-style, matched against the path below the context root, exactly as
- * {@code requestMatchers(String...)} does — so {@code *} does not cross a {@code /} here either.
+ * {@link SecurityConfiguration} and {@link JwtAuthenticationFilter} used to each hold a copy and
+ * had drifted; both read this class now so they cannot disagree again. Patterns are Ant-style,
+ * matched exactly as {@code requestMatchers(String...)} does.
  */
 public final class PublicPaths {
 
@@ -37,17 +31,10 @@ public final class PublicPaths {
     };
 
     /*
-     * The published contract, and the one thing here that is public because publishing it is the
-     * point rather than because a browser needs it before signing in.
-     *
-     * A contract that needs a token is not published: a generator, a linter or somebody wiring up
-     * a client reads it before they have an account, and every route it describes checks its own
-     * caller anyway - cross-tenant access answers 404 whether or not the path was guessable, so
-     * route names were never a control. What is deliberately absent is a console: the -api starter
-     * is on the classpath rather than -ui, so there is no Swagger HTML to reach at all.
-     *
-     * springdoc serves the group listing at the second pattern; both are needed, and neither
-     * carries the /api prefix, because WebConfig scopes that to this application's own package.
+     * The published contract - public because publishing it is the point, not because a browser
+     * needs it before signing in. A contract needing a token is not published: a generator reads it
+     * before having an account, and every route it describes checks its own caller anyway. Neither
+     * pattern carries the /api prefix, because WebConfig scopes that to this application's package.
      */
     public static final String[] DOCS_ENDPOINTS = {
             "/v3/api-docs",
@@ -55,31 +42,17 @@ public final class PublicPaths {
     };
 
     /*
-     * There is deliberately no list of static assets here any more.
-     *
-     * The bundle is served by nginx in its own container and never reaches this filter chain, so
-     * the fifteen permitAll patterns that used to sit here - /assets/**, /locales/**, and a dozen
-     * single-segment extensions - now let nothing through that anything asks for. Removing them is
-     * a real narrowing rather than tidying: /*.json next to a free-text label segment was always
-     * an uncomfortable shape, and this class carried a comment saying so.
-     *
-     * PublicChainPathsTest asserts the absence, so putting them back is a deliberate act.
+     * There is deliberately no list of static assets here any more: the bundle is served by nginx
+     * in its own container and never reaches this filter chain. PublicChainPathsTest asserts the
+     * absence, so putting any back is a deliberate act.
      */
 
     /*
-     * The one unauthenticated write in the application, and the only route here that is public
-     * because a caller outside this deployment has to reach it rather than because a browser needs
-     * it before signing in.
-     *
-     * Azure Event Grid posts delivery reports and holds no account here, so it cannot present a
-     * token. What it can do is call a URL somebody gave it, which is why the route carries a shared
-     * key in its query string and answers 404 without it - and why, with no key configured, it
-     * answers 404 to everything. On a fresh clone and in CI that is every request: the endpoint is
-     * off unless somebody turns it on.
-     *
-     * It is deliberately not under /api/auth. Nothing about it is a credential route, the rate
-     * limiter does not cover it, and putting it there would make the one place a reader looks for
-     * "what can be called without a token" mean two different things.
+     * The one unauthenticated write in the application, public because Azure Event Grid holds no
+     * account here and can only call a URL it was given - so the route carries a shared key in its
+     * query string and answers 404 without it, which means every request on a fresh clone or in CI
+     * where no key is configured. Deliberately not under /api/auth: it is not a credential route
+     * and the rate limiter does not cover it.
      */
     public static final String[] WEBHOOK_ENDPOINTS = {
             "/api/mail/delivery-reports"

@@ -8,21 +8,13 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
- * A partial update of a task, where "not sent" and "sent as null" are different requests.
- *
- * <p>{@link JsonNullable#isPresent()} answers the first question and the wrapped value answers the
- * second, so {@code {"row": null}} detaches the task from its swimlane instead of being read as
- * "leave the swimlane alone" — the read the frontend's row-delete path had always assumed and never
- * got. Fields absent from the body are left untouched, as before.
- *
- * <p>{@code completed} is not here on purpose: completion goes through
- * {@code PATCH /tasks/{id}/complete/{status}}, the one route that enforces the parent-task rule.
- *
- * <p>{@code version} is the one plain field rather than a {@link JsonNullable}: for the others,
- * "sent as null" and "left out" are different requests, and for the version they are the same one -
- * no version means "do not check", so absent deserialising to {@code null} is exactly right. When it
- * is present, {@code TaskService} refuses the write if the task has moved on since the caller last
- * read it.
+ * A partial update of a task, where "not sent" and "sent as null" are different requests via
+ * {@link JsonNullable#isPresent()} — {@code {"row": null}} detaches the swimlane rather than being
+ * read as "leave it alone". {@code completed} is deliberately absent since completion goes through
+ * {@code PATCH /tasks/{id}/complete/{status}}, the route that enforces the parent-task rule.
+ * {@code version} is a plain field rather than a {@link JsonNullable} because for it, absent and
+ * null mean the same thing — "do not check" — and when present, {@code TaskService} refuses the
+ * write if the task has moved on since the caller last read it.
  */
 public record PatchTaskRequest(
         JsonNullable<@Size(max = 255) String> title,

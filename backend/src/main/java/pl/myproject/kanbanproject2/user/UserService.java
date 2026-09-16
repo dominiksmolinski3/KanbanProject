@@ -24,22 +24,14 @@ public class UserService {
     private final BoardService boardService;
 
     /**
-     * The people the caller shares a board with, rather than every account on the deployment.
-     *
-     * <p>This route feeds the assignee picker and the members screen, and it used to answer with
-     * the whole {@code users} table — every address, every display name, to anyone who could log
-     * in. Narrowing it is half of the same change as the board checks: an account you cannot work
-     * with is an account you have no reason to be able to enumerate.
-     *
-     * <p>The caller is always included, whether or not they are on a board yet, because the UI
-     * looks itself up in this list.
+     * The people the caller shares a board with, rather than every account on the deployment — it
+     * used to answer with the whole {@code users} table, every address and display name, to anyone
+     * who could log in. The caller is always included, whether or not they are on a board yet,
+     * because the UI looks itself up in this list.
      */
     public List<UserDto> getVisibleUsers(User caller) {
-        /*
-         * Keyed on id. The caller arrives from the JWT filter and the peers from the persistence
-         * context, so the same account is two objects and User inherits identity equality - a
-         * plain Set listed whoever was asking twice, which is what running it turned up.
-         */
+        // Keyed on id: the caller and the peers are two objects for the same account, and User
+        // inherits identity equality - a plain Set listed whoever was asking twice.
         var visible = new LinkedHashMap<Integer, User>();
         if (caller != null) {
             visible.put(caller.getId(), caller);
@@ -110,10 +102,9 @@ public class UserService {
             existingUser.setWipLimit(userDto.wipLimit());
         }
         if (userDto.locale() != null) {
-            // Rejected rather than normalised to English. Signup guesses from a browser header and
-            // falls back quietly, because a guess that misses costs nothing; this is somebody
-            // choosing, and silently storing a different answer than the one they gave is worse
-            // than telling them the language is not one of the nine.
+            // Rejected rather than normalised to English: unlike signup's silent guess from a
+            // browser header, this is somebody choosing, and silently storing a different answer
+            // is worse than telling them the language is not one of the nine.
             if (!SupportedLocales.isSupported(userDto.locale())) {
                 throw new GlobalException(ExceptionIdentifier.UNSUPPORTED_LOCALE);
             }

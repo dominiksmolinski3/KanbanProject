@@ -6,24 +6,14 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import java.time.Duration;
 
 /**
- * Tuning knobs for the {@link AuthRateLimitFilter}.
+ * Tuning knobs for the {@link AuthRateLimitFilter}. The limits are a burst of free attempts
+ * followed by a cooldown that doubles each time it is spent (15s, 30s, 60s, ... to a ceiling),
+ * replacing a fixed quota per window whose worst refusal fell on whoever had just made an honest
+ * mistake rather than on an attacker, who spends the wait cheaply.
  *
- * <p>The limits are a burst of free attempts followed by a cooldown that doubles each time it is
- * spent - fifteen seconds, thirty, a minute, and so on to a ceiling. That shape replaced a fixed
- * quota per window, which had the property that the person it hurt most was the one who had done
- * nothing wrong: five signup mails in a row, the fifth of them a genuine mistyped address, and the
- * sixth attempt was refused for eleven minutes with nothing to do but wait. Someone attacking the
- * endpoint spends that time cheaply; the person trying to use it does not.
- *
- * <p>Doubling gets to the same place for an attacker without that first cliff. The first
- * inconvenience is fifteen seconds - long enough that scripted guessing is pointless, short enough
- * that a person barely registers it - and sustained abuse converges on the ceiling, which is a
- * lower long-run rate than the quota it replaced.
- *
- * <p>The state is held in process memory, so every limit below is <em>per replica</em>. With the
- * Container App scaled to five replicas the effective ceiling is five times what is configured
- * here; the defaults are sized with that multiplier already in mind. Moving to a shared store is
- * the only way to make a limit exact across replicas.
+ * <p>State is held in process memory, so every limit below is <em>per replica</em> - the effective
+ * ceiling scales with replica count, and the defaults are sized with that in mind. A shared store
+ * is the only way to make a limit exact across replicas.
  */
 @ConfigurationProperties(prefix = "security.rate-limit")
 public record AuthRateLimitProperties(
@@ -32,16 +22,10 @@ public record AuthRateLimitProperties(
         @DefaultValue("true") boolean enabled,
 
         /*
-         * How many reverse proxies sit in front of the app, counted from the app outwards.
-         *
-         * 0 (the default) ignores X-Forwarded-For completely and keys on the socket address,
-         * which is correct for docker-compose and for `npm run dev` behind the Vite proxy.
-         * Container Apps ingress is exactly one hop, so a deployment behind it must set 1;
-         * adding Front Door in front of that would make it 2.
-         *
-         * The default is deliberately the restrictive one: an over-low count buckets more
-         * traffic together than intended, while an over-high count would let a client forge
-         * its own key and walk away from the limiter entirely.
+         * How many reverse proxies sit in front of the app, counted from the app outwards. 0 (the
+         * default) ignores X-Forwarded-For and keys on the socket address; Container Apps ingress
+         * is one hop, so a deployment behind it sets 1. Deliberately the restrictive default: an
+         * over-high count would let a client forge its own key and walk away from the limiter.
          */
         @DefaultValue("0") int trustedProxyCount,
 
@@ -50,9 +34,8 @@ public record AuthRateLimitProperties(
 
         /*
          * Guessing attacks against /auth/login, /auth/verify, /auth/reset-password and the two
-         * session routes. Fifteen attempts per address and five per account before the first
-         * wait: enough for a person mistyping a password, and enough for a household or an office
-         * behind one address to sign in without meeting the limiter at all.
+         * session routes. Fifteen attempts per address and five per account before the first wait
+         * - enough for a mistyped password or a household behind one address.
          */
         @DefaultValue("15") long credentialAttemptsPerIp,
         @DefaultValue("5") long credentialAttemptsPerAccount,
@@ -62,9 +45,8 @@ public record AuthRateLimitProperties(
 
         /*
          * Outbound-mail amplification through /auth/signup, /auth/resend and /auth/forgot-password.
-         * Tighter than credentials because each attempt costs a message against a shared Gmail
-         * quota and against the sender reputation of the domain - but the cost of asking once more
-         * is now fifteen seconds rather than the rest of the hour.
+         * Tighter than credentials because each attempt costs a message against a shared mail
+         * quota and the domain's sender reputation.
          */
         @DefaultValue("5") long emailRequestsPerIp,
         @DefaultValue("3") long emailRequestsPerAccount,

@@ -47,16 +47,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * SEC-01 and SEC-05, stated as the property they are: <b>one account's board is invisible to
- * another's, on every route that reaches it.</b>
+ * another's, on every route that reaches it.</b> Two tenants, each with a board, a column, a
+ * swimlane, a task and an upload; the services are real and only the repositories are mocked, so
+ * the check under test is the one that ships, including {@link BoardService} itself.
  *
- * <p>Two tenants, each with a board, a column, a swimlane, a task and an upload. Every assertion
- * here is a request that used to succeed. The services are real and only the repositories are
- * mocked, so the check under test is the one that ships — including {@link BoardService} itself,
- * which is constructed rather than stubbed.
- *
- * <p>The expected status is 404 throughout, never 403. That is deliberate and is the reason each
- * assertion names the identifier: a 403 on {@code /api/tasks/{id}} would let a caller walk the id
- * space and learn the size and shape of a board they cannot open.
+ * <p>The expected status is 404 throughout, never 403 — a 403 on {@code /api/tasks/{id}} would let
+ * a caller walk the id space and learn the size and shape of a board they cannot open.
  */
 class TenantIsolationTest {
 
@@ -339,12 +335,8 @@ class TenantIsolationTest {
         @Test
         @DisplayName("the caller is listed once, not once per instance of themselves")
         void theCallerIsNotDuplicated() {
-            /*
-             * Found by running it, not by reading it. The caller arrives from the JWT filter and
-             * the board's members from the persistence context, so they are two objects for one
-             * account - and User inherits identity equality, so a Set kept both. The board page
-             * showed whoever was looking at it twice.
-             */
+            // Found by running it: the caller and the board's members are two objects for the same
+            // account, and User inherits identity equality, so a Set kept both.
             myBoard.addMember(me);
 
             assertThat(userService.getVisibleUsers(me)).hasSize(1);

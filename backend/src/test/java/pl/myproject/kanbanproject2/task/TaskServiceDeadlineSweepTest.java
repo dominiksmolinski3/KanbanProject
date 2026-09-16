@@ -26,16 +26,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The deadline sweep flips {@code expired} on both crossings; only the crossing <em>into</em>
- * expired should raise a notification, and it should raise it after the flag is saved rather than
- * instead of saving it.
- *
- * <p>Since the sweep claims its rows rather than reading them all, the database now decides which
- * tasks are candidates and these tests stand in for that decision. What they still check is what
- * the sweep does with one: which direction it flipped, whether it saved before notifying, and that
- * a task nobody claimed is a task nobody mails. The claim itself - that {@code SKIP LOCKED} keeps
- * two replicas off the same row - is the database's to keep and {@code DeadlineSweepClaimTest}'s to
- * pin.
+ * The deadline sweep flips {@code expired} on both crossings; only the crossing into expired
+ * should notify, and only after the flag is saved. Since the sweep now claims its rows rather than
+ * reading them all, the database decides which tasks are candidates; these tests check what the
+ * sweep does with one — direction, save-before-notify order, and that an unclaimed task is never
+ * mailed. The claim itself, that {@code SKIP LOCKED} keeps two replicas off the same row, is
+ * {@code DeadlineSweepClaimTest}'s to pin.
  */
 class TaskServiceDeadlineSweepTest {
 

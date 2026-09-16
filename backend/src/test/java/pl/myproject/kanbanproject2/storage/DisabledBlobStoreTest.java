@@ -12,12 +12,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The store a deployment with no Azure account gets - which is CI, and a fresh clone.
- *
- * <p>The behaviour worth pinning is that it refuses rather than pretends. Mail's equivalent drops
- * the message and says nothing, because there is nobody standing in front of a verification mail;
- * an upload has somebody watching a progress bar, and a 503 that names the reason is the only
- * honest answer. Silently accepting one and losing the bytes would be the worst of the three.
+ * The store a deployment with no Azure account gets - CI, and a fresh clone. It refuses rather than
+ * pretends: unlike a dropped mail, which nobody is watching for, an upload has somebody watching a
+ * progress bar, so a 503 naming the reason is the only honest answer.
  */
 class DisabledBlobStoreTest {
 

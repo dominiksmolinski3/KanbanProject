@@ -14,12 +14,9 @@ import java.util.List;
 public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, Long> {
 
     /**
-     * One task's attachments, oldest first.
-     *
-     * <p>The uploader is fetched in the same query because the mapper reads their name on every
-     * row, and a lazy to-one read per row is the N+1 the {@code @BatchSize} annotations on
-     * {@code Task} exist to answer. One join is cheaper here than a batch, because this is a single
-     * collection rather than a collection per task.
+     * One task's attachments, oldest first. The uploader is fetched in the same query since the
+     * mapper reads their name on every row; one join is cheaper here than {@code @BatchSize},
+     * because this is a single collection rather than one per task.
      */
     @EntityGraph(attributePaths = "uploadedBy")
     List<TaskAttachment> findByTaskOrderByUploadedAtAscIdAsc(Task task);
@@ -28,9 +25,8 @@ public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, 
     List<TaskAttachment> findByTask(Task task);
 
     /**
-     * How many attachments are on the board, across every one of its tasks - one aggregate rather
-     * than loading every row to count them in Java, which is what the quota check in
-     * {@code TaskAttachmentService.upload} reads before a blob is written.
+     * How many attachments are on the board, across every task, as one aggregate rather than
+     * loading every row to count in Java — read by the quota check before a blob is written.
      */
     @Query("SELECT COUNT(a) FROM TaskAttachment a WHERE a.task.board = :board")
     long countByTaskBoard(@Param("board") Board board);

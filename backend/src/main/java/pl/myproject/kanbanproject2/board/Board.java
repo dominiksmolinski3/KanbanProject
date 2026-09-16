@@ -29,20 +29,13 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A board and the people allowed to see it.
+ * A board and the people allowed to see it — the unit of tenancy: every column, row and task
+ * belongs to exactly one board, and membership is the only thing that grants access to any of them.
  *
- * <p>This is the unit of tenancy: every column, row and task belongs to exactly one board, and
- * being a member of that board is the only thing that grants access to any of them. Before this
- * existed, "authenticated" was the whole authorization model — one shared board that every account
- * on the deployment could read, rewrite and delete.
- *
- * <p>Two levels, deliberately, rather than a role table: <em>owner</em>, who may rename the board,
- * delete it and change who is on it, and <em>member</em>, who may do anything to its contents. A
- * finer model is easy to add on top of this one and impossible to add on top of nothing.
- *
- * <p>The owner is nullable for exactly one row: the board the V5 migration creates to hold data
- * that predates boards. Nothing owns that data, and inventing an owner for it in SQL would be a
- * guess; instead the first account to open a board adopts it. See {@link BoardService#provisionFor}.
+ * <p>Two levels, deliberately, rather than a role table: <em>owner</em> may rename, delete and
+ * change membership; <em>member</em> may do anything to its contents. The owner is nullable only
+ * for the one board V5 creates to hold data that predates boards; the first account to open a board
+ * adopts it (see {@link BoardService#provisionFor}).
  */
 @NoArgsConstructor
 @Setter
@@ -66,9 +59,8 @@ public class Board {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     /*
-     * Owning side, and the only mapping of the membership. User has no inverse collection: the
-     * question asked in practice is "which boards can this caller see", which is a repository
-     * query, and a bidirectional mapping would be a second copy of the same fact to keep in sync.
+     * Owning side, and the only mapping of the membership. User has no inverse collection: a
+     * bidirectional mapping would just be a second copy of the same fact to keep in sync.
      */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

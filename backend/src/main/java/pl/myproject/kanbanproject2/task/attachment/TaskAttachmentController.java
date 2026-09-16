@@ -27,12 +27,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Attachments, addressed under the task that owns them.
- *
- * <p>Nested rather than a top-level {@code /attachments}, because an attachment has no visibility
- * of its own - the task decides who may see it. Naming the task in the path means the check runs on
- * the object that carries the board, and an id from another board is a 404 rather than something
- * the service has to notice on the way past.
+ * Attachments, addressed under the task that owns them rather than a top-level
+ * {@code /attachments}, because an attachment has no visibility of its own — the task decides who
+ * may see it, and an id from another board is a 404 rather than something the service has to
+ * notice on the way past.
  */
 @RestController
 @RequestMapping("/tasks/{taskId}/attachments")
@@ -60,23 +58,14 @@ public class TaskAttachmentController {
 
     /**
      * The bytes, streamed from storage through this application to the caller.
-     *
-     * <p>{@link InputStreamResource} rather than a {@code byte[]}: Spring copies it to the response
-     * through a buffer and closes it afterwards, so a ten-megabyte download costs a buffer rather
-     * than ten megabytes of heap. The length is set from the row instead of from the stream, which
-     * is why {@code size_bytes} is stored - without it the response would have to be chunked and
-     * the browser could not show progress.
-     *
-     * <p><b>{@code attachment}, never {@code inline}.</b> This is served from the application's own
-     * origin, so a rendered HTML or SVG upload would be same-origin with the board and with every
-     * token in it. Forcing a download is what makes it safe to store whatever type was uploaded.
-     * The type is echoed back as stored, which is safe only in company with that header.
-     *
-     * <p><b>{@code Accept-Ranges: bytes} is on every response, including the full one</b>, because
-     * that header is how a client finds out it may resume at all. A satisfiable {@code Range} is
-     * answered {@code 206} with a {@code Content-Range}; an unsatisfiable one is a {@code 416} from
-     * the handler below. {@code Content-Length} names what this response carries rather than what
-     * the file weighs, which for a partial response are different numbers.
+     * {@link InputStreamResource} rather than a {@code byte[]} so a large download costs a buffer
+     * rather than the whole file in heap, with {@code Content-Length} set from the row's
+     * {@code size_bytes} rather than the stream. {@code Content-Disposition} is always
+     * {@code attachment}, never {@code inline} — this is served same-origin with the board, so a
+     * rendered HTML/SVG upload would run with every token in it. {@code Accept-Ranges: bytes} is
+     * sent on every response so a client knows it may resume; a satisfiable {@code Range} gets
+     * {@code 206} with a {@code Content-Range}, an unsatisfiable one a {@code 416} from the handler
+     * below.
      */
     @GetMapping("/{attachmentId}/content")
     public ResponseEntity<InputStreamResource> content(
@@ -107,17 +96,11 @@ public class TaskAttachmentController {
     }
 
     /**
-     * The one range this route will serve, or {@code null} for "send the whole thing".
-     *
-     * <p>Two cases deliberately answer {@code null} rather than an error. <b>A header that will not
-     * parse is ignored</b>, which is what RFC 9110 asks for - a malformed {@code Range} is a client
-     * that does not know what it is asking, and the whole file is a correct answer to that, where a
-     * {@code 400} would break a download over a header nobody had to send. <b>A request for several
-     * ranges at once is also ignored</b>, because answering it properly means a
-     * {@code multipart/byteranges} body, and nothing that talks to this API asks for one: the
-     * downloader in this project resumes with a single open-ended range, and so does every
-     * command-line tool. Serving the whole file is the spec-legal fallback, and it is honest in a
-     * way that answering only the first of several ranges would not be.
+     * The one range this route will serve, or {@code null} for the whole file. A header that won't
+     * parse is ignored per RFC 9110, rather than a {@code 400} over a header nobody had to send. A
+     * request for several ranges is also ignored, since answering it needs a
+     * {@code multipart/byteranges} body nothing here asks for — every caller resumes with a single
+     * open-ended range.
      */
     private static HttpRange singleRangeIn(String header) {
         if (!StringUtils.hasText(header)) {
@@ -133,15 +116,10 @@ public class TaskAttachmentController {
     }
 
     /**
-     * A {@code 416}, with the header that is the only reason a {@code 416} is worth more to the
-     * client than a flat refusal.
-     *
-     * <p>Handled here rather than in {@code GlobalExceptionHandler} because the unsatisfied-range
-     * {@code Content-Range} is the payload of this particular refusal - it names the real length,
-     * which is exactly the fact the client was wrong about - and the shared handler has no
-     * per-exception header plumbing. A controller-local handler wins over the advice, so this is
-     * the framework's own answer to "one route needs one extra header" rather than plumbing
-     * invented for it.
+     * A {@code 416}, with the header that makes it worth more to the client than a flat refusal.
+     * Handled here rather than in {@code GlobalExceptionHandler} because the {@code Content-Range}
+     * on this refusal names the real length — the fact the client was wrong about — and the shared
+     * handler has no per-exception header plumbing.
      */
     @ExceptionHandler(UnsatisfiableRangeException.class)
     public ResponseEntity<ErrorResponse> handleUnsatisfiableRange(UnsatisfiableRangeException ex) {

@@ -12,34 +12,16 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A guard over the one coupling on the mail-configuration path whose failure is a committed secret.
- *
- * <p>The values that must never be committed - the ACS connection string, the captcha secret, the
- * alert address, a workstation's own IP for the Key Vault firewall - live in
- * {@code terraform/<env>.local.tfvars}, which {@code tf.sh} passes after the committed
- * {@code <env>.tfvars}. Two files decide that this is safe: {@code tf.sh} decides which filename is
- * loaded, and {@code .gitignore} decides which filename is kept out of the repository. Nothing
- * checks that they are the same filename.
- *
- * <p><b>That drift has already cost something once.</b> {@code .gitignore} named exactly one file,
- * {@code terraform/dev.local.auto.tfvars}, while the pattern was documented for every environment -
- * so doing MAIL-02 the way the finding itself instructs, for prod, staged a file holding the
- * production ACS connection string and captcha secret for commit. The fix was a glob; what keeps it
- * a glob is this test. A rename on one side and not the other leaves Terraform working perfectly,
- * {@code terraform fmt} and {@code validate} clean, both suites green, and the next
- * {@code git add -A} carrying a secret.
- *
- * <p>It also pins the absence of the old {@code .auto.} spelling as something still ignored.
- * Terraform loads every {@code *.auto.tfvars} in the working directory on every run, whatever
- * {@code -var-file} is passed, so one of those files supplies its values to every other
- * environment's plan - measurably: a {@code prod.tfvars} setting {@code env} alongside a
- * {@code dev.local.auto.tfvars} setting {@code env} and a second variable yields prod's
- * {@code env} and dev's second variable. {@code tf.sh} refuses to run while one exists, and it
- * stays ignored so that a leftover cannot be committed either.
- *
- * <p>Like every guard here it does not skip when a file is missing. A guard that turns itself off
- * when it cannot find what it guards leaves the build green either way, and only one of those two
- * states is honest.
+ * A guard over the one coupling on the mail-configuration path whose failure is a committed
+ * secret. Values that must never be committed - the ACS connection string, the captcha secret, a
+ * workstation's own IP - live in {@code terraform/<env>.local.tfvars}, which {@code tf.sh} loads
+ * and {@code .gitignore} keeps out of the repository; nothing checks the two name the same file.
+ * That drift already cost something once: {@code .gitignore} named exactly one environment's file
+ * while the pattern was documented for every environment, so following the pattern for prod staged
+ * its ACS connection string and captcha secret for commit. The fix was a glob, and this test is
+ * what keeps it one. It also pins the old {@code .auto.} spelling as still ignored, since Terraform
+ * loads every {@code *.auto.tfvars} on every run regardless of {@code -var-file}, silently feeding
+ * one environment's values into another's plan.
  */
 class LocalTfvarsAreIgnoredTest {
 

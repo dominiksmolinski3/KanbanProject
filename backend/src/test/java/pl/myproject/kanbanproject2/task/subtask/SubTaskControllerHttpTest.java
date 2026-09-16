@@ -31,10 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The HTTP half of the subtask routes: the statuses, and the point at which a partial body stops
- * being JSON and becomes a {@link PatchSubTaskRequest} whose absent fields are distinguishable
- * from explicitly-null ones. That distinction is only observable through a real deserialisation,
- * which is why it is asserted here rather than in the service test.
+ * The HTTP half of the subtask routes: the statuses, and the point where a partial body becomes a
+ * {@link PatchSubTaskRequest} whose absent fields stay distinguishable from explicitly-null ones —
+ * only observable through real deserialisation, so it's asserted here rather than in the service
+ * test.
  */
 class SubTaskControllerHttpTest {
 

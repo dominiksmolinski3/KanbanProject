@@ -21,15 +21,11 @@ jest.mock('../../services/authService', () => ({
 }));
 
 /**
- * The two properties that make refresh tokens safe to hold in a browser at all.
- *
- * A rotating token is worth exactly one use, so two concurrent renewals would present the same
- * token twice — which the server reads as theft and answers by withdrawing every session the
- * account has. A board load fires a dozen requests at once, so "concurrent" here is the normal
- * case, not the edge one.
- *
- * And a renewal that fails has to leave nothing behind: a stored token the server keeps rejecting
- * only delays the sign-in screen while every request in between fails on its own.
+ * The two properties that make refresh tokens safe to hold in a browser: two concurrent renewals
+ * would present the same one-use token twice, which the server reads as theft and withdraws every
+ * session for - and a board load firing a dozen requests at once makes "concurrent" the normal
+ * case, not the edge one. A renewal that fails has to leave nothing behind, or a stored token the
+ * server keeps rejecting only delays the sign-in screen.
  */
 describe('session', () => {
   // expiresIn is milliseconds — jwtService.getExpirationTime() passed straight through, the same

@@ -34,16 +34,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * What a refresh token has to be for it to be worth having at all.
- *
- * <p>Four properties, and each of them is the reason one of the others is safe. The stored value is
- * a digest, so the table is not a set of live credentials. A token is single-use, so a stolen one
- * is only good until the real client next refreshes. A token presented twice withdraws the whole
- * chain, so that theft is loud rather than silent. And every failure answers the same status, so
- * none of the above can be probed from outside.
- *
- * <p>The clock is injected. Expiry is the one rule that cannot be asserted honestly by a test that
- * waits, and {@code AuthRateLimiter} already established the pattern here.
+ * What a refresh token has to be for it to be worth having at all: the stored value is a digest, a
+ * token is single-use, presenting one twice withdraws the whole chain, and every failure answers
+ * the same status so none of that can be probed from outside. The clock is injected because expiry
+ * is the one rule a test that waits cannot assert honestly.
  */
 class RefreshTokenServiceTest {
 
@@ -359,12 +353,9 @@ class RefreshTokenServiceTest {
     }
 
     /**
-     * Sessions as something the person holding them can see and end one at a time.
-     *
-     * <p>V7 made a session a row so the server could end one; what it could not do was aim. The
-     * only two revocations were "this one" (logout, which needs the token) and "all of them" (a
-     * password change), and the case in between - a laptop left somewhere, and a session you would
-     * rather keep - had no answer that did not sign you out everywhere.
+     * Sessions as something the person holding them can see and end one at a time - the case
+     * between logout ("this one") and a password change ("all of them"), which used to have no
+     * answer that did not sign you out everywhere.
      */
     @Nested
     @DisplayName("sessions a person can see")

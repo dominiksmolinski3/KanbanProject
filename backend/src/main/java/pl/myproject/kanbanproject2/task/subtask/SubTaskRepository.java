@@ -13,15 +13,10 @@ import java.util.Optional;
 public interface SubTaskRepository extends JpaRepository<SubTask, Integer> {
 
     /**
-     * The highest position in use under one task, or empty when it has no subtasks yet.
-     *
-     * <p>This used to fetch the parent's subtasks and fold them in Java - the shape
-     * {@link pl.myproject.kanbanproject2.task.TaskRepository#findMaxPosition} moved away from, kept
-     * only because a subtask list is short. A null position does not take part in a MAX, so the
-     * rows written before positions were scoped are skipped rather than filtered in Java.
-     *
-     * <p>No null branch here, unlike the task aggregate, because a subtask cannot be an orphan:
-     * {@code CreateSubTaskRequest} requires a task, since a subtask reads its board through one.
+     * The highest position in use under one task, or empty when it has none, computed as a
+     * database aggregate so a null position simply doesn't take part in the {@code MAX}. No null
+     * branch is needed here, unlike the task aggregate, because a subtask can't be an orphan —
+     * {@code CreateSubTaskRequest} requires a task.
      */
     @Query("SELECT MAX(subTask.position) FROM SubTask subTask WHERE subTask.task.id = :taskId")
     Optional<Integer> findMaxPosition(@Param("taskId") Integer taskId);

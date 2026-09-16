@@ -95,22 +95,11 @@ public class TaskService {
     }
 
     /**
-     * The tasks on one board that match a search, one page at a time.
-     *
-     * <p><b>This is the route that is paginated, and the board listing above deliberately is
-     * not.</b> A board renders every card it has - that is what a board is - and its size is
-     * bounded by what a team will actually put on one, so paging {@code getAllTasks} would break
-     * the only client there is in order to bound something that was already bounded. A search is
-     * the opposite: what it returns is chosen by whoever typed the query, an empty query matches
-     * the whole board by design, and the only bound on the answer is the one put here. That is
-     * PERF-02's "decide what large enough means" answered where the unbounded thing actually is,
-     * rather than everywhere.
-     *
-     * <p>Two queries and a count, not one. The ids come back paged and ordered by the database;
-     * the rows for that page are then fetched with the association graph the mapper needs, and put
-     * back into the id order - a second lookup does not preserve the first one's ordering, and
-     * {@code findByIdIn} makes no promise about it. Reordering in memory over at most
-     * {@code size} ids is cheap; getting it wrong is a result list that shuffles between pages.
+     * The tasks on one board that match a search, one page at a time. Unlike the unpaged board
+     * listing above, an empty query here matches the whole board, so this route bounds the answer
+     * itself (PERF-02). It runs as two queries: ids are paged and ordered in SQL, then the matching
+     * rows are fetched by id and put back into that order, since {@code findByIdIn} makes no
+     * ordering promise of its own.
      */
     public TaskSearchResults searchTasks(User caller, Integer boardId, TaskSearchCriteria criteria) {
         var board = boardService.resolve(caller, boardId);
@@ -159,26 +148,10 @@ public class TaskService {
             Comparator.comparing(TaskDto::position, Comparator.nullsLast(Comparator.naturalOrder()));
 
     /**
-     * The next free position in one cell of the board.
-     *
-     * <p>This used to be {@code count() + 1} over the whole table, which collides two ways: the
-     * count drops after any delete, so the next create reuses a number that is still in use, and
-     * two concurrent creates read the same count. Scoping it to the cell also makes the number
-     * mean what the board renders - an ordinal within the cell, not a row number.
-     *
-     * <p>The board is part of the key because the column and the swimlane are both optional: a
-     * task in neither still has to be numbered, and without the board every such task in the
-     * deployment would be drawing from one shared sequence.
-     */
-    /**
-     * Saves a task, tells the board's other viewers, and maps it.
-     *
-     * <p>Every mutation here returns through this rather than mapping the repository's own
-     * return value, so "a change nobody else is told about" stops being a line somebody can
-     * forget to write and becomes a different method call, which {@code BoardEventCoverageTest}
-     * fails the build over. A forgotten announcement
-     * is invisible to every other test here: the mutation works, its own response is right, and
-     * the only symptom is somebody else's screen staying wrong until they reload it.
+     * Saves a task, tells the board's other viewers, and maps it. Every mutation routes through
+     * here rather than mapping the repository's return value directly, so a forgotten announcement
+     * becomes a different method call — one {@code BoardEventCoverageTest} catches — instead of a
+     * silently missing line.
      */
     private TaskDto saveAndAnnounce(Task task) {
         var saved = taskRepository.save(task);
@@ -186,6 +159,11 @@ public class TaskService {
         return taskMapper.apply(saved);
     }
 
+    /**
+     * The next free position in one cell of the board, scoped by board, column and row (both
+     * optional) so it means an ordinal within the cell rather than {@code count() + 1} over the
+     * whole table — which collides after a delete and under concurrent creates.
+     */
     private int nextPositionIn(Board board, Column column, Row row) {
         return taskRepository.findMaxPosition(
                 board.getId(),
@@ -196,23 +174,15 @@ public class TaskService {
     public void deleteTask(User caller, Integer id) {
         var task = findTask(caller, id);
 
-        /*
-         * Written before the row goes, and then detached from it. The feed entry that says a task
-         * was deleted is the one entry that has to outlive its subject, which is why the entries
-         * keep a copy of the title and why nothing here cascades: a foreign key that took them
-         * would take the record of the deletion with the thing deleted.
-         */
+        // Written before the row goes, then detached from it: the deletion record has to outlive
+        // its subject, and nothing here cascades so a foreign key can't take the record down with it.
         activityRecorder.deleted(caller, task);
         activityRecorder.detachFrom(task);
 
         taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task));
 
-        /*
-         * The attachment rows go with the task, and so do their blobs. This is a service call
-         * rather than a cascade for exactly that reason: the database can take the rows, and only
-         * this can take the bytes - a foreign key cascade would leave every blob behind with
-         * nothing left anywhere that knows its name.
-         */
+        // A service call rather than a cascade: only this can take the blobs with the rows, and a
+        // foreign-key cascade would leave every blob orphaned with nothing left that knows its name.
         attachmentService.deleteAllFor(task);
 
         if (task.getChildTasks() != null && !task.getChildTasks().isEmpty()) {
@@ -280,19 +250,13 @@ public class TaskService {
     }
 
     /**
-     * Refuses a PATCH that was based on a stale copy of the task.
-     *
-     * <p>The {@code @Version} column stops two overlapping transactions from silently overwriting
-     * each other, but it cannot see the slower race: a task read into an editing form, changed and
-     * saved by another member, and then saved from the still-open form. By the time this request's
-     * transaction loads the task the other write has already committed, so its version is current
-     * and Hibernate has nothing to object to. Comparing the version the caller last saw against the
-     * one on the row closes that window - and a caller that sends no version keeps the old
-     * behaviour, so a drag, which is never stale in this sense, is untouched.
-     *
-     * <p>The exception is the same one Hibernate raises for the transaction-level conflict, so it
-     * lands on the existing 409 {@code CONCURRENT_MODIFICATION} handler and the client answers it
-     * the same way: reload and reapply.
+     * Refuses a PATCH based on a stale copy of the task. The {@code @Version} column catches
+     * overlapping transactions but not the slower race — an editing form saved after another
+     * member's write has already committed cleanly, so Hibernate sees nothing to object to;
+     * comparing the version the caller last saw closes that gap, while sending no version keeps a
+     * drag (never stale in this sense) untouched. Raises the same exception Hibernate uses for the
+     * transaction-level conflict, so it lands on the existing 409 {@code CONCURRENT_MODIFICATION}
+     * handler.
      */
     private void requireCurrentVersion(Task task, Integer seenVersion) {
         if (seenVersion != null && !seenVersion.equals(task.getVersion())) {
@@ -301,13 +265,10 @@ public class TaskService {
     }
 
     /**
-     * Records the move the way the history report expects, and tolerates a column of {@code null}
-     * — a task can be taken off the board, and there is no arrival to record when it is.
-     *
-     * <p>Only the arrival is recorded. Writing the departure as well put two rows on the same
-     * instant, and the report orders on nothing but that instant: which of the pair sorts first
-     * is arbitrary, and one of the two orders charges the whole of the next column's time to the
-     * previous one. Time in a column is the gap to the next arrival, which needs a single row.
+     * Records the move for the history report and tolerates a {@code null} column — a task can be
+     * taken off the board, with no arrival to record. Only the arrival is recorded: writing the
+     * departure too would put two rows on the same instant with an arbitrary sort order, corrupting
+     * the per-column time calculation the report derives from the gap between arrivals.
      */
     private void moveToColumn(User caller, Task task, Column newColumn) {
         var currentColumn = task.getColumn();
@@ -321,10 +282,8 @@ public class TaskService {
         task.setColumn(newColumn);
         if (newColumn != null) {
             saveTaskColumnHistory(task, newColumn);
-            // Both records of the same move, written in the same three lines, which is the only
-            // thing keeping them from drifting apart. They are not redundant: the history row is
-            // an interval series the task panel folds into time-per-column, and it has never
-            // recorded who did it. See TaskActivity.
+            // Both records of the same move are written together so they can't drift: the history
+            // row is an interval series with no actor, TaskActivity is the actor log.
             activityRecorder.moved(caller, task, newColumn.getName());
         }
     }
@@ -363,13 +322,10 @@ public class TaskService {
     }
 
     /**
-     * Puts a member of the board on one of its tasks.
-     *
-     * <p>The assignee is checked against the task's board rather than merely looked up by id.
-     * Without that, any id in the deployment could be written onto a task — pinning work on
-     * somebody who cannot open the board, and counting it against their WIP limit. An account that
-     * is not on the board answers as one that does not exist, for the reason given in
-     * {@link BoardService}.
+     * Puts a member of the board on one of its tasks. The assignee is checked against the task's
+     * board rather than merely looked up by id — otherwise any account in the deployment could be
+     * pinned to work on a board it cannot see, and counted against its WIP limit. A non-member
+     * answers as not found, per {@link BoardService}.
      */
     public TaskDto assignUserToTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
@@ -413,16 +369,11 @@ public class TaskService {
 
     /**
      * Renumbers one cell in a single transaction, from the ids in the order they should read.
-     *
-     * <p>The client has always reordered a cell by sending one PATCH per card in it. That was
-     * merely wasteful until the tasks gained a {@code @Version}: now a card somebody else has
-     * moved makes one of those PATCHes a 409, and the ones that already succeeded stay applied -
-     * so a failed reorder leaves the board in an order nobody asked for, half old and half new.
-     * One call is one transaction, and a stale write in it rolls back every position in the batch.
-     *
-     * <p>Positions are the index in the list, over exactly the ids given. A caller who sends part
-     * of a cell renumbers only that part, which is the same thing the per-task route does one call
-     * at a time; the client sends the whole cell.
+     * Reordering used to be one PATCH per card, which merely wasted calls until tasks gained a
+     * {@code @Version}: a card somebody else moved then made one PATCH a 409 while the rest stayed
+     * applied, leaving the board half old and half new. One transaction means a stale write rolls
+     * back the whole batch instead. Positions are the index within exactly the ids given, so a
+     * caller sending part of a cell renumbers only that part.
      */
     public List<TaskDto> reorderTasks(User caller, List<Integer> orderedIds) {
         requireDistinct(orderedIds, "task");
@@ -440,11 +391,10 @@ public class TaskService {
     }
 
     /**
-     * Every task in the batch has to sit in the same column and the same swimlane.
-     *
-     * <p>Both are nullable - a task can be off the board entirely - so this compares ids and treats
-     * "no column" as a cell of its own rather than as a wildcard. Comparing the entities would go
-     * wrong the same way {@code Board.isVisibleTo} did before it compared ids.
+     * Every task in the batch has to sit in the same column and swimlane. Both are nullable, so
+     * this compares ids and treats "no column" as a cell of its own rather than a wildcard —
+     * comparing entities directly would repeat the bug {@code Board.isVisibleTo} had before it
+     * compared ids.
      */
     private void requireOneCell(List<Task> tasks) {
         var first = tasks.get(0);
@@ -503,11 +453,8 @@ public class TaskService {
         var parentTask = taskRepository.findById(parentTaskId)
                 .orElseThrow(() -> parentNotFound(parentTaskId));
 
-        /*
-         * A dependency across two boards would make one board's progress wait on work the other
-         * board's members cannot see, and would let the un-completion cascade reach into a board
-         * the caller may not even be on. An unreachable parent answers as a missing one.
-         */
+        // A cross-board dependency would make one board's progress wait on work its members can't
+        // see, and let the un-completion cascade reach a board the caller may not be on.
         if (!parentTask.getBoard().isVisibleTo(caller)
                 || !parentTask.getBoard().getId().equals(childTask.getBoard().getId())) {
             throw parentNotFound(parentTaskId);
@@ -549,11 +496,9 @@ public class TaskService {
 
     /**
      * Returns true if making {@code newParent} the parent of {@code child} would form a cycle,
-     * i.e. {@code newParent} is already a descendant of {@code child}.
-     *
-     * <p>The walk carries the ids it has already visited. That guard is what stops a cycle which
-     * is <em>already</em> in the data - written before this check existed, or by hand - from
-     * turning every later parent assignment into a {@link StackOverflowError}.
+     * i.e. {@code newParent} is already a descendant of {@code child}. The visited set guards
+     * against a cycle already present in the data turning a later assignment into a
+     * {@link StackOverflowError}.
      */
     private boolean wouldCreateCycle(Task child, Task newParent) {
         return isDescendantOf(child, newParent, new HashSet<>());
@@ -575,9 +520,9 @@ public class TaskService {
     }
 
     /**
-     * The rule itself, over a task already fetched and already checked. It used to take an id and
-     * re-read the task, which meant {@link #updateTaskCompletion} paid for a second lookup and,
-     * once the lookup carried an access check, would have paid for that twice too.
+     * The rule itself, over a task already fetched and checked — so a caller like
+     * {@link #updateTaskCompletion} that already paid for the lookup and its access check doesn't
+     * pay twice.
      */
     private boolean canTaskBeCompleted(Task task) {
         return task.getParentTask() == null || task.getParentTask().isCompleted();
@@ -636,30 +581,17 @@ public class TaskService {
     }
 
     /**
-     * The one method here that takes no caller, because it has none: it runs on a timer, on behalf
-     * of the deployment rather than of a user, and every board's deadlines have to be swept.
+     * The one method here with no caller — it runs on a timer for the whole deployment rather than
+     * on behalf of a user. Every flag is written before the notification mail goes out, so a slow
+     * or unreachable provider can't leave {@code expired} half-updated; only the crossing into
+     * expired is mailed.
      *
-     * <p>Every flag is written first and the mail goes out afterwards, so a slow or unreachable
-     * mail provider cannot leave the {@code expired} column half-updated. Only the crossing into
-     * expired is notified; a task whose deadline was pushed back goes quiet without a second mail.
-     *
-     * <p><b>It claims the rows it is about to change, which is what makes a second replica safe.</b>
-     * Two schedulers sweeping the same tasks is not a benign duplicate: both write the flag, both
-     * record the expiry, and both ask {@link DeadlineNotifier} to mail every assignee - so an
-     * overdue task arrives N times in N mailboxes, which is the same class of failure the outbox
-     * claim was written for and is just as impossible to recall.
-     * {@link TaskRepository#claimTasksCrossingDeadline} selects {@code FOR UPDATE SKIP LOCKED}, so
-     * two sweeps take disjoint rows and each row is answered for once.
-     *
-     * <p><b>The class-level {@code @Transactional} is load-bearing here</b> and is the reason this
-     * needs no lock table, no advisory lock and no new dependency: the row locks last exactly as
-     * long as the sweep, and the sweep is one transaction. Remove it and the claim releases at the
-     * end of its own statement, which reads identically and protects nothing.
-     *
-     * <p>The claim asks for the tasks whose flag disagrees with their deadline rather than for
-     * every task with one. That is the whole of what makes locking affordable - the rows held are
-     * the rows the very next statement writes - and it also stops a half-hourly read of every
-     * deadline in the deployment to answer a question that is almost always "none".
+     * <p>It claims the rows it's about to change via
+     * {@link TaskRepository#claimTasksCrossingDeadline}'s {@code FOR UPDATE SKIP LOCKED}, so two
+     * schedulers can't both flag and mail the same task. The class-level {@code @Transactional} is
+     * what holds that claim for the sweep's whole duration — remove it and the lock releases before
+     * the claim protects anything. The claim selects only rows whose flag disagrees with their
+     * deadline, which also keeps a half-hourly sweep from reading every deadline in the deployment.
      */
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
@@ -686,11 +618,9 @@ public class TaskService {
     }
 
     /**
-     * Looks a task up and refuses to hand it back unless the caller is on its board.
-     *
-     * <p>Every public method above goes through here, which is the point: a check that has to be
-     * remembered at each call site is one that will eventually be forgotten at one of them. A task
-     * on another board answers as a task that does not exist.
+     * Looks a task up and refuses to hand it back unless the caller is on its board. Every public
+     * method funnels through here, since a check that must be remembered at each call site is one
+     * that eventually gets forgotten at one of them.
      */
     private Task findTask(User caller, Integer id) {
         var task = taskRepository.findById(id).orElseThrow(() -> taskNotFound(id));

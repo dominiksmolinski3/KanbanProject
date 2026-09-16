@@ -19,9 +19,7 @@ export default class ChatApi {
   connect(username, token) {
     return new Promise((resolve, reject) => {
       try {
-        // Create a STOMP client using the modern approach
         this.stompClient = new Client({
-          // Use proper factory function format for SockJS
           webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
           connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
           debug: () => {},
@@ -54,8 +52,7 @@ export default class ChatApi {
             reject(error);
           }
         });
-        
-        // Activate the STOMP client
+
         this.stompClient.activate();
       } catch (error) {
         console.error('Error setting up STOMP client:', error);

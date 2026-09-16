@@ -4,15 +4,11 @@ import { useKanban } from '../context/KanbanContext';
 import '../styles/components/BoardMembers.css';
 
 /**
- * The boards somebody has been asked to join, and their answer.
- *
- * <p>The invitee's half of the membership model. Before invitations existed an owner typed an
- * address and the account was simply on the board; this is the screen that makes that a decision
- * rather than something that happened to you.
- *
- * <p>It renders nothing when there is nothing outstanding, deliberately: an empty panel headed
- * "invitations" on every visit is noise, and the badge on the board switcher is what says there is
- * something here to look at.
+ * The boards somebody has been asked to join, and their answer - the invitee's half of the
+ * membership model, replacing an owner simply adding an address to the board with a decision the
+ * invitee makes. Renders nothing when there is nothing outstanding, deliberately: an empty panel
+ * on every visit is noise, and the badge on the board switcher is what says there is something
+ * here to look at.
  */
 function Invitations() {
   const { myInvitations, acceptInvitation, declineInvitation } = useKanban();

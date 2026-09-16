@@ -22,43 +22,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A guard over the thing every unattended workflow here can lose silently: the job that tells
- * somebody it went red.
- *
- * <p>These workflows run on a cron. That trigger exists because a push made with the default
- * {@code GITHUB_TOKEN} does not start a workflow run - and Dependabot's auto-merge job merges
- * with exactly that token. That is how a merge commit reached {@code main} with {@code react} and
- * {@code react-dom} on different versions and nothing ran the suite against the result, and on
- * 12 Sep 2026 it was measured doing the same to {@code kanban-cd.yml}: five consecutive merge
- * commits, no image built for any of them, {@code :latest} quietly no longer the tip of
- * {@code main}. The sweeps close that hole; the alarm job is what turns a red sweep into
- * something a person is told about.
- *
- * <p>Three couplings hold each alarm together and none of them is visible to YAML, to Actions, or
- * to any linter. Each is checked here because there is nowhere else it can be checked.
- *
- * <p><b>The alarm is only as wide as its {@code needs} list.</b> A job added to a workflow and
- * left out of that list fails on its own while the alarm reports success, because
- * {@code needs.*.result} only mentions the jobs it names.
- *
- * <p><b>And only as wide as the {@code results} string</b>, which is the coupling the move to a
- * reusable workflow introduced: the alarm no longer reads {@code needs} itself, it reads a string
- * the caller builds out of it. A job added to {@code needs} and left out of that string is a job
- * whose failure the alarm never sees - the same defect one level further in.
- *
- * <p><b>And only as wide as the triggers it answers to</b>, which had already gone wrong once:
- * {@code kanban-ci.yml} gained a {@code workflow_dispatch} trigger so a fix need not wait a day
- * for the cron, and the alarm's own condition named {@code schedule} alone, so a manual sweep ran
- * the suite and skipped the job that reports the result. Everything the alarm is made of was
- * therefore unreachable on purpose.
- *
- * <p><b>And the sweep itself must not be able to pass having done nothing.</b> That one is not a
- * coupling but the same rule the alarm applies to jobs, read one level in: {@code external-scan.yml}
- * skipped every step when its target was unset and reported success, which no amount of alarm
- * correctness can see, because the job succeeded.
- *
- * <p>Like every guard here it does not skip when a file is missing. A guard that turns itself off
- * when it cannot find what it guards leaves the build green either way, and only one of those two
- * states is honest.
+ * somebody it went red. These workflows run on a cron because a push made with the default
+ * {@code GITHUB_TOKEN} - which is what Dependabot's auto-merge uses - starts no workflow run;
+ * measured on 12 Sep 2026, that let five consecutive merge commits reach {@code main} with no CD
+ * run at all. The sweeps close that hole; the alarm job is what turns a red sweep into something a
+ * person is told about, and three couplings hold each alarm together with nothing but this test to
+ * check them: it must be as wide as its {@code needs} list (a job left out fails silently), as
+ * wide as the {@code results} string it forwards (the same gap one level in, introduced by the
+ * move to a reusable workflow), and as wide as the triggers it answers to (a workflow gaining
+ * {@code workflow_dispatch} without the alarm's condition naming it made a manual sweep run and
+ * report nothing). It also checks the sweep itself cannot pass having done nothing -
+ * {@code external-scan.yml} once skipped every step when its target was unset and reported
+ * success, which no amount of alarm correctness could see.
  */
 class SweepAlarmCoverageTest {
 
@@ -150,12 +125,9 @@ class SweepAlarmCoverageTest {
     }
 
     /**
-     * The check the gap this guard was written over would have failed.
-     *
-     * <p>It is deliberately an allow-list assertion: the condition has to <em>name</em> every
-     * sweep trigger. Writing the same rule as a deny-list ({@code event_name != 'push'}) would
-     * read correctly today and silently stop covering the next trigger somebody adds, which is
-     * the whole failure being guarded against - so the form is pinned, not only the meaning.
+     * Deliberately an allow-list assertion: the condition has to <em>name</em> every sweep
+     * trigger. A deny-list ({@code event_name != 'push'}) would read correctly today and silently
+     * stop covering the next trigger somebody adds, so the form is pinned, not only the meaning.
      */
     @ParameterizedTest(name = "{0}")
     @DisplayName("the alarm answers to every trigger that is a sweep, not just the cron")
@@ -219,20 +191,13 @@ class SweepAlarmCoverageTest {
     }
 
     /**
-     * The same rule as the alarm's, one level in: a sweep that did not do its work must not
-     * report that it passed.
-     *
-     * <p>The alarm reads {@code skipped} as red because a job that did not run proved nothing.
-     * That is a rule about <em>jobs</em>, and {@code external-scan.yml} slipped underneath it by
-     * skipping every <em>step</em> instead. Its target came from a repository variable nobody had
-     * set, an unset target wrote {@code skip=true}, every step carried {@code if: skip == false},
-     * and the job succeeded in five seconds having scanned nothing. One run in its whole history,
-     * green, and the alarm could not see it because the job really had succeeded.
-     *
-     * <p>So an unconfigured sweep fails now, and this is what stops the convenience being written
-     * back. It pins one spelling of the pattern rather than the idea - a sweep can still be made
-     * to do nothing by other means, and no test here can see that. What it does catch is the
-     * exact shape that already cost this repository a scan it thought it had.
+     * The same rule as the alarm's, one level in: a sweep that did not do its work must not report
+     * that it passed. The alarm reads {@code skipped} as red because a job that did not run proved
+     * nothing, but {@code external-scan.yml} once slipped underneath that by skipping every
+     * <em>step</em> instead - an unset target repository variable wrote {@code skip=true}, every
+     * step read it, and the job succeeded in five seconds having scanned nothing, invisible to the
+     * alarm because the job really had succeeded. This pins one spelling of the pattern rather than
+     * the idea; a sweep can still be made to do nothing by other means.
      */
     @ParameterizedTest(name = "{0}")
     @DisplayName("a sweep cannot switch its own steps off and still report success")

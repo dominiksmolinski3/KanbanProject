@@ -32,14 +32,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The unauthenticated routes used to answer a different status for every state an address could
- * be in - 409 for one that exists, 404 for one that does not, 400 for one already verified - which
- * between them partitioned every address in the world into answerable buckets. The rate limiter
- * slowed that down; it did not close it, because a list is worth checking slowly.
- *
- * <p>These tests are written as differences rather than as outcomes: what matters is not that a
- * particular call succeeds, but that two calls a caller could use to tell two states apart are
- * indistinguishable from the outside.
+ * The unauthenticated routes used to answer a different status for every state an address could be
+ * in (409 exists, 404 does not, 400 already verified), partitioning every address into answerable
+ * buckets. These tests are written as differences rather than outcomes: what matters is that two
+ * calls a caller could use to tell states apart are indistinguishable from the outside.
  */
 class AuthenticationServiceEnumerationTest {
 

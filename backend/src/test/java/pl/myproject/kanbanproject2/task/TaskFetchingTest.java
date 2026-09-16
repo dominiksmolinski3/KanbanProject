@@ -22,21 +22,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Fetch strategy is a property of the mapping rather than of any one call, so it is asserted on the
- * mapping. These are the three shapes the board's read path depends on, and each of them is a
- * default that was silently wrong rather than something anyone chose:
- *
- * <ul>
- *   <li>{@code @ManyToOne} defaults to {@code EAGER}, so every listing fetched a column and a row
- *       per task whether or not anything read them.</li>
- *   <li>The collections default to {@code LAZY}, which is right, but {@link TaskMapper} touches
- *       {@code users} and {@code childTasks} on every task - one query each without a batch size.</li>
- *   <li>{@code getAllLabels} loaded the entire task table to fold a set of short strings.</li>
- * </ul>
- *
- * <p>None of this is observable from a unit test that mocks the repository, which is why the
- * assertions are about the annotations. Query counts belong to an integration test against a real
- * database, and there is not one yet.
+ * Fetch strategy is a property of the mapping rather than of any one call, so it's asserted on the
+ * mapping: {@code @ManyToOne} defaults to {@code EAGER}, so every listing fetched a column and row
+ * per task; collections default to {@code LAZY} but {@link TaskMapper} touches {@code users} and
+ * {@code childTasks} on every task, needing a batch size; and {@code getAllLabels} used to load
+ * the entire task table to fold a set of strings. None of this is observable from a unit test that
+ * mocks the repository, so query counts belong to an integration test that doesn't exist yet.
  */
 class TaskFetchingTest {
 
@@ -133,12 +124,9 @@ class TaskFetchingTest {
         @Test
         @DisplayName("a column's and a swimlane's tasks are batched - the board renders all of them")
         void containerCollectionsAreBatched() {
-            /*
-             * ColumnMapper renders every task in every column, so an unbatched collection here is
-             * one query per column and then a separate round of batching inside each of those
-             * little lists. Measured against a board of 57 tasks in 8 columns, adding this took
-             * GET /api/columns from 35 queries to 10.
-             */
+            // ColumnMapper renders every task in every column, so an unbatched collection here is
+            // one query per column; measured against a board of 57 tasks in 8 columns, adding this
+            // took GET /api/columns from 35 queries to 10.
             for (Class<?> type : List.of(
                     pl.myproject.kanbanproject2.layout.column.Column.class,
                     pl.myproject.kanbanproject2.layout.row.Row.class)) {

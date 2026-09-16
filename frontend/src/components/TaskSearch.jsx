@@ -5,20 +5,12 @@ import { searchTasks, getAllLabels, fetchUsers } from '../services/api';
 import '../styles/components/TaskSearch.css';
 
 /**
- * Finding a task, as opposed to reading the board.
- *
- * This asks the server rather than filtering the board that is already loaded, which is worth being
- * deliberate about because the opposite is defensible too. The board holds every one of its tasks,
- * so a client-side filter would be instant and free — but it can only ever match on what the board
- * listing carries, it re-implements the same predicate in a second language, and it is the reason
- * "search" is easy to build and easy to have quietly disagree with the API. One predicate, on the
- * side that owns the data, is the trade being made here; the cost is a request per query, debounced
- * to one per pause in typing.
- *
- * The result of a search is deliberately not a filtered board. Hiding cards would answer "which
- * tasks match" by destroying the layout that says where they are, and a Kanban board's whole point
- * is the position of a card. So the results are a list that names each task's cell, and
- * "show on board" scrolls to the real card and flashes it.
+ * Finding a task, as opposed to reading the board: this asks the server rather than filtering the
+ * board already loaded, so there is one predicate rather than a second one re-implemented in
+ * JavaScript that can quietly disagree with the API. The cost is a request per query, debounced to
+ * one per pause in typing. Results are a list rather than a filtered board, because hiding cards
+ * would destroy the layout that says where they are - each result names its cell, and "show on
+ * board" scrolls to the real card and flashes it.
  */
 function TaskSearch() {
   const { columns, rows, tasks } = useKanban();

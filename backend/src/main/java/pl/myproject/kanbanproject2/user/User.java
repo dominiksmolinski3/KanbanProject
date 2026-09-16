@@ -42,12 +42,10 @@ public class User implements UserDetails {
     @Column(name = "verification_expiration")
     private LocalDateTime verificationCodeExpiresAt;
     /*
-     * Deliberately a second pair rather than a reuse of the verification code above. They answer
-     * different questions - "is this address real" and "does this person still control it" - and
-     * sharing one field would mean a pending reset silently cancelled a pending verification, or
-     * that a code mailed for one purpose was accepted for the other. The reset code is stored
-     * hashed, because unlike the verification code it is a credential: anyone who can read the
-     * users table could otherwise reset any account at will.
+     * A second pair rather than a reuse of the verification code above, since sharing one field
+     * would let a pending reset cancel a pending verification. Stored hashed, unlike the
+     * verification code, because it is a credential: anyone reading the users table could otherwise
+     * reset any account at will.
      */
     @Column(name = "password_reset_code")
     private String passwordResetCode;
@@ -55,14 +53,10 @@ public class User implements UserDetails {
     private LocalDateTime passwordResetExpiresAt;
     private Integer wipLimit;
     /*
-     * The language this account is mailed in. Not nullable, because a message has to be written in
-     * something and a null here would make every call site choose - which is three places choosing
-     * independently, and the shape the wording itself was in before MailTemplates.
-     *
-     * A guess at signup, from the browser that happened to be used, and an explicit setting after
-     * that. It is not read for anything on screen: the client picks its own language from the
-     * browser and its own store, and this exists for the two moments the client is not there -
-     * the verification mail and the deadline sweep.
+     * The language this account is mailed in. Not nullable, since a message has to be written in
+     * something. Guessed at signup and explicitly set after that; not read for anything on screen,
+     * since the client picks its own language, and exists for the two moments it is not there - the
+     * verification mail and the deadline sweep.
      */
     @Column(name = "locale", nullable = false, length = 8)
     private String locale = SupportedLocales.DEFAULT;

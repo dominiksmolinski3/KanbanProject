@@ -40,12 +40,11 @@ function Board() {
     };
   }, [columns.length, rows.length]);
 
-  // Only the very first load has nothing to show yet - a background refresh (adding a subtask,
-  // reordering, anything that calls refreshTasks()/refreshBoard() to resync) sets the same
-  // `loading` flag, and gating the whole tree on it would unmount every open Task and, with it,
-  // any TaskDetails panel a person has open - out from under them, mid-edit, for no reason a
-  // background sync needs. Once there is board structure to show, `loading` only means "a refresh
-  // is in flight," which the existing UI (toasts, optimistic updates) already communicates.
+  // Only the very first load has nothing to show yet: a background refresh sets the same
+  // `loading` flag, and gating the whole tree on it would unmount every open Task - and any
+  // TaskDetails panel someone has open - mid-edit for no reason a background sync needs. Once
+  // there is board structure to show, `loading` only means "a refresh is in flight," already
+  // communicated by the existing toasts and optimistic updates.
   if (loading && columns.length === 0 && rows.length === 0 && tasks.length === 0) {
     return (
       <div className="board-loading">
@@ -375,16 +374,11 @@ function Board() {
   return (
     <div className="board-grid" onDragOver={onBoardDragOver}>
       {/*
-        The two halves of moving a card without a pointer that live outside the card.
-
-        The help text is what every card points its aria-describedby at, so the keys are read out
-        once the card has focus rather than being something a person has to already know. The live
-        region is where the move is narrated: nothing about a pending target is visible to a screen
-        reader otherwise, because the card itself does not move until the drop.
-
-        The announcement arrives as a key and its values rather than as a sentence - the same rule
-        the activity feed follows, because a sentence composed in JavaScript is a sentence the
-        other eight languages cannot translate.
+        The two halves of keyboard move that live outside the card: the help text every card points
+        its aria-describedby at, so the keys are discoverable once a card has focus, and the live
+        region that narrates the move, since the card itself does not move until the drop. The
+        announcement is a key and its values rather than a sentence - the same rule the activity
+        feed follows, because JavaScript-composed text can't be translated by the other bundles.
       */}
       <p id="board-keyboard-move-help" className="visually-hidden">
         {t('board.keyboardMove.help')}
@@ -410,12 +404,9 @@ function Board() {
       <table className="kanban-table">
         <thead>
           <tr>
-            {/* Top-left empty cell */}
             <th className="grid-corner"></th>
-            
-            {/* Column headers */}
+
             {enhancedColumns.map(column => renderColumnHeader(column))}
-            {/* Add column placeholder header */}
       <th className="grid-column-header add-placeholder-header">
               <button
                 className="add-column-btn"
@@ -428,19 +419,14 @@ function Board() {
           </tr>
         </thead>
         <tbody>
-          {/* Rows with headers and cells */}
           {enhancedRows.map(row => (
             <tr key={row.id}>
-              {/* Row header */}
               {renderRowHeader(row)}
-              
-              {/* Row cells */}
+
               {enhancedColumns.map(column => renderCell(column, row))}
-              {/* Trailing empty cell to align with add-column header */}
               <td className="grid-cell" />
             </tr>
           ))}
-          {/* Add row placeholder row */}
           <tr>
       <td className="grid-row-header add-placeholder-row">
               <button
@@ -454,7 +440,6 @@ function Board() {
             {enhancedColumns.map((column) => (
               <td key={`add-row-empty-${column.id}`} className="grid-cell"/>
             ))}
-            {/* Trailing empty cell for add-column header alignment */}
             <td className="grid-cell" />
           </tr>
         </tbody>

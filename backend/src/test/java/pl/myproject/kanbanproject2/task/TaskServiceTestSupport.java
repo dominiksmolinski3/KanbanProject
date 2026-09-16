@@ -19,10 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * A {@link TaskService} whose only real collaborator is the repository under test.
- *
- * <p>The constructor takes nine dependencies, most of which a fetching test has no opinion about.
- * Naming them once here keeps each test to the one stub that is actually the subject.
+ * A {@link TaskService} whose only real collaborator is the repository under test. Naming the
+ * other eight dependencies once here keeps each test to the one stub that is actually the subject.
  */
 final class TaskServiceTestSupport {
 

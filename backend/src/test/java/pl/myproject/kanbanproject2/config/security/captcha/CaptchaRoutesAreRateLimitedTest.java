@@ -16,16 +16,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifying a captcha is the one thing this application does that makes an outbound HTTP call, so
- * an unthrottled route that verifies one is a way to spend somebody else's budget: each request
- * costs a siteverify round trip against the provider's quota and holds a request thread for up to
- * the {@link CaptchaProperties} read timeout while it waits.
- *
- * <p>{@link pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter} already caps
- * that, because it runs in the security chain and the controller runs after the whole chain — the
- * position is asserted by {@code SecurityConfigurationRateLimitWiringTest}. What it does not cap is
- * a route nobody added to {@link AuthRateLimitRule}, and a captcha route added without a limit
- * looks exactly like one added with it. Hence this: the two lists have to agree.
+ * Verifying a captcha makes an outbound HTTP call, so an unthrottled route that verifies one spends
+ * somebody else's budget - a siteverify round trip against the provider's quota, holding a request
+ * thread for up to the {@link CaptchaProperties} read timeout. {@code AuthRateLimitFilter} caps
+ * that only for routes listed in {@link AuthRateLimitRule}, and a captcha route added without a
+ * limit looks exactly like one added with it - hence this: the two lists have to agree.
  */
 class CaptchaRoutesAreRateLimitedTest {
 

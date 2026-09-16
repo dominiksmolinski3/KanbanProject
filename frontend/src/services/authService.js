@@ -2,7 +2,6 @@ const API_BASE_URL = '/api';
 
 export const authService = {
   register: async (userData) => {
-    // map legacy captchaToken -> nested { captcha: { token } }
     const payload = { ...userData };
     if (payload.captchaToken) {
       payload.captcha = { token: payload.captchaToken };
