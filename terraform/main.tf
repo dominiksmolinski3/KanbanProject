@@ -22,8 +22,6 @@ resource "azurerm_resource_group" "main" {
   location = var.location
 
   lifecycle {
-    prevent_destroy = true
-
     precondition {
       condition     = can(regex("(^|[^a-z])${var.env}([^a-z]|$)", var.resource_group_name))
       error_message = "resource_group_name (${var.resource_group_name}) does not name env (${var.env}); the -var-file and the backend key are probably from different environments."

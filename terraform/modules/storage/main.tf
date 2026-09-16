@@ -54,11 +54,6 @@ resource "azurerm_storage_account" "attachments" {
     expiration_action = "Log"
   }
 
-  lifecycle {
-    # The name carries a random suffix, so a replacement is a new account and every attachment in
-    # the old one becomes unreachable while its rows stay in the database.
-    prevent_destroy = true
-  }
 }
 
 # The app reaches the account over this endpoint; the browser reaches it over the internet, on the
