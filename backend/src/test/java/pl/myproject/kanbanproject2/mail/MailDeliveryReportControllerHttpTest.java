@@ -21,14 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * The only unauthenticated write in the application, driven over real HTTP with the payloads Azure
- * actually posts.
- *
- * <p>Every other route here is reached by this project's own browser code holding a token; this one
- * is reached by Event Grid, which has no account and never will. So the assertions that matter are
- * not about a service being called - they are about what an unauthenticated caller can do with it:
- * nothing without the key, nothing at all when no key is configured, and a handshake answered in
- * the body rather than in a status code, because a handshake answered with an empty 200 creates a
- * subscription that exists and silently never delivers.
+ * actually posts. What matters isn't a service being called, but what an unauthenticated caller can
+ * do: nothing without the key, nothing with no key configured, and a handshake answered in the body
+ * rather than a status code, since an empty 200 would create a subscription that silently never
+ * delivers.
  */
 class MailDeliveryReportControllerHttpTest {
 
@@ -91,10 +87,9 @@ class MailDeliveryReportControllerHttpTest {
     @Test
     @DisplayName("the payload is parsed as Azure sends it, unknown envelope fields and all")
     void thePayloadAzureSendsIsUnderstood() throws Exception {
-        // topic, subject, dataVersion, metadataVersion and eventTime are all in the fixture above
-        // and none of them is on the record. A webhook that refused a payload for growing a field
-        // would stop recording deliveries on the day Azure ships a change, with no symptom but an
-        // outbox that quietly learns nothing.
+        // The fixture includes envelope fields (topic, subject, dataVersion, ...) not on the
+        // record; refusing a payload for an unknown field would break recording the day Azure
+        // adds one.
         var captor = org.mockito.ArgumentCaptor.forClass(EventGridNotification.Data.class);
 
         mvcWithKey(KEY).perform(post("/mail/delivery-reports").param("key", KEY)

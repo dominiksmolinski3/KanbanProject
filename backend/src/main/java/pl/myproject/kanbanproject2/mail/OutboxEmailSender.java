@@ -13,28 +13,19 @@ import java.time.Clock;
 import java.time.Instant;
 
 /**
- * The sender the application gets: it writes the message down and returns.
+ * The sender the application gets: it writes the message to a table and returns. A table rather
+ * than Service Bus is what lets the row join the caller's own transaction, so an account and the
+ * mail announcing it commit together or not at all; Service Bus can go behind {@link OutboxRelay}
+ * later without any caller noticing.
  *
- * <p>This is the implementation {@code EmailSender}'s own comment has described since the transport
- * swap - "an implementation that writes the message somewhere and returns, with a worker on the
- * other side holding the real sender". The somewhere is a table rather than Service Bus, and that
- * is the difference between an enqueue that agrees with the database and one that does not: the row
- * joins whatever transaction the caller is already in, so an account and the mail announcing it
- * commit together or not at all. Service Bus can go behind {@link OutboxRelay} later without any
- * caller noticing, which was the point of the seam.
+ * <p><b>{@code @Primary}</b>, so callers get this one. The other {@code EmailSender} bean is the
+ * transport {@code EmailConfiguration} builds as {@code mailTransport}; only the relay asks for
+ * that one by name.
  *
- * <p><b>{@code @Primary}, so callers get this one.</b> There are two {@code EmailSender} beans:
- * this, and the transport {@code EmailConfiguration} builds under the name {@code mailTransport}.
- * Everything above the queue takes the primary; only the relay asks for the transport by name.
- *
- * <p>What changes for a caller is the failure. {@code POST /api/auth/register} used to hold its
- * request thread open for the round trip to Azure and answer {@code 500 EMAIL_SEND_FAILED} if the
- * provider refused - an account written, a code stored, and a signup reported as broken for a
- * condition the person signing up could do nothing about. It now returns as soon as the row is
- * written. {@link EmailDeliveryException} is still thrown from here and still means the same thing:
- * the message could not be accepted for sending. Only the bar has moved, from "a provider took it"
- * to "it is written down" - and a database that will not take the row is a signup that was not
- * going to work either.
+ * <p>What changes for a caller is the failure: {@code POST /api/auth/register} used to hold its
+ * request thread for the round trip to Azure and answer {@code 500 EMAIL_SEND_FAILED} on a refusal;
+ * it now returns as soon as the row is written. {@link EmailDeliveryException} still means "the
+ * message could not be accepted", just moved from "a provider took it" to "it is written down".
  */
 @Slf4j
 @Component
@@ -55,9 +46,8 @@ public class OutboxEmailSender implements EmailSender {
     }
 
     /**
-     * @return always {@code null}. This is the queue rather than a transport: no provider has seen
-     *     the message yet, so there is no provider id to report. The id arrives when
-     *     {@link OutboxRelay} posts the row, and is written onto that row then.
+     * @return always {@code null}: no provider has seen the message yet. The id is written onto the
+     *     row later, when {@link OutboxRelay} posts it.
      */
     @Override
     public String send(EmailMessage message) {

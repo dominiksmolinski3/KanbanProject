@@ -11,19 +11,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Guards the transport swap in the POM, which nothing else can see.
- *
- * <p>The Azure SDK picks its HTTP client through a {@code ServiceLoader} at runtime, not at compile
- * time. The Email client asks for Netty by default; the POM excludes it and puts the JDK client
- * there instead, so that a Tomcat application does not carry Netty and Reactor Netty for the sake
- * of a handful of messages a minute. Nothing about that arrangement is checked by the compiler: get
- * the exclusion wrong and either both transports are present and the choice is whichever the
- * classpath happens to yield, or neither is and the first message fails at runtime with no provider
- * found.
- *
- * <p>So this is a build-time assertion about a runtime lookup, in the same spirit as {@code
- * PublicBundlePathsTest} and {@code ApiPathPrefixTest}: a dependency change that undoes the
- * intention fails here rather than in production.
+ * Guards the transport swap in the POM, which nothing else can see. The Azure SDK picks its HTTP
+ * client through a {@code ServiceLoader} at runtime, not compile time; the POM excludes Netty (the
+ * Email client's default) in favour of the JDK client so a Tomcat application does not carry Netty
+ * and Reactor Netty for a handful of messages a minute. Nothing about that exclusion is checked by
+ * the compiler, so this is a build-time assertion about a runtime lookup instead.
  */
 class AzureTransportTest {
 

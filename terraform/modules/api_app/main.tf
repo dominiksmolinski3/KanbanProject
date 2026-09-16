@@ -1,39 +1,24 @@
 locals {
   app_port = 8080
 
-  # An optional secret is one whose variable defaults to "", and every one of them has to be
-  # switched off in three places together: the Key Vault secret is not created, the container app
-  # declares no `secret` for it, and no `env` references that secret name.
-  #
-  # Not a style preference. Key Vault stores an empty secret value happily, and Container Apps then
-  # refuses to resolve it - "Unable to get value using Managed identity ... unable to fetch secret"
-  # - so the revision never provisions and the apply fails outright. Measured on dev, 13 Sep 2026,
-  # on the first apply after the delivery-report work: five resources applied and the container app
-  # would not. `ghcr_token` had the pattern from the start; the other three did not, and the only
-  # reason dev had not hit it before is that dev happens to supply ACS and captcha values.
-  #
-  # Which means "blank is the safe default" was true of the application and false of the
-  # deployment: an environment that leaves any of these empty could not be applied at all. uat is
-  # documented to run with mail off, so uat's first apply would have failed on ACS.
+  # An optional secret (a variable defaulting to "") must be switched off in three places together:
+  # no Key Vault secret created, no container-app `secret` block, no `env` referencing it. Key Vault
+  # accepts an empty secret value, but Container Apps then fails to resolve it and the revision never
+  # provisions - so "blank is safe" is true of the app but false of the deployment.
   ghcr_credentials_configured = var.ghcr_token != ""
   acs_mail_configured         = var.acs_email_connection_string != ""
   delivery_reports_configured = var.mail_delivery_report_key != ""
   captcha_secret_configured   = var.captcha_secret != ""
 
-  # This app has no public address any more: its ingress is internal, and it is reachable only from
-  # inside the Managed Environment, at <app-name>.internal.<environment-default-domain>. The
-  # pattern is fixed once the environment exists, so the web module can compose the same string
-  # without either module depending on the other's resources.
+  # Internal ingress only, reachable at <app-name>.internal.<environment-default-domain> - a fixed
+  # pattern so the web module can compose the same string without depending on this module's
+  # resources.
   app_name = "kanban-api-${var.env}"
 
-  # The browser's origin, which is now somebody else's FQDN.
-  #
-  # Browsers send an Origin header - and Spring's CORS filter runs - even for a same-origin
-  # request, whenever a <script>/<link> carries crossorigin (Vite sets it on every module script
-  # and its preloaded stylesheets). nginx forwards that header unchanged, so what reaches this app
-  # is the address the person typed: the *web* app's FQDN. Getting it wrong is not subtle and is
-  # not a 500 either - every call from the board answers "Invalid CORS request" with a 403, which
-  # is what the compose stack did the first time it ran on a remapped port.
+  # Vite marks its module scripts/stylesheets `crossorigin`, so the browser sends an Origin header
+  # even on a same-origin request - and nginx forwards it unchanged, so what Spring's CORS filter
+  # sees is the *web* app's FQDN, not this one's. Getting it wrong is a silent 403 on every API call,
+  # not a 500.
   browser_origin = "https://${var.web_app_name}.${var.container_app_env_default_domain}"
 
   # Setting this always, rather than only when extra_cors_origins is non-empty, is what keeps
@@ -129,10 +114,8 @@ resource "azurerm_container_app" "main" {
     container {
       name  = "kanban-api"
       image = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
-      # Doubled with the split, which is the first item on the front-door document's list of
-      # cheaper things to try before any of that machinery - and the split is when these lines were
-      # being edited anyway. MaxRAMPercentage=60 in the Dockerfile means the heap follows the limit
-      # without a second number to keep in step.
+      # Doubled with the container split - the cheapest item on the front-door scaling document's
+      # list. MaxRAMPercentage=60 in the Dockerfile keeps the heap following this limit automatically.
       cpu    = 0.5
       memory = "1Gi"
 
@@ -195,10 +178,9 @@ resource "azurerm_container_app" "main" {
         name  = "SECURITY_CORS_ALLOWED_ORIGINS"
         value = local.cors_allowed_origins
       }
-      # Task attachments. Neither of these is a secret and neither goes through Key Vault: the
-      # endpoint is a public address and the client id names an identity rather than proving
-      # anything. What authorises the app is the role assignment below, held by the identity the
-      # container already runs as - there is no storage key anywhere in this deployment.
+      # Task attachments. Neither value is a secret, so neither goes through Key Vault - what
+      # authorises the app is the role assignment below, held by the identity it already runs as.
+      # There is no storage key anywhere in this deployment.
       env {
         name  = "AZURE_STORAGE_BLOB_ENDPOINT"
         value = var.storage_blob_endpoint
@@ -249,13 +231,11 @@ resource "azurerm_container_app" "main" {
   }
 
 
-  # Internal. Nothing outside the Managed Environment can reach Spring at all, which is the single
-  # largest thing the split buys and the reason the ip_security_restriction blocks moved to the web
-  # module: there is no public ingress here left to restrict.
-  #
-  # `transport = "http"` describes the port the container listens on, not the wire. The internal
-  # ingress terminates TLS regardless and answers plain HTTP with a 301, which is why the edge
-  # speaks https to it rather than carrying allow_insecure_connections.
+  # Internal: nothing outside the Managed Environment can reach Spring, which is why the
+  # ip_security_restriction blocks moved to the web module - there is no public ingress left here to
+  # restrict. `transport = "http"` describes the container's own port, not the wire: the internal
+  # ingress terminates TLS regardless and answers plain HTTP with a 301, which is why the edge speaks
+  # https to it rather than carrying allow_insecure_connections.
   ingress {
     external_enabled = false
     target_port      = local.app_port
@@ -301,15 +281,10 @@ resource "time_sleep" "wait_for_secrets_user" {
   create_duration = var.rbac_propagation_delay
 }
 
-# Read and write the attachment blobs, and - because the application creates its own container on
-# first start - make the container to put them in. Contributor rather than the narrower Storage Blob
-# Data Reader/Writer pair for exactly that reason: creating a container is a container-level
-# operation that Writer does not carry.
-#
-# It is also the only way the application reaches the blobs at all: shared_access_key_enabled is
-# false, so there is no account key and no connection string to build one from. The earlier version
-# of this comment described a user delegation SAS handed to the browser; that design was reversed
-# when the account was closed to the internet, and the bytes are proxied through the app now.
+# Read/write the attachment blobs, and create the container the app puts them in on first start.
+# Contributor rather than the narrower Storage Blob Data Reader/Writer pair because creating a
+# container is a container-level operation Writer doesn't grant - and it's the only path in, since
+# shared_access_key_enabled is false and there is no account key to build a connection string from.
 resource "azurerm_role_assignment" "storage_blob_contributor" {
   scope                = var.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
@@ -323,12 +298,10 @@ resource "time_sleep" "wait_for_blob_contributor" {
   create_duration = var.rbac_propagation_delay
 }
 
-# outside the app needs to know it, so no one should have to type it. Same pattern the
-# postgres module uses for its admin password.
-#
-# Stored base64-encoded because JwtService.getSignInKey runs Decoders.BASE64.decode()
-# and then Keys.hmacShaKeyFor(), which throws on anything under 32 decoded bytes.
-# 64 random characters clear that comfortably.
+# Generated randomly so nothing outside the app needs to know it - the same pattern the postgres
+# module uses for its admin password. Stored base64-encoded because JwtService.getSignInKey calls
+# Decoders.BASE64.decode() then Keys.hmacShaKeyFor(), which throws under 32 decoded bytes; 64 random
+# characters clears that.
 resource "random_password" "jwt_secret_key" {
   length  = 64
   special = false
@@ -363,14 +336,10 @@ resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   key_vault_id = var.key_vault_id
 }
 
-# The key in the delivery-report webhook's URL. Empty is not only allowed but is the default for
-# every environment: with no key the application's webhook answers 404 to everything and the Event
-# Grid subscription in the diagnostics module is not created either, so the one unauthenticated
-# write in this deployment does not exist unless somebody has deliberately switched it on.
-#
-# A secret rather than a plain env value because it is a credential - anyone holding it can post
-# delivery reports. What that buys is small (a wrong delivery status on a row that really was sent)
-# and it is still not a string to leave sitting in a container template.
+# The key in the delivery-report webhook's URL. Empty by default everywhere: with no key the webhook
+# answers 404 to everything and no Event Grid subscription is created either, so this write path
+# doesn't exist unless deliberately switched on. Stored as a secret, not a plain env value, because
+# it's a credential worth keeping out of the container template.
 resource "azurerm_key_vault_secret" "mail_delivery_report_key" {
   count = local.delivery_reports_configured ? 1 : 0
 

@@ -6,14 +6,10 @@ import { fetchBoardInvitations } from '../services/boardApi';
 import '../styles/components/BoardMembers.css';
 
 /**
- * The board, and who is on it.
- *
- * <p>This is the screen the tenancy model needed to become usable. Access is decided by membership
- * now, so there has to be somewhere a person can see the list and change it — otherwise every
- * account is a board of one, and the assignees, the WIP limits and the chat have nobody to talk to.
- *
- * <p>Only the owner can rename the board, delete it, or change who is on it. Everyone else sees the
- * same list and a way out.
+ * The board, and who is on it: since access is decided by membership, there has to be somewhere a
+ * person can see the list and change it, or every account is a board of one with nobody for the
+ * assignees, WIP limits or chat to talk to. Only the owner can rename the board, delete it, or
+ * change who is on it; everyone else sees the same list and a way out.
  */
 function BoardMembers() {
   const { activeBoard, renameBoard, deleteBoard, inviteToBoard, revokeInvitation, removeBoardMember } = useKanban();

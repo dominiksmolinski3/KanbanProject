@@ -20,48 +20,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A guard over the Azure services this deployment uses and the subscription registrations that let
- * it use them.
- *
- * <p>An Azure resource provider is registered per <em>subscription</em>, and ARM refuses a request
- * against an unregistered namespace outright rather than registering it on the way:
- *
- * <pre>
- * creating System Topic (...): unexpected status 409 (409 Conflict) with error:
- * MissingSubscriptionRegistration: The subscription is not registered to use namespace
- * 'Microsoft.EventGrid'.
- * </pre>
- *
- * <p><b>That is measured rather than imagined.</b> It is what the first apply of the delivery-report
- * work did, on the one environment that exists, seven months after the Terraform describing it
- * merged. Every other namespace this deployment touches happened to be registered already, because
- * something had previously created a resource in it; Event Grid was the first genuinely new Azure
- * service added since the subscription was set up, so it was the first to find out that the azurerm
- * provider's default registration set does not cover it.
- *
- * <p><b>Nothing else can see this coupling.</b> A resource added to a module and a namespace absent
- * from {@code providers.tf} both parse, both format, both validate, and Checkov has nothing to say
- * about either. There is no failing build. What there is instead is an apply that stops partway
- * through against a real environment, having already changed some of it - which is the most
- * expensive place in this repository for a mistake to surface, and the reason this is checked at
- * build time from a test rather than trusted to whoever runs the apply.
- *
- * <p>It is the {@code DeadLetterAlertTest} shape: a rule that lives in two files, checked in one.
- * Here the two files are every {@code .tf} declaring {@code resource "azurerm_*"} and the
- * {@code resource_providers_to_register} list the provider block carries.
- *
- * <p><b>The list is exhaustive on purpose.</b> Naming only the namespaces the provider's defaults
- * miss would be tracking a property of the provider version rather than of this deployment - it is
- * not readable from here, and it changes under a {@code ~> 5.3} bump with nothing to say so.
- * Registering a namespace that is already registered is a no-op, so listing every one costs nothing
- * and states something true and stable: these are the Azure services this deployment is made of.
- *
- * <p><b>Two namespaces are deliberately excluded</b> - {@code Microsoft.Resources} and
- * {@code Microsoft.Authorization}. They are the control plane a registration call is itself made
- * through; they cannot be unregistered and there is nothing for a registration to do.
- *
- * <p>Like every guard here it does not skip when a file is missing. A guard that turns itself off
- * when it cannot find what it guards leaves the build green either way, and only one of those two
- * states is honest.
+ * it use them. An Azure resource provider is registered per <em>subscription</em>, and ARM refuses
+ * a request against an unregistered namespace outright rather than registering it on the way -
+ * measured, not imagined: the first apply of the delivery-report work hit exactly this
+ * ({@code 409 MissingSubscriptionRegistration} for {@code Microsoft.EventGrid}) because it was the
+ * first genuinely new Azure service added since the subscription was set up. Nothing else can see
+ * this coupling - a resource added to a module with its namespace absent from
+ * {@code providers.tf} parses, formats and validates clean, and only an apply against a real
+ * environment fails, partway through, having already changed some of it. The list is exhaustive on
+ * purpose rather than naming only what the provider's defaults miss, since that set is not
+ * readable from here and changes silently under a version bump; registering an already-registered
+ * namespace is a no-op. {@code Microsoft.Resources} and {@code Microsoft.Authorization} are
+ * excluded deliberately - they are the control plane a registration call is itself made through.
  */
 class ResourceProvidersAreRegisteredTest {
 
@@ -80,13 +50,10 @@ class ResourceProvidersAreRegisteredTest {
 
     /**
      * Terraform resource-type prefix to the ARM namespace the resource is created in, longest
-     * prefix winning.
-     *
-     * <p>Maintained by hand, and that is stated rather than solved: the namespace is not derivable
-     * from the resource name (nothing about {@code azurerm_log_analytics_workspace} says
-     * {@code Microsoft.OperationalInsights}), and guessing it would be worse than asking. A
-     * resource type no prefix here matches fails the test naming itself, which is the point - a new
-     * Azure service is exactly the case that has already cost an apply.
+     * prefix winning. Maintained by hand: the namespace is not derivable from the resource name
+     * (nothing about {@code azurerm_log_analytics_workspace} says
+     * {@code Microsoft.OperationalInsights}), and a resource type no prefix here matches fails the
+     * test naming itself, which is the point.
      */
     private static final Map<String, String> NAMESPACES = new LinkedHashMap<>() {{
         put("azurerm_container_app", "Microsoft.App");

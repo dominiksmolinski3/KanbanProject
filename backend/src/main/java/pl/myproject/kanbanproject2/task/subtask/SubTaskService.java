@@ -37,14 +37,9 @@ public class SubTaskService {
     }
 
     /**
-     * The next free position among one task's subtasks. It used to be a count of every subtask in
-     * the table, which both collided after a delete and numbered a task's first subtask by how
-     * many other tasks happened to have some; then a fold over the fetched list, which was correct
-     * but is the shape the task service has since moved away from. The aggregate belongs in the
-     * database, where a null position simply does not take part in a MAX.
-     *
-     * <p>The task is never null here: {@code CreateSubTaskRequest} requires one, and a subtask
-     * reads its board through it.
+     * The next free position among one task's subtasks, computed as a database aggregate rather
+     * than a count (which collided after a delete) or a Java fold over the fetched list. The task
+     * is never null here: {@code CreateSubTaskRequest} requires one.
      */
     private int nextPositionUnder(Task task) {
         return subTaskRepository.findMaxPosition(task.getId()).orElse(0) + 1;
@@ -132,9 +127,9 @@ public class SubTaskService {
     }
 
     /**
-     * A subtask is visible exactly when the task it hangs off is. The null check is not defensive
-     * padding: rows written before the task became mandatory can still have none, and the safe
-     * reading of "belongs to no task" is "belongs to no board", not "belongs to every board".
+     * A subtask is visible exactly when the task it hangs off is. The null check matters because
+     * rows written before the task became mandatory can still have none, and the safe reading of
+     * "belongs to no task" is "belongs to no board", not "belongs to every board".
      */
     private SubTask findSubTask(User caller, Integer id) {
         var subTask = subTaskRepository.findById(id).orElseThrow(() -> subTaskNotFound(id));

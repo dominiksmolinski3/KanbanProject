@@ -31,34 +31,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntConsumer;
 
 /**
- * Files attached to a task, held in Azure Blob Storage with a row here to name them.
- *
- * <p>Every method takes the caller and every lookup goes through {@link #findTask}, the same rule
- * {@code TaskService} states: an attachment on a board the caller is not a member of answers as one
- * that does not exist. The scoping question is answered entirely by the task - an attachment has no
- * visibility of its own, which is why the routes name the task in the path and this service checks
- * the task before it looks at anything else.
- *
- * <p><b>Two systems, one order, and the failure that order chooses.</b> A blob and a row have to
- * agree, and nothing makes them agree atomically. On upload the blob is written first and the row
- * second, with the blob removed again if the transaction does not commit. On delete the row goes
- * first and the blob after the commit. Both orders leave the same failure available - a blob with
- * no row, if the process dies in the window - and rule out the other one, a row whose bytes are
- * gone. That is deliberate: an orphaned blob costs a fraction of a cent and is invisible, while a
- * row pointing at nothing is an attachment in the list that fails every time somebody clicks it.
- *
- * <p><b>Two guardrails sit around the streaming itself.</b> {@link #transferPermits} bounds how
- * many uploads and downloads may be moving bytes through this application at once - a container
- * pinned to one replica has no second process to absorb a burst, so past the limit a caller gets a
- * fast {@code 503} rather than a hung connection. {@link #requireQuota} bounds what a board may
- * accumulate in total, checked before the blob is written for the same reason every other check
- * here runs first: writing the bytes only to reject the row would leak an orphaned blob for
- * nothing.
- *
- * <p><b>A download may ask for part of a file.</b> {@link #content} takes a range and asks the
- * store for exactly those bytes, so a transfer that died at 90% resumes for the last tenth rather
- * than paying for the whole file again. The range is bounded by the size on the row before storage
- * is touched at all, which is what keeps a made-up offset from ever becoming a request to Azure.
+ * Files attached to a task, held in Azure Blob Storage with a row here to name them. Every lookup
+ * goes through {@link #findTask}, the same rule {@code TaskService} states, since an attachment has
+ * no visibility of its own — the task decides who may see it. A blob and a row can't be written
+ * atomically, so the write order is chosen for the safer failure: upload writes the blob first and
+ * removes it if the transaction doesn't commit, while delete removes the row first and the blob
+ * after commit — either way risks an orphaned, invisible blob rather than a row pointing at bytes
+ * that are gone, which would fail every time somebody clicks it. {@link #transferPermits} bounds
+ * concurrent transfers so a burst gets a fast {@code 503} instead of a hung connection on a
+ * single-replica container, and {@link #requireQuota} bounds what a board may accumulate, checked
+ * before the blob is written so a rejected upload never leaks one. {@link #content} resolves a
+ * {@code Range} against the stored size before touching storage, so a transfer that died at 90%
+ * resumes for the last tenth instead of paying for the whole file again.
  */
 @Slf4j
 @Transactional
@@ -66,9 +50,8 @@ import java.util.function.IntConsumer;
 public class TaskAttachmentService {
 
     /**
-     * Ten megabytes, matching {@code spring.servlet.multipart.max-file-size} and the limit the
-     * existing upload route carries. Checked here as well as by the container, because the
-     * container's limit is a transport setting that answers with a different shape of error.
+     * Ten megabytes, matching {@code spring.servlet.multipart.max-file-size}. Checked here too,
+     * since the container's limit is a transport setting that answers with a different error shape.
      */
     static final long MAX_ATTACHMENT_SIZE = 10L * 1024 * 1024;
 
@@ -76,12 +59,9 @@ public class TaskAttachmentService {
     private static final int MAX_FILE_NAME_LENGTH = 255;
 
     /**
-     * What an upload with no declared type is stored as.
-     *
-     * <p>A guess would be worse. Every link this service hands out forces {@code Content-Disposition:
-     * attachment}, so the type does not decide whether something is rendered - it only decides what
-     * the browser offers to open the saved file with, and being honest about not knowing is the
-     * better answer there.
+     * What an upload with no declared type is stored as. A guess would be worse: every link forces
+     * {@code Content-Disposition: attachment}, so the type only decides what the browser offers to
+     * open the file with, never whether it renders.
      */
     private static final String UNKNOWN_CONTENT_TYPE = "application/octet-stream";
 
@@ -132,11 +112,9 @@ public class TaskAttachmentService {
     }
 
     /**
-     * Streams one upload into the container and records it.
-     *
-     * <p>The stream is handed to the store rather than read into an array: a ten-megabyte
-     * {@code getBytes()} per concurrent upload is a real fraction of a container sized at 512 MB,
-     * and there is nothing in this path that needs to look at the bytes.
+     * Streams one upload into the container and records it. The stream is handed to the store
+     * rather than read into an array, since a ten-megabyte {@code getBytes()} per concurrent upload
+     * is a real fraction of a container sized at 512 MB.
      */
     public TaskAttachmentDto upload(User caller, Integer taskId, MultipartFile file) {
         var task = findTask(caller, taskId);
@@ -179,27 +157,17 @@ public class TaskAttachmentService {
     }
 
     /**
-     * Opens one attachment for reading, having first decided the caller may.
-     *
-     * <p>This is the whole reason the storage account can be closed to the internet. A signed URL
-     * handed to the browser would be faster and cheaper, and would require the account to answer
-     * every address a browser might arrive from; going through here means the only thing that ever
-     * talks to storage is this application, over a private endpoint, as itself.
-     *
-     * <p>The stream is returned open. Reading it here to check it would mean holding the file,
-     * which is the one thing this path must not do.
-     *
-     * <p>The transfer permit acquired below is <b>not</b> released when this method returns - the
-     * download is not done at that point, it has barely started. Spring copies the returned stream
-     * to the response after this call, so the permit is handed off to the stream itself and released
-     * from its {@code close()}, whenever that turns out to be. Only the failure path still releases
-     * here, because a stream that was never handed out has no {@code close()} coming.
-     *
-     * <p><b>{@code range} is resolved here rather than in the controller, because resolving it
-     * needs the size.</b> A suffix range - {@code bytes=-500}, the last five hundred bytes - cannot
-     * be turned into an offset without knowing how long the file is, and the row holding that
-     * number is the one this method has just read. The permit is taken <em>after</em> the range is
-     * checked, so a request that was never going to be served does not cost a transfer slot.
+     * Opens one attachment for reading, having first decided the caller may. This is the whole
+     * reason the storage account can be closed to the internet: the only thing that ever talks to
+     * it is this application, over a private endpoint, rather than a signed URL handed to the
+     * browser. The stream is returned open rather than read here to check it, since holding the
+     * file is the one thing this path must not do. The transfer permit acquired below is
+     * <b>not</b> released when this method returns — Spring copies the stream to the response
+     * afterward, so the permit is released from the stream's own {@code close()} instead, except on
+     * the failure path, where no stream was ever handed out. {@code range} is resolved here rather
+     * than in the controller because a suffix range needs the size to become an offset, and the
+     * permit is taken only after that check, so a request that was never going to be served costs
+     * no slot.
      *
      * @param range the single range asked for, or {@code null} for the whole file.
      * @throws UnsatisfiableRangeException if the range names bytes the attachment does not have.
@@ -272,14 +240,10 @@ public class TaskAttachmentService {
     }
 
     /**
-     * Everything hanging off a task that is being deleted.
-     *
-     * <p>Called by {@code TaskService.deleteTask} rather than done by a cascade, because the blobs
-     * are not the database's to remove: a {@code ON DELETE CASCADE} would take the rows and leave
-     * every one of their blobs behind with nothing left that knows the names.
-     *
-     * <p>No caller parameter - the caller has already been checked by the task lookup that found
-     * the task being deleted, and this is not reachable from a route.
+     * Everything hanging off a task that is being deleted. Called by
+     * {@code TaskService.deleteTask} rather than a cascade, since an {@code ON DELETE CASCADE}
+     * would take the rows and leave every blob behind with nothing left that knows the names. No
+     * caller parameter: already checked by the task lookup that found the task being deleted.
      */
     public void deleteAllFor(Task task) {
         var toDelete = attachments.findByTask(task);
@@ -302,11 +266,10 @@ public class TaskAttachmentService {
     }
 
     /**
-     * An attachment that is on the named task, and on a task the caller can see.
-     *
-     * <p>The task is checked first and the attachment matched against it, rather than the
-     * attachment being looked up and its task read back. Otherwise an id from another board would
-     * be reachable by naming any task the caller does have - the path would be decoration.
+     * An attachment that is on the named task, and on a task the caller can see. The task is
+     * checked first and the attachment matched against it, rather than looked up and its task read
+     * back — otherwise an id from another board would be reachable through any task the caller
+     * does own, and the path would be decoration.
      */
     private TaskAttachment findAttachment(User caller, Integer taskId, Long attachmentId) {
         var task = findTask(caller, taskId);
@@ -337,10 +300,8 @@ public class TaskAttachmentService {
     }
 
     /**
-     * A board-wide ceiling on attachments - count and total bytes, both enforced - checked before
-     * the blob is written so a rejected upload never leaves an orphaned blob behind. The count is
-     * "this upload plus what is already there", the same way {@link #MAX_ATTACHMENT_SIZE} treats
-     * one file: at the limit is full, and the next one is refused.
+     * A board-wide ceiling on attachments — count and total bytes, both enforced — checked before
+     * the blob is written so a rejected upload never leaves an orphaned blob behind.
      */
     private void requireQuota(Board board, long incomingBytes) {
         if (attachments.countByTaskBoard(board) + 1 > maxAttachmentsPerBoard) {
@@ -396,10 +357,8 @@ public class TaskAttachmentService {
 
     /**
      * Runs {@code action} when the surrounding transaction finishes, or immediately when there is
-     * no transaction to wait for.
-     *
-     * <p>The immediate branch is not only for tests: it keeps this correct if a caller ever runs
-     * outside one, by treating "nothing to roll back" as the committed case, which is what it is.
+     * none — treating "nothing to roll back" as committed, which keeps this correct even if a
+     * caller ever runs outside a transaction.
      */
     private static void onCompletion(IntConsumer action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -415,10 +374,9 @@ public class TaskAttachmentService {
     }
 
     /**
-     * A blob removal that cannot fail the request.
-     *
-     * <p>Everything that calls this has already committed, or has already given up. Throwing would
-     * turn a delete that worked into a 500, and would not put the blob back.
+     * A blob removal that cannot fail the request. Everything that calls this has already
+     * committed or already given up, so throwing would turn a working delete into a 500 without
+     * undoing anything.
      */
     private void removeQuietly(String blobName) {
         try {

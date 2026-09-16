@@ -14,14 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * What a search request means before it reaches the database.
- *
- * <p>Two of these are worth more than they look. <b>The wildcard escaping</b> is the difference
- * between searching for {@code 100%} and matching the whole board - a bug with no error and no
- * symptom other than a search that quietly stops narrowing anything. And <b>the page-size
- * refusal</b> is a decision rather than an implementation detail: PERF-02 asked for a number, and
- * the thing being pinned here is that asking for more than it is answered rather than silently
- * clamped.
+ * What a search request means before it reaches the database. The wildcard escaping matters most:
+ * without it, searching {@code 100%} matches the whole board with no error, just a search that
+ * quietly stops narrowing anything. The page-size refusal is a decision, not an implementation
+ * detail — PERF-02 asked for a number, and asking for more than it is answered rather than
+ * silently clamped.
  */
 class TaskSearchCriteriaTest {
 

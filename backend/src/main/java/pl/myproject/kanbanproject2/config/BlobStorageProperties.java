@@ -5,17 +5,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.util.StringUtils;
 
 /**
- * Where task attachments are kept, and how they are reached again.
- *
- * <p>Two ways in, and a deployment sets exactly one of them. {@link #endpoint} with no key is the
- * production shape: the container app authenticates as its managed identity and the storage account
- * has shared-key authorization turned off, so there is no account key to leak. {@link
- * #connectionString} is local development against Azurite, whose key is a published constant and
- * not a secret at all.
- *
- * <p>Neither set turns attachments off - the application starts and refuses uploads, the same
- * allowance {@link AcsMailProperties} makes for mail, and for the same reason: a fresh clone and CI
- * should be able to run the whole thing without an Azure subscription.
+ * Where task attachments are kept, and how they are reached again. A deployment sets exactly one
+ * of {@link #endpoint} (production: managed identity, no account key at all) or
+ * {@link #connectionString} (local Azurite, whose key is a published constant). Neither set turns
+ * attachments off rather than failing to boot - the same allowance {@link AcsMailProperties} makes
+ * for mail, so a fresh clone and CI run without an Azure subscription.
  */
 @ConfigurationProperties(prefix = "app.storage")
 public record BlobStorageProperties(
@@ -35,49 +29,38 @@ public record BlobStorageProperties(
         String connectionString,
 
         /*
-         * The container attachments are written to. Created on first start if it is missing, which
-         * is the reason Terraform provisions the account and not the container: creating it needs
-         * data-plane rights the identity already has, and not having Terraform reach the data plane
-         * is what lets the account refuse shared-key access.
+         * The container attachments are written to. Created on first start if missing - Terraform
+         * provisions the account but not the container, since keeping it off the data plane is
+         * what lets the account refuse shared-key access.
          */
         @DefaultValue("task-attachments") String container,
 
         /*
          * The client id of the user-assigned managed identity to authenticate as. Empty falls back
-         * to DefaultAzureCredential, which is what picks up an Azure CLI login when a developer
-         * points this at a real account.
-         *
-         * Named explicitly rather than left to the SDK's own AZURE_CLIENT_ID, because a variable
-         * the application never reads is one ConfigurationTest reports as dead configuration - and
-         * it would be right to: nothing else in this repo would connect that name to this bean.
+         * to DefaultAzureCredential. Named explicitly rather than left to the SDK's own
+         * AZURE_CLIENT_ID, because a variable nothing in this repo reads is one ConfigurationTest
+         * reports as dead configuration.
          */
         String identityClientId,
 
         /*
-         * How many uploads and downloads may stream through this application at once. Each one
-         * holds a thread and a buffer for as long as the transfer takes, comfortably under Tomcat's
-         * 200-thread default, with room left for ordinary request serving.
-         *
-         * This is a per-JVM Semaphore, not a global one: at api_max_replicas > 1, the true ceiling
-         * is this value times the replica count. Benign in effect - it only ever grants more
-         * concurrent transfers than the name promises - but it means the name reads "per replica"
-         * rather than "total" the moment a second API replica exists.
+         * How many uploads and downloads may stream through this application at once, each holding
+         * a thread and a buffer for the transfer's duration. A per-JVM Semaphore, not a global one:
+         * at api_max_replicas > 1 the true ceiling is this value times the replica count, so the
+         * name reads "per replica" once a second API replica exists.
          */
         @DefaultValue("8") int maxConcurrentTransfers,
 
         /*
-         * A per-board ceiling on how many attachments may exist at once, checked alongside {@link
-         * #maxTotalBytesPerBoard} before a blob is written. 500 attachments is fifty of the largest
-         * file this feature allows, which is generous for one board and still a number rather than
-         * nothing.
+         * A per-board ceiling on how many attachments may exist at once, checked alongside
+         * {@link #maxTotalBytesPerBoard} before a blob is written. 500 is fifty of the largest file
+         * this feature allows.
          */
         @DefaultValue("500") long maxAttachmentsPerBoard,
 
         /*
-         * A per-board ceiling on the combined size of every attachment, in bytes. One gibibyte -
-         * a hundred files at the ten-megabyte per-file limit - is the same kind of small, explicit
-         * number {@link pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService
-         * #MAX_ATTACHMENT_SIZE} is for one file.
+         * A per-board ceiling on the combined size of every attachment, in bytes - one gibibyte,
+         * a hundred files at the ten-megabyte per-file limit.
          */
         @DefaultValue("1073741824") long maxTotalBytesPerBoard) {
 

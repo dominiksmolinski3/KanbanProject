@@ -13,10 +13,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The two variable names are the ones docker-compose, Terraform and the Key Vault entry already
- * use, and they are the whole reason this can be turned on without touching any of them. A name
- * that does not bind fails silently - the app would keep the default of "off" and nothing would
- * say so, which is exactly the state this branch exists to end.
+ * The two variable names are the ones docker-compose, Terraform and Key Vault already use. A name
+ * that does not bind fails silently - the app keeps the default of "off" with nothing to say so.
  */
 class CaptchaPropertiesBindingTest {
 

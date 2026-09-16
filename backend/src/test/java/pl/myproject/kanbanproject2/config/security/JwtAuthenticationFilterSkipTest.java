@@ -96,11 +96,8 @@ class JwtAuthenticationFilterSkipTest {
     })
     @DisplayName("a path that used to be the bundle is now just a path, and reads a token like any other")
     void noLongerSkipsStaticPaths(String path) throws Exception {
-        // These skipped the filter while the jar served the bundle. nginx serves it now, so
-        // nothing asks this application for them - and the extension patterns that made the skip
-        // possible are the same ones that made a free-text label segment unusable. Asserted rather
-        // than deleted: the skip coming back would otherwise be silent, and it is the half of the
-        // old drift that no authorize-side test can see.
+        // These skipped the filter while the jar served the bundle; nginx serves it now. Asserted
+        // rather than deleted, since the skip coming back would otherwise be silent.
         var chain = authenticatedRequestTo(path);
 
         verify(jwtService).extractUsername("token");
@@ -119,10 +116,8 @@ class JwtAuthenticationFilterSkipTest {
     void actuatorPathsStillEstablishAnIdentity(String path) throws Exception {
         var chain = authenticatedRequestTo(path);
 
-        // These three entries used to sit in the list above, asserting the defect they caused:
-        // `management.endpoint.health.show-details=when_authorized` reads the principal this filter
-        // was declining to establish, so it behaved as `never` and the mail indicator PR 56 added
-        // was unreadable by anybody from the day it shipped.
+        // These used to sit in the skip list above: `show-details=when_authorized` reads the
+        // principal this filter was declining to establish, so it behaved as `never`.
         verify(jwtService).extractUsername("token");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         verify(chain).doFilter(any(), any());
@@ -137,10 +132,8 @@ class JwtAuthenticationFilterSkipTest {
 
         filter.doFilterInternal(request, new MockHttpServletResponse(), chain);
 
-        // The thing to check before touching this filter: every container probe addresses one of
-        // these two paths with no Authorization header, so it takes the null-header branch and is
-        // unaffected. A health endpoint that started refusing probes would be an outage caused by
-        // an observability fix.
+        // Every container probe addresses one of these two paths with no Authorization header, so
+        // it takes the null-header branch and is unaffected.
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verifyNoInteractions(jwtService, userDetailsService);
         verify(chain).doFilter(any(), any());

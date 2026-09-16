@@ -6,24 +6,13 @@ import { loadRecaptcha } from '../services/recaptchaLoader';
 const WIDGET_PAINT_TIMEOUT_MS = 5000;
 
 /**
- * Renders a reCAPTCHA v2 checkbox by calling `grecaptcha.render` directly.
- *
- * This replaces `react-google-recaptcha`, which could not survive either of the
- * two things this form does. Mounting a second time in one page's life - React
- * StrictMode's throwaway mount, or returning to the login form from the
- * password-reset view - left its internal `_widgetId` set while the widget node
- * was gone, so the remount rendered an empty box. And on a reload, where api.js
- * is served from cache and fires its `?onload=` callback before the script's
- * `load` event, its loader threw "Script is not loaded." and never told anyone
- * the API had arrived, so no widget was rendered at all.
- *
- * Here the widget is injected into a node this component owns and removes on
- * unmount, so a remount always renders exactly one; and readiness is polled
- * rather than pushed (see recaptchaLoader), so there is no callback to miss.
- *
- * `onReady` fires once the widget is in the DOM, not merely once the script is
- * available - a caller showing a placeholder can swap it for the real thing at
- * the moment there is something to show.
+ * Renders a reCAPTCHA v2 checkbox by calling `grecaptcha.render` directly, replacing
+ * `react-google-recaptcha`: that library left a stale `_widgetId` across a remount (StrictMode, or
+ * returning to the login form) and rendered nothing on a cached reload where `?onload=` fires
+ * before the script's `load` event. Here the widget lives in a node this component owns and
+ * empties on unmount, and readiness is polled rather than pushed (see recaptchaLoader), so there
+ * is no callback to miss. `onReady` fires once the widget is actually in the DOM, so a caller's
+ * placeholder can be swapped for it exactly when there is something to show.
  */
 const SafeReCAPTCHA = React.forwardRef(function SafeReCAPTCHA(
   { sitekey, theme, size, hl, onChange, onExpired, onErrored, onReady, onLoadError, ...rest },
@@ -67,11 +56,9 @@ const SafeReCAPTCHA = React.forwardRef(function SafeReCAPTCHA(
     const holder = holderRef.current;
 
     /**
-     * `grecaptcha.render` returns as soon as the widget's iframe element exists,
-     * but the checkbox is drawn by that iframe's own document a moment later.
-     * Announcing readiness at render time would swap the caller's placeholder for
-     * a blank box - which is exactly what a remount looks like once api.js is
-     * cached and there is no script fetch left to hide the gap.
+     * `grecaptcha.render` returns as soon as the iframe exists, but the checkbox is drawn by that
+     * iframe's own document a moment later - announcing readiness at render time would swap the
+     * placeholder for a blank box, exactly what a remount looks like on a cached reload.
      */
     const announceWhenPainted = (target) => {
       const iframe = target.querySelector('iframe');

@@ -20,14 +20,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The indicator exists to make two deliberately quiet failures loud again, so what is worth
- * asserting is which status each one produces and that neither of them is the status a probe would
- * act on.
- *
- * <p>What this cannot show, and is stated on the class instead: that the container's probes address
- * the readiness and liveness groups rather than the root endpoint, so a mail account nobody
- * configured cannot restart the application. That is a fact about the Dockerfile and the Terraform
- * probe paths, not about this class.
+ * The indicator exists to make two deliberately quiet failures loud again, so what's worth
+ * asserting is which status each produces and that neither is one a probe would act on. What this
+ * can't show: the container's probes address the readiness/liveness groups rather than the root
+ * endpoint, so mail being off can't restart the app - a fact about the Dockerfile and Terraform, not
+ * this class.
  */
 class MailHealthIndicatorTest {
 
@@ -127,9 +124,8 @@ class MailHealthIndicatorTest {
 
         Health health = indicator.health();
 
-        // Still UP, deliberately: reports arrive minutes late, so this cannot be a status without
-        // going red after every signup. What it must do is be *visible*, because undelivered reads
-        // zero here and reads zero when everything is fine.
+        // Still UP: reports arrive minutes late, so this can't be a status without going red after
+        // every signup - it just needs to be visible, since undelivered reads zero either way.
         assertThat(health.getStatus()).isEqualTo(Status.UP);
         assertThat(health.getDetails())
                 .containsEntry("undelivered", 0L)

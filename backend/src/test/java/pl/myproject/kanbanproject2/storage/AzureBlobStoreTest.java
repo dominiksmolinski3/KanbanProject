@@ -25,13 +25,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The parts of the storage adapter nothing else can see.
- *
- * <p>Two properties are being pinned rather than left to a reading of the code. Neither direction
- * may hold a whole file - an upload takes the stream it was handed and a read returns the store's
- * own, because the storage account being closed to the internet is only affordable if putting the
- * bytes back on the request path costs a buffer rather than a copy. And the Azure client's
- * exceptions stop here: nothing above the storage package should be catching an SDK type.
+ * The parts of the storage adapter nothing else can see: neither direction holds a whole file (an
+ * upload streams what it was handed, a read returns the store's own stream), and the Azure client's
+ * exceptions stop here rather than leaking an SDK type into callers.
  */
 class AzureBlobStoreTest {
 

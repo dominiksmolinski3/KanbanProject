@@ -11,23 +11,14 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A guard over a string that two files share and no compiler reads.
+ * A guard over a string shared between {@link OutboxRelay} and
+ * {@code terraform/modules/diagnostics/main.tf} that no compiler checks:
+ * {@link OutboxRelay#DEAD_LETTER_MARKER} is logged on give-up and matched by a Log Analytics rule
+ * that mails the alert address. Renaming, changing or rewording either side still compiles, plans
+ * and passes while the alert silently stops firing.
  *
- * <p>{@link OutboxRelay} logs {@link OutboxRelay#DEAD_LETTER_MARKER} on the line where it gives up
- * on a message, and a Log Analytics rule in {@code terraform/modules/diagnostics/main.tf} matches
- * console log lines containing that token and mails whoever the alert address names. Nothing about
- * that coupling is visible to javac, to Terraform, or to either test suite: rename the constant,
- * change its value, or reword the KQL, and everything still compiles, plans and passes. What
- * happens instead is that the alert stops firing - and it stops firing silently, in exactly the
- * way the outbox made the underlying failure silent in the first place.
- *
- * <p>So this reads the other file. It is the same shape as {@code SessionRoutesTest} asserting that
- * two routes stay public and rate-limited, and of {@code PublicBundlePathsTest} pinning the static
- * patterns: a rule that lives in two places, checked in one.
- *
- * <p>It deliberately does not skip when the file is missing. A guard that quietly turns itself off
- * when it cannot find what it is guarding is worse than no guard, because the build stays green
- * either way and only one of those two states is honest.
+ * <p>Deliberately does not skip when the file is missing - a guard that quietly turns itself off is
+ * worse than no guard.
  */
 class DeadLetterAlertTest {
 

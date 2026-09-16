@@ -12,32 +12,24 @@ import pl.myproject.kanbanproject2.service.EmailMessage;
 import java.time.Instant;
 
 /**
- * One message waiting to be posted, as a row.
+ * One message waiting to be posted, as a row. The row exists so "the account was created" and
+ * "somebody will be told the code" are one decision, not two - a row in the same database, written
+ * in the same transaction, either happens with the account or not at all. A Service Bus queue
+ * wouldn't fix that: it's a second system too, and an enqueue after the commit is lost if the
+ * process dies in between.
  *
- * <p>The row exists so that "the account was created" and "somebody will be told the code" are one
- * decision rather than two. They used to be two: {@code signup} wrote a user and made an HTTPS call
- * to Azure, in that order or the other one depending on the route, and either half could happen
- * without the other. Writing the message to a queue instead does not fix that - a queue is a second
- * system too, and an enqueue after the commit is lost if the process dies in between. A row in the
- * same database, written in the same transaction, either happens with the account or does not
- * happen at all. That is the whole of the outbox pattern, and it is a table rather than a library.
+ * <p>The message is stored composed, both bodies, exactly as {@link EmailMessage} carries it -
+ * re-running the template at send time would mail a wording change (or a template bug) to somebody
+ * queued before it.
  *
- * <p>The message is stored composed, both bodies, exactly as {@link EmailMessage} carries it. The
- * alternative - storing the facts and re-running the template at send time - would mean a message
- * queued before a wording change goes out with the new wording, and a message queued before a
- * template <em>bug</em> cannot be replayed as it was meant to read. What is queued is what was
- * composed.
+ * <p><b>{@code SENT} means accepted</b>, and since {@code V16} {@link #providerMessageId} - Azure's
+ * own id, written on acceptance - is what a later delivery report names; without it a report has
+ * nothing to attach to.
  *
- * <p><b>{@code SENT} means accepted, and since {@code V16} the row can say more than that.</b>
- * {@link #providerMessageId} is Azure's own id for the message, written when it is accepted, and it
- * is what a delivery report arriving later names. Without an id there is nothing to attach the
- * report to and "did the code reach them" stays unanswerable however much the provider knows.
- *
- * <p><b>These rows hold live credentials.</b> A pending verification or reset row carries a code
- * that is currently redeemable, which is why nothing here is logged with its body and why the
- * relay's error path stores the provider's complaint rather than the message. The rows are not
- * swept: a {@code SENT} row is a delivery record worth keeping, and a retention policy is a
- * decision nobody has made yet rather than something to guess at here.
+ * <p><b>These rows hold live credentials</b> (a pending verification or reset code is currently
+ * redeemable), which is why nothing here is logged with its body and the relay's error path stores
+ * the provider's complaint rather than the message. Rows are not swept - retention is a decision
+ * nobody has made yet.
  */
 @Entity
 @Table(name = "email_outbox")
@@ -73,11 +65,9 @@ public class OutboxEmail {
     private Instant createdAt;
 
     /**
-     * When the relay may next pick this up.
-     *
-     * <p>Set to the creation instant so the first pass takes it, and pushed out on each refusal.
-     * Keeping the backoff in the row rather than in the relay is what lets one slow recipient wait
-     * without holding up the rest of the batch, and what lets a restart resume where it left off.
+     * When the relay may next pick this up. Set to the creation instant so the first pass takes it,
+     * and pushed out on each refusal - keeping the backoff in the row rather than the relay lets one
+     * slow recipient wait without holding up the batch, and lets a restart resume where it left off.
      */
     @jakarta.persistence.Column(name = "next_attempt_at", nullable = false)
     private Instant nextAttemptAt;
@@ -90,24 +80,18 @@ public class OutboxEmail {
     private String lastError;
 
     /**
-     * Azure's own id for the message, written when the provider accepts it.
-     *
-     * <p>This is the join key and it is the whole reason a delivery report can say anything about
-     * a <em>message</em> rather than about an address. Null is ordinary: a {@code DROPPED} row was
-     * never given to a provider, a row queued before {@code V16} predates anybody listening, and a
-     * send whose id could not be read back is still a send.
+     * Azure's own id for the message, written on acceptance. This is the join key that lets a
+     * delivery report say something about a <em>message</em> rather than an address. Null is
+     * ordinary: a {@code DROPPED} row was never given to a provider, and an id that couldn't be
+     * read back is still a send.
      */
     @jakarta.persistence.Column(name = "provider_message_id", length = 200)
     private String providerMessageId;
 
     /**
      * The provider's own word for what became of it - {@code Delivered}, {@code Bounced} and the
-     * rest - stored verbatim rather than mapped onto an enum of this application's invention.
-     *
-     * <p>Two reasons. The person reading this column is diagnosing a mail that did not arrive, and
-     * the provider's documentation and its own logs are written in the provider's vocabulary. And a
-     * status nobody here has seen before has to be storable: a provider that adds one is not a
-     * reason to throw the report away.
+     * rest - stored verbatim rather than mapped onto an enum of this application's invention, so a
+     * status nobody here has seen before is still storable rather than thrown away.
      */
     @jakarta.persistence.Column(name = "delivery_status", length = 32)
     private String deliveryStatus;
@@ -143,25 +127,18 @@ public class OutboxEmail {
     }
 
     /**
-     * Takes the row out of the queue for the length of one lease, so that nothing else posts it.
+     * Takes the row out of the queue for the length of one lease, so nothing else posts it.
      *
-     * <p><b>The claim is a status, not a held lock.</b> {@code FOR UPDATE SKIP LOCKED} is what
-     * makes two relays selecting at the same moment take disjoint rows, but that lock lives only as
-     * long as the transaction that took it, and that transaction cannot last as long as the send -
-     * a connection held across fifty HTTPS round trips is the thing {@link OutboxRelay} refuses to
-     * do, and refuses for reasons that have not changed. So the lock partitions the batch and the
-     * status keeps the partition after the commit: the claim query reads {@code PENDING}, and a row
-     * that is {@code SENDING} is invisible to every other relay with nothing held open.
+     * <p><b>The claim is a status, not a held lock.</b> {@code FOR UPDATE SKIP LOCKED} makes two
+     * relays selecting at once take disjoint rows, but the lock lives only as long as its
+     * transaction, which cannot last as long as the send - so the status ({@code SENDING}) keeps the
+     * partition after the commit, invisible to the claim query's {@code PENDING} filter.
      *
-     * <p><b>The lease is written into {@code next_attempt_at}</b>, which already means "when the
-     * relay may next take this row" and means exactly that here. A relay that dies between the
-     * claim and the answer leaves a row nothing will ever answer for, and a claim with no expiry
-     * turns that into a message silently never sent; a lease turns it into a message sent late. It
-     * also costs nothing in indexes - {@code idx_email_outbox_due} is on
-     * {@code (status, next_attempt_at, id)} and covers the reclaim query as it already stands.
-     *
-     * <p>The lease is not a timeout on the send. It has to outlast a whole batch, because every row
-     * in one is claimed at the same instant and the last of them is posted last.
+     * <p><b>The lease lives in {@code next_attempt_at}</b>, which already means "when the relay may
+     * next take this row". A relay that dies between claim and answer would otherwise leave a
+     * message silently never sent; a lease turns that into a message sent late instead, and it's not
+     * a timeout on one send - it must outlast a whole batch, since every row is claimed at once and
+     * the last is posted last.
      */
     void claimed(Instant now, java.time.Duration lease) {
         this.status = OutboxStatus.SENDING;
@@ -169,17 +146,11 @@ public class OutboxEmail {
     }
 
     /**
-     * A claim that lapsed: the relay holding this row never came back.
-     *
-     * <p>Put back in the queue rather than failed, because a verification code that arrives twice
-     * is a worse mail and a verification code that never arrives is a broken signup. The row's real
-     * state is unknowable from here - the relay may have died before the POST or after it - and
-     * between a possible duplicate and a possible loss this application chooses the duplicate.
-     *
-     * <p><b>The attempt is charged</b>, which is the only thing bounding the other case: a message
-     * whose own content kills the relay would otherwise be claimed, abandoned and re-claimed
-     * forever, by every replica in turn. Five lapsed claims make it a dead letter like any other
-     * refusal, and {@code lastError} says which kind of failure it was.
+     * A claim that lapsed: the relay holding this row never came back. Put back in the queue rather
+     * than failed - between a possible duplicate send and a possible lost one, this application
+     * chooses the duplicate. The attempt is still charged, which bounds the other case: a message
+     * whose own content kills the relay would otherwise be claimed and abandoned forever; five
+     * lapsed claims make it a dead letter like any other refusal.
      */
     void abandoned(Instant now) {
         this.attempts++;
@@ -203,13 +174,10 @@ public class OutboxEmail {
     /**
      * Records what the provider says became of this message.
      *
-     * <p><b>Later reports win, and "later" is the provider's clock rather than ours.</b> Azure
-     * reports per recipient and per attempt, so one message can produce several; they travel over
-     * a network and a retry can overtake the thing it is retrying. Taking whichever arrived last
-     * would let an {@code OutForDelivery} land on top of a {@code Delivered} and leave the row
-     * saying something that was true a second earlier and is not true now. Comparing the reported
-     * instants makes the order of arrival irrelevant, which is the only ordering promise worth
-     * making about a webhook.
+     * <p><b>Later reports win, on the provider's clock rather than ours.</b> One message can produce
+     * several reports, and a retry can overtake the thing it's retrying; taking whichever arrived
+     * last would let an {@code OutForDelivery} land on top of a {@code Delivered}. Comparing the
+     * reported instants makes arrival order irrelevant.
      *
      * @return whether this report was the newer one and was kept.
      */
@@ -230,13 +198,10 @@ public class OutboxEmail {
     }
 
     /**
-     * A refusal: try again later, unless there have been enough of them.
-     *
-     * <p>The delay doubles from the retry interval, which means a provider having a bad minute
-     * costs one, and a provider having a bad afternoon is not hammered through it. The ceiling is
-     * an attempt count rather than an age, because a message nobody can deliver after five tries is
-     * not going to become deliverable, and a verification code has expired long before then anyway
-     * - {@code FAILED} is a record of what happened, not a thing still being waited on.
+     * A refusal: try again later, unless there have been enough of them. The delay doubles so a
+     * provider having a bad minute costs one, not a hammering. The ceiling is an attempt count
+     * rather than an age, since a verification code has expired long before five tries anyway -
+     * {@code FAILED} is a record of what happened, not something still being waited on.
      */
     void refused(String reason, Instant now, java.time.Duration firstBackoff) {
         this.attempts++;

@@ -72,12 +72,10 @@ export function KanbanProvider({ children }) {
   const { t } = useTranslation();
 
   /*
-   * Which board, before anything else.
-   *
-   * Every listing below is scoped to one, and a member of somebody else's board has at least two -
-   * their own and the one they were invited to - so the client cannot simply let the server pick.
-   * A remembered choice is honoured only if it is still on the list: being removed from a board
-   * would otherwise leave the app asking for one it can no longer see, over and over.
+   * Every listing below is scoped to one board, and a member of somebody else's board has at
+   * least two, so the client cannot just let the server pick. A remembered choice is honoured
+   * only if it is still on the list, or being removed from a board would leave the app asking
+   * for one it can no longer see.
    */
   useEffect(() => {
     const resolveBoard = async () => {
@@ -450,11 +448,9 @@ export function KanbanProvider({ children }) {
       setTasks(updatedTasks);
       
       /*
-       * One call for the cell, not one per card. The loop this replaces swallowed each failure on
-       * its own, which was survivable while a lost update was silent; with a version on the task a
-       * card somebody else moved makes one of those calls a 409, and the cards before it in the
-       * loop keep their new positions - a board half in the old order and half in the new, which
-       * is the one state neither person asked for.
+       * One call for the whole cell, not one per card: with a version on the task, a per-card loop
+       * would let a card somebody else moved 409 out from under the ones already saved, leaving
+       * the board half in the old order and half in the new.
        */
       try {
         await reorderTasks(newOrder.map(task => task.id));
@@ -509,23 +505,16 @@ export function KanbanProvider({ children }) {
   };
 
   /**
-   * Somebody else's change, applied here without them having to say so.
+   * Applies somebody else's change without them having to say so: the server announces a kind of
+   * change per board topic, and this re-reads through the same calls as the rest of the file
+   * rather than trusting the payload, so there is no second way board state gets in.
    *
-   * Before this, a board was live for whoever was touching it and a snapshot for everybody else:
-   * two people on one board saw each other's work only when one of them reloaded. The server now
-   * announces the change on a topic per board, and what arrives is a kind, not the thing that
-   * changed - so this re-reads through the same calls the rest of this file uses, and there is no
-   * second way for board state to get in.
+   * Coalesced into one fetch per burst (`LIVE_REFRESH_WINDOW_MS`): a drag renumbers its own cell
+   * and re-reads anyway, so without a window the originator would fetch twice, and filtering by
+   * actor can't work since the same account in a second tab still needs the event.
    *
-   * **Coalesced, because the frames are not one per user gesture.** Dragging a card renumbers the
-   * cell it landed in and re-reads its own board anyway; without a short window here, the
-   * originator would fetch twice for its own drag and a board with three people on it would spend
-   * its time re-reading. One timer per burst is what makes the duplicate read cheap enough not to
-   * be worth filtering out by actor - which cannot be done correctly anyway, since the same
-   * account in a second tab is a different screen that does need the event.
-   *
-   * No toast. A card that moves under somebody is worth showing and not worth interrupting them
-   * over, and `/activity` is the screen that answers who did it.
+   * No toast: a card moving under somebody is worth showing, not interrupting them over, and
+   * `/activity` says who did it.
    */
   const liveRefresh = useRef(null);
   liveRefresh.current = { refreshTasks, refreshBoard };

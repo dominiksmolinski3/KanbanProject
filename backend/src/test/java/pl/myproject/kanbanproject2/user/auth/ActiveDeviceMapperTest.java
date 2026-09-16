@@ -9,11 +9,10 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The wall between the row and the browser. Two things are being asserted, and the second is the
- * one that would be expensive to get wrong: that the digest never appears in what is handed out,
- * and that the two instants are not the same instant. A chain rotates on every renewal, so the
- * row's own {@code issuedAt} is the last time this browser asked for an access token - reporting it
- * as the sign-in would tell somebody every session started fifteen minutes ago.
+ * The wall between the row and the browser: the digest must never appear in what is handed out, and
+ * the two instants must not collapse into one — a chain rotates on every renewal, so reporting the
+ * row's own {@code issuedAt} as the sign-in would tell somebody every session started fifteen
+ * minutes ago.
  */
 class ActiveDeviceMapperTest {
 

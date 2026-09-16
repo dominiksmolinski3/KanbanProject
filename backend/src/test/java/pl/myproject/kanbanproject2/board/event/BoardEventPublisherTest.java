@@ -41,11 +41,9 @@ class BoardEventPublisherTest {
     }
 
     /**
-     * Both halves matter. {@code clearSynchronization} drops the registered callbacks; the
-     * resource the publisher binds against the thread survives it, and a leftover one makes the
-     * next case collect into a set whose synchronization has already run - which is exactly the
-     * failure {@code afterCompletion} exists to prevent in production, reproduced here by a test
-     * that did not clean up after itself.
+     * Both halves matter: {@code clearSynchronization} drops the registered callbacks, but the
+     * resource the publisher binds against the thread survives it, and a leftover one would make
+     * the next test collect into a set whose synchronization has already run.
      */
     @AfterEach
     void clearAnyTransaction() {
@@ -71,11 +69,8 @@ class BoardEventPublisherTest {
 
         publisher.tasksChanged(board);
 
-        /*
-         * The whole point of the class. A frame sent before the commit can reach a subscriber
-         * whose re-read then beats the commit and returns the state from before the change -
-         * leaving that client permanently stale, because it has spent its only notification.
-         */
+        // The whole point of the class: a frame sent before the commit could reach a subscriber
+        // whose re-read beats the commit and reads stale state permanently.
         verifyNoInteractions(messagingTemplate);
 
         commit();
@@ -171,9 +166,8 @@ class BoardEventPublisherTest {
     }
 
     /**
-     * A real commit runs both halves, in this order, and the second half is the one that lets the
-     * thread be reused - so a test that only ran {@code afterCommit} would be simulating a
-     * transaction that never finishes.
+     * A real commit runs both halves in this order; the second is what lets the thread be reused,
+     * so a test running only {@code afterCommit} would simulate a transaction that never finishes.
      */
     private static void commit() {
         var registered = synchronizations();

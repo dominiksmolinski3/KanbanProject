@@ -6,7 +6,6 @@ import { useKanban } from '../context/KanbanContext';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
-// Keep the PREDEFINED_LABELS array for default options
 const PREDEFINED_LABELS = [
   { name: 'High Priority', color: '#FF4D4D' },
   { name: 'Medium Priority', color: '#FFA500' },

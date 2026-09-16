@@ -10,34 +10,25 @@ import java.util.Locale;
 
 /**
  * The four messages this application sends, in one place, in two formats and in nine languages.
+ * They used to be three near-identical blocks of inline HTML, each drifting from the others - so
+ * the layout is written once and messages describe themselves: a heading, some paragraphs, and
+ * optionally a code. Everything interpolated goes through {@link #escape}, including the digits,
+ * since a rule applied only to dangerous values is one somebody has to remember.
  *
- * <p>They used to be three near-identical blocks of inline HTML - one in {@code
- * AuthenticationService}, one in {@code PasswordResetService}, one in {@code DeadlineNotifier} -
- * each with its own copy of the grey panel, the white card and the blue code, and each drifting
- * from the others by a shade of grey and a font size. So the layout is written once and the
- * messages describe themselves: a heading, some paragraphs, and optionally a code to read out.
- * Everything interpolated goes through {@link #escape}, including the digits, because a rule that
- * is applied to the dangerous values only is a rule somebody has to remember.
+ * <p><b>The wording lives in {@code mail/messages*.properties}, not here.</b> The language comes
+ * from a column on the account rather than {@code Accept-Language}, since the deadline sweep has no
+ * request to read a header from and a browser-guessed language goes stale the moment somebody
+ * travels.
  *
- * <p><b>The wording lives in {@code mail/messages*.properties}, not here.</b> Putting the three
- * messages in one place is what made it obvious that the application speaks nine languages on
- * screen and mailed in exactly one - the gap was always there and was spread thinly enough across
- * three services to be invisible. The language comes from a column on the account rather than from
- * {@code Accept-Language}: the deadline sweep has no request to read a header from, and a
- * verification mail addressed from whichever browser happened to sign up is addressed from a guess
- * that goes stale the first time somebody travels.
+ * <p>The message source is static and built once - a fixed set of bundles rather than anything a
+ * deployment configures. {@code fallbackToSystemLocale} is off, so the base
+ * {@code messages.properties} (the English one; there is no {@code messages_en}) is the fallback
+ * rather than whatever locale the JVM happens to run in.
  *
- * <p>The message source is static and built once. It is a fixed set of bundles on the classpath
- * rather than anything a deployment configures, so a bean would be a bean nothing else could ever
- * want a different one of. {@code fallbackToSystemLocale} is off, which is what makes the base
- * {@code messages.properties} - the English one, and the reason there is no {@code messages_en} -
- * the fallback rather than whatever language the server happens to be running in.
- *
- * <p>One trap worth naming, because the compiler cannot see it: Spring runs a message through
- * {@code MessageFormat} only when it is given arguments, so a lone apostrophe is harmless in a
- * message with no {@code {0}} and swallows the rest of the pattern in one that has them.
- * {@code MailTemplatesTest} renders every message in every locale and fails on a surviving brace,
- * which is what that mistake produces.
+ * <p><b>One trap the compiler can't see:</b> Spring runs a message through {@code MessageFormat}
+ * only when given arguments, so a lone apostrophe is harmless without a {@code {0}} and swallows the
+ * rest of the pattern when there is one. {@code MailTemplatesTest} renders every message in every
+ * locale and fails on a surviving brace.
  */
 final class MailTemplates {
 
@@ -64,13 +55,10 @@ final class MailTemplates {
     }
 
     /**
-     * The overdue notice, which is the one that takes facts rather than finished sentences.
-     *
-     * <p>A missing title, a task on a board with no name, and a task flagged overdue with no
-     * deadline on it were all phrased in {@code DeadlineNotifier}, in English, before anything
-     * here was reached. There is nowhere else those three can go once the message has a language:
-     * "your board" is a translation, and so is the date - {@code d MMM yyyy} is an English
-     * rendering of an instant and reads as a mistake in most of the other eight.
+     * The overdue notice, which takes facts rather than finished sentences. A missing title, an
+     * unnamed board and a missing deadline were all phrased in English inside
+     * {@code DeadlineNotifier}; once the message has a language, "your board" and the date format
+     * are translations too - {@code d MMM yyyy} reads as a mistake in most of the other eight.
      */
     static EmailMessage taskOverdue(String to, String taskTitle, String boardName,
                                     LocalDateTime deadline, Locale locale) {
@@ -88,17 +76,13 @@ final class MailTemplates {
     }
 
     /**
-     * The invitation, which is the one message sent to somebody who may not be a user here.
+     * The invitation, the one message sent to somebody who may not be a user here. {@code
+     * registered} decides only the last sentence: sign in, or sign up. Two intro keys rather than a
+     * second paragraph, the same shape {@code mail.overdue.intro} already has.
      *
-     * <p>That is what {@code registered} decides, and it decides only the last sentence: whether
-     * the reader is told to sign in or told to sign up. Two intro keys rather than a second
-     * paragraph, which is exactly the shape {@code mail.overdue.intro} and its no-deadline
-     * variant already have.
-     *
-     * <p><b>There is no link and no token in it.</b> An invitation is redeemed by whoever holds
-     * the account at the address, so a forwarded message gives nobody anything - and a link would
-     * need a base URL this deployment does not configure anywhere, which is a variable in four
-     * files for a convenience.
+     * <p><b>There is no link and no token in it.</b> An invitation is redeemed by whoever holds the
+     * account at the address, so a forwarded message gives nobody anything - and a link would need a
+     * base URL this deployment does not configure anywhere.
      */
     static EmailMessage boardInvitation(String to, String boardName, String inviterName,
                                         boolean registered, Locale locale) {
@@ -116,12 +100,11 @@ final class MailTemplates {
     }
 
     /**
-     * The wrapper the three messages used to carry a copy of each: a grey page, a heading, a
-     * paragraph, an optional white card holding a code, and an optional smaller footnote.
-     *
-     * <p>{@code lang} and {@code dir} are on the root element rather than left to the client's
-     * guess. Arabic is one of the nine, and a right-to-left message rendered left-to-right is not
-     * a styling detail - it is the punctuation landing at the wrong end of every line.
+     * The wrapper the three messages used to each carry a copy of: a grey page, a heading, a
+     * paragraph, an optional code card, and an optional footnote. {@code lang} and {@code dir} are
+     * on the root element rather than left to the client's guess, since Arabic is one of the nine
+     * and a right-to-left message rendered left-to-right puts punctuation at the wrong end of every
+     * line.
      */
     private static String html(Locale locale, String heading, String intro,
                                String codeLabel, String code, String footnote) {
@@ -185,20 +168,16 @@ final class MailTemplates {
         source.setBasename("mail/messages");
         source.setDefaultEncoding("UTF-8");
         // Off, so an account set to a language with no bundle falls back to the English base file
-        // rather than to whatever locale the JVM happens to have been started in - which on one
-        // host is English and on the next is a coin toss.
+        // rather than to whatever locale the JVM happens to have been started in.
         source.setFallbackToSystemLocale(false);
         return source;
     }
 
     /**
      * Everything interpolated into the HTML goes through this, including values that cannot
-     * currently contain markup.
-     *
-     * <p>{@code DeadlineNotifier} escaped a task title for {@code &}, {@code <} and {@code >} and
-     * stopped there, which is right for text between tags and wrong the moment a value lands in an
-     * attribute. Nothing did then; two things do now - {@code lang} and {@code dir} - which is the
-     * second time this paragraph has turned out to be about something real.
+     * currently contain markup. {@code DeadlineNotifier} escaped only {@code &}, {@code <} and
+     * {@code >} - right for text between tags, wrong once a value lands in an attribute, as
+     * {@code lang} and {@code dir} now do.
      */
     private static String escape(String value) {
         return value.replace("&", "&amp;")

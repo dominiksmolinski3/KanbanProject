@@ -23,42 +23,20 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A guard over the environment variables this application reads and the three places that are
- * supposed to supply them.
+ * A guard over the environment variables this application reads and the places that are supposed
+ * to supply them. A property the application requires and no environment sets is a container that
+ * will not start; a secret an environment supplies and nothing reads is a lie that survives every
+ * build, because there is no compiler on either side of the gap - this project had that happen
+ * twice, with two Key Vault mail secrets outliving the code that read them (MAIL-02) and
+ * {@code CAPTCHA_SECRET} reaching a verifier that did not exist (SEC-06), both found by hand.
  *
- * <p>Configuration is the one kind of coupling nothing else here can see. A property the
- * application requires and no environment sets is a container that will not start; a secret an
- * environment supplies and nothing reads is a lie that survives every build, every test and every
- * review, because there is no compiler on either side of the gap. This project has had that happen
- * twice: {@code SPRING-MAIL-USERNAME} and {@code SPRING-MAIL-PASSWORD} sat in Key Vault for two
- * revisions after the application stopped reading either, which is the drift half of MAIL-02, and
- * {@code CAPTCHA_SECRET} was plumbed through docker-compose, Terraform, Key Vault and the container
- * template to a verifier that did not exist (SEC-06). Both were found by hand, one round late.
- *
- * <p>Six sources are read and compared:
- *
- * <ul>
- *   <li>{@code application.properties} - every {@code ${VAR}} placeholder, and whether it carries
- *       a default. No default means the application cannot start without it.</li>
- *   <li>The {@code @ConfigurationProperties} records - a variable can be bound through relaxed
- *       binding without ever appearing in {@code application.properties}, which is exactly how
- *       {@code SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT} reaches
- *       {@link AuthRateLimitProperties#trustedProxyCount()}. Leave those out and the audit reports
- *       live configuration as dead.</li>
- *   <li>{@code docker-compose.yml} - what the local stack passes each container.</li>
- *   <li>{@code terraform/modules/api_app/main.tf} - what the deployment passes the API.</li>
- *   <li>{@code terraform/modules/web_app/main.tf} and
- *       {@code frontend/nginx/default.conf.template} - the same audit for the edge, which the
- *       split added a second container's worth of. Its configuration is one variable, which is
- *       exactly why it needs checking: a bidirectional audit that does not know the module exists
- *       is how a variable ends up passed and unread, and this one is not read by any Java at
- *       all.</li>
- * </ul>
- *
- * <p>Same shape as {@code DeadLetterAlertTest} and {@code SupportedLocalesMatchClientTest}: a rule
- * that lives in several files, checked in one, needing no database and no running container. None of
- * these tests skips when a file it reads is missing, because a guard that turns itself off leaves
- * the build green either way and only one of those two states is honest.
+ * <p>Six sources are read and compared: {@code application.properties}'s {@code ${VAR}}
+ * placeholders (and whether each carries a default); the {@code @ConfigurationProperties} records,
+ * since relaxed binding lets a variable reach a property with no placeholder at all; and
+ * {@code docker-compose.yml} against both {@code terraform/modules/api_app/main.tf} and
+ * {@code terraform/modules/web_app/main.tf} plus {@code frontend/nginx/default.conf.template} for
+ * the edge, whose one variable is exactly why it still needs checking - nothing there is read by
+ * any Java at all.
  */
 class ConfigurationTest {
 
@@ -73,23 +51,17 @@ class ConfigurationTest {
     private static final Path EDGE_DOCKERFILE = REPO.resolve(Path.of("frontend", "Dockerfile"));
 
     /**
-     * The one placeholder in the edge template that no deployment supplies, because the image does.
-     *
-     * <p>{@code NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1} in {@code frontend/Dockerfile} makes the stock
-     * nginx entrypoint read {@code /etc/resolv.conf} and export this before {@code envsubst} runs,
-     * which is what keeps the resolver address out of this repository - it differs between Docker
-     * and Container Apps in principle even though both answer {@code 127.0.0.11} today. Drop that
-     * line from the Dockerfile and the substitution produces {@code resolver ;}, which nginx
-     * refuses to start on, so {@link #theEdgeImageEnablesTheResolverEntrypoint()} asserts it.
+     * The one placeholder in the edge template that no deployment supplies, because the image
+     * does: {@code NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1} in {@code frontend/Dockerfile} makes the
+     * stock nginx entrypoint export it from {@code /etc/resolv.conf} before {@code envsubst} runs.
+     * Drop that line and the substitution produces {@code resolver ;}, which nginx refuses to
+     * start on - {@link #theEdgeImageEnablesTheResolverEntrypoint()} asserts it.
      */
     private static final Set<String> EDGE_ENTRYPOINT_PROVIDED = Set.of("NGINX_LOCAL_RESOLVERS");
 
     /**
-     * The records Spring binds, named rather than discovered by scanning.
-     *
-     * <p>Renaming or deleting one of these should be a compile error here and not a quietly smaller
-     * audit - a classpath scan that finds four classes today and three tomorrow reports the missing
-     * one's variables as unread, which is the opposite of what this test is for.
+     * The records Spring binds, named rather than discovered by scanning - a classpath scan that
+     * silently finds one fewer class next time would report a real variable as dead configuration.
      */
     private static final List<Class<?>> BOUND_PROPERTIES = List.of(
             AcsMailProperties.class,

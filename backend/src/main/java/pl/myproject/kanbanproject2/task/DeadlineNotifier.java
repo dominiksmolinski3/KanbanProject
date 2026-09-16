@@ -8,15 +8,11 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 
 /**
- * Mails a task's assignees when it passes its deadline.
- *
- * <p>Called from the deadline sweep in {@link TaskService#checkAllTasksDeadlines()}, once, on the
- * transition into {@code expired}. The sweep has already persisted the flag by the time this runs,
- * so a send that fails is logged and swallowed rather than propagated: one unreachable mailbox must
- * not stop the rest of the batch or roll back the flag that was just written.
- *
- * <p>Only assigned users are told. An unassigned overdue task has nobody it is overdue <em>for</em>,
- * and mailing every board member on every sweep would be noise, not a notification.
+ * Mails a task's assignees when it passes its deadline, called once from
+ * {@link TaskService#checkAllTasksDeadlines()} on the transition into {@code expired}. A failed
+ * send is logged and swallowed rather than propagated, so one unreachable mailbox can't stop the
+ * batch or roll back the flag already written. Only assigned users are told — mailing every board
+ * member on every sweep would be noise, not a notification.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,12 +41,9 @@ public class DeadlineNotifier {
     }
 
     /**
-     * Only the board's own name, and null when it has none.
-     *
-     * <p>The stand-ins this used to hold - "your board", "Untitled task", and a {@code d MMM yyyy}
-     * rendering of the deadline - were English sentences assembled here and handed to the template
-     * as finished text. They belong to whichever language the message is written in, so they moved
-     * into the bundles and this passes the facts.
+     * Only the board's own name, or null when it has none. The English stand-ins this used to
+     * assemble here belonged to whichever language the message is written in, so they moved into
+     * the mail bundles and this passes the facts instead.
      */
     private static String boardOf(Task task) {
         return task.getBoard() == null ? null : task.getBoard().getName();

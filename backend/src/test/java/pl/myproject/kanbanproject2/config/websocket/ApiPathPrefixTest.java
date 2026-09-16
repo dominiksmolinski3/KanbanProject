@@ -61,10 +61,8 @@ class ApiPathPrefixTest {
     @Test
     @DisplayName("a library's own @RestController keeps its documented path")
     void leavesLibraryControllersAlone() {
-        // springdoc's OpenApiWebMvcResource is a @RestController, so an unscoped predicate serves
-        // the published contract at /api/v3/api-docs - a path no generator, scanner or reader of
-        // the springdoc documentation asks for, and one that looks like the feature simply does
-        // not work. The prefix is for this application's API; a library's endpoint is not it.
+        // springdoc's OpenApiWebMvcResource is a @RestController, so an unscoped predicate would
+        // serve the published contract at /api/v3/api-docs - a path nothing asks for.
         assertThat(WebConfig.prefixedControllers().test(OpenApiWebMvcResource.class))
                 .as("the /api prefix must not move a dependency's endpoint")
                 .isFalse();
@@ -106,11 +104,8 @@ class ApiPathPrefixTest {
     @Test
     @DisplayName("nothing forwards to a shell this application no longer has")
     void forwardsNothingToTheShell() {
-        // The inverse of what this asserted until the split. WebConfig used to register one view
-        // controller per SpaRoutes entry, forwarding to classpath:/static/index.html; nginx answers
-        // those paths with try_files now and there is no index.html in the jar to forward to. A
-        // forward that survived would resolve to nothing and answer 500 rather than 404, which is
-        // worse than either.
+        // The inverse of what this asserted until the split: WebConfig used to forward each
+        // SpaRoutes entry to classpath:/static/index.html, which no longer exists in the jar.
         contextRunner.run(context -> {
             // With nothing registered, Spring MVC leaves the bean as a NullBean rather than as an
             // empty mapping — so this asks for it untyped and reads whichever of the two it gets.

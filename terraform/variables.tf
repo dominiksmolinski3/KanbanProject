@@ -38,20 +38,11 @@ variable "ghcr_token" {
   default     = ""
 }
 
-# No default, so every environment has to name the image it is deploying.
-#
-# The default used to be "latest", while this description told you to use a SHA - and the default
-# is what everybody got. That is not merely unreproducible, it makes a deploy impossible: the tag
-# is the only part of the container template that changes between releases, so with it fixed at
-# "latest" Terraform renders a byte-identical template every apply, computes no diff, and creates
-# no revision. CD can promote "latest" all it likes; nothing on this side ever pulls it.
-#
-# Measured: dev ran one revision from 5 Sep 2026 to 13 Sep while CD promoted "latest" on every
-# merge, and no apply in that window could have changed it. It looked converged the whole time,
-# because it was - on the wrong image.
-#
-# Being required is the point. A plan that stops with "No value for required variable" is a deploy
-# asking which build it is, which is a question a deploy should be able to answer.
+# No default, so every environment must name the image it's deploying. A fixed tag like "latest"
+# renders a byte-identical template every apply, so Terraform never creates a revision even as CD
+# keeps promoting "latest" (measured: dev sat on one stale revision for over a week this way). Being
+# required means a plan that stops with "No value for required variable" forces a deploy to say
+# which build it is.
 variable "app_image_tag" {
   type        = string
   description = "Tag for the application container image - an immutable value such as the git SHA the CD pipeline pushed. Required: a deploy has to name the build it deploys, and a mutable tag like \"latest\" renders an identical template every apply and therefore never rolls a revision."

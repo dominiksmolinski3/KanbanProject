@@ -11,10 +11,9 @@ final class AuthRateLimitTestSupport {
     }
 
     /**
-     * A clock the tests move by hand, so a cooldown can be asserted without any test waiting one
-     * out. It starts negative on purpose: {@code System.nanoTime} has an arbitrary origin, and a
-     * limiter that reads an unset field as "no cooldown" only misbehaves on the half of the number
-     * line a test starting at zero never visits.
+     * A clock the tests move by hand, so a cooldown can be asserted without waiting one out. Starts
+     * negative on purpose: a limiter that misreads an unset field as "no cooldown" only misbehaves
+     * on the half of the number line a test starting at zero never visits.
      */
     static final class FakeClock implements Ticker {
 

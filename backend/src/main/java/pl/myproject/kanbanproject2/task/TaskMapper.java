@@ -46,16 +46,9 @@ public class TaskMapper implements Function<Task, TaskDto> {
                     .collect(Collectors.toSet());
         }
 
-        /*
-         * Copied, not handed over. getLabels() returns Hibernate's own collection, and putting it
-         * straight into the DTO carried it out of the service's transaction and into Jackson -
-         * which then tried to initialize it during serialisation, with open-in-view=false and no
-         * session left to do it with. Every GET /api/tasks answered 500.
-         *
-         * Copying inside the transaction both initializes it where a session still exists and
-         * stops a persistent collection escaping into a response at all, which is what a DTO is
-         * for. The other two are already copies: Collectors.toSet() builds a plain set.
-         */
+        // Copied, not handed over: getLabels() returns Hibernate's own collection, and returning it
+        // directly let it escape the transaction into Jackson with no session left to initialize
+        // it (open-in-view=false), which made every GET /api/tasks answer 500.
         Set<String> labels = task.getLabels() == null ? null : new HashSet<>(task.getLabels());
 
         return new TaskDto(

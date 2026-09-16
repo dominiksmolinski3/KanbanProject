@@ -23,19 +23,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The two-query search, and the three things about it that a single query would have got wrong.
- *
- * <p><b>The ids are paged and the rows are fetched separately</b>, so the {@code LIMIT} stays in
- * SQL rather than being applied in memory over a join whose rows multiply. That is only correct if
- * the second lookup is put back into the first one's order, which a set-based {@code IN} query does
- * not promise - so the ordering is asserted here rather than assumed.
- *
- * <p><b>The board is resolved before anything is searched</b>, which is what keeps a search from
- * being the one route that reaches across boards.
- *
- * <p><b>An empty page never becomes an empty {@code IN} list.</b> Paging past the end is an
- * ordinary thing for a client to do and has to be an empty answer, not a query the database
- * refuses.
+ * The two-query search, and the three things a single query would have got wrong. Ids are paged
+ * and rows fetched separately so {@code LIMIT} stays in SQL rather than in-memory over a
+ * multiplying join, and the second lookup is put back into the first's order, since a set-based
+ * {@code IN} makes no such promise. The board is resolved before anything is searched, keeping
+ * search from reaching across boards, and an empty page never becomes an empty {@code IN} list,
+ * since paging past the end must be an empty answer, not a refused query.
  */
 class TaskSearchServiceTest {
 

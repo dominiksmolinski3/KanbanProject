@@ -25,12 +25,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The one route the history package exposes.
- *
- * <p>Standalone MockMvc rather than {@code @WebMvcTest}, matching the other controller slices here:
- * the full slice would pull in the security chain and the rate limiter, which have their own
- * suites. What this adds over the service tests is that the caller reaches the service - a handler
- * that dropped {@code currentUser} would compile, and would hand one account another's history.
+ * The one route the history package exposes. Standalone MockMvc rather than
+ * {@code @WebMvcTest}, matching the other controller slices, since the full slice pulls in
+ * security and rate limiting that have their own suites. This adds over the service tests that
+ * the caller reaches the service — a handler that dropped {@code currentUser} would compile but
+ * hand one account another's history.
  */
 class TaskColumnHistoryControllerHttpTest {
 

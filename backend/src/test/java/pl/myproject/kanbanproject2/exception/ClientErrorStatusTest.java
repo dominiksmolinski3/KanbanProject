@@ -34,16 +34,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Everything the catch-all used to answer 500 for that is actually the caller's mistake.
- *
- * <p>{@code GlobalExceptionHandler} does not extend {@code ResponseEntityExceptionHandler}, so its
- * {@code @ExceptionHandler(Exception.class)} caught Spring MVC's own request exceptions along with
- * everything else and reported each of them as a server fault. That matters beyond tidiness: a 500
- * is what an alert on the error rate fires on, so a client sending bad JSON in a loop read as an
- * outage. This asserts the statuses rather than the handler methods, because the status is the part
+ * {@code GlobalExceptionHandler} doesn't extend {@code ResponseEntityExceptionHandler}, so its
+ * catch-all caught Spring MVC's own request exceptions too and reported each as a server fault -
+ * which matters because a 500 is what the error-rate alert fires on, so a client sending bad JSON in
+ * a loop read as an outage. This asserts statuses rather than handler methods, since that's the part
  * a client and a dashboard both see.
  *
- * <p>The routes below are a stand-in rather than a real controller: the behaviour under test is the
- * advice, and pinning it to one production route would make this test move whenever that route did.
+ * <p>The routes below are a stand-in: the behaviour under test is the advice, and pinning it to a
+ * real production route would make this test move whenever that route did.
  */
 class ClientErrorStatusTest {
 
@@ -170,9 +168,9 @@ class ClientErrorStatusTest {
     }
 
     /**
-     * The filter cannot parse an expired or tampered bearer token, so it hands the exception to the
-     * advice rather than to a handler method. Without a mapping for it that lands on the catch-all:
-     * a 500, logged at error, for a token reaching its own expiry with the tab left open.
+     * The filter can't parse an expired or tampered token, so it hands the exception to the advice;
+     * without a mapping this landed on the catch-all as a 500 for a token reaching its own expiry
+     * with the tab left open.
      */
     @Test
     @DisplayName("an expired bearer token is 401, not the catch-all 500")

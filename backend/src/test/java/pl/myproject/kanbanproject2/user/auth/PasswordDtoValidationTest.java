@@ -11,12 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Two of these records are reachable without a token, so bean validation is the only thing between
  * the request body and {@link pl.myproject.kanbanproject2.config.security.PasswordResetService}.
- *
- * <p>The password bounds are the point. BCrypt silently truncates at 72 bytes, so an unbounded
- * field lets two different passwords authenticate the same account — and a reset path that
- * accepted what signup refuses would be a way around the rule rather than a second road to the
- * same place. The six-digit pattern matters for the same reason it does on verification: it is what
- * stops a caller submitting a code shaped like something else entirely.
+ * The password bounds matter beyond tidiness: BCrypt silently truncates at 72 bytes, so a reset path
+ * that accepted what signup refuses would be a way around the rule.
  */
 class PasswordDtoValidationTest {
 

@@ -21,27 +21,19 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     /**
-     * Every session an account can still use, newest renewal first.
-     *
-     * <p>Live means both halves: not withdrawn, and not past its expiry. A revoked row is kept so
-     * that replaying the token it stands for is detectable, and an expired one is kept until the
-     * daily sweep drops it - neither is a session anybody is holding, and showing either in a
-     * device list would offer a "sign out" button for something already signed out.
-     *
-     * <p>There is exactly one live row per chain, because rotation withdraws the row it replaces.
-     * So this is a list of sessions even though it is a query over tokens.
+     * Every session an account can still use, newest renewal first. Live means both halves: not
+     * withdrawn, and not past its expiry — showing either in a device list would offer a "sign out"
+     * button for something already signed out. Exactly one live row per chain, since rotation
+     * withdraws the row it replaces, so this is a list of sessions despite being a query over tokens.
      */
     List<RefreshToken> findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(
             User user, Instant now);
 
     /**
-     * Withdraws every live token an account holds, in one statement.
-     *
-     * <p>A bulk update rather than a load-and-save loop because the callers are the two moments
-     * where correctness beats convenience: a password change and a chain-reuse detection. Both want
-     * every session gone before the request returns, and neither knows or cares how many there are.
-     * The trade is that the persistence context does not see it — {@code clearAutomatically} keeps
-     * a caller from reading a stale copy back in the same transaction.
+     * Withdraws every live token an account holds, in one statement. A bulk update rather than a
+     * load-and-save loop, since the callers — a password change and chain-reuse detection — want
+     * every session gone regardless of count; {@code clearAutomatically} keeps a caller from reading
+     * a stale copy back in the same transaction.
      */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE RefreshToken token SET token.revokedAt = :when "

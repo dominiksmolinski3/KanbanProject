@@ -30,23 +30,11 @@ resource "azurerm_resource_group" "main" {
     }
 
     /*
-     * MAIL-02, turned from a step somebody has to remember into a plan that refuses.
-     *
-     * With no connection string the app starts normally and drops every message, which is the
-     * right default for CI and a fresh clone and is the wrong one here. In production it means
-     * signup answers 200, the account is written unverified, the code is generated and stored, and
-     * the mail never leaves: a user who cannot log in, and an operator looking at a healthy
-     * revision with no error in it. Both variables are required because one without the other is
-     * also mail off - EmailConfiguration wants the pair and warns about exactly that.
-     *
-     * Deliberately on prod alone. dev and uat are expected to run with mail disabled, which is how
-     * the Cypress stack and every local boot work; and deliberately with no escape hatch, because
-     * a flag saying "yes, production without mail" describes a deployment whose users cannot
-     * complete signup. The cost is that the Communication Services resource has to exist before
-     * prod is first applied, and that ordering is the finding rather than a side effect of it.
-     *
-     * This is a plan-time refusal for the same reason the two Postgres preconditions are: the
-     * alternative is a container that deploys, goes healthy, and silently sends nobody anything.
+     * MAIL-02: refuse the plan rather than deploy prod with mail silently off. With no connection
+     * string the app starts and drops every message - signup answers 200, the account is written
+     * unverified, and nothing in the log says so. dev/uat are allowed to run without mail (Cypress,
+     * local boots); prod is not, and there's no escape hatch, since "production without mail" means
+     * users who can't complete signup.
      */
     precondition {
       condition = var.env != "prod" || (
@@ -236,13 +224,10 @@ module "diagnostics" {
   postgres_server_id           = module.postgres.postgres_server_id
   acs_communication_service_id = var.acs_communication_service_id
 
-  # The webhook's address is the *edge's* ingress plus the key that authenticates it, assembled in
-  # the diagnostics module so the two cannot be configured into disagreeing with each other. It has
-  # to be the edge: Event Grid calls this URL from outside Azure's view of this VNet and cannot
-  # reach an internal ingress at all. nginx proxies /api/mail/delivery-reports like any other /api
-  # path, for free, and the ordering constraint the README records - the endpoint must be serving
-  # before this resource can be created, because Event Grid validates it by calling it - now
-  # depends on the web app being up rather than the API app.
+  # The webhook URL is the *edge's* ingress plus the key, assembled here so the two can't drift
+  # apart. Must be the edge: Event Grid can't reach an internal ingress, and nginx proxies
+  # /api/mail/delivery-reports for free. Event Grid validates this URL at creation time, so the web
+  # app must already be serving before this resource can be created.
   container_app_url        = module.web_app.container_app_url
   mail_delivery_report_key = var.mail_delivery_report_key
 }

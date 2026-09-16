@@ -24,15 +24,11 @@ jest.mock('react-toastify', () => ({
 jest.mock('../../services/api');
 
 /**
- * The attachment section of the task panel.
- *
- * What is worth testing here is the part a person actually does: pick a file, see it listed, click
- * it to download, and be asked before one is deleted. The confirmation is not a nicety - deleting
- * an attachment takes the blob as well as the row, and nothing in this panel brings it back.
- *
- * The refusals are here too, because they are the reason `AttachmentUploadError` carries a reason
- * at all: "too large" is something the person can act on and "storage is not configured" is not,
- * and a single message would send them to retry the one that can never work.
+ * The attachment section of the task panel: pick a file, see it listed, click it to download, and
+ * be asked before one is deleted - deletion takes the blob as well as the row, with nothing in
+ * this panel to bring it back. The refusals are covered too, since `AttachmentUploadError` carries
+ * a reason precisely because "too large" is something the person can act on and "storage is not
+ * configured" is not.
  */
 describe('TaskDetails attachments', () => {
   const task = { id: 1, title: 'Test Task', description: 'A task', labels: [] };

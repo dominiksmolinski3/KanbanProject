@@ -30,18 +30,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The SDK is driven for real, against a fake transport rather than a mocked {@link EmailClient}.
- *
- * <p>Mocking the client would assert that this class calls a method, which is not where the risk
- * is. The risks are that the message is assembled into something the service would reject, that the
- * request goes out unauthenticated, that a rejection is replayed until the recipient gets three
- * copies - and above all the claim {@link AcsEmailSender} rests on: that {@code beginSend} has
- * already posted by the time it hands back a poller nobody keeps. Substituting the HTTP client
- * leaves every one of those in the test and takes out only the network.
- *
- * <p>A stub HTTP <em>server</em> was the first attempt and cannot work: the key credential policy
- * refuses any endpoint that is not HTTPS, so the pipeline never reaches the socket. Which transport
- * that pipeline would have used is not testable here either, and is checked separately in {@link
- * AzureTransportTest}.
+ * Mocking the client would only assert that this class calls a method; substituting the HTTP
+ * client instead leaves the real risks in the test - message assembly, authentication, retry
+ * behaviour, and above all the claim {@link AcsEmailSender} rests on, that {@code beginSend} has
+ * already posted by the time it hands back a poller nobody keeps - and takes out only the network.
+ * A stub HTTP <em>server</em> cannot work here: the key credential policy refuses any endpoint
+ * that is not HTTPS.
  */
 class AcsEmailSenderTest {
 
@@ -162,9 +156,7 @@ class AcsEmailSenderTest {
     @DisplayName("beginSend posts before it returns - the message is gone by the time anything is polled")
     void theSendHappensWithoutWaitingForIt() {
         // The claim AcsEmailSender rests on: activation runs inside the SyncPoller's constructor.
-        // Were it lazy instead, every verification mail would be composed, handed over and never
-        // sent, and nothing else in this suite would notice. The POST being *first* is what says
-        // so - the id lookup below could not have caused it.
+        // The POST being *first* is what proves it - the id lookup below could not have caused it.
         senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests.get(0).method()).isEqualTo("POST");
@@ -174,12 +166,9 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("the id is read with exactly one poll - not none, and not a walk to completion")
     void theOperationIdCostsOneExtraRequest() {
-        // Two requests: the send, and one GET on the operation Azure opened for it. This number is
-        // the whole cost of being able to match a delivery report to a message, and it is asserted
-        // rather than described because the failure it guards is silent in both directions - a
-        // sender that stopped reading the id would leave every row unmatchable, and one that
-        // waited for the operation to finish would sit on the relay thread until Azure had
-        // actually delivered the mail.
+        // Two requests: the send, and one GET on the operation Azure opened for it - a sender that
+        // stopped reading the id would leave every row unmatchable, and one that waited for the
+        // operation to finish would sit on the relay thread until Azure actually delivered the mail.
         String id = senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests).hasSize(2);

@@ -25,13 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * That the policy reaches a response, rather than only existing as a constant.
- *
- * <p>The writers are assembled here instead of standing the whole filter chain up, because what is
- * being checked is the header a browser receives and not Spring's wiring - and a
- * {@code @SpringBootTest} would pull in the database, the rate limiter and the mail transport to
- * assert a string. {@code SecurityConfiguration} is what registers these; the values are shared, so
- * a change to one is a change to both.
+ * That the policy reaches a response, rather than only existing as a constant. The writers are
+ * assembled here instead of standing the whole filter chain up, because a
+ * {@code @SpringBootTest} would pull in the database, the rate limiter and the mail transport just
+ * to assert a string.
  */
 class SecurityHeadersTest {
 
@@ -139,14 +136,9 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("HSTS is written to a request that is not secure, because none of them are")
     void strictTransportSecurityIsWrittenBehindTheIngress() throws Exception {
-        // MockHttpServletRequest is insecure by default, which is the same thing every real
-        // request here is: TLS terminates at the Container Apps ingress and the container is
-        // handed plain HTTP. Spring Security's default writer is gated on isSecure(), so it fired
-        // on nothing for the whole life of this deployment and the header was simply absent.
-        // This test is the one that would have caught it, and it is worth being clear about why
-        // it did not exist: the suite assembles the writers it means to check, so it can only
-        // ever confirm headers somebody remembered to add. HSTS was a framework default, so it
-        // was on nobody's list.
+        // MockHttpServletRequest is insecure by default, the same as every real request here: TLS
+        // terminates at the ingress and the container is handed plain HTTP, so Spring's default
+        // writer (gated on isSecure()) fired on nothing for the whole life of this deployment.
         assertThat(headersFor("/").getHeader("Strict-Transport-Security"))
                 .isEqualTo("max-age=31536000 ; includeSubDomains");
     }
@@ -172,10 +164,8 @@ class SecurityHeadersTest {
     @DisplayName("the chain is configured to write it, which the writer list above cannot show")
     void theChainOverridesTheDefaultMatcher() throws IOException {
         // This suite assembles the writers it checks, so everything above would still pass with
-        // the configuration untouched - which is not a hypothetical weakness, it is exactly how a
-        // framework default that fired on nothing went unnoticed. The rule lives in two files and
-        // is checked in one: whatever the writer list says, SecurityConfiguration has to override
-        // HstsHeaderWriter's SecureRequestMatcher, or the deployment sends no header again.
+        // the configuration untouched - exactly how a framework default that fired on nothing went
+        // unnoticed. So this checks SecurityConfiguration itself overrides the SecureRequestMatcher.
         String configuration = Files.readString(
                 Path.of("src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java"),
                 StandardCharsets.UTF_8);

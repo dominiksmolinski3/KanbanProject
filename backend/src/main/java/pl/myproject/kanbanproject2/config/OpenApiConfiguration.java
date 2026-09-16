@@ -14,21 +14,14 @@ import pl.myproject.kanbanproject2.config.security.PublicPaths;
 
 /**
  * The published contract for the routes under {@code /api}, served as JSON at
- * {@code /v3/api-docs}.
- *
- * <p>There are roughly sixty of them and there was no contract at all, which meant every client -
- * this repository's own React app included - learned the API by reading Java. springdoc derives
- * the shapes from the mappings and the DTO records, so nothing here annotates a controller: the
- * records already say what a response looks like, and a second description beside them is a second
- * thing to keep true.
+ * {@code /v3/api-docs}. springdoc derives shapes from the mappings and DTO records, so nothing
+ * here annotates a controller.
  *
  * <p>What springdoc cannot derive is <strong>which routes need a token</strong>, and that is the
- * whole of this class. A contract that marks every operation as authenticated is wrong about
- * signup and login; one that marks none is wrong about everything else; and either mistake is the
- * kind that is discovered by a client that has already been written. So the requirement is not
- * declared here at all - it is read from {@link PublicPaths}, the same list
- * {@code SecurityConfiguration} builds the filter chain from and {@code JwtAuthenticationFilter}
- * skips on. The spec says what the chain does because both read one list.
+ * whole of this class: rather than declaring it here, where marking every operation authenticated
+ * would be wrong about login and marking none would be wrong about everything else, it is read
+ * from {@link PublicPaths} - the same list {@code SecurityConfiguration} builds the filter chain
+ * from - so the spec says what the chain does because both read one list.
  */
 @Configuration
 public class OpenApiConfiguration {
@@ -37,11 +30,8 @@ public class OpenApiConfiguration {
     static final String BEARER_SCHEME = "bearer-jwt";
 
     /**
-     * The version of the <em>contract</em>, not of the jar.
-     *
-     * <p>Deliberately not the Maven version: the paths carry no version segment, so every build
-     * publishing a new contract version would claim a compatibility break on every commit. This
-     * moves when the API does.
+     * The version of the <em>contract</em>, not of the jar - deliberately not the Maven version,
+     * or every build would claim a compatibility break on every commit.
      */
     static final String API_VERSION = "v1";
 

@@ -26,10 +26,9 @@ public class TaskColumnHistory {
     private Task task;
 
     /**
-     * Nullable, with {@code columnName} already a copy on the row - the same shape as
-     * {@code task_activity}'s {@code task_id}. Deleting a column has to detach the entries that
-     * already point at it (see {@code ColumnService.deleteColumn}), because there is no cascade on
-     * this column and a delete would otherwise fail on the foreign key.
+     * Nullable, with {@code columnName} already a copy on the row — the same shape as
+     * {@code task_activity}'s {@code task_id}. Deleting a column must detach entries pointing at it
+     * (see {@code ColumnService.deleteColumn}), since there is no cascade on this column.
      */
     @ManyToOne
     @JoinColumn(name = "column_id")

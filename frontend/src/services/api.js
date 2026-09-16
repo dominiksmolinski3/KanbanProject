@@ -12,16 +12,11 @@ const API_ENDPOINTS = {
   FILES: '/api/files'
 };
 
-// Which board this session is looking at.
-//
-// Every route that names a column, task or swimlane takes the board from that object, so only the
-// listings and the creates need to say. Ambient rather than a parameter on ten functions, for the
-// same reason the token is: it is a property of the session, not of any one call. The server does
-// not trust it - a board the caller is not a member of answers 404 either way - so this decides
-// what is shown, never what is allowed.
-//
-// It survives a reload because a board is a place the user chose to be, and dropping them back on
-// a different one is the kind of small betrayal that makes an app feel unreliable.
+// Which board this session is looking at. Only listings and creates need it explicitly - every
+// route that names a column, task or row takes the board from that object - and it is ambient
+// like the token because it is a session property, not a per-call one; the server does not trust
+// it, since a board the caller isn't a member of answers 404 either way. Survives a reload so
+// switching the user's board on them without asking doesn't happen.
 const ACTIVE_BOARD_KEY = 'activeBoardId';
 
 export const getActiveBoardId = () => {
@@ -446,13 +441,9 @@ export async function updateUserWipLimit(userId, wipLimit) {
 }
 
 /**
- * Stores the language this account is mailed in.
- *
- * Deliberately quiet about failing. It is called from the language switcher, where the thing the
- * person asked for - the screen changing language - has already happened by the time this runs, and
- * a toast about a preference they did not know they were setting would be noise. What is at stake
- * is which language the next verification or overdue mail arrives in, and the switcher tries again
- * the next time it is used.
+ * Stores the language this account is mailed in. Deliberately quiet about failing: it runs after
+ * the screen has already changed language, so a toast about a preference the person didn't know
+ * they were setting would be noise, and the switcher just tries again next time it's used.
  */
 export async function updateUserLocale(userId, locale) {
   const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
@@ -571,17 +562,11 @@ export const MAX_SEARCH_PAGE_SIZE = 100;
 export const SEARCH_PAGE_SIZE = 25;
 
 /**
- * Finds tasks on the active board.
- *
- * Everything is optional and an absent filter is not a filter, so calling this with nothing set
- * returns the board a page at a time. Collections are repeated parameters — `?label=bug&label=ux` —
- * which is what `Set<String>` binding on the server expects; a comma-joined string would arrive as
- * one label named "bug,ux".
- *
- * The server refuses a page size over its own ceiling rather than clamping it, so the ceiling is
- * mirrored here and the refusal happens before the request. That is the same arrangement
- * MAX_ATTACHMENT_SIZE has, and for the same reason: a limit the client cannot see is a limit the
- * user meets as a failed request.
+ * Finds tasks on the active board; an absent filter is not a filter, so calling this with nothing
+ * set pages through the whole board. Facets are repeated parameters (`?label=bug&label=ux`), which
+ * is what `Set<String>` binding on the server expects rather than a comma-joined string. The
+ * server's page-size ceiling is mirrored here so an over-large page is refused locally instead of
+ * failing as a request.
  */
 export const searchTasks = async (filters = {}) => {
   const {
@@ -1288,10 +1273,9 @@ export const deleteSubTask = async (subTaskId) => {
 
 // ====== TASK ATTACHMENTS ======
 //
-// Both directions go through this API, which is what lets the storage account be closed to the
-// internet entirely. An upload is posted here so the server can check who is asking and how big it
-// is before anything is written; a download is streamed back from storage through the app, because
-// the account answers nobody but the application's own VNet.
+// Both directions go through this API rather than the storage account directly, which is what lets
+// the account stay closed to the internet: uploads are checked here before anything is written,
+// and downloads are streamed back through the app.
 
 const attachmentsOf = (taskId) => `${API_ENDPOINTS.TASKS}/${taskId}/attachments`;
 
@@ -1363,13 +1347,11 @@ export const uploadTaskAttachment = async (taskId, file) => {
 const DOWNLOAD_RESUME_ATTEMPTS = 3;
 
 /**
- * Reads one response body into `state`, resuming rather than restarting where the server allows it.
- *
- * The reader is used instead of `response.blob()` for one reason: a `blob()` that fails half way
- * yields nothing at all, so there is no "how far did we get" to resume from. Reading chunk by chunk
- * keeps what already arrived, and `state.received` is what the next request's `Range` is built out
- * of. Where there is no reader - jsdom, and any browser old enough to lack streams - this falls back
- * to `blob()` and the download simply is not resumable, which is what it was before ranges existed.
+ * Reads one response body into `state`, resuming rather than restarting where the server allows
+ * it. Uses the streaming reader rather than `response.blob()` because a failed `blob()` yields
+ * nothing to resume from; `state.received` tracks what arrived so the next request's `Range` can
+ * be built from it. Falls back to `blob()` where there is no reader (jsdom, old browsers), and the
+ * download is then simply not resumable.
  */
 const collectInto = async (url, state) => {
   const response = state.received > 0
@@ -1408,21 +1390,12 @@ const collectInto = async (url, state) => {
 };
 
 /**
- * Fetches the bytes and hands them to the browser as a download.
- *
- * A plain `<a href>` would be simpler and does not work: the route is authenticated and a link
- * click carries no `Authorization` header, so the fetch has to happen here where the interceptor
- * can attach the token. That is the same reason `getUserAvatar` reads its image this way.
- *
- * Because the fetch happens here, the browser's own resume machinery never applies - a `fetch()`
- * that dies at 90% is simply a rejected promise, and the ten megabytes it had already moved are
- * thrown away. So the resume is done here too: the server answers `206` for a `Range`, and a
- * transfer that broke asks for the rest rather than for the file again. That is the whole reason
- * the range support on the server is worth having; nothing else in this application would ever
- * send the header.
- *
- * The object URL is revoked immediately after the click. The browser has already taken the blob by
- * then, and leaving it unrevoked pins the whole file in memory for the life of the tab.
+ * Fetches the bytes and hands them to the browser as a download rather than an `<a href>`, because
+ * the route is authenticated and a link click carries no `Authorization` header. Because the fetch
+ * happens here, the browser's own resume machinery never applies - a dead `fetch()` throws away
+ * whatever it had already moved - so this resumes manually via `Range`/`206`, which is the whole
+ * reason the server's range support exists. The object URL is revoked right after the click, since
+ * the browser has already taken the blob and leaving it unrevoked pins the file in memory.
  */
 export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => {
   const url = `${attachmentsOf(taskId)}/${attachmentId}/content`;

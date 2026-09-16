@@ -18,17 +18,10 @@ public enum ExceptionIdentifier {
     FILE_NOT_FOUND(NOT_FOUND, "File not found"),
 
     /*
-     * Task attachments. The bytes live in Azure Blob Storage and the row that names them lives
-     * here, so there are two ways for one to go wrong and they are not the same kind of mistake.
-     *
-     * ATTACHMENT_NOT_FOUND is 404 for the reason BOARD_NOT_FOUND is: an attachment on somebody
-     * else's task must answer exactly as one that was never uploaded, or the ids - which are small
-     * and sequential - map out every board in the deployment.
-     *
-     * ATTACHMENT_STORAGE_UNAVAILABLE is 503 and is the deployment's fault rather than the caller's.
-     * It means no storage account is configured, which is the state a fresh clone and CI run in;
-     * saying so plainly is better than a 500, because the file was fine and trying again will not
-     * help until somebody sets the properties.
+     * ATTACHMENT_NOT_FOUND is 404 for the same oracle reason as BOARD_NOT_FOUND - ids are
+     * sequential, so a wrong status would map every board's attachments.
+     * ATTACHMENT_STORAGE_UNAVAILABLE is 503, the deployment's fault (no storage account configured,
+     * the state CI and a fresh clone run in) rather than the caller's.
      */
     ATTACHMENT_NOT_FOUND(NOT_FOUND, "Attachment not found"),
     ATTACHMENT_TOO_LARGE(PAYLOAD_TOO_LARGE, "The maximum attachment size is 10 MB"),
@@ -36,80 +29,67 @@ public enum ExceptionIdentifier {
     ATTACHMENT_STORAGE_UNAVAILABLE(SERVICE_UNAVAILABLE,
             "File storage is not configured, so attachments cannot be stored"),
     /*
-     * A container pinned to one replica has no second process to absorb a burst of streaming
-     * uploads or downloads, so both routes are held behind a bounded semaphore sized by
-     * app.storage.max-concurrent-transfers. tryAcquire fails fast rather than queuing - a caller
-     * gets an honest "try again" instead of a connection that hangs until a slot frees up.
+     * Both transfer routes are held behind a bounded semaphore
+     * (app.storage.max-concurrent-transfers) since a single-replica container can't absorb a burst;
+     * tryAcquire fails fast so a caller gets an honest "try again" instead of a hanging connection.
      */
     ATTACHMENT_TRANSFER_BUSY(SERVICE_UNAVAILABLE,
             "Too many attachment transfers are in progress, please try again shortly"),
     /*
-     * A board-wide ceiling on attachments - count and total bytes, app.storage.max-attachments
-     * -per-board and app.storage.max-total-bytes-per-board - checked before the blob is written so
-     * a rejected upload never leaves an orphaned blob behind. 413 rather than a 400: the request
-     * itself is fine, it is what the board already holds that makes it too much.
+     * A board-wide ceiling (count and bytes, app.storage.max-attachments-per-board /
+     * max-total-bytes-per-board) checked before the blob is written, so a rejection never orphans
+     * one. 413 rather than 400: the request is fine, it's what the board already holds that makes
+     * it too much.
      */
     ATTACHMENT_QUOTA_EXCEEDED(PAYLOAD_TOO_LARGE, "This board has reached its attachment quota"),
     /*
-     * A Range header naming bytes the attachment does not have. 416 rather than serving the whole
-     * file anyway, because a client that asks to resume from byte 900 of a file that is 500 bytes
-     * long has a wrong idea of what it is downloading, and handing it the start again would let it
-     * write those bytes at the wrong offset. The controller answers this one itself rather than
-     * through GlobalExceptionHandler, because the useful part of a 416 is the Content-Range header
-     * naming the real length and the handler has no per-exception header plumbing.
+     * A Range naming bytes the attachment doesn't have. 416 rather than serving the whole file,
+     * since handing back the start would let a resuming client write at the wrong offset. Answered
+     * by the controller itself, not GlobalExceptionHandler, because a 416 needs a Content-Range
+     * header the handler has no plumbing for.
      */
     ATTACHMENT_RANGE_NOT_SATISFIABLE(REQUESTED_RANGE_NOT_SATISFIABLE,
             "The requested byte range is outside this attachment"),
 
     /*
-     * A search this route will not serve: a negative page, a size outside 1..MAX_PAGE_SIZE, or a
-     * deadline window that ends before it starts. 400 rather than a quiet clamp, because a caller
-     * that asked for 500 rows and silently got 100 has no way to tell that from a board with 100
-     * matching tasks, and will page through the same rows believing it has read past them.
+     * A negative page, an out-of-range size, or a deadline window ending before it starts. 400
+     * rather than a quiet clamp - a caller silently capped at 100 rows can't tell that from a board
+     * with exactly 100 matches, and will page past rows it never saw.
      */
     INVALID_SEARCH(BAD_REQUEST, "The search request cannot be served as asked"),
 
     /*
-     * A page of the activity feed this route will not serve: a negative page, or a size outside
-     * 1..MAX_PAGE_SIZE. Same shape and same reasoning as INVALID_SEARCH above - a silent clamp is
-     * indistinguishable from a short last page, so the caller pages past rows it never saw. A
-     * separate constant rather than a reuse, because the two routes take different parameters and
-     * a message naming "search" on the feed would send somebody looking in the wrong place.
+     * Same shape as INVALID_SEARCH, kept separate because a message naming "search" on the activity
+     * feed would send somebody looking in the wrong place.
      */
     INVALID_ACTIVITY_REQUEST(BAD_REQUEST, "The activity feed cannot be paged as asked"),
 
     /*
-     * The unauthenticated routes answer three statuses between them and no more: 202 for signup
-     * and resend whatever the address turns out to be, 401 for every login failure including an
-     * unverified account, and 400 for a verification code that is wrong, expired, or attached to
-     * an address with no account. USER_ALREADY_EXISTS, ACCOUNT_NOT_VERIFIED and
-     * ACCOUNT_ALREADY_VERIFIED are gone rather than left unused, because each of them is exactly
-     * the answer that turns one of those routes back into a membership oracle, and an unused
-     * constant is an invitation to reach for it.
+     * The unauthenticated routes answer only three statuses: 202 for signup/resend regardless of
+     * the address, 401 for any login failure, 400 for a bad verification code. USER_ALREADY_EXISTS,
+     * ACCOUNT_NOT_VERIFIED and ACCOUNT_ALREADY_VERIFIED are gone rather than unused, since each
+     * would turn a route back into a membership oracle.
      */
     INVALID_CREDENTIALS(UNAUTHORIZED, "Invalid email or password"),
     /*
-     * A session the caller asked to end and cannot: no such row, somebody else's row, or one that
-     * is already withdrawn or expired. One answer for the three, and 404 rather than 403, for the
-     * reason BOARD_NOT_FOUND spells out below - ids here are sequential, so a status that told a
-     * caller their neighbour's id was real would let anyone count everybody's live sessions.
+     * One 404 for a missing, someone else's, or already-withdrawn session - ids are sequential, so
+     * a distinguishing status would let anyone count live sessions (same reasoning as
+     * BOARD_NOT_FOUND).
      */
     SESSION_NOT_FOUND(NOT_FOUND, "Session not found"),
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),
     /*
-     * One answer for four facts. An unknown address, an account with no reset in flight, and a
-     * wrong code are all INVALID_RESET_CODE, because the other three describe the account rather
-     * than the request and would tell an unauthenticated caller which addresses have accounts.
-     * Expiry is separate only because reaching it already required a valid code.
-     */
-    /*
-     * One answer for four different failures: no token, a token the provider rejects, a token it
-     * has already seen, and a check that could not be completed at all. Which of those happened is
-     * the provider's business and not the caller's - and the only useful action is the same in
-     * every case, which is to solve a fresh challenge.
+     * One answer for four failures - no token, a rejected token, a reused token, or an incomplete
+     * check - since which one happened is the provider's business, not the caller's, and the fix is
+     * the same either way: solve a fresh challenge.
      */
     CAPTCHA_FAILED(BAD_REQUEST, "Captcha verification failed, please try again"),
+    /*
+     * One answer for an unknown address, no reset in flight, or a wrong code, since the other three
+     * describe the account rather than the request and would disclose which addresses have one.
+     * Expiry is separate only because reaching it already required a valid code.
+     */
     INVALID_RESET_CODE(BAD_REQUEST, "Invalid password reset code"),
     RESET_CODE_EXPIRED(BAD_REQUEST, "The password reset code has expired"),
     EMAIL_SEND_FAILED(INTERNAL_SERVER_ERROR, "Failed to send the email message"),
@@ -127,22 +107,17 @@ public enum ExceptionIdentifier {
     ROW_NOT_FOUND(NOT_FOUND, "Row not found"),
 
     /*
-     * A reorder that cannot mean anything: an empty or duplicated id list, or - for tasks - ids
-     * drawn from more than one cell. A position is an ordinal within one container, so numbering
-     * across two of them produces two tasks at position 0 and no way to say which comes first.
+     * An empty or duplicated id list, or (for tasks) ids drawn from more than one cell - a position
+     * is an ordinal within one container, so numbering across two produces two tasks at position 0.
      * The caller's mistake, so 400, with the specific message passed at each throw site.
      */
     INVALID_REORDER(BAD_REQUEST, "The requested order cannot be applied"),
 
     /*
-     * A board, or anything on one, that the caller is not a member of answers BOARD_NOT_FOUND and
-     * not a 403. The distinction is the whole point: 403 confirms the object exists, which lets a
-     * caller map out somebody else's board by walking ids and reading the status codes. The same
-     * reasoning already applies to TASK_NOT_FOUND, COLUMN_NOT_FOUND and ROW_NOT_FOUND, which the
-     * services now raise for an object on a board the caller cannot see.
-     *
-     * NOT_BOARD_OWNER is a 403 precisely because it is only ever reached by a caller who can
-     * already see the board, so it discloses nothing new.
+     * A board, or anything on one, that the caller isn't a member of is BOARD_NOT_FOUND, never 403 -
+     * a 403 would confirm the object exists, letting a caller map boards by walking ids.
+     * TASK_NOT_FOUND, COLUMN_NOT_FOUND and ROW_NOT_FOUND follow the same rule. NOT_BOARD_OWNER is a
+     * 403 because it's only reached by a caller who can already see the board.
      */
     BOARD_NOT_FOUND(NOT_FOUND, "Board not found"),
     NOT_BOARD_OWNER(FORBIDDEN, "Only the board owner can do that"),
@@ -150,42 +125,34 @@ public enum ExceptionIdentifier {
     BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board"),
 
     /*
-     * An invitation that is not the caller's to act on: a wrong id, another board's row under an
-     * owner's path, somebody else's invitation under /invitations, or one already accepted,
-     * declined or revoked. One 404 for all of them, and 404 rather than 403 for the reason
-     * BOARD_NOT_FOUND spells out - these ids are sequential too, and a status that distinguished
-     * "not yours" from "no such row" would let anyone count how many invitations exist.
-     *
-     * ALREADY_BOARD_MEMBER is a 400 and discloses nothing, because only the board's owner can
-     * reach it and the owner is looking at the member list on the same screen.
+     * Any invitation not the caller's to act on (wrong id, another board's row, someone else's,
+     * already answered) is one 404, same oracle reasoning as BOARD_NOT_FOUND. ALREADY_BOARD_MEMBER
+     * is a 400 and discloses nothing, since only the board's owner - already looking at the member
+     * list - can reach it.
      */
     INVITATION_NOT_FOUND(NOT_FOUND, "Invitation not found"),
     ALREADY_BOARD_MEMBER(BAD_REQUEST, "That person is already on this board"),
 
     /*
-     * A language the mail templates have no bundle for. The caller's mistake, so 400 - and a
-     * refusal rather than a fallback, because this is only ever reached by somebody setting the
-     * language explicitly. Signup, which guesses from a browser header, falls back to English
-     * without complaining; a guess that misses costs nothing, and quietly storing English over
-     * a choice does.
+     * A language with no mail bundle. 400 and a refusal rather than a fallback, since this is only
+     * reached when somebody sets the language explicitly - unlike signup's browser-header guess,
+     * which falls back to English silently because a missed guess costs nothing but a stored wrong
+     * choice does.
      */
     UNSUPPORTED_LOCALE(BAD_REQUEST, "That language is not one this application can write mail in"),
 
     /*
-     * Someone else changed the same task, column, row or subtask between the caller reading it and
-     * saving it back. A 409 rather than a 500: nothing is broken, the caller just has a stale copy
-     * and the fix is to reload and reapply. Raised from Hibernate's optimistic lock, not thrown by
-     * a service.
+     * Someone else changed the same row between read and save. A 409, not 500 - nothing is broken,
+     * reloading and reapplying fixes it. Raised from Hibernate's optimistic lock, not thrown by a
+     * service.
      */
     CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
 
     /*
-     * The delivery-report webhook, with no key configured or the wrong key presented. One 404 for
-     * both, and 404 rather than 401, for the same reason every other "you may not see this" here is
-     * a 404: this is the only unauthenticated write in the application, so the least it can do is
-     * decline to confirm that it exists. There is nobody on the other end to help either - Event
-     * Grid does not read messages, and the person wiring up the subscription is looking at the key
-     * they pasted rather than at a status code.
+     * The delivery-report webhook with no key configured or the wrong key: one 404 for both, the
+     * same "you may not see this" rule as everywhere else here, since this is the only
+     * unauthenticated write in the application. Event Grid doesn't read messages either way, and
+     * whoever wired the subscription is looking at the key they pasted, not a status code.
      */
     MAIL_DELIVERY_REPORT_NOT_FOUND(NOT_FOUND, "Not found");
 

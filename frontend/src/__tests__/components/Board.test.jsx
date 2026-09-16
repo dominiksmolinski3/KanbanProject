@@ -361,12 +361,10 @@ describe('Board Component', () => {
     expect(screen.getByText('board.loading')).toBeInTheDocument();
   });
 
-  // A background refresh (adding a subtask, reordering, anything that resyncs via
-  // refreshTasks()/refreshBoard()) sets the same `loading` flag the initial load does. Gating the
-  // whole board on it would unmount every Task - and any TaskDetails panel a person has open -
-  // for the length of that refresh, which is exactly the failure a live run of this suite found:
-  // typing a second subtask lost the panel mid-keystroke because adding the first one refreshed
-  // the board underneath it.
+  // A background refresh sets the same `loading` flag the initial load does; gating the whole
+  // board on it would unmount every Task - and any open TaskDetails panel - for the length of
+  // that refresh. That is a real regression this suite caught: typing a second subtask lost the
+  // panel mid-keystroke because adding the first one refreshed the board underneath it.
   test('does not show the loading spinner for a background refresh once the board has data', () => {
     const refreshingContext = {
       ...mockContextValue,

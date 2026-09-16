@@ -15,25 +15,13 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A second guard over the same two files {@link DeadLetterAlertTest} watches, on a different rule.
- *
- * <p>"Which statuses mean a message did not arrive" is written down twice. {@link
- * MailDeliveryStatuses#UNDELIVERED} is what the application counts as a failure on the outbox row;
- * the KQL in {@code terraform/modules/diagnostics/main.tf} is what mails an operator when one
- * happens. Nothing connects them - not javac, not Terraform, not either suite - so the two can
- * drift into disagreeing about what a failure is, and the shape of that disagreement is the worst
- * kind: the side that stops matching simply stops reporting, and a status nobody looks at and an
- * alert that never fires look exactly like mail working.
- *
- * <p>The list has already been wrong once, before any of this existed. The bounce alert's first
- * draft matched {@code ("Failed", "Suppressed")} and silently excluded {@code Bounced} itself - the
- * word the alert is named after - because the values are documented on the email-logs concept page
- * and not on the table-schema reference that names the column. That was caught by reading
- * Microsoft's documentation rather than by anything in this repository, which is precisely the
- * situation a guard is for.
- *
- * <p>Sets rather than lists: the order in the KQL is a matter of taste and the order in the Java is
- * copied from it as a courtesy to a reader comparing them by eye. Neither is a rule.
+ * A second guard over the same two files {@link DeadLetterAlertTest} watches, on a different rule:
+ * which statuses mean "did not arrive" is written down twice - {@link
+ * MailDeliveryStatuses#UNDELIVERED} here, the KQL in {@code terraform/modules/diagnostics/main.tf}
+ * for the alert - and nothing connects them, so they can silently drift apart. The bounce alert's
+ * first draft matched {@code ("Failed", "Suppressed")} and excluded {@code Bounced} itself, caught
+ * only by reading Microsoft's docs. Compared as sets, since order between the two files is not a
+ * rule.
  */
 class BounceStatusesMatchAlertTest {
 

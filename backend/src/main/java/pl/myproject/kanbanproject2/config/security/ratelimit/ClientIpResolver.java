@@ -6,14 +6,11 @@ import org.springframework.stereotype.Component;
 import java.util.Locale;
 
 /**
- * Works out which address to bill a request to.
- *
- * <p>Behind a reverse proxy {@code getRemoteAddr()} is the proxy, so keying on it would put the
- * whole internet in one bucket. {@code X-Forwarded-For} carries the client instead, but only the
- * entries a trusted proxy appended can be believed: each proxy appends the address it received
- * the request <em>from</em>, to the right-hand end, and leaves whatever the client sent in place
- * to its left. A client that sends {@code X-Forwarded-For: 1.2.3.4} arrives at the app as
- * {@code 1.2.3.4, <real client>} — so the entry to read is counted from the right, never the left.
+ * Works out which address to bill a request to. Behind a reverse proxy {@code getRemoteAddr()} is
+ * the proxy, so keying on it would put the whole internet in one bucket; {@code X-Forwarded-For}
+ * carries the client instead, but only the entries a trusted proxy appended can be believed. Each
+ * proxy appends to the right-hand end, so the entry to trust is counted from the right, never the
+ * left — a client-sent {@code X-Forwarded-For} header ends up to the left of it.
  *
  * @see AuthRateLimitProperties#trustedProxyCount()
  */

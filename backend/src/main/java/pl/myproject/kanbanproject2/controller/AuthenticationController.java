@@ -61,11 +61,8 @@ public class AuthenticationController {
                                          HttpServletRequest request) {
         verifyCaptcha(registerUserDto.getCaptcha(), request);
         if (registerUserDto.getLocale() == null) {
-            // The client sends its own i18next language, which is the better answer because it is
-            // what the person is actually reading. Accept-Language is the fallback for a caller
-            // that sends no locale at all - an older bundle, or anything reaching this route
-            // without a browser - and reading it here rather than in the service keeps the header
-            // in the one layer that has a request to read it from.
+            // Accept-Language is the fallback for a caller that sends no locale at all, read here
+            // rather than in the service since this is the one layer with a request to read it from.
             registerUserDto.setLocale(SupportedLocales.fromAcceptLanguage(
                     request.getHeader(HttpHeaders.ACCEPT_LANGUAGE)));
         }
@@ -143,17 +140,11 @@ public class AuthenticationController {
     }
 
     /**
-     * Every session the caller can still use, newest renewal first.
-     *
-     * <p>Not public, unlike everything above it, and it is the first route under {@code /auth} that
-     * is not. The routes around it exist for someone who cannot prove who they are yet; this one
-     * lists an account's sessions, so proving it is the entire precondition. It is absent from
-     * {@code PublicPaths} for that reason and takes the caller like every other guarded route -
-     * {@code BoardScopedRoutesTest} fails the build if it stops doing either.
-     *
-     * <p>Rate limiting follows the same split: the limiter covers the unauthenticated routes, where
-     * the caller is an unknown address guessing at credentials. A caller here has already presented
-     * a valid access token, and the thing they could hammer is a list of their own rows.
+     * Every session the caller can still use, newest renewal first. Not public, unlike everything
+     * above it: the routes around it exist for someone who cannot prove who they are yet, while this
+     * one lists an account's sessions, so proving it is the entire precondition —
+     * {@code BoardScopedRoutesTest} fails the build if it stops taking the caller. Rate limiting
+     * follows the same split, since the limiter covers only the unauthenticated routes.
      */
     @GetMapping("/devices")
     public ResponseEntity<List<ActiveDeviceDto>> listDevices(@AuthenticationPrincipal User currentUser) {

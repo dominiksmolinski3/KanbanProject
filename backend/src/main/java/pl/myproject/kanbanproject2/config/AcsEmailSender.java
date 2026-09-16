@@ -11,42 +11,18 @@ import pl.myproject.kanbanproject2.service.EmailMessage;
 import pl.myproject.kanbanproject2.service.EmailSender;
 
 /**
- * Posts messages to Azure Communication Services over HTTPS.
+ * Posts messages to Azure Communication Services over HTTPS. Unlike the held SMTP connection this
+ * replaced, there is no connection to manage: each send is a request on a pooled HTTPS connection,
+ * with retries and concurrency handled by the SDK.
  *
- * <p>What this replaced was a class that existed entirely to keep one SMTP connection logged in,
- * ping it every four minutes, replace it before Gmail expired it, and tell a dropped link apart
- * from a rejected message so it could retry the first and not the second. None of that has an
- * equivalent here. There is no connection to hold: each send is a request on a pooled HTTPS
- * connection the SDK manages, transient failures are the pipeline's retry policy rather than ours,
- * and concurrency is the pool's problem rather than a lock around a single {@code Transport}.
- *
- * <p><b>Why the returned poller is dropped.</b> {@code beginSend} looks like it starts something
- * that has to be waited on, and ignoring a poller usually means nothing happened. Here the opposite
- * is true: {@code EmailClient.beginSend} builds a {@code SyncOverAsyncPoller}, whose constructor
- * runs the activation operation - the POST - before it returns. So by the time {@code beginSend}
- * hands back a poller, Azure has been given the message and has answered {@code 202}, and anything
- * it objected to (a bad key, a sender address the domain does not have, a malformed recipient) has
- * already come back as an exception on this line.
- *
- * <p>Polling to <em>completion</em> would be waiting for delivery, which is Azure's job and takes
- * as long as the recipient's mail server takes. Nothing here does that, and nothing here should.
- *
- * <p><b>One poll, though, and that is a change of position worth writing down.</b> This class used
- * to drop the poller untouched, on the argument that "a signup has no use for the answer and every
- * reason not to hold a request thread open for it". The first half is still true. The second half
- * stopped being true when the outbox landed: no signup has waited for a send since, because sends
- * happen on {@code OutboxRelay}'s scheduler thread and the request thread ends at a committed row.
- * The constraint that made a second round trip unacceptable was removed a revision later by
- * somebody solving a different problem, and nobody noticed until there was a reason to look.
- *
- * <p>What the one poll buys is the operation id, which is the id an Event Grid delivery report
- * names - and without it a report is a fact about an address rather than about a message. It is a
- * single {@code GET} on the operation URL, not a loop: {@link SyncPoller#poll()} returns the first
- * response and this never asks for a second. It is also <b>best-effort</b>: the message is already
- * accepted by the time it runs, so a failure to read the id is logged and answered with
- * {@code null} rather than turned into a send that reports itself as refused. Measured rather than
- * assumed - {@code AcsEmailSenderTest} counts the requests that leave, and fails if activation
- * stops being eager or if this ever walks the poller to completion.
+ * <p><b>The poller is polled once, not dropped and not run to completion.</b>
+ * {@code EmailClient.beginSend} builds a {@code SyncOverAsyncPoller} whose constructor performs the
+ * activation POST before returning, so by the time it hands back a poller Azure has already
+ * accepted or rejected the message. One {@link SyncPoller#poll()} call reads back the operation id
+ * an Event Grid delivery report needs to match against - a single {@code GET}, never a loop to
+ * completion (which would wait on delivery rather than acceptance). It is best-effort: a failure to
+ * read the id is logged and returns {@code null} rather than reporting an accepted send as refused.
+ * {@code AcsEmailSenderTest} fails if activation stops being eager or this ever polls to completion.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -83,12 +59,9 @@ public class AcsEmailSender implements EmailSender {
     }
 
     /**
-     * The id Azure gave this message, or {@code null} if it could not be read.
-     *
-     * <p>Everything above this line has already happened - the message is with Azure and will be
-     * delivered or not regardless of what this returns. So nothing here may throw: a network blip
-     * on the operation lookup must not turn a message that <em>was</em> accepted into a row the
-     * relay retries, which would post it a second time and mail somebody twice.
+     * The id Azure gave this message, or {@code null} if it could not be read. Nothing here may
+     * throw: the message is already accepted, so a lookup failure must not turn it into a row the
+     * relay retries and mails a second time.
      */
     private String operationIdOf(SyncPoller<EmailSendResult, EmailSendResult> operation) {
         try {

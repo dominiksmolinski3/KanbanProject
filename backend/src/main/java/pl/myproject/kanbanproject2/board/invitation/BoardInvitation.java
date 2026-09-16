@@ -20,24 +20,17 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 
 /**
- * An offer of membership that the person offered has to take up.
+ * An offer of membership that the person offered has to take up. This replaces
+ * {@code POST /boards/{id}/members}, which put an account on a board immediately and answered with
+ * the member list — letting an owner diff it to learn whether an address had an account here.
  *
- * <p>Membership used to be something an owner assigned: {@code POST /boards/{id}/members} put an
- * account on a board immediately, and answered with the board - so an owner could compare the
- * member list before and after and learn whether an address had an account here. This row is the
- * fix for both halves at once. It is created for any address, so the response says nothing about
- * accounts; and it does nothing until the invitee accepts, so nobody is added to a board they
- * never agreed to be on.
+ * <p><b>It names an address, not a user.</b> That lets one be created for somebody who has not
+ * signed up yet — the invitation waits, and {@code GET /invitations} finds it the first time they
+ * log in — rather than creating an unverified account on their behalf, which would let any account
+ * occupy an arbitrary address and lock its real owner out of signup.
  *
- * <p><b>It names an address, not a user.</b> That is what lets one be created for somebody who has
- * not signed up yet - the invitation waits, and {@code GET /invitations} finds it the first time
- * they log in. The alternative the report originally sketched, creating an unverified account on
- * their behalf, would hand any account the ability to occupy an arbitrary address and lock its
- * real owner out of signup.
- *
- * <p>{@code invitedBy} is nullable for the same reason {@link Board}'s owner is: the account that
- * sent it can be deleted, and losing the row with it would silently withdraw an invitation that
- * is still perfectly good.
+ * <p>{@code invitedBy} is nullable for the same reason {@link Board}'s owner is: deleting that
+ * account must not silently withdraw an invitation that is still good.
  */
 @NoArgsConstructor
 @Setter
@@ -79,13 +72,9 @@ public class BoardInvitation {
     }
 
     /**
-     * The stored form of an address.
-     *
-     * <p>Lower-cased and trimmed, because the invitation is matched against the address on an
-     * account and a person typing a colleague's address into a form types it however they please.
-     * The domain half is case-insensitive by specification and the local half is case-sensitive by
-     * specification and case-insensitive at every provider anybody here uses; matching case would
-     * mean an invitation to {@code Ann@example.test} that Ann can never see.
+     * The stored form of an address: lower-cased and trimmed, because it's matched against the
+     * address on an account and matching case would mean an invitation to {@code Ann@example.test}
+     * that Ann, whose provider treats the local part case-insensitively, can never see.
      */
     public static String normaliseEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);

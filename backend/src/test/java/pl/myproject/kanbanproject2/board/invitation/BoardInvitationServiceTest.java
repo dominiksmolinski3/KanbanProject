@@ -33,14 +33,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * What an invitation has to do, and the two things it exists not to do.
- *
- * <p>The behaviour is easy to state and easy to get wrong in one specific direction, so most of
- * what is asserted here is about what the <em>inviter</em> is not told. An invite for an address
- * with an account and an invite for an address without one must be indistinguishable in the
- * response, or invitations are the same membership oracle {@code addMember} was with an extra
- * table. And nothing may reach a member list until the invitee has acted, or the acceptance is
- * decoration.
+ * What an invitation has to do, and the two things it exists not to do: an invite for an address
+ * with an account and one without must be indistinguishable in the response, or invitations are the
+ * same membership oracle {@code addMember} was with an extra table; and nothing may reach a member
+ * list until the invitee has acted.
  */
 class BoardInvitationServiceTest {
 
