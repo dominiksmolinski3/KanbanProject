@@ -198,7 +198,7 @@ module "api_app" {
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint
   redis_hostname                   = module.redis.hostname
-  redis_ssl_port                   = module.redis.ssl_port
+  redis_port                       = module.redis.port
   tags                             = local.tags
 
   # The browser's origin is the edge's FQDN, not this app's. Read from the web module's output

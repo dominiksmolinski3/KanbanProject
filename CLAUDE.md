@@ -684,10 +684,14 @@ shape does not match — because the limiter is defence in depth, not the contro
 password working, and losing the escalation for the length of an outage is a smaller cost than an
 outage that also locks every caller out of authentication. `security.rate-limit.redis-host`
 defaults to `localhost` (docker-compose and CI both run a plain `redis:7-alpine`); the deployment
-points it at an Azure Cache for Redis Basic instance reached over the private endpoint the storage
-account and Key Vault already have, authenticated with an access key from `REDIS-ACCESS-KEY` — Basic
-has no replica and that is deliberate (see the Checkov skip for `CKV_AZURE_230`), since what it
-holds is exactly the state the store already fails open on losing.
+points it at an **Azure Managed Redis** instance — Redis Enterprise underneath, and the resource
+classic Cache for Redis is retiring in favour of, which this deployment learned the hard way: the
+first apply against dev of the classic `azurerm_redis_cache` was refused outright with
+`Azure Cache for Redis is retiring, create Azure Managed Redis instance instead` on a subscription
+that had never created either kind before. It sits behind the private endpoint the storage account
+and Key Vault already have, authenticated with an access key from `REDIS-ACCESS-KEY`, on the
+smallest SKU (`Balanced_B0`) — deliberate, the same way Basic would have been on a classic cache,
+since what it holds is exactly the state the store already fails open on losing.
 
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
 `window.fetch` at module load to attach `Authorization`, skipping the URLs that name an
@@ -1175,10 +1179,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   than the absence of one. The attachment storage account adds two: `CKV_AZURE_33`, because
   there is no queue service on that account to log, and `CKV2_AZURE_1`, customer-managed encryption
   keys, which is the same trade `CKV_AZURE_41` names — a key nothing rotates buys the appearance of
-  control and a scheduled outage. The rate limiter's Redis adds one more: `CKV_AZURE_230`, standard
-  replication, declined because Basic has none to enable and that absence is the point — the cache
-  holds nothing but escalation counters `AuthRateLimiter` already fails open on losing, so a replica
-  would buy availability for state that costs a burst of free attempts to lose, not user data.
+  control and a scheduled outage.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
