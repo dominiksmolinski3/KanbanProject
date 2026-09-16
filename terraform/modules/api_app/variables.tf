@@ -175,6 +175,21 @@ variable "redis_port" {
   type        = number
 }
 
+variable "broker_app_name" {
+  description = "Name of the STOMP broker Container App WebSocketConfig relays to - see modules/broker. Reached by app name rather than an internal FQDN: TCP ingress within one Container Apps environment resolves apps by name and exposed port, with no Host-header routing involved."
+  type        = string
+}
+
+variable "broker_port" {
+  description = "The STOMP port on the broker app - see modules/broker's own port output."
+  type        = number
+}
+
+variable "broker_username" {
+  description = "The one RabbitMQ account WebSocketConfig's client and system logins both use. Not a secret - RABBITMQ-PASSWORD is, read from Key Vault by name the same way POSTGRES-PASSWORD and REDIS-ACCESS-KEY are."
+  type        = string
+}
+
 variable "mail_delivery_report_key" {
   description = "Shared key the delivery-report webhook requires in its URL. Empty (the default) leaves the route answering 404 to everything, which is the correct state for any environment that has not deliberately turned it on."
   type        = string

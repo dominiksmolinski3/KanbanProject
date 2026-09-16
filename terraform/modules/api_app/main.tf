@@ -105,6 +105,16 @@ resource "azurerm_container_app" "main" {
     }
   }
 
+  # Last, not next to redis-access-key above: an azurerm_container_app's secret blocks are matched
+  # positionally, so an insertion anywhere but the tail shifts every later block's index and turns a
+  # pure addition into a replace-in-place of every secret after it. Harmless in the end state - same
+  # Key Vault references, same values - but a needlessly noisy plan for what is one new secret.
+  secret {
+    name                = "rabbitmq-password"
+    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "RABBITMQ-PASSWORD")
+    identity            = azurerm_user_assigned_identity.main.id
+  }
+
   dynamic "registry" {
     for_each = local.ghcr_credentials_configured ? [1] : []
 
@@ -213,7 +223,28 @@ resource "azurerm_container_app" "main" {
         name  = "AZURE_STORAGE_IDENTITY_CLIENT_ID"
         value = azurerm_user_assigned_identity.main.client_id
       }
-
+      # WebSocketConfig's broker relay - see modules/broker. Reached by app name, not an internal
+      # FQDN: TCP ingress within one Container Apps environment resolves other apps by name and
+      # exposed port directly, with no Host-header routing to get wrong the way the edge's proxy to
+      # this app itself had to learn. Last, not next to the other backing-service env blocks above:
+      # positional block matching means an insertion anywhere but the tail turns a pure addition
+      # into a replace-in-place of every env block after it - see the same note on the secret block.
+      env {
+        name  = "STOMP_RELAY_HOST"
+        value = var.broker_app_name
+      }
+      env {
+        name  = "STOMP_RELAY_PORT"
+        value = tostring(var.broker_port)
+      }
+      env {
+        name  = "STOMP_RELAY_USERNAME"
+        value = var.broker_username
+      }
+      env {
+        name        = "STOMP_RELAY_PASSWORD"
+        secret_name = "rabbitmq-password"
+      }
 
       startup_probe {
         transport               = "HTTP"

@@ -12,13 +12,14 @@ import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
 
 @Configuration
 @EnableWebSocketMessageBroker
-@EnableConfigurationProperties(AllowedOriginsProperties.class)
+@EnableConfigurationProperties({AllowedOriginsProperties.class, StompRelayProperties.class})
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final BoardSubscriptionInterceptor boardSubscriptionInterceptor;
     private final AllowedOriginsProperties allowedOrigins;
+    private final StompRelayProperties stompRelay;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -27,10 +28,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .withSockJS();
     }
 
+    /**
+     * A real broker rather than {@code enableSimpleBroker}, which held every subscription in this
+     * JVM's own memory - a board event or a chat message published on one API replica never reached
+     * a subscriber connected to another, and nothing errored to say so. Every replica now relays to
+     * the same external broker instead, the same shape moving AuthRateLimiter's escalation to Redis
+     * already used: the shared state lives where every replica can see it, not in the process that
+     * happens to have handled a given request.
+     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
 
-        registry.enableSimpleBroker("/topic", "/queue");
+        registry.enableStompBrokerRelay("/topic", "/queue")
+                .setRelayHost(stompRelay.host())
+                .setRelayPort(stompRelay.port())
+                .setClientLogin(stompRelay.username())
+                .setClientPasscode(stompRelay.password())
+                .setSystemLogin(stompRelay.username())
+                .setSystemPasscode(stompRelay.password());
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }
