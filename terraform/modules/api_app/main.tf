@@ -179,16 +179,16 @@ resource "azurerm_container_app" "main" {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
         value = tostring(var.ingress_trusted_proxy_count)
       }
-      # AuthRateLimiter's escalation - see modules/redis. SSL is not conditional: this account has
-      # no non-TLS endpoint exposed at all (non_ssl_port_enabled = false), unlike attachment
-      # storage's connection-string/managed-identity fork, which exists only for local Azurite.
+      # AuthRateLimiter's escalation - see modules/redis. SSL is not conditional: Managed Redis's
+      # default_database is Encrypted-only here, unlike attachment storage's
+      # connection-string/managed-identity fork, which exists only for local Azurite.
       env {
         name  = "SECURITY_RATE_LIMIT_REDIS_HOST"
         value = var.redis_hostname
       }
       env {
         name  = "SECURITY_RATE_LIMIT_REDIS_PORT"
-        value = tostring(var.redis_ssl_port)
+        value = tostring(var.redis_port)
       }
       env {
         name  = "SECURITY_RATE_LIMIT_REDIS_SSL"

@@ -1,26 +1,32 @@
-resource "azurerm_redis_cache" "main" {
+# Azure Managed Redis, not the classic Cache for Redis this module shipped with first: the first
+# apply against dev was refused outright - "Azure Cache for Redis is retiring, create Azure Managed
+# Redis instance instead" - on a subscription that had never created either kind before. Managed
+# Redis is Redis Enterprise underneath (still Microsoft.Cache, so providers.tf needed no new
+# namespace), which is why the shapes below differ from a classic cache in several places at once:
+# there is no top-level access-key/TLS toggle, because those live on default_database instead, and
+# the private endpoint's subresource and DNS zone both name "redisEnterprise" rather than "redis".
+resource "azurerm_managed_redis" "main" {
   tags                = var.tags
   name                = "redis-kanban-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
-
-  capacity = var.capacity
-  family   = var.family
-  sku_name = var.sku_name
-
-  non_ssl_port_enabled = false
-  minimum_tls_version  = "1.2"
+  sku_name            = var.sku_name
 
   # Closed to the internet, the same posture as the blob storage account and Postgres: the app
   # reaches it over the private endpoint below and is the only thing that ever does.
-  public_network_access_enabled = false
+  public_network_access = "Disabled"
 
-  redis_configuration {}
+  default_database {
+    access_keys_authentication_enabled = true
+    # Encrypted is the default and is named here anyway: this is the one setting standing in for
+    # minimum_tls_version on a classic cache, and a future edit should have to change it on purpose.
+    client_protocol = "Encrypted"
+  }
 }
 
 resource "azurerm_private_dns_zone" "redis" {
   tags                = var.tags
-  name                = "privatelink.redis.cache.windows.net"
+  name                = "privatelink.redisenterprise.cache.azure.net"
   resource_group_name = var.resource_group_name
 }
 
@@ -40,9 +46,9 @@ resource "azurerm_private_endpoint" "redis" {
 
   private_service_connection {
     name                           = "psc-redis-${var.env}"
-    private_connection_resource_id = azurerm_redis_cache.main.id
+    private_connection_resource_id = azurerm_managed_redis.main.id
     is_manual_connection           = false
-    subresource_names              = ["redisCache"]
+    subresource_names              = ["redisEnterprise"]
   }
 
   private_dns_zone_group {
@@ -57,7 +63,7 @@ resource "azurerm_private_endpoint" "redis" {
 resource "azurerm_key_vault_secret" "redis_access_key" {
   tags         = var.tags
   name         = "REDIS-ACCESS-KEY"
-  value        = azurerm_redis_cache.main.primary_access_key
-  content_type = "Azure Cache for Redis primary access key"
+  value        = azurerm_managed_redis.main.default_database[0].primary_access_key
+  content_type = "Azure Managed Redis primary access key"
   key_vault_id = var.key_vault_id
 }

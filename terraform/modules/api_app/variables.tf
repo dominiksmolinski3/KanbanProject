@@ -166,12 +166,12 @@ variable "storage_blob_endpoint" {
 }
 
 variable "redis_hostname" {
-  description = "Hostname of the Azure Cache for Redis instance backing AuthRateLimiter's escalation. Not a secret - the access key is (REDIS-ACCESS-KEY, read from Key Vault by name, the same pattern the Postgres password uses)."
+  description = "Hostname of the Azure Managed Redis instance backing AuthRateLimiter's escalation. Not a secret - the access key is (REDIS-ACCESS-KEY, read from Key Vault by name, the same pattern the Postgres password uses)."
   type        = string
 }
 
-variable "redis_ssl_port" {
-  description = "TLS port of the Redis instance (6380, not the plaintext 6379 - shared_access_key_enabled has no equivalent here, so the access key is the only thing standing in for auth and must not cross the wire in clear)."
+variable "redis_port" {
+  description = "Port of the default database's encrypted endpoint (10000, not the 6380/6379 a classic Cache for Redis would answer on). The encryption comes from default_database.client_protocol in modules/redis, not from which port this names."
   type        = number
 }
 
