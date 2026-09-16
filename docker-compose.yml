@@ -36,6 +36,8 @@ services:
         condition: service_healthy
       azurite:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -55,6 +57,9 @@ services:
       # for everybody, which is the same failure the deployment has at 1 instead of 2 and is worth
       # having wrong in neither place. The deployment sets 2: the ingress, then nginx.
       SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT: 1
+      # The escalation lives in the redis service below rather than in process memory, so it means
+      # what its numbers say even once this stack runs more than one `app` replica.
+      SECURITY_RATE_LIMIT_REDIS_HOST: redis
       # Attachments go to the azurite service below rather than to Azure. The key in that default
       # is Azurite's published development account - documented, identical on every machine that has
       # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
@@ -108,6 +113,23 @@ services:
       resources:
         limits:
           memory: 1G
+
+  # Backs AuthRateLimiter's escalation - see security.rate-limit.redis-host. No password and no TLS
+  # locally, the same trust boundary the postgres and azurite services already have: everything on
+  # this network is this stack.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
 volumes:
   postgres_data:
