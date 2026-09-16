@@ -776,7 +776,13 @@ is checked by reading the header instead.
 
 ### Chat
 
-STOMP over SockJS at `/ws`, simple in-memory broker on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`; `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not `useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat server on a separate host would need a configured URL rather than the page's.
+STOMP over SockJS at `/ws`, relayed to a real broker (RabbitMQ, via its STOMP plugin — see
+[StompRelayProperties](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/StompRelayProperties.java)
+and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`;
+`WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not
+`useState`) and delegates the connection to [chatApi.js](frontend/src/services/chatApi.js), which
+points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat
+server on a separate host would need a configured URL rather than the page's.
 
 ### Live board sync
 
@@ -798,12 +804,13 @@ Six decisions carry it, and none of them is visible from the destination name:
 - **It carries no actor either**, so nobody can filter out "their own" event. An account is not a
   client: the same account in a second tab is a different screen that does need the frame. The
   duplicate read is made cheap by coalescing instead, which is right in both cases.
-- **A subscription is authorised, because the simple broker does not do it.** `WebSocketAuthInterceptor`
-  answers whether a caller is anybody; without `BoardSubscriptionInterceptor` a subscriber holding
-  any valid token could sit on any board's topic. It asks `BoardService.requireVisible`, so "may
-  this caller see this board" is answered in the one place the REST routes answer it. **Order is
-  load-bearing**: the authentication interceptor runs first, because it is what puts the principal
-  on the session.
+- **A subscription is authorised, because the broker does not do it.** RabbitMQ's STOMP plugin
+  relays frames; it has no notion of a board and cannot tell one destination from another that is
+  wider or narrower, so `WebSocketAuthInterceptor` answering whether a caller is anybody is not
+  enough on its own — without `BoardSubscriptionInterceptor` a subscriber holding any valid token
+  could sit on any board's topic. It asks `BoardService.requireVisible`, so "may this caller see
+  this board" is answered in the one place the REST routes answer it. **Order is load-bearing**: the
+  authentication interceptor runs first, because it is what puts the principal on the session.
 - **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
   the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
   exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed
@@ -931,11 +938,14 @@ clause instead.
 without it a queue being worked reads as a queue that is empty, and a relay killed mid-batch reads
 as nothing at all until the lease lapses.
 
-The other three single-replica constraints are unchanged — the in-memory broker, the in-memory rate
-limiter, and the deadline sweep — so `api_max_replicas` stays at 1. This is the first of them
-lifted, and it went first because its failure mode is the one that leaves the building. (The
-deadline sweep has since gone the same way; the broker and the limiter are what is left, and both
-need infrastructure that does not exist yet.)
+The other three single-replica constraints named here when this paragraph was written are addressed
+now too: the deadline sweep claims its own rows the same way, `AuthRateLimiter`'s escalation lives in
+Redis rather than each replica's own process memory (see the auth section below), and
+`WebSocketConfig` relays to a real broker rather than holding one in the JVM (see **Chat** and
+**Live board sync**). This — the outbox claim — went first because its failure mode is the one that
+leaves the building. `api_max_replicas` stays at 1 in `dev.tfvars` regardless: raising it is a
+deliberate step of its own, verified live rather than assumed from a green build, the same way
+`web_max_replicas` needed a live two-replica SockJS check before it moved.
 
 **Two things watch the dead letters, because moving the send off the request thread moved the
 signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert

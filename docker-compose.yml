@@ -38,6 +38,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -60,6 +62,15 @@ services:
       # The escalation lives in the redis service below rather than in process memory, so it means
       # what its numbers say even once this stack runs more than one `app` replica.
       SECURITY_RATE_LIMIT_REDIS_HOST: redis
+      # The STOMP broker relay's own connection - see WebSocketConfig.configureMessageBroker. Every
+      # `app` replica relays to the rabbitmq service below rather than holding a broker in its own
+      # JVM, so a board event published on one replica still reaches a subscriber connected to
+      # another. Not the stock guest/guest account: RabbitMQ refuses it from anywhere but localhost,
+      # and this connects from a different container - the same reason redis, unlike guest, needs no
+      # override at all (it never restricts by origin).
+      STOMP_RELAY_HOST: rabbitmq
+      STOMP_RELAY_USERNAME: kanban
+      STOMP_RELAY_PASSWORD: kanban
       # Attachments go to the azurite service below rather than to Azure. The key in that default
       # is Azurite's published development account - documented, identical on every machine that has
       # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
@@ -130,6 +141,28 @@ services:
       resources:
         limits:
           memory: 128M
+
+  # The STOMP broker WebSocketConfig relays to - see stomp.relay.host. The stock image has the STOMP
+  # plugin off by default, so the command enables it and then hands off to the image's own entrypoint,
+  # which is what sets up RABBITMQ_DEFAULT_USER/PASS before starting the broker. No TLS locally, the
+  # same trust boundary redis and postgres already have on this network.
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    restart: unless-stopped
+    command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && exec docker-entrypoint.sh rabbitmq-server"
+    environment:
+      RABBITMQ_DEFAULT_USER: kanban
+      RABBITMQ_DEFAULT_PASS: kanban
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   postgres_data:
