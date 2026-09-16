@@ -223,6 +223,14 @@ resource "azurerm_container_app" "main" {
         name  = "AZURE_STORAGE_IDENTITY_CLIENT_ID"
         value = azurerm_user_assigned_identity.main.client_id
       }
+      # TaskAttachmentService divides app.storage.max-concurrent-transfers by this so the configured
+      # number stays a fleet-wide ceiling rather than becoming that value times the replica count.
+      # var.max_replicas, not the live replica count - nothing here can read the latter, and dividing
+      # by the ceiling is the conservative direction to be wrong in.
+      env {
+        name  = "ATTACHMENT_REPLICA_COUNT_HINT"
+        value = tostring(var.max_replicas)
+      }
       # WebSocketConfig's broker relay - see modules/broker. Reached by app name, not an internal
       # FQDN: TCP ingress within one Container Apps environment resolves other apps by name and
       # exposed port directly, with no Host-header routing to get wrong the way the edge's proxy to

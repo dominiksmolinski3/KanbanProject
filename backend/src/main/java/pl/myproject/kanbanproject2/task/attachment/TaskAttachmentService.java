@@ -38,8 +38,9 @@ import java.util.function.IntConsumer;
  * removes it if the transaction doesn't commit, while delete removes the row first and the blob
  * after commit — either way risks an orphaned, invisible blob rather than a row pointing at bytes
  * that are gone, which would fail every time somebody clicks it. {@link #transferPermits} bounds
- * concurrent transfers so a burst gets a fast {@code 503} instead of a hung connection on a
- * single-replica container, and {@link #requireQuota} bounds what a board may accumulate, checked
+ * concurrent transfers so a burst gets a fast {@code 503} instead of a hung connection, divided
+ * across the fleet rather than sized per container, and {@link #requireQuota} bounds what a board
+ * may accumulate, checked
  * before the blob is written so a rejected upload never leaks one. {@link #content} resolves a
  * {@code Range} against the stored size before touching storage, so a transfer that died at 90%
  * resumes for the last tenth instead of paying for the whole file again.
@@ -72,9 +73,12 @@ public class TaskAttachmentService {
     private final Clock clock;
 
     /**
-     * Bounds concurrent uploads and downloads; sized by {@code app.storage.max-concurrent-transfers}.
-     * Per JVM: at more than one API replica the true ceiling is this value times the replica count,
-     * so the configured number means "per replica" rather than "total" past api_max_replicas = 1.
+     * Bounds concurrent uploads and downloads; sized by dividing
+     * {@code app.storage.max-concurrent-transfers} across {@code app.storage.replica-count-hint}
+     * replicas, each JVM enforcing its own equal share. That keeps the configured number meaning
+     * "total across the fleet" rather than "per replica" once api_max_replicas rises above 1, at
+     * the cost of undercounting capacity while the deployment is scaled below its ceiling - the
+     * safe direction to be wrong in.
      */
     private final Semaphore transferPermits;
     private final long maxAttachmentsPerBoard;
@@ -100,7 +104,8 @@ public class TaskAttachmentService {
         this.mapper = mapper;
         this.blobStore = blobStore;
         this.clock = clock;
-        this.transferPermits = new Semaphore(storageProperties.maxConcurrentTransfers());
+        this.transferPermits = new Semaphore(Math.max(1,
+                storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
         this.maxAttachmentsPerBoard = storageProperties.maxAttachmentsPerBoard();
         this.maxTotalBytesPerBoard = storageProperties.maxTotalBytesPerBoard();
     }
