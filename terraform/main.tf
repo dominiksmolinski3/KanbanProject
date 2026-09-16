@@ -151,6 +151,24 @@ module "redis" {
   depends_on = [module.key_vault]
 }
 
+# WebSocketConfig's broker relay (the other half of phase 3): the one remaining piece of in-JVM
+# state the container split left behind. Lands in the same Container Apps environment as web_app and
+# api_app rather than a subnet of its own - internal TCP ingress within one environment needs no
+# private endpoint, unlike redis and postgres, which are separate managed services outside it.
+module "broker" {
+  source                 = "./modules/broker"
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  env                    = var.env
+  container_app_env_id   = module.vnet.container_app_env_id
+  key_vault_uri          = module.key_vault.uri
+  key_vault_id           = module.key_vault.id
+  rbac_propagation_delay = var.rbac_propagation_delay
+  tags                   = local.tags
+
+  depends_on = [module.key_vault]
+}
+
 # The public edge: nginx, the bundle, and the proxy in front of the API. It holds the only external
 # ingress in this deployment, which is why the ingress restrictions and the origin everything else
 # is told about are its.
@@ -199,6 +217,9 @@ module "api_app" {
   storage_blob_endpoint            = module.storage.blob_endpoint
   redis_hostname                   = module.redis.hostname
   redis_port                       = module.redis.port
+  broker_app_name                  = module.broker.app_name
+  broker_port                      = module.broker.port
+  broker_username                  = module.broker.username
   tags                             = local.tags
 
   # The browser's origin is the edge's FQDN, not this app's. Read from the web module's output
@@ -207,11 +228,11 @@ module "api_app" {
 
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
-  # module.redis is here for the same reason module.postgres and module.storage are: the container
-  # app references REDIS-ACCESS-KEY by a Key Vault secret name it builds as a string, not as a
-  # Terraform attribute reference, so nothing but this depends_on orders the secret's creation
-  # ahead of the app that reads it.
-  depends_on = [module.key_vault, module.postgres, module.storage, module.redis]
+  # module.redis and module.broker are here for the same reason module.postgres and module.storage
+  # are: the container app references REDIS-ACCESS-KEY and RABBITMQ-PASSWORD by Key Vault secret
+  # names it builds as strings, not as Terraform attribute references, so nothing but this
+  # depends_on orders either secret's creation ahead of the app that reads it.
+  depends_on = [module.key_vault, module.postgres, module.storage, module.redis, module.broker]
 
   mail_delivery_report_key = var.mail_delivery_report_key
 }

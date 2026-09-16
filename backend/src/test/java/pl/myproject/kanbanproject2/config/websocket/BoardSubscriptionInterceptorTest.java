@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The simple broker does not authorise a destination, so this is the whole of what stops a
+ * The broker does not authorise a destination, so this is the whole of what stops a
  * subscriber holding any valid token from sitting on any board's topic.
  *
  * <p>A refusal is a dropped frame, not an exception: throwing closes the whole session, which
@@ -50,7 +50,7 @@ class BoardSubscriptionInterceptorTest {
     @Test
     @DisplayName("a member may subscribe to the board")
     void letsAMemberThrough() {
-        var message = subscribe("/topic/boards/7", authenticated());
+        var message = subscribe("/topic/boards.7", authenticated());
 
         assertThat(interceptor.preSend(message, CHANNEL)).isSameAs(message);
         verify(boardService).requireVisible(eq(caller), eq(7));
@@ -62,7 +62,7 @@ class BoardSubscriptionInterceptorTest {
         when(boardService.requireVisible(any(User.class), any(Integer.class)))
                 .thenThrow(new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND));
 
-        assertThat(interceptor.preSend(subscribe("/topic/boards/9", authenticated()), CHANNEL))
+        assertThat(interceptor.preSend(subscribe("/topic/boards.9", authenticated()), CHANNEL))
                 .as("the frame reached the broker, so the topic is open to any signed-in account")
                 .isNull();
     }
@@ -70,7 +70,7 @@ class BoardSubscriptionInterceptorTest {
     @Test
     @DisplayName("an unauthenticated frame is dropped rather than treated as anybody")
     void dropsAnAnonymousSubscription() {
-        assertThat(interceptor.preSend(subscribe("/topic/boards/7", null), CHANNEL)).isNull();
+        assertThat(interceptor.preSend(subscribe("/topic/boards.7", null), CHANNEL)).isNull();
         verifyNoInteractions(boardService);
     }
 
@@ -80,7 +80,7 @@ class BoardSubscriptionInterceptorTest {
         when(boardService.requireVisible(any(User.class), any(Integer.class)))
                 .thenThrow(new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND));
 
-        assertThat(interceptor.preSend(subscribe("/topic/boards/7; drop", authenticated()), CHANNEL))
+        assertThat(interceptor.preSend(subscribe("/topic/boards.7; drop", authenticated()), CHANNEL))
                 .isNull();
     }
 
@@ -99,7 +99,7 @@ class BoardSubscriptionInterceptorTest {
     void onlyChecksSubscribeFrames() {
         for (StompCommand command : new StompCommand[] {StompCommand.CONNECT, StompCommand.SEND, StompCommand.UNSUBSCRIBE}) {
             var accessor = StompHeaderAccessor.create(command);
-            accessor.setDestination("/topic/boards/7");
+            accessor.setDestination("/topic/boards.7");
             var message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
             assertThat(interceptor.preSend(message, CHANNEL)).isSameAs(message);
