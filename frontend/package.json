@@ -13,6 +13,7 @@
     "test:coverage": "jest --coverage",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
+    "cypress:run:replicas": "cypress run --config \"specPattern=cypress/replicas/**/*.cy.js\"",
     "test:e2e": "cypress run",
     "cypress:seed": "node cypress/seed-test-account.js"
   },
