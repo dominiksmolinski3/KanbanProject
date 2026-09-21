@@ -810,6 +810,93 @@ and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, use
 points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat
 server on a separate host would need a configured URL rather than the page's.
 
+**Chat is the board's conversation, and until `V18` it was the one feature the boards-with-members
+model never reached.** The destination was built out of a `roomId` the client supplied — so any
+string named a topic — and an empty one named `/topic/public`, a single global room every
+signed-in account subscribed to on connect, where a member of one board read the messages of every
+other board's members. `sendPrivateMessage` had the matching hole from the other side, addressing
+whatever `recipientId` it was handed and walking straight past the peer scoping `GET /api/users`
+exists to enforce. Neither is addressable now, and six things carry the replacement:
+
+- **A board message travels `/topic/boards.{id}.chat`**, which is the board's *own* destination
+  with a suffix rather than a prefix of its own — so `BoardSubscriptionInterceptor` authorises it
+  with no second check to keep in step. That interceptor's `boardIdIn` reads the **first** segment
+  after the prefix for exactly this reason; it used to parse the whole suffix as the id, and its
+  Javadoc said chat's topics "must pass through untouched", which is a fair description of how a
+  feature with no tenancy survives in a repository that checks everything else. A dot, not a
+  slash, for the RabbitMQ reason `BoardEventPublisher.DESTINATION_PREFIX` states at length.
+- **A direct message reaches a peer and nobody else**, checked against `BoardService.peersOf` —
+  the same collection `GET /api/users` is built from, so the two cannot disagree about who is
+  reachable.
+- **Nothing in `ChatController` throws.** An exception on the inbound channel becomes a STOMP ERROR
+  frame and a *closed session*, so a paste over the 2 000-character limit did not bounce the
+  message — it dropped the connection, and the client reconnected into a room it had to rejoin.
+  That is the failure `BoardSubscriptionInterceptor` had already written its reasoning down for,
+  one channel over. A refusal is a dropped frame and a WARN.
+- **A refusal the sender already knows about is answered; one that turns on who they are is not.**
+  Blank and over-long come back on the sender's own `/user/queue/errors` as a `ChatRefusal`
+  carrying a **translation key, never a sentence** — the activity feed's rule, for the same reason.
+  A board the caller may not post to is silence, or the refusal would confirm the board is real.
+  `ChatRefusalKeysExistTest` is the guard on the two-file coupling that creates: the key is chosen
+  in Java and rendered from `frontend/public/locales`, in all nine bundles, and nothing else can
+  see a rename on either side — the client never names these keys, so `i18n.test.js` cannot.
+- **`BoardScopedStompRoutesTest` is `BoardScopedRoutesTest`'s rule one channel over**: every
+  `@MessageMapping` handler takes the caller it has to check. The REST scan has held that surface
+  honest since the tenancy model landed and nothing scanned STOMP, which is the gap chat grew in —
+  a guard that covers one transport and not the other is a guard that says where the next hole
+  will be. There is no `PublicPaths` to be excused by here: the channel is authenticated at
+  CONNECT, so the rule has no exceptions.
+- **A user destination is subscribed to without a name, and that was a live bug.**
+  `/user/queue/messages` is the whole destination: Spring reads the account off the session it
+  authenticated at CONNECT and rewrites the subscription to a queue of the session's own.
+  `chatApi.js` was subscribing to `/user/{email}/queue/messages` — which is the *sending* form —
+  so the subscription bound to a queue nothing publishes to. Measured on the compose stack: the
+  broker was holding the frames in `messages-user<session>` with no consumer, which is to say
+  **no direct message had been delivered since the STOMP relay replaced `enableSimpleBroker`**,
+  and nothing errored to say so. Neither suite could see it — Jest asserts a subscription was
+  made to a string, and the backend suite asserts `convertAndSendToUser` was called — so it took
+  running the stack. `chatApi.test.js` now asserts no subscription names an account.
+
+- **Presence is sent and not stored.** "X joined" is worth a line in the panel while somebody is
+  looking and is not worth a row in the scroll-back, where a reconnecting client would bury the
+  conversation under its own comings and goings. `WebSocketEventListener` announces a LEAVE on the
+  board the session joined and on nothing otherwise; it used to fall back to `/topic/public`, so a
+  disconnect told every account on the deployment.
+
+**The messages are readable at last, which is what makes writing them worth anything.**
+`ChatRepository` had an empty body and no route read the table, so every message was persisted to
+be unread: the panel showed only what arrived while it was open, and the rows accumulated forever
+in the database's storage, its backups and its restore time — line for line the charge this file
+levels at the `files` table when it calls it "the counter-example rather than the model". Chat was
+the second instance. `ChatHistoryController` serves two reads, because there are two kinds of
+message and one page holding both would answer neither question: `GET /api/chat?boardId=` is the
+board's conversation and `GET /api/chat/direct?with=` is the thread with one peer, in both
+directions. Both are paged with the activity feed's numbers and its refusal — 25 by default, 100
+at most, and `400 INVALID_CHAT_REQUEST` rather than a silent clamp. A `with=` naming somebody who
+shares no board is `404`, the same answer an address with no account gets.
+
+`ChatHistoryService.pruneExpiredMessages` is the other half: a conversation nobody can read
+accumulates forever and one anybody can read still does. It runs nightly at 03:30, off the hour the
+deadline sweep and the outbox relay use, and is deliberately **not** claimed the way those two are
+— a row deleted twice is a row deleted once, so a second replica running it concurrently is wasted
+work rather than a defect. `app.chat.retention-days` (90) is a plain property with a default rather
+than an environment variable, because a variable Terraform would have to pass, docker-compose
+repeat and `ConfigurationTest` audit is a cost a window no environment wants to differ on does not
+earn.
+
+`V18` is where the schema caught up: `chat_messages` gained a nullable `board_id` and lost
+`room_id`. **Exactly one of `board_id` and `recipient_id` is set** on any row the application
+writes. The rows already in the table are left alone rather than backfilled — a `room_id` of
+`general` is not a board id and no honest mapping exists — so they keep a null `board_id`, which
+means the read routes never return them, which is what they already were. `BoardService.deleteBoard`
+clears them by hand alongside the invitations and the activity rows, for the same reason: nothing
+cascades, and the foreign key is one the board could not be deleted around.
+
+On the client the room picker is gone — it offered `general`, `help` and `random`, which named
+topics the server had no opinion about. The board comes from `KanbanContext`, so switching boards
+switches the conversation and there is no second control to find; opening the panel loads page 0 of
+the history and "load older" pages back through it.
+
 ### Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'
