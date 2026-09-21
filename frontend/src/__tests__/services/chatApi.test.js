@@ -39,9 +39,9 @@ describe('ChatApi', () => {
     onRefusal = jest.fn();
   });
 
-  const connect = async (username = 'ada@example.com', ...token) => {
+  const connect = async (...token) => {
     const api = new ChatApi(onMessage, onError, onRefusal);
-    await api.connect(username, token.length ? token[0] : 'jwt-123');
+    await api.connect(token.length ? token[0] : 'jwt-123');
     return { api, client: clientInstances[0] };
   };
 
@@ -60,10 +60,17 @@ describe('ChatApi', () => {
     expect(SockJS).toHaveBeenCalledWith(`${window.location.origin}/ws`);
   });
 
-  it('subscribes to the private queue under the name the server knows', async () => {
-    const { client } = await connect('ada@example.com');
+  /*
+   * The subscribing form of a user destination carries no name: Spring reads the account off the
+   * session it authenticated at CONNECT. Naming it - which is the *sending* form, and what this
+   * file used to do - binds the subscription to a queue nothing publishes to, which is why no
+   * direct message had been delivered since the STOMP relay replaced enableSimpleBroker.
+   */
+  it('subscribes to the private queue without naming the account', async () => {
+    const { client } = await connect();
 
-    expect(client.subscriptions).toContain('/user/ada@example.com/queue/messages');
+    expect(client.subscriptions).toContain('/user/queue/messages');
+    expect(client.subscriptions.some((d) => d.includes('@'))).toBe(false);
   });
 
   /*
@@ -71,16 +78,16 @@ describe('ChatApi', () => {
    * member of one board read the messages of every other board's members.
    */
   it('subscribes to no topic on connect - there is no global room to join', async () => {
-    const { client } = await connect('ada@example.com');
+    const { client } = await connect();
 
     expect(client.subscriptions.filter((d) => d.startsWith('/topic/'))).toEqual([]);
     expect(client.subscriptions).not.toContain('/topic/public');
   });
 
   it('subscribes to the error queue, which is how a refusal arrives without closing the session', async () => {
-    const { client } = await connect('ada@example.com');
+    const { client } = await connect();
 
-    expect(client.subscriptions).toContain('/user/ada@example.com/queue/errors');
+    expect(client.subscriptions).toContain('/user/queue/errors');
   });
 
   it('hands a refusal to the caller as the parsed payload', async () => {
@@ -103,7 +110,7 @@ describe('ChatApi', () => {
   });
 
   it('connects without an Authorization header when there is no token to send', async () => {
-    const { client } = await connect('ada@example.com', undefined);
+    const { client } = await connect(undefined);
 
     // Better a refused CONNECT than a malformed "Bearer undefined".
     expect(client.connectHeaders).toEqual({});

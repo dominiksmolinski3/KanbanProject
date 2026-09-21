@@ -98,8 +98,6 @@ export function ChatProvider({ children }) {
   const { t } = useTranslation();
   const chatApiRef = useRef(null);
 
-  const chatUsername = user?.email;
-
   useEffect(() => {
     if (state.isOpen) {
       dispatch({ type: 'MARK_MESSAGES_READ' });
@@ -157,14 +155,14 @@ export function ChatProvider({ children }) {
 
     try {
       chatApiRef.current = new ChatApi(onMessageReceived, onError, onRefusal);
-      await chatApiRef.current.connect(chatUsername, token);
+      await chatApiRef.current.connect(token);
       chatApiRef.current.joinBoard(activeBoardId);
       dispatch({ type: 'SET_CONNECTED', payload: true });
     } catch (error) {
       onError(error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token, chatUsername, activeBoardId]);
+  }, [user, token, activeBoardId]);
 
   const disconnect = useCallback(() => {
     if (!chatApiRef.current) return;

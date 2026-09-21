@@ -28,12 +28,19 @@ export default class ChatApi {
   }
 
   /**
-   * @param {string} username the authenticated principal — the account's email. Spring resolves
-   *   /user/{name}/queue destinations against it, so anything else subscribes to a queue that
-   *   never receives a message.
+   * **A user destination is subscribed to without a name.** `/user/queue/messages` is the whole
+   * destination: Spring's `DefaultUserDestinationResolver` reads the account off the session it
+   * authenticated at CONNECT and rewrites the subscription to a queue of its own. Naming the
+   * account in it - `/user/{email}/queue/messages`, which is the *sending* form and is what this
+   * file used to send - is read as a destination literally called that, so the subscription binds
+   * to a queue nothing publishes to. Measured against the compose stack: the broker held the
+   * frames in `messages-user<session>` with a consumer count of zero, which is to say **no direct
+   * message has been delivered since the STOMP relay replaced `enableSimpleBroker`**, and nothing
+   * errored to say so. The previous version of this comment asserted the opposite.
+   *
    * @param {string} token the JWT. WebSocketAuthInterceptor refuses a CONNECT frame without it.
    */
-  connect(username, token) {
+  connect(token) {
     return new Promise((resolve, reject) => {
       try {
         this.stompClient = new Client({
@@ -44,8 +51,8 @@ export default class ChatApi {
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           onConnect: () => {
-            this.stompClient.subscribe(`/user/${username}/queue/messages`, this.onMessageReceived);
-            this.stompClient.subscribe(`/user/${username}/queue/errors`, (frame) => {
+            this.stompClient.subscribe('/user/queue/messages', this.onMessageReceived);
+            this.stompClient.subscribe('/user/queue/errors', (frame) => {
               try {
                 this.onRefusal(JSON.parse(frame.body));
               } catch {
