@@ -846,6 +846,17 @@ exists to enforce. Neither is addressable now, and six things carry the replacem
   a guard that covers one transport and not the other is a guard that says where the next hole
   will be. There is no `PublicPaths` to be excused by here: the channel is authenticated at
   CONNECT, so the rule has no exceptions.
+- **A user destination is subscribed to without a name, and that was a live bug.**
+  `/user/queue/messages` is the whole destination: Spring reads the account off the session it
+  authenticated at CONNECT and rewrites the subscription to a queue of the session's own.
+  `chatApi.js` was subscribing to `/user/{email}/queue/messages` — which is the *sending* form —
+  so the subscription bound to a queue nothing publishes to. Measured on the compose stack: the
+  broker was holding the frames in `messages-user<session>` with no consumer, which is to say
+  **no direct message had been delivered since the STOMP relay replaced `enableSimpleBroker`**,
+  and nothing errored to say so. Neither suite could see it — Jest asserts a subscription was
+  made to a string, and the backend suite asserts `convertAndSendToUser` was called — so it took
+  running the stack. `chatApi.test.js` now asserts no subscription names an account.
+
 - **Presence is sent and not stored.** "X joined" is worth a line in the panel while somebody is
   looking and is not worth a row in the scroll-back, where a reconnecting client would bury the
   conversation under its own comings and goings. `WebSocketEventListener` announces a LEAVE on the
