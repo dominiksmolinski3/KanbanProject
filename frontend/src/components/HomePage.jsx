@@ -7,12 +7,15 @@ import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import DemoBanner from './DemoBanner';
 import '../styles/HomePage.css';
 
 const HomePage = () => {
   const [activeTab, setActiveTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -124,8 +127,16 @@ const HomePage = () => {
   const handleRegister = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      const message = t('auth.passwordsMismatch', 'Passwords do not match');
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
   // The language this form is being read in - the only evidence available before the account has
   // a setting of its own, and what decides which language the verification mail arrives in. The
@@ -235,6 +246,7 @@ const HomePage = () => {
   
   return (
     <div className="home-container">
+      <DemoBanner />
       <div className="language-switcher-container">
         <LanguageSwitcher />
       </div>
@@ -390,14 +402,22 @@ const HomePage = () => {
                       required
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group password-field">
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder={t('auth.password', 'Password')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
                   </div>
                   {error && <div className="error-message">{error}</div>}
                   <p className="resend-link">
@@ -410,7 +430,7 @@ const HomePage = () => {
                 <form onSubmit={handleRegister}>
                   <div className="form-group">
                     <input
-                      type="username"
+                      type="text"
                       placeholder={t('auth.username', 'Username')}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -426,12 +446,29 @@ const HomePage = () => {
                       required
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group password-field">
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder={t('auth.password', 'Password')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  <div className="form-group password-field">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={t('auth.confirmPassword', 'Confirm Password')}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
                   </div>
