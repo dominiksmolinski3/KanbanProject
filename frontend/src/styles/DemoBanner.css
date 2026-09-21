@@ -1,0 +1,45 @@
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 40px 10px 16px;
+  background-color: #fff3cd;
+  color: #664d03;
+  border-bottom: 1px solid #ffe69c;
+  font-size: 14px;
+  text-align: center;
+}
+
+.demo-banner-text strong {
+  font-weight: 600;
+}
+
+.demo-banner-close {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #664d03;
+  padding: 4px;
+}
+
+.demo-banner-close:hover {
+  color: #40390f;
+}
+
+@media (max-width: 600px) {
+  .demo-banner {
+    font-size: 12px;
+    padding: 8px 32px 8px 10px;
+  }
+}
