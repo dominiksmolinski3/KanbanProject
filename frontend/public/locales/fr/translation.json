@@ -52,7 +52,8 @@
       "attachmentTooLarge": "{{name}} dépasse {{size}}",
       "attachmentUploadFailed": "Impossible d'envoyer {{name}}",
       "attachmentDownloadFailed": "Impossible de télécharger {{name}}",
-      "attachmentStorageUnavailable": "Le stockage de fichiers n'est pas configuré, les pièces jointes ne peuvent pas être enregistrées"
+      "attachmentStorageUnavailable": "Le stockage de fichiers n'est pas configuré, les pièces jointes ne peuvent pas être enregistrées",
+      "avatarAlt": "Avatar de l'utilisateur"
     },
     "board": {
       "loading": "Chargement du tableau kanban...",
@@ -222,7 +223,8 @@
       "addBoardItem": "Ajouter ligne/colonne",
       "users": "Utilisateurs",
       "logout": "Déconnexion",
-      "activity": "Activité"
+      "activity": "Activité",
+      "logoAlt": "Logo Kanban"
     },
     "forms": {
       "wipLimit": {
@@ -352,7 +354,8 @@
       "captchaLoadError": "Erreur de chargement du script.",
       "retry": "Recharger",
       "recentlyVerified": "Compte vérifié ! CAPTCHA ignoré pour cette connexion.",
-      "verifyAndLoginSuccess": "Compte vérifié et connexion réussie !"
+      "verifyAndLoginSuccess": "Compte vérifié et connexion réussie !",
+      "checkingSession": "Vérification de votre session..."
     },
     "taskLabels": {
       "addLabel": "+ Étiquette",
@@ -419,7 +422,8 @@
     "footer": {
       "help": "Aide",
       "about": "À propos",
-      "contact": "Contact"
+      "contact": "Contact",
+      "appName": "Tableau Kanban"
     },
     "devices": {
       "title": "Appareils connectés",
@@ -467,5 +471,40 @@
         "REOPENED": "{{who}} a rouvert {{what}}",
         "DELETED": "{{who}} a supprimé {{what}}"
       }
+    },
+    "demo": {
+        "notice": "Ceci est un site de test. Connectez-vous avec un compte de démonstration :",
+        "or": "ou",
+        "dismiss": "Fermer"
+    },
+    "taskDetails": {
+        "historyAndTimeline": "Historique et chronologie",
+        "parentAndChildTasks": "Tâches parentes et enfants",
+        "currentlyAssigned": "Actuellement assignés :",
+        "assignNewUser": "Assigner un nouvel utilisateur :",
+        "parentTask": "Tâche parente",
+        "idLabel": "ID :",
+        "removeParentLink": "Supprimer le lien parent",
+        "noParentTask": "Aucune tâche parente assignée",
+        "changeParentTask": "Changer la tâche parente",
+        "assignParentTask": "Assigner une tâche parente",
+        "selectParentTask": "Sélectionnez une tâche parente :",
+        "chooseTask": "Choisissez une tâche...",
+        "childTasks": "Tâches enfants",
+        "noChildTasks": "Aucune tâche enfant",
+        "unknownColumn": "Colonne inconnue",
+        "startBadge": "Début",
+        "currentBadge": "Actuel",
+        "dateAtTime": "{{date}} à {{time}}",
+        "duration": "Durée :",
+        "showingMoves": "Affichage de {{from}} - {{to}} sur {{total}} déplacements",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "page": "Page {{number}}",
+        "timeSpentAnalysis": "Analyse du temps passé",
+        "loadingTimeStatistics": "Chargement des statistiques de temps...",
+        "noTimeStatistics": "Aucune statistique de temps disponible",
+        "noColumnHistory": "Aucun historique de colonnes disponible",
+        "noColumnHistoryHint": "Cette tâche n'a pas encore changé de colonne"
     }
-  }
+}

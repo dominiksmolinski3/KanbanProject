@@ -8,7 +8,7 @@ function Footer() {
       <footer className="app-footer">
         <div className="footer-content">
           <div className="footer-info">
-            <p>© {currentYear} Tablica Kanban</p>
+            <p>© {currentYear} {t('footer.appName')}</p>
           </div>
           <div className="footer-links">
       <a href="#" className="footer-link">{t('footer.help')}</a>

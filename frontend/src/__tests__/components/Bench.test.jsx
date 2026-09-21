@@ -136,14 +136,14 @@ describe('Bench Component', () => {
       expect(screen.queryByText('Ładowanie...')).not.toBeInTheDocument();
     });
     
-    expect(screen.getByText('WIP Limit: 5')).toBeInTheDocument();
-    expect(screen.getByText('WIP Limit: ∞')).toBeInTheDocument();
+    expect(screen.getByText('bench.wipLimit: 5')).toBeInTheDocument();
+    expect(screen.getByText('bench.wipLimit: ∞')).toBeInTheDocument();
   
-    expect(screen.getByText('Zadania: 3/5')).toBeInTheDocument();
-    expect(screen.getByText('Zadania: 2/∞')).toBeInTheDocument();
-    expect(screen.getByText('Zadania: 4/3')).toBeInTheDocument();
+    expect(screen.getByText('bench.tasks: 3/5')).toBeInTheDocument();
+    expect(screen.getByText('bench.tasks: 2/∞')).toBeInTheDocument();
+    expect(screen.getByText('bench.tasks: 4/3')).toBeInTheDocument();
     
-    const exceededTaskCount = screen.getByText('Zadania: 4/3');
+    const exceededTaskCount = screen.getByText('bench.tasks: 4/3');
     expect(exceededTaskCount).toHaveClass('limit-reached');
   });
   
@@ -154,7 +154,7 @@ describe('Bench Component', () => {
       expect(screen.queryByText('Ładowanie...')).not.toBeInTheDocument();
     });
     
-    const wipLimitDisplay = screen.getAllByText(/WIP Limit/)[0].closest('.wip-limit-display');
+    const wipLimitDisplay = screen.getAllByText(/bench.wipLimit/)[0].closest('.wip-limit-display');
     fireEvent.click(wipLimitDisplay);
     
     const input = screen.getByPlaceholderText('∞');
@@ -183,7 +183,7 @@ describe('Bench Component', () => {
       expect(screen.queryByText('Ładowanie...')).not.toBeInTheDocument();
     });
     
-    const wipLimitDisplay = screen.getAllByText(/WIP Limit/)[0].closest('.wip-limit-display');
+    const wipLimitDisplay = screen.getAllByText(/bench.wipLimit/)[0].closest('.wip-limit-display');
     fireEvent.click(wipLimitDisplay);
     
     const input = screen.getByPlaceholderText('∞');
@@ -193,7 +193,7 @@ describe('Bench Component', () => {
     fireEvent.click(cancelButton);
     
     expect(screen.queryByPlaceholderText('∞')).not.toBeInTheDocument();
-    expect(screen.getByText('WIP Limit: 5')).toBeInTheDocument();
+    expect(screen.getByText('bench.wipLimit: 5')).toBeInTheDocument();
     
     expect(updateUserWipLimit).not.toHaveBeenCalled();
   });
@@ -208,7 +208,7 @@ describe('Bench Component', () => {
       expect(screen.queryByText('Ładowanie...')).not.toBeInTheDocument();
     });
 
-    const wipLimitDisplay = screen.getAllByText(/WIP Limit/)[0].closest('.wip-limit-display');
+    const wipLimitDisplay = screen.getAllByText(/bench.wipLimit/)[0].closest('.wip-limit-display');
     fireEvent.click(wipLimitDisplay);
     
     const saveButton = screen.getByTitle('bench.saveWipLimit');
@@ -287,7 +287,7 @@ describe('Bench Component', () => {
     });
     
 
-    const wipLimitDisplay = screen.getAllByText(/WIP Limit/)[0].closest('.wip-limit-display');
+    const wipLimitDisplay = screen.getAllByText(/bench.wipLimit/)[0].closest('.wip-limit-display');
     fireEvent.click(wipLimitDisplay);
     const input = screen.getByPlaceholderText('∞');
     fireEvent.change(input, { target: { value: '' } });

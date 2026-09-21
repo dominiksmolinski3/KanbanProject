@@ -52,7 +52,8 @@
       "attachmentTooLarge": "{{name}} أكبر من {{size}}",
       "attachmentUploadFailed": "تعذر رفع {{name}}",
       "attachmentDownloadFailed": "تعذر تنزيل {{name}}",
-      "attachmentStorageUnavailable": "تخزين الملفات غير مهيأ، لذا لا يمكن حفظ المرفقات"
+      "attachmentStorageUnavailable": "تخزين الملفات غير مهيأ، لذا لا يمكن حفظ المرفقات",
+      "avatarAlt": "الصورة الرمزية للمستخدم"
     },
     "board": {
       "loading": "جاري تحميل لوحة كانبان...",
@@ -222,7 +223,8 @@
       "addBoardItem": "إضافة صف/عمود",
       "users": "المستخدمون",
       "logout": "تسجيل الخروج",
-      "activity": "النشاط"
+      "activity": "النشاط",
+      "logoAlt": "شعار كانبان"
     },
     "forms": {
       "wipLimit": {
@@ -352,7 +354,8 @@
       "captchaLoadError": "خطأ في تحميل البرنامج النصي.",
       "retry": "إعادة التحميل",
       "recentlyVerified": "تم التحقق من الحساب! تم تخطي CAPTCHA لتسجيل الدخول هذا.",
-      "verifyAndLoginSuccess": "تم التحقق من الحساب وتسجيل الدخول بنجاح!"
+      "verifyAndLoginSuccess": "تم التحقق من الحساب وتسجيل الدخول بنجاح!",
+      "checkingSession": "جارٍ التحقق من جلستك..."
     },
     "taskLabels": {
       "addLabel": "+ تصنيف",
@@ -419,7 +422,8 @@
     "footer": {
       "help": "مساعدة",
       "about": "معلومات عنا",
-      "contact": "اتصال"
+      "contact": "اتصال",
+      "appName": "لوحة كانبان"
     },
     "devices": {
       "title": "الأجهزة المسجّلة الدخول",
@@ -467,5 +471,40 @@
         "REOPENED": "أعاد {{who}} فتح {{what}}",
         "DELETED": "حذف {{who}} {{what}}"
       }
+    },
+    "demo": {
+        "notice": "هذا موقع تجريبي. سجّل الدخول بحساب تجريبي:",
+        "or": "أو",
+        "dismiss": "إغلاق"
+    },
+    "taskDetails": {
+        "historyAndTimeline": "السجل والخط الزمني",
+        "parentAndChildTasks": "المهام الأصل والفرعية",
+        "currentlyAssigned": "المعيَّنون حاليًا:",
+        "assignNewUser": "تعيين مستخدم جديد:",
+        "parentTask": "المهمة الأصل",
+        "idLabel": "المعرّف:",
+        "removeParentLink": "إزالة الارتباط بالمهمة الأصل",
+        "noParentTask": "لم يتم تعيين مهمة أصل",
+        "changeParentTask": "تغيير المهمة الأصل",
+        "assignParentTask": "تعيين مهمة أصل",
+        "selectParentTask": "اختر مهمة أصل:",
+        "chooseTask": "اختر مهمة...",
+        "childTasks": "المهام الفرعية",
+        "noChildTasks": "لا توجد مهام فرعية",
+        "unknownColumn": "عمود غير معروف",
+        "startBadge": "البداية",
+        "currentBadge": "الحالي",
+        "dateAtTime": "{{date}} في {{time}}",
+        "duration": "المدة:",
+        "showingMoves": "عرض {{from}} - {{to}} من {{total}} عملية نقل",
+        "previous": "السابق",
+        "next": "التالي",
+        "page": "الصفحة {{number}}",
+        "timeSpentAnalysis": "تحليل الوقت المستغرق",
+        "loadingTimeStatistics": "جارٍ تحميل إحصاءات الوقت...",
+        "noTimeStatistics": "لا تتوفر إحصاءات للوقت",
+        "noColumnHistory": "لا يتوفر سجل للأعمدة",
+        "noColumnHistoryHint": "لم تنتقل هذه المهمة بين الأعمدة بعد"
     }
-  }
+}
