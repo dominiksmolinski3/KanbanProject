@@ -240,7 +240,7 @@ function Task({ task, columnId, rowId }) {
       <div className="task-avatar">
         <img 
           src={avatarUrl || defaultAvatar} 
-          alt="User avatar"
+          alt={t('taskActions.avatarAlt')}
           className="avatar-preview"
           onError={(e) => {
             e.target.src = defaultAvatar;
@@ -597,7 +597,7 @@ function Task({ task, columnId, rowId }) {
           <div className="subtask-warning">
             <div className="warning-icon">⚠️</div>
             <div className="warning-message">
-              {"Nieukończone podzadania"}
+              {t('taskActions.incompleteSubtasks')}
             </div>
           <button 
             className="warning-close-btn" 
@@ -671,20 +671,20 @@ function Task({ task, columnId, rowId }) {
         <div className="description-popover-arrow" style={{left: '50%'}}></div>
         <div className="description-popover-content">
           {loadingDescription ? (
-            <p className="loading-description">Ładowanie szczegółów...</p>
+            <p className="loading-description">{t('taskActions.loading')}</p>
           ) : (
             <>
               <div className="popover-section">
-                <h4 className="popover-section-title">Opis zadania</h4>
+                <h4 className="popover-section-title">{t('taskActions.description')}</h4>
                 {taskDescription ? (
                   <p className="description-content">{taskDescription}</p>
                 ) : (
-                  <p className="empty-description">Brak opisu.</p>
+                  <p className="empty-description">{t('taskActions.noDescription')}</p>
                 )}
               </div>
           
               <div className="popover-section subtasks-preview">
-                <h4 className="popover-section-title">Podzadania</h4>
+                <h4 className="popover-section-title">{t('taskActions.subtasks')}</h4>
                 {taskSubtasks && taskSubtasks.length > 0 ? (
                   <ul className="subtasks-preview-list">
                     {taskSubtasks.map(subtask => (
@@ -700,7 +700,7 @@ function Task({ task, columnId, rowId }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="empty-subtasks">Brak podzadań.</p>
+                  <p className="empty-subtasks">{t('taskActions.noSubtasks')}</p>
                 )}
               </div>
             </>

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import * as parser from '@babel/parser';
 
 const LOCALES_DIR = path.join(process.cwd(), 'public', 'locales');
 const SOURCE_DIR = path.join(process.cwd(), 'src');
@@ -67,5 +68,123 @@ describe('user-facing strings', () => {
     }
 
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * The half the toast check could not see.
+ *
+ * Nine locales with 391 identical keys, parity asserted and holding — and three Polish strings in
+ * a card popover that every non-Polish reader saw, an English literal on ten screens in the task
+ * panel, and a `title="row.delete"` rendering the translation key itself. All of them lived where
+ * the assertion above never looked: in JSX text nodes and in `title` / `aria-label` / `placeholder`
+ * / `alt` attributes.
+ *
+ * <p>This reads the JSX with Babel's own parser rather than with a regex, because the shapes that
+ * matter cannot be told apart by one: `{isOpen ? 'Hide' : 'Show'}` is prose and
+ * `className={isOpen ? 'open' : ''}` is not, and both are a string literal in a conditional. The
+ * parser makes the distinction the obvious one — an expression that is a child of an element is on
+ * screen, and an expression that is an attribute value mostly is not.
+ *
+ * A repository that catches a reworded log line with `DeadLetterAlertTest` should not be blind to
+ * Polish prose in a default-English screen.
+ */
+describe('nothing on screen bypasses t()', () => {
+  /** Attributes a person reads or hears. `className`, `type` and the rest are not prose. */
+  const SPOKEN_ATTRIBUTES = new Set([
+    'title', 'aria-label', 'aria-description', 'placeholder', 'alt',
+  ]);
+
+  const hasLetters = (value) => /\p{L}/u.test(value);
+
+  function walk(node, visit, parent) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach((child) => walk(child, visit, parent));
+      return;
+    }
+    const isNode = typeof node.type === 'string';
+    if (isNode) visit(node, parent);
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'leadingComments' || key === 'trailingComments') continue;
+      walk(node[key], visit, isNode ? node : parent);
+    }
+  }
+
+  /**
+   * The strings an expression can put on screen. A conditional shows either branch; `a || b` shows
+   * `b` when `a` is falsy, which is how a dead `t('key') || 'fallback'` hides a missing key. A
+   * template literal is prose only in the parts outside its interpolations, so `${a} - ${b}` is
+   * not one and `Page ${n}` is.
+   */
+  function displayed(expression, found) {
+    if (!expression) return;
+    if (expression.type === 'StringLiteral') {
+      found.push({ value: expression.value, line: expression.loc.start.line });
+      return;
+    }
+    if (expression.type === 'ConditionalExpression') {
+      displayed(expression.consequent, found);
+      displayed(expression.alternate, found);
+      return;
+    }
+    if (expression.type === 'LogicalExpression') {
+      displayed(expression.right, found);
+      return;
+    }
+    if (expression.type === 'TemplateLiteral') {
+      const prose = expression.quasis.map((quasi) => quasi.value.cooked).join('');
+      if (prose.trim()) found.push({ value: prose, line: expression.loc.start.line });
+    }
+  }
+
+  const scan = () => {
+    const offenders = [];
+
+    for (const file of sourceFiles(SOURCE_DIR)) {
+      const relative = path.relative(process.cwd(), file).replace(/\\/g, '/');
+      const ast = parser.parse(fs.readFileSync(file, 'utf8'), {
+        sourceType: 'module',
+        plugins: ['jsx'],
+      });
+
+      walk(ast.program, (node, parent) => {
+        if (node.type === 'JSXText' && hasLetters(node.value.trim())) {
+          offenders.push(`${relative}:${node.loc.start.line}  ${JSON.stringify(node.value.trim())}`);
+        }
+
+        if (node.type === 'JSXAttribute' && node.value && node.value.type === 'StringLiteral') {
+          const name = node.name.type === 'JSXNamespacedName'
+            ? `${node.name.namespace.name}:${node.name.name.name}`
+            : node.name.name;
+          if (SPOKEN_ATTRIBUTES.has(name) && hasLetters(node.value.value)) {
+            offenders.push(`${relative}:${node.loc.start.line}  ${name}=${JSON.stringify(node.value.value)}`);
+          }
+        }
+
+        // A child expression is on screen; an attribute value is the parser's own distinction.
+        if (node.type === 'JSXExpressionContainer' && parent && parent.type !== 'JSXAttribute') {
+          const found = [];
+          displayed(node.expression, found);
+          for (const literal of found) {
+            if (hasLetters(literal.value)) {
+              offenders.push(`${relative}:${literal.line}  ${JSON.stringify(literal.value)}`);
+            }
+          }
+        }
+      });
+    }
+
+    return offenders.sort();
+  };
+
+  test('no JSX text node or spoken attribute carries prose', () => {
+    expect(scan()).toEqual([]);
+  });
+
+  test('the scan reads the components - a silent zero would pass the assertion above', () => {
+    // If the parse ever stops finding JSX, the check above passes by seeing nothing at all.
+    expect(sourceFiles(SOURCE_DIR).filter((file) => file.endsWith('.jsx')).length)
+      .toBeGreaterThan(20);
   });
 });

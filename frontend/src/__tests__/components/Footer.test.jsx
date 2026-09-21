@@ -16,7 +16,7 @@ describe('Footer Component', () => {
     expect(footerElement).toBeInTheDocument();
     expect(footerElement).toHaveClass('app-footer');
     const currentYear = new Date().getFullYear();
-    expect(screen.getByText(new RegExp(`© ${currentYear} Tablica Kanban`))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`© ${currentYear} footer.appName`))).toBeInTheDocument();
   });
 
   test('renders footer links', () => {

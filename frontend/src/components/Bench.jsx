@@ -151,7 +151,7 @@ function Bench() {
           {isOpen ? '◀' : '▶'}
         </button>
         <div className="bench">
-          <h3>Zespół</h3>
+          <h3>{t('bench.title')}</h3>
           <div className="error">{error}</div>
         </div>
       </div>
@@ -226,7 +226,7 @@ function Bench() {
                         startEditWipLimit(user.id);
                       }}
                     >
-                      <span>WIP Limit: {user.wipLimit ? user.wipLimit : '∞'}</span>
+                      <span>{t('bench.wipLimit')}: {user.wipLimit ? user.wipLimit : '∞'}</span>
                       <button 
                         className="edit-wip-btn" 
                         title={t('bench.editWipLimit')}
@@ -238,7 +238,7 @@ function Bench() {
                 </div>
                 {user.taskCount && (
                   <div className={`user-task-count ${(user.taskCount >= (user.wipLimit || Infinity)) ? 'limit-reached' : ''}`}>
-                    Zadania: {user.taskCount}/{user.wipLimit || '∞'}
+                    {t('bench.tasks')}: {user.taskCount}/{user.wipLimit || '∞'}
                   </div>
                 )}
               </div>

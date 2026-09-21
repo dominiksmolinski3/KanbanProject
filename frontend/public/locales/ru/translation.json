@@ -52,7 +52,8 @@
       "attachmentTooLarge": "{{name}} больше, чем {{size}}",
       "attachmentUploadFailed": "Не удалось загрузить {{name}}",
       "attachmentDownloadFailed": "Не удалось скачать {{name}}",
-      "attachmentStorageUnavailable": "Хранилище файлов не настроено, поэтому вложения нельзя сохранить"
+      "attachmentStorageUnavailable": "Хранилище файлов не настроено, поэтому вложения нельзя сохранить",
+      "avatarAlt": "Аватар пользователя"
     },
     "board": {
       "loading": "Загрузка канбан-доски...",
@@ -222,7 +223,8 @@
       "addBoardItem": "Добавить строку/колонку",
       "users": "Пользователи",
       "logout": "Выход",
-      "activity": "Активность"
+      "activity": "Активность",
+      "logoAlt": "Логотип Kanban"
     },
     "forms": {
       "wipLimit": {
@@ -352,7 +354,8 @@
       "captchaLoadError": "Ошибка загрузки скрипта.",
       "retry": "Обновить",
       "recentlyVerified": "Аккаунт подтверждён! CAPTCHA пропущена для этого входа.",
-      "verifyAndLoginSuccess": "Аккаунт подтверждён, вход выполнен успешно!"
+      "verifyAndLoginSuccess": "Аккаунт подтверждён, вход выполнен успешно!",
+      "checkingSession": "Проверка сеанса..."
     },
     "taskLabels": {
       "addLabel": "+ Метка",
@@ -419,7 +422,8 @@
     "footer": {
       "help": "Помощь",
       "about": "О нас",
-      "contact": "Контакты"
+      "contact": "Контакты",
+      "appName": "Доска Kanban"
     },
     "devices": {
       "title": "Устройства с активным входом",
@@ -467,5 +471,40 @@
         "REOPENED": "{{who}} снова открыл(а) {{what}}",
         "DELETED": "{{who}} удалил(а) {{what}}"
       }
+    },
+    "demo": {
+        "notice": "Это тестовый сайт. Войдите с помощью демонстрационной учётной записи:",
+        "or": "или",
+        "dismiss": "Закрыть"
+    },
+    "taskDetails": {
+        "historyAndTimeline": "История и хронология",
+        "parentAndChildTasks": "Родительские и дочерние задачи",
+        "currentlyAssigned": "Назначены сейчас:",
+        "assignNewUser": "Назначить нового пользователя:",
+        "parentTask": "Родительская задача",
+        "idLabel": "ID:",
+        "removeParentLink": "Удалить связь с родительской задачей",
+        "noParentTask": "Родительская задача не назначена",
+        "changeParentTask": "Изменить родительскую задачу",
+        "assignParentTask": "Назначить родительскую задачу",
+        "selectParentTask": "Выберите родительскую задачу:",
+        "chooseTask": "Выберите задачу...",
+        "childTasks": "Дочерние задачи",
+        "noChildTasks": "Дочерних задач нет",
+        "unknownColumn": "Неизвестная колонка",
+        "startBadge": "Начало",
+        "currentBadge": "Сейчас",
+        "dateAtTime": "{{date}} в {{time}}",
+        "duration": "Длительность:",
+        "showingMoves": "Показано {{from}} - {{to}} из {{total}} перемещений",
+        "previous": "Назад",
+        "next": "Вперёд",
+        "page": "Страница {{number}}",
+        "timeSpentAnalysis": "Анализ затраченного времени",
+        "loadingTimeStatistics": "Загрузка статистики времени...",
+        "noTimeStatistics": "Статистика времени недоступна",
+        "noColumnHistory": "История колонок недоступна",
+        "noColumnHistoryHint": "Эта задача ещё не перемещалась между колонками"
     }
-  }
+}

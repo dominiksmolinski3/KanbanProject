@@ -52,7 +52,8 @@
       "attachmentTooLarge": "{{name}} は {{size}} を超えています",
       "attachmentUploadFailed": "{{name}} をアップロードできませんでした",
       "attachmentDownloadFailed": "{{name}} をダウンロードできませんでした",
-      "attachmentStorageUnavailable": "ファイルストレージが設定されていないため、添付ファイルを保存できません"
+      "attachmentStorageUnavailable": "ファイルストレージが設定されていないため、添付ファイルを保存できません",
+      "avatarAlt": "ユーザーのアバター"
     },
     "board": {
       "loading": "かんばんボードを読み込み中...",
@@ -222,7 +223,8 @@
       "addBoardItem": "行/カラムを追加",
       "users": "ユーザー",
       "logout": "ログアウト",
-      "activity": "アクティビティ"
+      "activity": "アクティビティ",
+      "logoAlt": "カンバンのロゴ"
     },
     "forms": {
       "wipLimit": {
@@ -352,7 +354,8 @@
       "captchaLoadError": "スクリプトの読み込みエラー。",
       "retry": "再読み込み",
       "recentlyVerified": "アカウントが確認されました！このログインでは CAPTCHA をスキップします。",
-      "verifyAndLoginSuccess": "アカウントの確認とログインが完了しました！"
+      "verifyAndLoginSuccess": "アカウントの確認とログインが完了しました！",
+      "checkingSession": "セッションを確認しています..."
     },
     "taskLabels": {
       "addLabel": "+ ラベル",
@@ -419,7 +422,8 @@
     "footer": {
       "help": "ヘルプ",
       "about": "私たちについて",
-      "contact": "お問い合わせ"
+      "contact": "お問い合わせ",
+      "appName": "カンバンボード"
     },
     "devices": {
       "title": "ログイン中のデバイス",
@@ -467,5 +471,40 @@
         "REOPENED": "{{who}} が {{what}} を再開しました",
         "DELETED": "{{who}} が {{what}} を削除しました"
       }
+    },
+    "demo": {
+        "notice": "これはテスト用のサイトです。デモアカウントでサインインしてください:",
+        "or": "または",
+        "dismiss": "閉じる"
+    },
+    "taskDetails": {
+        "historyAndTimeline": "履歴とタイムライン",
+        "parentAndChildTasks": "親タスクと子タスク",
+        "currentlyAssigned": "現在の担当者:",
+        "assignNewUser": "新しいユーザーを割り当てる:",
+        "parentTask": "親タスク",
+        "idLabel": "ID:",
+        "removeParentLink": "親タスクとの関連を解除",
+        "noParentTask": "親タスクは設定されていません",
+        "changeParentTask": "親タスクを変更",
+        "assignParentTask": "親タスクを設定",
+        "selectParentTask": "親タスクを選択:",
+        "chooseTask": "タスクを選択...",
+        "childTasks": "子タスク",
+        "noChildTasks": "子タスクはありません",
+        "unknownColumn": "不明なカラム",
+        "startBadge": "開始",
+        "currentBadge": "現在",
+        "dateAtTime": "{{date}} {{time}}",
+        "duration": "期間:",
+        "showingMoves": "{{total}} 件中 {{from}} - {{to}} 件の移動を表示",
+        "previous": "前へ",
+        "next": "次へ",
+        "page": "{{number}} ページ",
+        "timeSpentAnalysis": "所要時間の分析",
+        "loadingTimeStatistics": "時間統計を読み込み中...",
+        "noTimeStatistics": "時間統計はありません",
+        "noColumnHistory": "カラムの履歴はありません",
+        "noColumnHistoryHint": "このタスクはまだカラム間を移動していません"
     }
-  }
+}

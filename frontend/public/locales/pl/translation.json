@@ -52,7 +52,8 @@
     "attachmentTooLarge": "{{name}} jest większy niż {{size}}",
     "attachmentUploadFailed": "Nie udało się wysłać pliku {{name}}",
     "attachmentDownloadFailed": "Nie udało się pobrać pliku {{name}}",
-    "attachmentStorageUnavailable": "Magazyn plików nie jest skonfigurowany, więc nie można zapisać załączników"
+    "attachmentStorageUnavailable": "Magazyn plików nie jest skonfigurowany, więc nie można zapisać załączników",
+    "avatarAlt": "Awatar użytkownika"
   },
   "board": {
     "loading": "Ładowanie tablicy kanban...",
@@ -222,7 +223,8 @@
     "addBoardItem": "Dodaj wiersz/kolumnę",
     "users": "Użytkownicy",
     "logout": "Wyloguj",
-    "activity": "Aktywność"
+    "activity": "Aktywność",
+    "logoAlt": "Logo Kanban"
   },
   "forms": {
     "wipLimit": {
@@ -352,7 +354,8 @@
     "captchaLoadError": "Błąd ładowania skryptu.",
     "retry": "Odśwież",
     "recentlyVerified": "Konto zweryfikowane! CAPTCHA pominięta przy tym logowaniu.",
-    "verifyAndLoginSuccess": "Konto zweryfikowane i zalogowano pomyślnie!"
+    "verifyAndLoginSuccess": "Konto zweryfikowane i zalogowano pomyślnie!",
+    "checkingSession": "Sprawdzanie sesji..."
   },
   "taskLabels": {
     "addLabel": "+ Etykieta",
@@ -419,7 +422,8 @@
   "footer": {
     "help": "Pomoc",
     "about": "O nas",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "appName": "Tablica Kanban"
   },
   "devices": {
     "title": "Zalogowane urządzenia",
@@ -467,5 +471,40 @@
       "REOPENED": "{{who}} otworzył(a) ponownie {{what}}",
       "DELETED": "{{who}} usunął(-nęła) {{what}}"
     }
+  },
+  "demo": {
+    "notice": "To jest strona testowa. Zaloguj się kontem demonstracyjnym:",
+    "or": "lub",
+    "dismiss": "Zamknij"
+  },
+  "taskDetails": {
+    "historyAndTimeline": "Historia i oś czasu",
+    "parentAndChildTasks": "Zadania nadrzędne i podrzędne",
+    "currentlyAssigned": "Obecnie przypisani:",
+    "assignNewUser": "Przypisz nowego użytkownika:",
+    "parentTask": "Zadanie nadrzędne",
+    "idLabel": "ID:",
+    "removeParentLink": "Usuń powiązanie nadrzędne",
+    "noParentTask": "Brak zadania nadrzędnego",
+    "changeParentTask": "Zmień zadanie nadrzędne",
+    "assignParentTask": "Przypisz zadanie nadrzędne",
+    "selectParentTask": "Wybierz zadanie nadrzędne:",
+    "chooseTask": "Wybierz zadanie...",
+    "childTasks": "Zadania podrzędne",
+    "noChildTasks": "Brak zadań podrzędnych",
+    "unknownColumn": "Nieznana kolumna",
+    "startBadge": "Początek",
+    "currentBadge": "Obecnie",
+    "dateAtTime": "{{date}} o {{time}}",
+    "duration": "Czas trwania:",
+    "showingMoves": "Pokazano {{from}} - {{to}} z {{total}} przeniesień",
+    "previous": "Poprzednia",
+    "next": "Następna",
+    "page": "Strona {{number}}",
+    "timeSpentAnalysis": "Analiza spędzonego czasu",
+    "loadingTimeStatistics": "Wczytywanie statystyk czasu...",
+    "noTimeStatistics": "Brak statystyk czasu",
+    "noColumnHistory": "Brak historii kolumn",
+    "noColumnHistoryHint": "To zadanie nie zmieniło jeszcze kolumny"
   }
 }

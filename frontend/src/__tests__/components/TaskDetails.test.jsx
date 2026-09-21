@@ -404,7 +404,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
 
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
     
     const assignButton = screen.getByRole('button', { name: 'taskActions.assign' });
@@ -432,7 +432,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
 
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
     
     const assignButton = screen.getByRole('button', { name: 'taskActions.assign' });
@@ -634,7 +634,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
@@ -672,7 +672,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
@@ -761,7 +761,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
@@ -866,7 +866,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('Parent & Child Tasks');
+    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
     fireEvent.click(relationshipsButton);
   
     await waitFor(() => { 

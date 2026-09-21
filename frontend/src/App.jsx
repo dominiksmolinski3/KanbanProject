@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { setupApiInterceptors } from './services/apiInterceptor';
 import { KanbanProvider } from './context/KanbanContext';
@@ -19,9 +20,10 @@ setupApiInterceptors();
 
 const ProtectedRoute = ({ children }) => {
   const { token, isLoading } = useAuth();
+  const { t } = useTranslation();
   
   if (isLoading) {
-    return <div>Loading authentication...</div>;
+    return <div>{t('auth.checkingSession')}</div>;
   }
   
   if (!token) {
