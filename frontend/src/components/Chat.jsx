@@ -5,126 +5,116 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/components/Chat.css';
 
 function Chat() {
-  const { 
-    isOpen, 
+  const {
+    isOpen,
     messages,
-    message, 
+    message,
     isConnected,
     unreadCount,
-    currentRoom,
     recipient,
     messageType,
-    availableRooms,
+    hasMoreHistory,
+    isLoadingHistory,
     toggleChat,
     sendMessage,
-    joinRoom,
-    leaveRoom,
+    loadOlderMessages,
+    reloadConversation,
     setMessage,
     setMessageType,
     setRecipient
   } = useChat();
-  
+
   const { user } = useAuth();
   const { t } = useTranslation();
-  
+
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
-  
+
   useEffect(() => {
     if (isOpen && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen]);
-  
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
-  
+
   const getMessageClass = (msg) => {
     if (msg.type === 'JOIN' || msg.type === 'LEAVE') {
       return 'system-message';
     }
-    
+
     // The server stamps every message with the JWT subject, which is the account's email.
     if (msg.sender === user?.email) {
       return 'own-message';
     }
-    
+
     return 'other-message';
   };
-  
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   return (
     <div className="chat-container">
       {isOpen ? (
         <div className="chat-panel">
           <div className="chat-header">
             <h3>
-              {currentRoom ? `${t('chat.room')}: ${currentRoom}` : t('chat.title')}
+              {messageType === 'private' ? t('chat.private') : t('chat.boardConversation')}
             </h3>
             <div className="chat-controls">
-              <select 
-                value={messageType} 
+              <select
+                value={messageType}
                 onChange={(e) => setMessageType(e.target.value)}
                 className="message-type-select"
+                aria-label={t('chat.conversationKind')}
               >
-                <option value="public">{t('chat.public')}</option>
-                <option value="room">{t('chat.room')}</option>
+                {/* The board replaced a "public" option that was genuinely public - one global
+                    room every account on the deployment was on. */}
+                <option value="board">{t('chat.board')}</option>
                 <option value="private">{t('chat.private')}</option>
               </select>
-              
+
               {messageType === 'private' && (
                 <input
                   type="text"
                   placeholder={t('chat.recipient')}
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
+                  onBlur={reloadConversation}
                   className="recipient-input"
                 />
               )}
-              
-              {messageType === 'room' && (
-                <>
-                  {currentRoom ? (
-                    <button 
-                      onClick={leaveRoom}
-                      className="leave-room-btn"
-                    >
-                      {t('chat.leaveRoom')}
-                    </button>
-                  ) : (
-                    <select 
-                      onChange={(e) => joinRoom(e.target.value)}
-                      value=""
-                      className="room-select"
-                    >
-                      <option value="" disabled>{t('chat.selectRoom')}</option>
-                      {availableRooms.map(room => (
-                        <option key={room} value={room}>{room}</option>
-                      ))}
-                    </select>
-                  )}
-                </>
-              )}
-              
-              <button 
+
+              <button
                 onClick={toggleChat}
                 className="close-chat-btn"
+                title={t('chat.closeChat')}
               >
                 ×
               </button>
             </div>
           </div>
-          
+
           <div className="chat-messages" ref={chatContainerRef}>
+            {hasMoreHistory && (
+              <button
+                className="load-older-btn"
+                onClick={loadOlderMessages}
+                disabled={isLoadingHistory}
+              >
+                {isLoadingHistory ? t('chat.loadingHistory') : t('chat.loadOlder')}
+              </button>
+            )}
+
             {messages.length === 0 ? (
               <div className="no-messages">{t('chat.noMessages')}</div>
             ) : (
@@ -135,19 +125,18 @@ function Chat() {
                       {t('chat.userJoined', { user: msg.sender })}
                     </div>
                   )}
-                  
+
                   {msg.type === 'LEAVE' && (
                     <div className="system-content">
                       {t('chat.userLeft', { user: msg.sender })}
                     </div>
                   )}
-                  
+
                   {(msg.type === 'CHAT' || msg.type === 'PRIVATE') && (
                     <>
                       <div className="message-header">
                         <span className="message-sender">
                           {msg.sender}
-                          {msg.roomId && <span className="message-room"> → {msg.roomId}</span>}
                           {msg.recipientId && <span className="message-private"> → {msg.recipientId}</span>}
                         </span>
                         <span className="message-time">{formatTimestamp(msg.timestamp)}</span>
@@ -160,16 +149,17 @@ function Chat() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          
+
           <div className="chat-input-container">
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={t('chat.typingMessage')}
+              aria-label={t('chat.typingMessage')}
               className="chat-input"
             />
-            <button 
+            <button
               onClick={sendMessage}
               disabled={!isConnected || !message.trim()}
               className="send-button"
@@ -179,8 +169,8 @@ function Chat() {
           </div>
         </div>
       ) : (
-        <button 
-          className="chat-toggle-button" 
+        <button
+          className="chat-toggle-button"
           onClick={toggleChat}
           title={t('chat.openChat')}
         >

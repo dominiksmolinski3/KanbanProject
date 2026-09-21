@@ -109,6 +109,7 @@ class TenantIsolationTest {
                 taskRepository, historyRepository, userRepository,
                 mock(pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository.class),
                 mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRepository.class),
+                mock(pl.myproject.kanbanproject2.chat.ChatRepository.class),
                 boardMapper);
 
         var taskMapper = new TaskMapper();

@@ -43,8 +43,9 @@ public class BoardEventPublisher {
      * ever needed them), but a further {@code /} makes the whole destination invalid and the
      * SUBSCRIBE is refused with a STOMP ERROR frame that closes the connection. Spring's in-JVM
      * {@code enableSimpleBroker} never enforced this, so it was invisible until the broker relay
-     * replaced it - see {@code /topic/room.} in {@code WebSocketEventListener}, which already used
-     * a dot for the same reason.
+     * replaced it. {@code ChatService.boardDestination} appends {@code .chat} to this same
+     * prefix rather than taking one of its own, which is why the dot matters twice and why one
+     * subscription check covers both destinations.
      */
     public static final String DESTINATION_PREFIX = "/topic/boards.";
 
