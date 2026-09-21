@@ -65,6 +65,13 @@ public enum ExceptionIdentifier {
     INVALID_ACTIVITY_REQUEST(BAD_REQUEST, "The activity feed cannot be paged as asked"),
 
     /*
+     * The third of the same shape, for the chat scroll-back. Separate for the reason
+     * INVALID_ACTIVITY_REQUEST is separate from INVALID_SEARCH: a message naming the wrong screen
+     * sends somebody looking in the wrong place.
+     */
+    INVALID_CHAT_REQUEST(BAD_REQUEST, "The chat history cannot be paged as asked"),
+
+    /*
      * The unauthenticated routes answer only three statuses: 202 for signup/resend regardless of
      * the address, 401 for any login failure, 400 for a bad verification code. USER_ALREADY_EXISTS,
      * ACCOUNT_NOT_VERIFIED and ACCOUNT_ALREADY_VERIFIED are gone rather than unused, since each

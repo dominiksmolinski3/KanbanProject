@@ -9,7 +9,6 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
@@ -19,9 +18,10 @@ import pl.myproject.kanbanproject2.user.User;
 import java.security.Principal;
 
 /**
- * Decides who may listen to a board - the only thing standing between {@code /topic/boards.{id}}
- * and every signed-in account, since the broker has no notion of who is allowed on a topic.
- * Visibility is asked of {@link BoardService}, the same place the REST routes answer it.
+ * Decides who may listen to a board - the only thing standing between {@code /topic/boards.{id}},
+ * the chat topic beneath it, and every signed-in account, since the broker has no notion of who is
+ * allowed on a topic. Visibility is asked of {@link BoardService}, the same place the REST routes
+ * answer it.
  *
  * <p><b>A refused subscription is dropped rather than answered</b>, this application's 404-not-403
  * rule in the one form STOMP allows. Throwing would turn into an ERROR frame that closes the
@@ -73,27 +73,31 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
     }
 
     /**
-     * The board id in a board destination, or null for every other destination - chat's own topics
-     * travel this channel too and must pass through untouched. A destination under the prefix whose
-     * last segment isn't a number is treated as a board id nothing has, and dropped the same way.
+     * The board id in a board destination, or null for every other destination.
+     *
+     * <p><b>Only the first segment after the prefix is the id</b>, which is what lets one check
+     * cover both {@code /topic/boards.7} (the change events) and {@code /topic/boards.7.chat} (the
+     * board's conversation). Chat used to sit outside the prefix altogether, on a global
+     * {@code /topic/public} and on rooms the client named, and this method's own Javadoc said so -
+     * which is how a feature with no tenancy went unnoticed in a repository that checks everything
+     * else. A destination under the prefix whose first segment is not a number is treated as a
+     * board id nothing has, and dropped the same way.
      */
     private static Integer boardIdIn(String destination) {
         if (destination == null || !destination.startsWith(BoardEventPublisher.DESTINATION_PREFIX)) {
             return null;
         }
         String suffix = destination.substring(BoardEventPublisher.DESTINATION_PREFIX.length());
+        int nextSegment = suffix.indexOf('.');
+        String id = nextSegment < 0 ? suffix : suffix.substring(0, nextSegment);
         try {
-            return Integer.valueOf(suffix);
+            return Integer.valueOf(id);
         } catch (NumberFormatException exception) {
             return NOT_A_BOARD;
         }
     }
 
     private static User callerOf(Principal principal) {
-        if (principal instanceof Authentication authentication
-                && authentication.getPrincipal() instanceof User user) {
-            return user;
-        }
-        return null;
+        return StompPrincipals.userOf(principal);
     }
 }

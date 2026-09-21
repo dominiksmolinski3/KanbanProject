@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -46,6 +47,7 @@ class BoardServiceTest {
     private UserRepository userRepository;
     private BoardInvitationRepository invitationRepository;
     private TaskActivityRepository activityRepository;
+    private ChatRepository chatRepository;
     private BoardService boardService;
 
     private User owner;
@@ -63,10 +65,11 @@ class BoardServiceTest {
 
         invitationRepository = mock(BoardInvitationRepository.class);
         activityRepository = mock(TaskActivityRepository.class);
+        chatRepository = mock(ChatRepository.class);
 
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
                 taskRepository, historyRepository, userRepository, invitationRepository,
-                activityRepository, new BoardMapper(new UserMapper()));
+                activityRepository, chatRepository, new BoardMapper(new UserMapper()));
 
         owner = TenancyFixtures.user(1);
         member = TenancyFixtures.user(2);
