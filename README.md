@@ -106,6 +106,11 @@ docker-compose up -d
    API container publishes `127.0.0.1:8081` as well, for poking it directly: `/actuator` is
    deliberately not proxied, so asking `:8080` for it answers 404 by design.
 
+   `docker compose --profile replicas up -d` adds a second API replica on `127.0.0.1:8082` --
+   the same image and the same environment as the first, sharing the Postgres, the Redis and the
+   RabbitMQ the deployment shares. That is the shape `api_max_replicas = 5` actually runs, and it
+   is what `cypress/replicas/cross-replica-sync.cy.js` needs.
+
    The stack also brings up [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite),
    the Blob Storage emulator, so task attachments work locally without an Azure subscription. It
    publishes no port -- only the app talks to it, the same way a deployed storage account answers
@@ -273,10 +278,19 @@ npm run test:coverage     # Generate Jest test coverage report
 npm run lint              # Run ESLint code quality checks
 npm run cypress:open      # Open Cypress test runner for E2E tests
 npm run cypress:run       # Run Cypress tests in headless mode
+npm run cypress:run:replicas   # The specs that need a two-replica stack (see below)
 ```
 
 The Jest coverage report will be available in the coverage directory. The Cypress suite drives the
 app over HTTP, so start both the backend (`:8080`) and the Vite dev server (`:5173`) before running it.
+
+`cypress/replicas/` holds the specs that need more than a running stack, and is deliberately
+outside the default spec pattern so `npm run cypress:run` is unaffected by it.
+`cross-replica-sync.cy.js` needs **two** API replicas, because what it asserts is that a board
+event published by one of them reaches a browser connected to the other -- at one replica the
+publisher and the subscriber are the same JVM and the claim is not about anything. Bring the stack
+up with `docker compose --profile replicas up -d` first; the spec writes to the second replica's
+own port (`127.0.0.1:8082`) while the browser goes through nginx to the first.
 
 ## 👥 Contributing
 

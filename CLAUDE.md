@@ -114,6 +114,7 @@ npx jest src/__tests__/components/Board.test.jsx     # one test file
 npx jest -t "renders the board"                      # one test by name
 npm run cypress:open         # Cypress interactive
 npm run cypress:run          # Cypress headless (alias: npm run test:e2e)
+npm run cypress:run:replicas # the specs that need the two-replica stack (see below)
 ```
 
 Cypress `baseUrl` is `http://localhost:5173`, so the Vite dev server **and** the backend must both be running before E2E tests.
@@ -125,6 +126,8 @@ The README documents these same commands; keep the two in sync when a script is 
 ```bash
 docker-compose up -d      # nginx on :8080, the API on 127.0.0.1:8081, postgres on :5432
 docker-compose down
+
+docker compose --profile replicas up -d    # the same, plus a second API replica on :8082
 ```
 
 The stack is the deployment's shape: a `web` service (nginx, the bundle, the proxy) in front of an
@@ -132,6 +135,17 @@ The stack is the deployment's shape: a `web` service (nginx, the bundle, the pro
 poking the routes the edge deliberately does not proxy — `/actuator` on `:8080` answers 404 by
 design. This is the only place an nginx misconfiguration gets caught before it reaches Azure, which
 is what makes the CI `e2e` job worth materially more than it was.
+
+**`--profile replicas` adds a second API replica** (`app2`, on `127.0.0.1:8082`) built from the
+same image and handed the same environment through a YAML anchor — the two cannot drift, which is
+the point of a second one. It is behind a profile so `docker compose up -d` is unchanged, and it
+exists because one claim in this application is unfalsifiable at a single replica: that a board
+event published by the replica handling an API call reaches a subscriber whose WebSocket is held by
+a *different* one. At N=1 publisher and subscriber are the same JVM and the frame never leaves it,
+so the `enableSimpleBroker` the STOMP relay replaced would pass `live-sync.cy.js` exactly as the
+relay does. `cypress/replicas/cross-replica-sync.cy.js` is the spec that needs the profile; see
+**Live board sync**. It is also the only local stack that has ever run the outbox claim, the
+deadline sweep claim and the Redis escalation with a genuine competitor on the other side.
 
 Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
 
@@ -844,6 +858,19 @@ unit test passes, and only somebody *else's* screen is wrong. So `TaskService`, 
 it - turning "somebody forgot a line" into "somebody wrote a different method call", which is a
 thing a check can see. Deletes map nothing, so they are named in that guard separately.
 
+**The cross-replica half is tested by a spec that needs two replicas to exist.**
+`cypress/replicas/cross-replica-sync.cy.js` opens the board through nginx — whose upstream is the
+compose service `app` and which has never heard of `app2` — so the document's SockJS connection,
+its CONNECT and its SUBSCRIBE are all held by one replica, and then makes every change against the
+*other* replica's own port. A card that appears crossed two JVMs and the broker between them;
+there is no path that does not. It is outside Cypress's default `specPattern` rather than skipped
+when a second replica is missing, because a spec that quietly does nothing is the failure
+`external-scan.yml` spent a month being — `npm run cypress:run:replicas` runs it and
+`kanban-ci.yml`'s e2e job runs that as a step of its own. What would silently turn it back into a
+same-replica test is its address drifting onto `app`'s published port, one digit away;
+`CrossReplicaStackTest` reads the compose file, the spec, `package.json` and the workflow and fails
+the build when any of the four stop agreeing.
+
 There is deliberately **no toast** for a remote change: a card moving under somebody is worth
 showing and not worth interrupting them over, and `/activity` is the screen that answers who did it.
 
@@ -1061,7 +1088,7 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 
 ### CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing.
   **It also runs on a daily `schedule` (and `workflow_dispatch`), which is the only trigger that
   covers a merge.** A push made with the default `GITHUB_TOKEN` starts no workflow run, and
   `dependabot-auto-merge.yml` merges with exactly that token — so an auto-merged dependency PR

@@ -12,6 +12,25 @@ export default defineConfig({
     baseUrl: 'http://localhost:5173',
 
     /*
+     * Cypress's own default, written out so that the directory beside it can be explained.
+     *
+     * `cypress/replicas/` holds the specs that need more than a running stack.
+     * `cross-replica-sync.cy.js` needs two API replicas - the `replicas` compose profile - because
+     * what it asserts is that a board event published by one of them reaches a browser connected
+     * to the other, and at one replica that is not a claim about anything. Leaving it in this
+     * pattern would fail `npm run cypress:run` for everybody running the ordinary stack, and the
+     * usual way out - skipping when the second replica is missing - is the failure this repository
+     * has already filed twice, most expensively as a security sweep that reported success in five
+     * seconds having scanned nothing.
+     *
+     * So it is neither skipped nor in the default run: `npm run cypress:run:replicas` runs it, and
+     * kanban-ci.yml's e2e job runs that as a step of its own after bringing the profile up.
+     * `CrossReplicaStackTest` fails the build if that step goes, which is the only thing that can
+     * see the coupling.
+     */
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+
+    /*
      * Cypress removes six Content-Security-Policy directives from the responses it proxies -
      * script-src, script-src-elem, default-src, form-action, child-src and frame-src - because they
      * are the ones that can stop it driving the application. Everything else in a policy it leaves
