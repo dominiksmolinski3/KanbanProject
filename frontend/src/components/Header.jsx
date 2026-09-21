@@ -40,7 +40,7 @@ function Header() {
       <header className={`app-header ${isSticky ? 'sticky' : ''}`}>
         <div className="header-left">
           <Link to="/">
-            <img src="/kanban-logo.png" alt="Kanban Logo" className="app-logo" />
+            <img src="/kanban-logo.png" alt={t('header.logoAlt')} className="app-logo" />
             <h1 className="app-title">{t('board.title')}</h1>
             <p className="app-subtitle">{t('board.subtitle')}</p>
           </Link>

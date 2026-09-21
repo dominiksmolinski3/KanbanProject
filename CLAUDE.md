@@ -1287,6 +1287,29 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 
 Nine locales live in [frontend/public/locales/](frontend/public/locales/) (`ar`, `de`, `en`, `es`, `fr`, `it`, `ja`, `pl`, `ru`), loaded at runtime by `i18next-http-backend` with browser language detection. User-facing strings — including every toast raised from `KanbanContext` — go through `t()` with a translation key, so a new message means adding the key to all locale files.
 
+**`i18n.test.js` checks that claim two ways, and the second one is new.** Key parity across the
+nine bundles has held all along; what it never looked at was the screen. It read source for one
+pattern — a literal passed to `toast.*` — and never a JSX text node or a `title` / `aria-label` /
+`placeholder` / `alt` attribute, which is exactly where the leaks were: three Polish strings in a
+card popover that every non-Polish reader saw, a `title="row.delete"` rendering the translation
+key itself, and around thirty English literals across the task panel, the bench and the demo
+banner. Fifty-seven in all, against an artifact that had spotted fourteen by eye.
+
+The widened half **parses the JSX with Babel's own parser rather than matching it with a regex**,
+because the shapes that matter cannot be told apart by one: `{isOpen ? 'Hide' : 'Show'}` is prose
+and `className={isOpen ? 'open' : ''}` is not, and both are a string literal inside a conditional.
+The parser makes the distinction cheap — an expression that is a **child** of an element is on
+screen, an expression that is an **attribute value** mostly is not — and it is why
+`@babel/parser` is now a declared devDependency rather than something reached through hoisting.
+It also reads `a || b` and template literals, which is how it caught a row of dead
+`t('key') || 'Polish fallback'` expressions: `t()` never returns a falsy value, so the fallback
+was unreachable code whose only effect was to hide a missing key from review.
+
+Most of the Polish leaks needed no new wording at all — `taskActions.description`,
+`taskActions.noSubtasks`, `bench.title` and the rest were already there, in all nine bundles,
+beside the hardcoded string. That is the argument for the guard rather than for the fixes: the
+keys were never the hard part.
+
 **Mail is the tenth bundle set, and it is on the server (`V11`).** The client picks its own language;
 the two moments mail is composed have no client to ask — a verification code is written by a route
 whose browser may never be seen again, and an overdue notice by a scheduler with no request at all —

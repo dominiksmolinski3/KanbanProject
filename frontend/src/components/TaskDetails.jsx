@@ -933,7 +933,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             <button
               className={`history-timeline-btn ${currentView === 'history' ? 'active' : ''}`}
               onClick={() => setCurrentView('history')}
-              title="History & Timeline"
+              title={t('taskDetails.historyAndTimeline')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -942,7 +942,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             <button
               className={`parent-child-btn ${currentView === 'relationships' ? 'active' : ''}`}
               onClick={() => setCurrentView('relationships')}
-              title="Parent & Child Tasks"
+              title={t('taskDetails.parentAndChildTasks')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -1219,7 +1219,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
               {assignedUsers.length > 0 && (
                 <div className="current-assignments">
-                  <h5>Currently Assigned:</h5>
+                  <h5>{t('taskDetails.currentlyAssigned')}</h5>
                   <div className="assigned-users-grid">
                     {assignedUsers.map(user => (
                       <div key={user.id} className="assigned-user-card">
@@ -1239,7 +1239,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
               )}
 
               <div className="add-assignment">
-                <h5>Assign New User:</h5>
+                <h5>{t('taskDetails.assignNewUser')}</h5>
                 <div className="assignment-controls">
                   <select 
                     value={selectedUserId}
@@ -1275,19 +1275,19 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
                   </svg>
                 </span>
-                <h4>Parent Task</h4>
+                <h4>{t('taskDetails.parentTask')}</h4>
               </div>
               
               {parentTask ? (
                 <div className="current-parent-card">
                   <div className="parent-info">
                     <strong>{parentTask.title}</strong>
-                    <span className="parent-id">ID: {parentTask.id}</span>
+                    <span className="parent-id">{t('taskDetails.idLabel')} {parentTask.id}</span>
                   </div>
                   <button 
                     onClick={handleRemoveParent}
                     className="remove-parent-btn"
-                    title="Remove parent link"
+                    title={t('taskDetails.removeParentLink')}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1296,7 +1296,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                 </div>
               ) : (
                 <div className="no-parent-card">
-                  <span>No parent task assigned</span>
+                  <span>{t('taskDetails.noParentTask')}</span>
                 </div>
               )}
 
@@ -1304,18 +1304,18 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                 className="manage-parent-btn"
                 onClick={handleShowParentSelector}
               >
-                {parentTask ? 'Change Parent Task' : 'Assign Parent Task'}
+                {parentTask ? t('taskDetails.changeParentTask') : t('taskDetails.assignParentTask')}
               </button>
 
               {showParentSelector && (
                 <div className="parent-selector-card">
-                  <h5>Select Parent Task:</h5>
+                  <h5>{t('taskDetails.selectParentTask')}</h5>
                   <select 
                     value={selectedParentId}
                     onChange={(e) => setSelectedParentId(e.target.value)}
                     className="parent-select"
                   >
-                    <option value="">Choose a task...</option>
+                    <option value="">{t('taskDetails.chooseTask')}</option>
                     {availableTasks.map(availableTask => (
                       <option key={availableTask.id} value={availableTask.id}>
                         {availableTask.title}
@@ -1328,13 +1328,13 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                       disabled={!selectedParentId}
                       className="confirm-parent-btn"
                     >
-                      Assign
+                      {t('taskActions.assign')}
                     </button>
                     <button 
                       onClick={() => setShowParentSelector(false)}
                       className="cancel-parent-btn"
                     >
-                      Cancel
+                      {t('taskActions.cancel')}
                     </button>
                   </div>
                 </div>
@@ -1349,7 +1349,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
                   </svg>
                 </span>
-                <h4>Child Tasks</h4>
+                <h4>{t('taskDetails.childTasks')}</h4>
               </div>
 
               {childTasks.length > 0 ? (
@@ -1358,7 +1358,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                     <div key={childTask.id} className="child-task-card">
                       <div className="child-task-info">
                         <strong>{childTask.title}</strong>
-                        <span className="child-id">ID: {childTask.id}</span>
+                        <span className="child-id">{t('taskDetails.idLabel')} {childTask.id}</span>
                         {childTask.status && (
                           <span className={`status-badge ${childTask.status.toLowerCase()}`}>
                             {childTask.status}
@@ -1370,7 +1370,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                 </div>
               ) : (
                 <div className="no-children-card">
-                  <span>No child tasks</span>
+                  <span>{t('taskDetails.noChildTasks')}</span>
                 </div>
               )}
             </div>
@@ -1451,7 +1451,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             {/* Column History Section */}
             <div className="column-history-section">
               <div className="section-header">
-                <h4>{t('taskActions.columnHistory') || 'Column History'}</h4>
+                <h4>{t('taskActions.columnHistory')}</h4>
               </div>
               <div className="column-history-content">
                 {columnHistory && columnHistory.length > 0 ? (
@@ -1474,20 +1474,22 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                               </div>
                               <div className="timeline-content">
                               <div className="timeline-column-name">
-                                {historyItem.columnName || 'Unknown Column'}
-                                {isCurrent && <span className="current-badge">Start</span>}
-                                {isStart && <span className="start-badge">Current</span>}
+                                {historyItem.columnName || t('taskDetails.unknownColumn')}
+                                {isCurrent && <span className="current-badge">{t('taskDetails.startBadge')}</span>}
+                                {isStart && <span className="start-badge">{t('taskDetails.currentBadge')}</span>}
                               </div>
                                 <div className="timeline-date">
-                                  {new Date(historyItem.changedAt).toLocaleDateString()} at{' '}
-                                  {new Date(historyItem.changedAt).toLocaleTimeString([], { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
+                                  {t('taskDetails.dateAtTime', {
+                                    date: new Date(historyItem.changedAt).toLocaleDateString(),
+                                    time: new Date(historyItem.changedAt).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
                                   })}
                                 </div>
                                 {!isCurrent && (
                                   <div className="timeline-duration">
-                                    Duration: {calculateDuration(historyItem, columnHistory[globalIndex + 1])}
+                                    {t('taskDetails.duration')} {calculateDuration(historyItem, columnHistory[globalIndex + 1])}
                                   </div>
                                 )}
                               </div>
@@ -1507,7 +1509,11 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                         ></div>
                       </div>
                       <div className="progress-text">
-                        Showing {columnHistoryPage * HISTORY_PAGE_SIZE + 1} - {Math.min((columnHistoryPage + 1) * HISTORY_PAGE_SIZE, columnHistory.length)} of {columnHistory.length} moves
+                        {t('taskDetails.showingMoves', {
+                          from: columnHistoryPage * HISTORY_PAGE_SIZE + 1,
+                          to: Math.min((columnHistoryPage + 1) * HISTORY_PAGE_SIZE, columnHistory.length),
+                          total: columnHistory.length
+                        })}
                       </div>
                     </div>
 
@@ -1521,7 +1527,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
                         </svg>
-                        Previous
+                        {t('taskDetails.previous')}
                       </button>
                       
                       <div className="page-indicators">
@@ -1535,7 +1541,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                                 key={i}
                                 className={`page-dot ${i === columnHistoryPage ? 'active' : ''}`}
                                 onClick={() => setColumnHistoryPage(i)}
-                                title={`Page ${i + 1}`}
+                                title={t('taskDetails.page', { number: i + 1 })}
                               />
                             ));
                           }
@@ -1555,7 +1561,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                                 key={0}
                                 className={`page-dot ${0 === columnHistoryPage ? 'active' : ''}`}
                                 onClick={() => setColumnHistoryPage(0)}
-                                title="Page 1"
+                                title={t('taskDetails.page', { number: 1 })}
                               />
                             );
                             if (startPage > 1) {
@@ -1576,7 +1582,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                                 key={i}
                                 className={`page-dot ${i === columnHistoryPage ? 'active' : ''}`}
                                 onClick={() => setColumnHistoryPage(i)}
-                                title={`Page ${i + 1}`}
+                                title={t('taskDetails.page', { number: i + 1 })}
                               />
                             );
                           }
@@ -1594,7 +1600,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                                 key={totalPages - 1}
                                 className={`page-dot ${totalPages - 1 === columnHistoryPage ? 'active' : ''}`}
                                 onClick={() => setColumnHistoryPage(totalPages - 1)}
-                                title={`Page ${totalPages}`}
+                                title={t('taskDetails.page', { number: totalPages })}
                               />
                             );
                           }
@@ -1610,7 +1616,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                           prev + 1 < Math.ceil(columnHistory.length / HISTORY_PAGE_SIZE) ? prev + 1 : prev
                         )}
                       >
-                        Next
+                        {t('taskDetails.next')}
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
                         </svg>
@@ -1619,11 +1625,11 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
                     {/* Time Statistics with Charts */}
                     <div className="column-time-stats">
-                      <h5>Time Spent Analysis</h5>
+                      <h5>{t('taskDetails.timeSpentAnalysis')}</h5>
                       {isLoadingTimeSpent ? (
                         <div className="loading-stats">
                           <div className="loading-spinner"></div>
-                          <span>Loading time statistics...</span>
+                          <span>{t('taskDetails.loadingTimeStatistics')}</span>
                         </div>
                       ) : columnTimeSpent.length > 0 ? (
                         <div className="time-stats-container">
@@ -1655,7 +1661,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                           <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
                           </svg>
-                          <p>No time statistics available</p>
+                          <p>{t('taskDetails.noTimeStatistics')}</p>
                         </div>
                       )}
                     </div>
@@ -1665,8 +1671,8 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/>
                     </svg>
-                    <p>No column history available</p>
-                    <span>This task hasn't moved between columns yet</span>
+                    <p>{t('taskDetails.noColumnHistory')}</p>
+                    <span>{t('taskDetails.noColumnHistoryHint')}</span>
                   </div>
                 )}
               </div>

@@ -52,7 +52,8 @@
       "attachmentTooLarge": "{{name}} supera {{size}}",
       "attachmentUploadFailed": "Impossibile caricare {{name}}",
       "attachmentDownloadFailed": "Impossibile scaricare {{name}}",
-      "attachmentStorageUnavailable": "L'archiviazione dei file non è configurata, gli allegati non possono essere salvati"
+      "attachmentStorageUnavailable": "L'archiviazione dei file non è configurata, gli allegati non possono essere salvati",
+      "avatarAlt": "Avatar dell'utente"
     },
     "board": {
       "loading": "Caricamento bacheca kanban...",
@@ -222,7 +223,8 @@
       "addBoardItem": "Aggiungi riga/colonna",
       "users": "Utenti",
       "logout": "Esci",
-      "activity": "Attività"
+      "activity": "Attività",
+      "logoAlt": "Logo Kanban"
     },
     "forms": {
       "wipLimit": {
@@ -352,7 +354,8 @@
       "captchaLoadError": "Errore di caricamento dello script.",
       "retry": "Ricarica",
       "recentlyVerified": "Account verificato! CAPTCHA ignorato per questo accesso.",
-      "verifyAndLoginSuccess": "Account verificato e accesso eseguito correttamente!"
+      "verifyAndLoginSuccess": "Account verificato e accesso eseguito correttamente!",
+      "checkingSession": "Verifica della sessione..."
     },
     "taskLabels": {
       "addLabel": "+ Etichetta",
@@ -419,7 +422,8 @@
     "footer": {
       "help": "Guida",
       "about": "Chi siamo",
-      "contact": "Contatto"
+      "contact": "Contatto",
+      "appName": "Bacheca Kanban"
     },
     "devices": {
       "title": "Dispositivi connessi",
@@ -467,5 +471,40 @@
         "REOPENED": "{{who}} ha riaperto {{what}}",
         "DELETED": "{{who}} ha eliminato {{what}}"
       }
+    },
+    "demo": {
+        "notice": "Questo è un sito di prova. Accedi con un account dimostrativo:",
+        "or": "oppure",
+        "dismiss": "Chiudi"
+    },
+    "taskDetails": {
+        "historyAndTimeline": "Cronologia e sequenza temporale",
+        "parentAndChildTasks": "Attività padre e figlie",
+        "currentlyAssigned": "Attualmente assegnati:",
+        "assignNewUser": "Assegna un nuovo utente:",
+        "parentTask": "Attività padre",
+        "idLabel": "ID:",
+        "removeParentLink": "Rimuovi il collegamento al padre",
+        "noParentTask": "Nessuna attività padre assegnata",
+        "changeParentTask": "Cambia l'attività padre",
+        "assignParentTask": "Assegna un'attività padre",
+        "selectParentTask": "Seleziona un'attività padre:",
+        "chooseTask": "Scegli un'attività...",
+        "childTasks": "Attività figlie",
+        "noChildTasks": "Nessuna attività figlia",
+        "unknownColumn": "Colonna sconosciuta",
+        "startBadge": "Inizio",
+        "currentBadge": "Attuale",
+        "dateAtTime": "{{date}} alle {{time}}",
+        "duration": "Durata:",
+        "showingMoves": "Visualizzati {{from}} - {{to}} di {{total}} spostamenti",
+        "previous": "Precedente",
+        "next": "Successivo",
+        "page": "Pagina {{number}}",
+        "timeSpentAnalysis": "Analisi del tempo trascorso",
+        "loadingTimeStatistics": "Caricamento delle statistiche sul tempo...",
+        "noTimeStatistics": "Nessuna statistica sul tempo disponibile",
+        "noColumnHistory": "Nessuna cronologia delle colonne disponibile",
+        "noColumnHistoryHint": "Questa attività non è ancora stata spostata tra le colonne"
     }
-  }
+}

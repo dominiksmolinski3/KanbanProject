@@ -52,7 +52,8 @@
     "attachmentTooLarge": "{{name}} ist größer als {{size}}",
     "attachmentUploadFailed": "{{name}} konnte nicht hochgeladen werden",
     "attachmentDownloadFailed": "{{name}} konnte nicht heruntergeladen werden",
-    "attachmentStorageUnavailable": "Der Dateispeicher ist nicht konfiguriert, Anhänge können nicht gespeichert werden"
+    "attachmentStorageUnavailable": "Der Dateispeicher ist nicht konfiguriert, Anhänge können nicht gespeichert werden",
+    "avatarAlt": "Benutzer-Avatar"
   },
   "board": {
     "loading": "Kanban-Board wird geladen...",
@@ -222,7 +223,8 @@
     "addBoardItem": "Zeile/Spalte hinzufügen",
     "users": "Benutzer",
     "logout": "Abmelden",
-    "activity": "Aktivität"
+    "activity": "Aktivität",
+    "logoAlt": "Kanban-Logo"
   },
   "forms": {
     "wipLimit": {
@@ -352,7 +354,8 @@
     "captchaLoadError": "Fehler beim Laden des Skripts.",
     "retry": "Neu laden",
     "recentlyVerified": "Konto verifiziert! CAPTCHA für diese Anmeldung übersprungen.",
-    "verifyAndLoginSuccess": "Konto verifiziert und erfolgreich angemeldet!"
+    "verifyAndLoginSuccess": "Konto verifiziert und erfolgreich angemeldet!",
+    "checkingSession": "Sitzung wird geprüft..."
   },
   "taskLabels": {
     "addLabel": "+ Label",
@@ -419,7 +422,8 @@
   "footer": {
     "help": "Hilfe",
     "about": "Über uns",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "appName": "Kanban-Board"
   },
   "devices": {
     "title": "Angemeldete Geräte",
@@ -467,5 +471,40 @@
       "REOPENED": "{{who}} hat {{what}} wieder geöffnet",
       "DELETED": "{{who}} hat {{what}} gelöscht"
     }
+  },
+  "demo": {
+    "notice": "Dies ist eine Testseite. Melde dich mit einem Demokonto an:",
+    "or": "oder",
+    "dismiss": "Schließen"
+  },
+  "taskDetails": {
+    "historyAndTimeline": "Verlauf und Zeitleiste",
+    "parentAndChildTasks": "Über- und untergeordnete Aufgaben",
+    "currentlyAssigned": "Derzeit zugewiesen:",
+    "assignNewUser": "Neuen Benutzer zuweisen:",
+    "parentTask": "Übergeordnete Aufgabe",
+    "idLabel": "ID:",
+    "removeParentLink": "Übergeordnete Verknüpfung entfernen",
+    "noParentTask": "Keine übergeordnete Aufgabe zugewiesen",
+    "changeParentTask": "Übergeordnete Aufgabe ändern",
+    "assignParentTask": "Übergeordnete Aufgabe zuweisen",
+    "selectParentTask": "Übergeordnete Aufgabe wählen:",
+    "chooseTask": "Aufgabe wählen...",
+    "childTasks": "Untergeordnete Aufgaben",
+    "noChildTasks": "Keine untergeordneten Aufgaben",
+    "unknownColumn": "Unbekannte Spalte",
+    "startBadge": "Start",
+    "currentBadge": "Aktuell",
+    "dateAtTime": "{{date}} um {{time}}",
+    "duration": "Dauer:",
+    "showingMoves": "{{from}} - {{to}} von {{total}} Verschiebungen",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "page": "Seite {{number}}",
+    "timeSpentAnalysis": "Analyse der aufgewendeten Zeit",
+    "loadingTimeStatistics": "Zeitstatistiken werden geladen...",
+    "noTimeStatistics": "Keine Zeitstatistiken verfügbar",
+    "noColumnHistory": "Kein Spaltenverlauf verfügbar",
+    "noColumnHistoryHint": "Diese Aufgabe wurde noch nicht zwischen Spalten verschoben"
   }
 }
