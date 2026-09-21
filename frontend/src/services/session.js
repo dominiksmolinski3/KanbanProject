@@ -52,6 +52,16 @@ export function clearSession() {
   localStorage.removeItem(SESSION_ID_KEY);
 }
 
+/**
+ * Sends the browser to the sign-in screen. A named seam rather than an inline
+ * `window.location.href = '/'` because jsdom (21+) makes `window.location` unforgeable, the same as
+ * a real browser does - nothing can stand in for it in a test, so the call itself is what a test
+ * doubles instead.
+ */
+export function redirectToSignIn() {
+  window.location.href = '/';
+}
+
 export const getAccessToken = () => localStorage.getItem(TOKEN_KEY);
 export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 export const getSessionId = () => localStorage.getItem(SESSION_ID_KEY);

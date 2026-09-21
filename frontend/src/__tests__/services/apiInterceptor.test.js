@@ -1,22 +1,24 @@
 import { setupApiInterceptors, SessionExpiredError } from '../../services/apiInterceptor';
-import { REFRESH_TOKEN_KEY, resetRefreshState } from '../../services/session';
+import { REFRESH_TOKEN_KEY, redirectToSignIn, resetRefreshState } from '../../services/session';
 import { authService } from '../../services/authService';
 
 jest.mock('../../services/authService', () => ({
   authService: { refresh: jest.fn(), logout: jest.fn() }
 }));
 
+// jsdom (21+) makes `window.location` unforgeable, the same as a real browser, so it can no
+// longer stand in for itself in a test - `redirectToSignIn` is the seam that's doubled instead.
+jest.mock('../../services/session', () => ({
+  ...jest.requireActual('../../services/session'),
+  redirectToSignIn: jest.fn()
+}));
+
 describe('apiInterceptor', () => {
   let originalFetch;
-  let originalLocation;
 
   beforeEach(() => {
     originalFetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
     window.fetch = originalFetch;
-
-    originalLocation = window.location;
-    delete window.location;
-    window.location = { href: '/board' };
 
     localStorage.clear();
     resetRefreshState();
@@ -25,7 +27,6 @@ describe('apiInterceptor', () => {
   });
 
   afterEach(() => {
-    window.location = originalLocation;
     jest.restoreAllMocks();
   });
 
@@ -107,7 +108,7 @@ describe('apiInterceptor', () => {
     expect(originalFetch).not.toHaveBeenCalled();
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('tokenExpiration')).toBeNull();
-    expect(window.location.href).toBe('/');
+    expect(redirectToSignIn).toHaveBeenCalled();
   });
 
   test('reads the URL out of a Request object instead of throwing', async () => {
@@ -136,7 +137,7 @@ describe('apiInterceptor', () => {
 
     // The old behaviour here was a redirect to the sign-in screen every fifteen minutes, which is
     // what made a short access token unaffordable in the first place.
-    expect(window.location.href).toBe('/board');
+    expect(redirectToSignIn).not.toHaveBeenCalled();
     expect(originalFetch.mock.calls[0][1].headers.Authorization).toBe('Bearer fresh-jwt');
   });
 
@@ -150,7 +151,7 @@ describe('apiInterceptor', () => {
 
     expect(originalFetch).not.toHaveBeenCalled();
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
-    expect(window.location.href).toBe('/');
+    expect(redirectToSignIn).toHaveBeenCalled();
   });
 
   test('retries once behind a 401 the client did not see coming', async () => {
