@@ -149,8 +149,18 @@ jobs:
     # crosses replicas" is the one claim a single-replica stack cannot make. It is also the first
     # time anything here has run the outbox claim, the deadline sweep claim and the Redis
     # escalation with a genuine competitor on the other side of them.
+    # Retried because a base-image pull is the one step here at the mercy of a registry that
+    # is not ours - a transient 503 from the pinned dhi.io node digest has failed this exact
+    # command while every run around it, against the same digest, built fine.
     - name: Build and start the stack
-      run: docker compose --profile replicas up -d --build
+      run: |
+        for i in 1 2 3; do
+          docker compose --profile replicas up -d --build && exit 0
+          echo "docker compose up failed (attempt $i/3)" >&2
+          docker compose --profile replicas down -v
+          [ "$i" = 3 ] && exit 1
+          sleep 15
+        done
 
     # :8081 is the API container's own port. The edge deliberately does not proxy /actuator, so
     # asking :8080 for it would be asking nginx a question it is built to refuse.
