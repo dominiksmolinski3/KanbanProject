@@ -52,7 +52,8 @@
     "attachmentTooLarge": "{{name}} is larger than {{size}}",
     "attachmentUploadFailed": "Could not upload {{name}}",
     "attachmentDownloadFailed": "Could not download {{name}}",
-    "attachmentStorageUnavailable": "File storage is not configured, so attachments cannot be saved"
+    "attachmentStorageUnavailable": "File storage is not configured, so attachments cannot be saved",
+    "avatarAlt": "User avatar"
   },
   "board": {
     "loading": "Loading kanban board...",
@@ -222,7 +223,8 @@
     "addBoardItem": "Add row/column",
     "users": "Users",
     "logout": "Logout",
-    "activity": "Activity"
+    "activity": "Activity",
+    "logoAlt": "Kanban logo"
   },
   "forms": {
     "wipLimit": {
@@ -352,7 +354,8 @@
     "recentlyVerified": "Account verified! CAPTCHA skipped for this login.",
     "captchaBlocked": "reCAPTCHA failed to load (script blocked?). Check for a blocker such as uBlock or AdBlock.",
     "captchaLoadError": "Script load error.",
-    "retry": "Reload"
+    "retry": "Reload",
+    "checkingSession": "Checking your session..."
   },
   "taskLabels": {
     "addLabel": "+ Label",
@@ -419,7 +422,8 @@
   "footer": {
     "help": "Help",
     "about": "About",
-    "contact": "Contact"
+    "contact": "Contact",
+    "appName": "Kanban Board"
   },
   "devices": {
     "title": "Signed-in devices",
@@ -467,5 +471,40 @@
       "REOPENED": "{{who}} reopened {{what}}",
       "DELETED": "{{who}} deleted {{what}}"
     }
+  },
+  "demo": {
+    "notice": "This is a test website. Sign in with a demo account:",
+    "or": "or",
+    "dismiss": "Dismiss"
+  },
+  "taskDetails": {
+    "historyAndTimeline": "History and timeline",
+    "parentAndChildTasks": "Parent and child tasks",
+    "currentlyAssigned": "Currently assigned:",
+    "assignNewUser": "Assign a new user:",
+    "parentTask": "Parent task",
+    "idLabel": "ID:",
+    "removeParentLink": "Remove the parent link",
+    "noParentTask": "No parent task assigned",
+    "changeParentTask": "Change the parent task",
+    "assignParentTask": "Assign a parent task",
+    "selectParentTask": "Select a parent task:",
+    "chooseTask": "Choose a task...",
+    "childTasks": "Child tasks",
+    "noChildTasks": "No child tasks",
+    "unknownColumn": "Unknown column",
+    "startBadge": "Start",
+    "currentBadge": "Current",
+    "dateAtTime": "{{date}} at {{time}}",
+    "duration": "Duration:",
+    "showingMoves": "Showing {{from}} - {{to}} of {{total}} moves",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{number}}",
+    "timeSpentAnalysis": "Time spent analysis",
+    "loadingTimeStatistics": "Loading time statistics...",
+    "noTimeStatistics": "No time statistics available",
+    "noColumnHistory": "No column history available",
+    "noColumnHistoryHint": "This task has not moved between columns yet"
   }
 }

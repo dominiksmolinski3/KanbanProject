@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import '../styles/DemoBanner.css';
 
 // Cosmetic-only marker: this banner exists to tell visitors to the public demo
@@ -13,6 +14,7 @@ const TEST_ACCOUNTS = [
 
 const DemoBanner = () => {
   const [dismissed, setDismissed] = useState(false);
+  const { t } = useTranslation();
 
   const isDemoHost = typeof window !== 'undefined'
     && window.location.hostname.includes(DEMO_HOSTNAME_MARKER);
@@ -22,10 +24,10 @@ const DemoBanner = () => {
   return (
     <div className="demo-banner" role="status">
       <span className="demo-banner-text">
-        This is a test website. Sign in with a demo account:{' '}
+        {t('demo.notice')}{' '}
         {TEST_ACCOUNTS.map(({ email, password }, index) => (
           <React.Fragment key={email}>
-            {index > 0 && ' or '}
+            {index > 0 && <> {t('demo.or')} </>}
             <strong>{email}</strong> / <strong>{password}</strong>
           </React.Fragment>
         ))}
@@ -34,7 +36,7 @@ const DemoBanner = () => {
         type="button"
         className="demo-banner-close"
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label={t('demo.dismiss')}
       >
         ×
       </button>

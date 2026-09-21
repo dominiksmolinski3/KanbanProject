@@ -143,7 +143,7 @@ function Board() {
     
     toast.info(
       <div className="toast-confirm">
-        <p>{t('row.deleteConfirm', { name: rowName }) || `Czy na pewno chcesz usunąć wiersz "${rowName}"?`}</p>
+        <p>{t('row.deleteConfirm', { name: rowName })}</p>
         <div className="toast-buttons">
           <button 
             onClick={() => {
@@ -152,13 +152,13 @@ function Board() {
             }}
             className="confirm-button"
           >
-            {t('taskActions.yes') || 'Tak'}
+            {t('taskActions.yes')}
           </button>
           <button 
             onClick={() => toast.dismiss(toastId)}
             className="cancel-button"
           >
-            {t('taskActions.no') || 'Nie'}
+            {t('taskActions.no')}
           </button>
         </div>
       </div>,
@@ -180,7 +180,7 @@ function Board() {
     
     toast.info(
       <div className="toast-confirm">
-        <p>{t('column.deleteConfirm', { name: columnName }) || `Czy na pewno chcesz usunąć kolumnę "${columnName}"?`}</p>
+        <p>{t('column.deleteConfirm', { name: columnName })}</p>
         <div className="toast-buttons">
           <button 
             onClick={() => {
@@ -189,13 +189,13 @@ function Board() {
             }}
             className="confirm-button"
           >
-            {t('taskActions.yes') || 'Tak'}
+            {t('taskActions.yes')}
           </button>
           <button 
             onClick={() => toast.dismiss(toastId)}
             className="cancel-button"
           >
-            {t('taskActions.no') || 'Nie'}
+            {t('taskActions.no')}
           </button>
         </div>
       </div>,

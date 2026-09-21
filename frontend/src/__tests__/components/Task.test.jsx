@@ -183,7 +183,7 @@ describe('Task Component', () => {
         });
         
         expect(getUserAvatar).toHaveBeenCalledWith('123');
-        const avatar = screen.getByAltText('User avatar');
+        const avatar = screen.getByAltText('taskActions.avatarAlt');
         expect(avatar).toBeInTheDocument();
         expect(avatar).toHaveClass('avatar-preview');
     });
@@ -569,7 +569,7 @@ describe('Task Component', () => {
             expect(getUserAvatar).toHaveBeenCalledTimes(1);
         });
         
-        const avatar = screen.getByAltText('User avatar');
+        const avatar = screen.getByAltText('taskActions.avatarAlt');
         expect(avatar).toBeInTheDocument();
         const avatarCount = screen.getByText('+1');
         expect(avatarCount).toBeInTheDocument();

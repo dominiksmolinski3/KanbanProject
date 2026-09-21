@@ -72,7 +72,7 @@ function Row({ row, children }) {
           <span className="task-count">{row.taskCount || 0}</span>
           <button 
             className="delete-row-btn" 
-            title="row.delete"
+            title={t('row.delete')}
             onClick={handleDeleteClick}
           >
             ×
