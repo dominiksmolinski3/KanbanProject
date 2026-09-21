@@ -427,8 +427,10 @@ which the next `terraform plan` will try to undo. Treat the zone as set at creat
 
 ### Two container apps
 
-This deployment is two Container Apps in one Managed Environment, and only one of them has an
-address.
+This deployment runs two HTTP-facing Container Apps in one Managed Environment, and only one of
+them has an address. (A third, `kanban-broker-<env>`, shares the same environment on a plain TCP
+ingress — see [RabbitMQ broker](#rabbitmq-broker) — but carries none of the HTTP concerns below, so
+it is covered separately.)
 
 | App | Module | Ingress | What it is |
 |---|---|---|---|
@@ -734,8 +736,9 @@ clone run without an Azure subscription.
 ### Rate limiter Redis
 
 `modules/redis` provisions the **Azure Managed Redis** instance `AuthRateLimiter`'s escalation lives
-in — phase 3 of the container split plan, and the first of its two remaining multi-replica blockers
-to be cleared. It is Managed Redis rather than the classic Cache for Redis this module shipped with
+in — phase 3 of the container split plan. It was the first of that phase's two remaining
+multi-replica blockers to be cleared; the STOMP broker relay below was the other, and both are now
+done. It is Managed Redis rather than the classic Cache for Redis this module shipped with
 first: the first apply against dev of `azurerm_redis_cache` was refused outright —
 `Azure Cache for Redis is retiring, create Azure Managed Redis instance instead` — on a subscription
 that had never created either kind before. Managed Redis is Redis Enterprise underneath (still
@@ -779,6 +782,51 @@ already have on that network), and the CI backend job runs one as a service cont
 Postgres. Nothing about the escalation's behaviour differs between that and the deployment's
 encrypted Managed Redis — only the connection does, which is exactly what
 `security.rate-limit.redis-ssl` switches.
+
+### RabbitMQ broker
+
+`modules/broker` provisions the STOMP broker `WebSocketConfig.configureMessageBroker` relays to —
+the other half of phase 3, and the last piece of in-JVM state the container split left behind: with
+no shared broker, two API replicas each held their own in-memory relay and a board event published
+by one never reached a subscriber connected to the other. It is deployed as a third Container App,
+`kanban-broker-<env>`, landing in the **same Managed Environment** as `web_app` and `api_app` rather
+than a subnet or a managed service of its own — an internal TCP ingress reachable only from other
+apps in that one environment is a materially tighter boundary than Postgres's or Redis's own private
+endpoints (reachable from anywhere in the VNet), and needs neither a subnet nor a private endpoint
+to get it.
+
+Four decisions carry it:
+
+- **Fixed at `min_replicas = max_replicas = 1`, deliberately, and unrelated to `api_max_replicas`.**
+  A second, unclustered RabbitMQ would be a second broker nothing relays between — not a second
+  replica of the same one, which is the exact failure this module exists to remove. Clustering
+  RabbitMQ for its own redundancy is a separate, considerably larger undertaking this deployment
+  does not need at its current scale, the same "smallest viable thing" call the Redis SKU and the
+  JDK HTTP client already made elsewhere. Losing the broker loses in-flight board/chat frames, not
+  data: nothing here is durable, and a reconnecting client re-subscribes and re-reads rather than
+  replaying a queue.
+- **The stock `rabbitmq:4-alpine` image, with the STOMP plugin turned on at container start rather
+  than baked into a custom one.** The image ships with the plugin off; the container's `command`
+  runs `rabbitmq-plugins enable --offline rabbitmq_stomp` (needs no running broker) and then hands
+  off to the image's own entrypoint. A purpose-built image was declined — one `RUN` line does not
+  justify a third image in the CD build/scan/promote matrix.
+- **One account, `kanban`, for both `WebSocketConfig`'s client login and its system login.**
+  RabbitMQ has no notion of a caller identity past the TCP connection its STOMP plugin terminates,
+  so splitting client/system credentials would buy nothing. The password is generated
+  (`random_password`) and stored as the `RABBITMQ-PASSWORD` Key Vault secret, module-owned the same
+  way `modules/redis` owns `REDIS-ACCESS-KEY` and `modules/postgres` owns `POSTGRES-PASSWORD`; the
+  broker's own identity is scoped to that one secret rather than the vault, same narrow-grant
+  pattern the web app's `GHCR-TOKEN` reader gets.
+- **Health checking is TCP-only.** There is no HTTP endpoint to ask, only a port (`61613`) that
+  either accepts a connection or does not, so all three probes are `transport = "TCP"`. The startup
+  probe's threshold is generous relative to the other two apps' — the Erlang VM plus the
+  plugin-enable step is slower to come up than either JVM.
+
+`api_app` reads `STOMP_RELAY_HOST` / `STOMP_RELAY_PORT` / `STOMP_RELAY_USERNAME` /
+`STOMP_RELAY_PASSWORD` from this module's outputs (`app_name`, `port`, `username`, and the Key
+Vault secret by name). The root module's `depends_on` on `module.broker` for `module.api_app` exists
+for the same reason it names `module.redis` and `module.storage`: the password reference is a string
+built from the Key Vault URI, not a Terraform attribute reference the graph can see on its own.
 
 ### Key Vault authorization
 
