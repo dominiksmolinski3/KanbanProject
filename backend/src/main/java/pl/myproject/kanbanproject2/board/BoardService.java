@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.Column;
@@ -66,6 +67,7 @@ public class BoardService {
     private final UserRepository userRepository;
     private final BoardInvitationRepository invitationRepository;
     private final TaskActivityRepository activityRepository;
+    private final ChatRepository chatRepository;
     private final BoardMapper boardMapper;
 
     // ------------------------------------------------------------------ access ---
@@ -221,6 +223,9 @@ public class BoardService {
         // invitee's screen as a board with no name.
         invitationRepository.deleteAll(invitationRepository.findByBoard(board));
         activityRepository.deleteAll(activityRepository.findByBoard(board));
+        // Chat joined this list in V18. A message is board-scoped now, and the foreign key it
+        // gained is one the board could not be deleted around.
+        chatRepository.deleteAll(chatRepository.findByBoard(board));
 
         board.getMembers().clear();
         boardRepository.delete(board);
