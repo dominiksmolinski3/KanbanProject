@@ -214,8 +214,28 @@ The project is organized as follows:
    - /src/styles - CSS and styling
 - `/terraform` - Azure infrastructure as code
 - `/.github/workflows` - CI/CD pipelines
+- `/docs` - architecture diagrams and supporting write-ups
 
 ## ☁️ Deployment & Infrastructure
+
+### How a request flows through the system
+
+<p align="center">
+  <img src="docs/architecture/application-architecture.svg" alt="Application architecture: browser through nginx and the Spring Boot API to Postgres, Redis, RabbitMQ, Blob Storage and the email API" width="100%"/>
+</p>
+
+Browser traffic lands on **nginx** (the only public address), which serves the built bundle from
+disk and reverse-proxies `/api`, `/ws` and `/v3/api-docs` to the **Spring Boot API** over an
+internal, TLS-verified connection. The API is the only thing that talks to the five pieces of
+shared, out-of-process state -- Postgres, Azure Managed Redis, the RabbitMQ STOMP broker, Blob
+Storage and the ACS Email API -- which is what lets both `web` and `api` run more than one replica
+without disagreeing with each other or with themselves.
+
+### Azure infrastructure
+
+<p align="center">
+  <img src="docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with four subnets holding the Container Apps environment (web, api and broker), Postgres, and the Key Vault, Redis and Blob Storage private endpoints" width="100%"/>
+</p>
 
 Every push to `main` builds two images -- [backend/Dockerfile](backend/Dockerfile), the Spring Boot
 jar, and [frontend/Dockerfile](frontend/Dockerfile), nginx with the Vite bundle -- scans each with
@@ -230,18 +250,25 @@ Images are tagged with the commit SHA as well, and `:latest` is only promoted af
 scan passes. **Both carry the same tag**, deliberately: the browser and the API it calls used to be
 one artifact and could not disagree, and one tag feeding both is what replaces that guarantee.
 
-The Azure environment behind it -- Container Apps running under a user-assigned managed identity, a
-PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, a Key
-Vault reached over a private endpoint, a Storage account holding task attachments, closed to the
-internet and reached over a private endpoint with that same identity and no account key, plus the
-VNet/NSGs and Log Analytics -- is defined as Terraform in [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the
-Azure RBAC prerequisites and the per-environment state layout.
+The Azure environment behind it is three Container Apps in one Managed Environment --
+**`kanban-web`** (nginx, the only external ingress), **`kanban-api`** (the Spring Boot jar, internal
+only, up to 5 replicas) and **`kanban-broker`** (RabbitMQ's STOMP plugin, fixed at one replica, the
+shared relay every API replica connects to) -- running under user-assigned managed identities, a
+PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, an
+Azure Managed Redis instance backing the auth rate limiter's escalation, a Key Vault and a Storage
+account (task attachments) both closed to the internet and reached over private endpoints with no
+account key, plus the VNet/NSGs and Log Analytics. All of it is defined as Terraform in
+[terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the Azure RBAC
+prerequisites, the network layout and the per-environment state layout.
 
 Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
-Postgres service container, frontend build/lint/Jest, and an `e2e` job that runs Cypress against the
-`docker-compose` stack), `kanban-cd.yml` (build, scan, push, promote), `codeql.yml` (CodeQL analysis
-of the Java backend), `migration-order.yml` (guards Flyway migration numbering across branches),
-`terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (both Dockerfiles), and the dependency and
+Postgres and Redis service container, frontend build/lint/Jest, an `e2e` job that runs Cypress
+against a two-replica `docker-compose` stack, and an `image-scan` job that Trivy-scans both images
+on every PR), `kanban-cd.yml` (build, scan, push, promote), `deployed-contract.yml` (a daily sweep
+that asks the deployed origin whether it still matches what the trunk claims), `codeql.yml` (CodeQL
+analysis of the Java backend), `migration-order.yml` (guards Flyway migration numbering across
+branches), `terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (both Dockerfiles),
+`sweep-alarm.yml` (the shared alarm every scheduled workflow reports through), and the dependency and
 attack-surface scans (`dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`,
 `external-scan.yml`, `dast.yml`).
 
