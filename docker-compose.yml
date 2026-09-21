@@ -1,3 +1,78 @@
+# The API container, defined once and run twice.
+#
+# `app` is the replica the edge proxies to. `app2` is a second one, in the `replicas` profile, so
+# `docker compose up -d` is exactly what it was and `docker compose --profile replicas up -d`
+# gives the stack the shape the deployment actually runs - api_max_replicas is 5 in dev.tfvars,
+# and until this existed nothing local had ever started a second one.
+#
+# That matters for one claim in particular. A board event published on the replica handling an API
+# call has to reach a subscriber whose WebSocket is held by a *different* replica, which is the
+# whole reason WebSocketConfig relays to RabbitMQ rather than holding a broker in the JVM. At one
+# replica that claim is unfalsifiable: publisher and subscriber are the same process and the frame
+# never leaves it, so the in-JVM broker this replaced would pass every spec here too. That gap has
+# already cost something - RabbitMQ's STOMP plugin refuses a `/` inside a `/topic/` destination
+# and the in-JVM broker had never validated one, which reached CI rather than a local run.
+# `cypress/replicas/cross-replica-sync.cy.js` is the spec that needs this profile.
+#
+# The environment is shared through an anchor rather than copied, deliberately: two replicas free
+# to drift in their configuration are two different applications, and the point of the second one
+# is that it is the same one. Only the published port differs, and it differs because two
+# containers cannot both have 8081 - the spec has to address the second replica directly, since
+# nginx only ever knows `app` and a round-robin would make it pass half the time.
+x-api: &api
+  build:
+    context: ./backend
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    azurite:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+  environment:
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
+    SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+    SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    ACS_EMAIL_CONNECTION_STRING: ${ACS_EMAIL_CONNECTION_STRING}
+    ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS}
+    # The delivery-report webhook's shared key. Blank locally, and blank means the route answers
+    # 404 - Azure cannot reach a container on your laptop anyway, so there is nothing here for it
+    # to be open for.
+    APP_MAIL_DELIVERY_REPORT_KEY: ${APP_MAIL_DELIVERY_REPORT_KEY:-}
+    CAPTCHA_SECRET: ${CAPTCHA_SECRET}
+    CAPTCHA_ENABLED: ${CAPTCHA_ENABLED}
+    # One proxy in front of the app now, so ClientIpResolver has to skip exactly one hop of
+    # X-Forwarded-For. Left at the default of 0 it reads getRemoteAddr(), which since the split
+    # is nginx's container address for every request in the stack - one shared escalation bucket
+    # for everybody, which is the same failure the deployment has at 1 instead of 2 and is worth
+    # having wrong in neither place. The deployment sets 2: the ingress, then nginx.
+    SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT: 1
+    # The escalation lives in the redis service below rather than in process memory, so it means
+    # what its numbers say even once this stack runs more than one `app` replica.
+    SECURITY_RATE_LIMIT_REDIS_HOST: redis
+    # The STOMP broker relay's own connection - see WebSocketConfig.configureMessageBroker. Every
+    # `app` replica relays to the rabbitmq service below rather than holding a broker in its own
+    # JVM, so a board event published on one replica still reaches a subscriber connected to
+    # another. Not the stock guest/guest account: RabbitMQ refuses it from anywhere but localhost,
+    # and this connects from a different container - the same reason redis, unlike guest, needs no
+    # override at all (it never restricts by origin).
+    STOMP_RELAY_HOST: rabbitmq
+    STOMP_RELAY_USERNAME: kanban
+    STOMP_RELAY_PASSWORD: kanban
+    # Attachments go to the azurite service below rather than to Azure. The key in that default
+    # is Azurite's published development account - documented, identical on every machine that has
+    # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
+    # else, or set it empty, to change or switch off local attachment storage.
+    AZURE_STORAGE_CONNECTION_STRING: '${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}'
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+
 services:
   # The public edge: nginx serving the built bundle and reverse-proxying what the API owns. It is
   # the only service that publishes a port a browser uses, which is what makes this stack the same
@@ -24,62 +99,19 @@ services:
           memory: 128M
 
   app:
-    build:
-      context: ./backend
-    restart: unless-stopped
+    <<: *api
     # Published for poking the API directly - `curl :8081/actuator/health` - which is the one thing
     # the edge deliberately does not proxy. A browser uses :8080 and goes through nginx.
     ports:
       - "127.0.0.1:8081:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      azurite:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      ACS_EMAIL_CONNECTION_STRING: ${ACS_EMAIL_CONNECTION_STRING}
-      ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS}
-      # The delivery-report webhook's shared key. Blank locally, and blank means the route answers
-      # 404 - Azure cannot reach a container on your laptop anyway, so there is nothing here for it
-      # to be open for.
-      APP_MAIL_DELIVERY_REPORT_KEY: ${APP_MAIL_DELIVERY_REPORT_KEY:-}
-      CAPTCHA_SECRET: ${CAPTCHA_SECRET}
-      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED}
-      # One proxy in front of the app now, so ClientIpResolver has to skip exactly one hop of
-      # X-Forwarded-For. Left at the default of 0 it reads getRemoteAddr(), which since the split
-      # is nginx's container address for every request in the stack - one shared escalation bucket
-      # for everybody, which is the same failure the deployment has at 1 instead of 2 and is worth
-      # having wrong in neither place. The deployment sets 2: the ingress, then nginx.
-      SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT: 1
-      # The escalation lives in the redis service below rather than in process memory, so it means
-      # what its numbers say even once this stack runs more than one `app` replica.
-      SECURITY_RATE_LIMIT_REDIS_HOST: redis
-      # The STOMP broker relay's own connection - see WebSocketConfig.configureMessageBroker. Every
-      # `app` replica relays to the rabbitmq service below rather than holding a broker in its own
-      # JVM, so a board event published on one replica still reaches a subscriber connected to
-      # another. Not the stock guest/guest account: RabbitMQ refuses it from anywhere but localhost,
-      # and this connects from a different container - the same reason redis, unlike guest, needs no
-      # override at all (it never restricts by origin).
-      STOMP_RELAY_HOST: rabbitmq
-      STOMP_RELAY_USERNAME: kanban
-      STOMP_RELAY_PASSWORD: kanban
-      # Attachments go to the azurite service below rather than to Azure. The key in that default
-      # is Azurite's published development account - documented, identical on every machine that has
-      # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
-      # else, or set it empty, to change or switch off local attachment storage.
-      AZURE_STORAGE_CONNECTION_STRING: '${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}'
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+
+  # The second replica: same image, same environment, same broker, its own port. See the
+  # anchor above for why it exists and why nothing but the port differs.
+  app2:
+    <<: *api
+    profiles: ["replicas"]
+    ports:
+      - "127.0.0.1:8082:8080"
 
   # The Blob Storage emulator, so `docker-compose up` gives you attachments as well as a board.
   azurite:

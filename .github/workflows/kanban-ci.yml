@@ -143,8 +143,14 @@ jobs:
         VITE_RECAPTCHA_SITE_KEY=
         EOF
 
+    # --profile replicas, so the stack runs two API replicas rather than one. Everything below is
+    # unchanged by it - nginx's upstream is the `app` service and has never heard of `app2` - but
+    # cross-replica-sync.cy.js has no second process to address without it, and "a board event
+    # crosses replicas" is the one claim a single-replica stack cannot make. It is also the first
+    # time anything here has run the outbox claim, the deadline sweep claim and the Redis
+    # escalation with a genuine competitor on the other side of them.
     - name: Build and start the stack
-      run: docker compose up -d --build
+      run: docker compose --profile replicas up -d --build
 
     # :8081 is the API container's own port. The edge deliberately does not proxy /actuator, so
     # asking :8080 for it would be asking nginx a question it is built to refuse.
@@ -160,6 +166,29 @@ jobs:
         echo "backend never became healthy" >&2
         docker compose logs app
         exit 1
+
+    # The second replica, on its own port - and then the thing that would otherwise be assumed:
+    # that :8081 and :8082 are two containers. One container answering both would make
+    # cross-replica-sync.cy.js a slower copy of live-sync.cy.js, passing and proving nothing.
+    - name: Wait for the second replica, and confirm it is a second one
+      run: |
+        for i in $(seq 1 60); do
+          if curl -fs http://localhost:8082/actuator/health/readiness | grep -q '"status":"UP"'; then
+            break
+          fi
+          sleep 5
+        done
+        curl -fsS http://localhost:8082/actuator/health/readiness | grep -q '"status":"UP"' || {
+          echo "the second replica never became healthy" >&2
+          docker compose logs app2
+          exit 1
+        }
+        first=$(docker compose ps -q app)
+        second=$(docker compose ps -q app2)
+        test -n "$first" && test -n "$second" && test "$first" != "$second" || {
+          echo "app and app2 are not two distinct containers" >&2
+          exit 1
+        }
 
     # The other half, and the reason this job is worth more than it was: everything below goes
     # through nginx on :8080, so a broken proxy rule, a missing header or a body size limit fails
@@ -206,6 +235,16 @@ jobs:
         CYPRESS_BASE_URL: http://localhost:8080
       run: npm run cypress:run
 
+    # Not in the default spec pattern, and not skipped either - see cypress.config.js. A step
+    # rather than a job, so "did it run" is answered by this job's own log rather than by a
+    # `needs` list somebody has to remember to grow; CrossReplicaStackTest fails the build if this
+    # step stops naming the script.
+    - name: Run the cross-replica board-sync spec
+      working-directory: frontend
+      env:
+        CYPRESS_BASE_URL: http://localhost:8080
+      run: npm run cypress:run:replicas
+
     - name: Upload Cypress artifacts
       if: failure()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -218,7 +257,7 @@ jobs:
 
     - name: Tear down the stack
       if: always()
-      run: docker compose down -v
+      run: docker compose --profile replicas down -v
 
   # kanban-cd.yml's Trivy gate only ever runs on push to main, after a PR has already merged - so
   # a base image that picks up a fresh HIGH between when a PR was opened and when it merges goes
