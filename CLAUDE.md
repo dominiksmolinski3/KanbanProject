@@ -439,7 +439,11 @@ Four details carry it:
   then calls `TaskActivityRecorder.detachFrom` before deleting — nothing cascades, deliberately, for
   the same reason attachment blobs are removed by a service call rather than a foreign key.
   `actor_id`/`actor_name` are the same pattern applied to accounts, and `task_column_history.column_name`
-  was the precedent for both: an event log records what was true when it happened.
+  was the precedent for both: an event log records what was true when it happened. `V17` gave
+  `task_column_history.column_id` the same treatment from the other side: it was `not null` with no
+  cascade, so deleting a column that had *ever* held a task — not just one holding a task right now —
+  failed on that foreign key. `ColumnService.deleteColumn` now detaches those rows (`column_id` set
+  to `null`) rather than deleting them, leaving the task and the rest of its history unaffected.
 - **The recorder never throws.** A feed entry is a side effect of somebody else's operation, and a
   task with no board records nothing rather than failing the edit that produced it.
 - **Nothing stored is a sentence.** The row holds a type name and a detail (the column, or the
@@ -510,6 +514,14 @@ Four decisions carry the feature:
   difference between a buffer per transfer and 10 MB per concurrent one, and it is the only reason
   proxying the bytes is affordable at all. `Content-Length` comes from `size_bytes` on the row
   rather than from the stream, which is why that column is stored.
+- **The concurrent-transfer limit is fleet-wide, not per JVM.** `TaskAttachmentService` bounds
+  uploads and downloads with a `Semaphore`, and used to size it from `app.storage.max-concurrent-transfers`
+  alone — correct at one API replica, but at `api_max_replicas` above 1 the true ceiling was that
+  number times the replica count rather than the configured one. It is now divided by
+  `app.storage.replica-count-hint` (`ATTACHMENT_REPLICA_COUNT_HINT`), floored at one permit;
+  Terraform sets the hint to the `api_app` module's own `max_replicas`, so the two move together
+  automatically. That undercounts capacity while the deployment is scaled below its ceiling, which
+  is the safe direction to be wrong in.
 - **`Content-Disposition: attachment`, never `inline`.** The bytes are now served from the app's own
   origin, so an HTML or SVG upload rendered instead of downloaded would be same-origin with the
   board and every token in it. Forcing the download is what makes it safe to echo back whatever
@@ -967,14 +979,18 @@ clause instead.
 without it a queue being worked reads as a queue that is empty, and a relay killed mid-batch reads
 as nothing at all until the lease lapses.
 
-The other three single-replica constraints named here when this paragraph was written are addressed
-now too: the deadline sweep claims its own rows the same way, `AuthRateLimiter`'s escalation lives in
-Redis rather than each replica's own process memory (see the auth section below), and
-`WebSocketConfig` relays to a real broker rather than holding one in the JVM (see **Chat** and
-**Live board sync**). This — the outbox claim — went first because its failure mode is the one that
-leaves the building. `api_max_replicas` stays at 1 in `dev.tfvars` regardless: raising it is a
-deliberate step of its own, verified live rather than assumed from a green build, the same way
-`web_max_replicas` needed a live two-replica SockJS check before it moved.
+The other constraints named here when this paragraph was written are addressed now too: the
+deadline sweep claims its own rows the same way, `AuthRateLimiter`'s escalation lives in Redis
+rather than each replica's own process memory (see the auth section below), `WebSocketConfig`
+relays to a real broker rather than holding one in the JVM (see **Chat** and **Live board sync**),
+and `TaskAttachmentService`'s transfer semaphore divides by a replica-count hint instead of reading
+as a per-replica limit (see **Attachments**). This — the outbox claim — went first because its
+failure mode is the one that leaves the building. With all five cleared, phase 4 of the container
+split raised `api_max_replicas` from 1 to 5 in `dev.tfvars`, matching `web_max_replicas` rather than
+a new ceiling picked without a reason — this deployment has no data yet suggesting the API needs a
+different one than the edge does. Applied to dev, `az containerapp show` confirmed `max_replicas=5`
+on `kanban-api-dev`, and `cypress/replicas/cross-replica-sync.cy.js` (see **Live board sync**) is
+the automated version of the live two-replica check `web_max_replicas` needed before it moved.
 
 **Two things watch the dead letters, because moving the send off the request thread moved the
 signal with it.** A refusal used to be a `500` on `/api/auth/register`, which the `http_5xx` alert
@@ -1089,6 +1105,11 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
 ### CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing.
+  A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
+  both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
+  `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
+  base image that has picked up a fresh CRITICAL/HIGH between a PR opening and merging goes red on
+  the PR itself rather than on `main` a day later, which is the shape #160 was.
   **It also runs on a daily `schedule` (and `workflow_dispatch`), which is the only trigger that
   covers a merge.** A push made with the default `GITHUB_TOKEN` starts no workflow run, and
   `dependabot-auto-merge.yml` merges with exactly that token — so an auto-merged dependency PR
