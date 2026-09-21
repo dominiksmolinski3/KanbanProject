@@ -3,6 +3,7 @@ import {
   getAccessToken,
   getRefreshToken,
   isAccessTokenExpired,
+  redirectToSignIn,
   refreshSession
 } from './session';
 
@@ -78,7 +79,7 @@ export function setupApiInterceptors() {
       // refreshSession has already cleared what it stored; fall through to the same ending.
     }
     clearSession();
-    window.location.href = '/';
+    redirectToSignIn();
     throw new SessionExpiredError();
   };
 
