@@ -1211,7 +1211,19 @@ SEC-06 was. `ConfigurationTest` audits which environments supply what; that the 
   fifteen-resource destroy diff on every pull request is TF-12's failure in the place this project
   treats as its strongest signal, and the only way to make it truthful is dev's live ACS
   credential in GitHub secrets. Retired rather than fixed; the reasoning is in
-  [terraform/README.md](terraform/README.md). The Postgres JDBC URL uses
+  [terraform/README.md](terraform/README.md). **`tf.sh apply` refuses a stale
+  `app_image_tag`**, which is the other half of that variable being required at all: a mutable tag
+  rolls no revision, and a *correct* tag nobody moves deploys a commit nobody has looked at. The
+  second is what happened - the pin sat on phase 01's commit while ~25 PRs merged, and the apply
+  that was meant to ship the broker relay rolled its Terraform onto week-old code with `plan`
+  reading *No changes* afterwards, correctly. The check runs before `terraform init` (a refusal
+  should not cost a round trip to the backend), compares against the local `origin/main` without
+  fetching, and refuses a tag that is not a 40-character SHA, one that is not an ancestor of the
+  tip, and one behind it. `--allow-stale-image` is the acknowledgement, for the two cases that are
+  decisions rather than oversights: CD has not finished pushing the tip's image yet, or the
+  rollback is deliberate. `PinnedImageTagGuardTest` pins the couplings nothing else can see - that
+  it runs on `apply` only, that it runs before `init`, and that the flag is stripped before
+  Terraform sees an argument it does not know. The Postgres JDBC URL uses
   `sslmode=verify-full`, not `require` — `require` encrypts without authenticating the server. **It
   carries `sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory`, and that half is load-bearing**:
   pgjdbc's default for a verifying mode is `LibPQFactory`, which follows libpq's convention and
