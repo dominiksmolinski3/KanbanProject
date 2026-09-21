@@ -67,6 +67,17 @@ variable "api_max_replicas" {
   }
 }
 
+variable "api_db_connection_budget" {
+  description = "How many PostgreSQL connections the whole API fleet may hold, divided by api_max_replicas to reach each replica's Hikari maximum-pool-size. Must fit inside the SKU's usable connections (module.postgres.usable_connections), which the check block below asserts. Raise it with api_max_replicas, not instead of it - the two multiply."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.api_db_connection_budget >= 1
+    error_message = "The api_db_connection_budget must be at least 1."
+  }
+}
+
 variable "web_max_replicas" {
   description = "Upper bound on edge replicas. nginx serving files from its own image holds no state, so nothing here has to move before this can. It is a ceiling on API throughput as well, since all /api traffic passes through it - raising it does not raise api_max_replicas, and is not a way around it."
   type        = number
