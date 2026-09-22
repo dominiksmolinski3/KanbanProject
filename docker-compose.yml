@@ -36,6 +36,13 @@ x-api: &api
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
     SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
     SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    # The same per-replica pool size the deployment computes, rather than Hikari's default of
+    # ten. Not because a local Postgres cannot spare the connections - it has a hundred - but
+    # because this stack is the only place the shape gets checked before Azure, and with the
+    # replicas profile up there really are two JVMs sharing one server here too. Terraform
+    # divides api_db_connection_budget by api_max_replicas to reach this number; see
+    # application.properties for why the default it overrides is the dangerous one.
+    DB_MAX_POOL_SIZE: 6
     JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     ACS_EMAIL_CONNECTION_STRING: ${ACS_EMAIL_CONNECTION_STRING}
     ACS_EMAIL_SENDER_ADDRESS: ${ACS_EMAIL_SENDER_ADDRESS}

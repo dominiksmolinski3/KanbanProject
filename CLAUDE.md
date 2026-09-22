@@ -1157,6 +1157,31 @@ it at creation time, so the app has to be deployed and serving before this can a
 
 **Attachment storage takes one of two ways in, never both.** `app.storage.endpoint` with no key is production — a managed identity against an account with shared-key access off — and `app.storage.connection-string` is a local Azurite container. Neither set turns attachments off rather than failing to boot. `AZURE_STORAGE_IDENTITY_CLIENT_ID` is read as a property rather than left to the SDK's own `AZURE_CLIENT_ID`, because a variable Terraform passes and nothing in this repo binds is one `ConfigurationTest` reports as dead configuration — and it would be right to.
 
+**The connection pool is sized for the fleet, not for one replica.** HikariCP defaults
+`maximum-pool-size` to 10 and `minimum-idle` to *whatever that is*, so an idle replica does not
+merely allow ten connections — it holds ten. At `api_max_replicas = 5` that is fifty held at rest,
+and the dev server has fifty in total of which ten are reserved: measured, not assumed, with
+`az postgres flexible-server parameter show` reporting `max_connections = 50` and
+`superuser_reserved_connections = 10`. Forty usable, fifty asked for — the fleet could not reach
+its own replica ceiling, and the first sign would have been the `postgres_connections` alert firing
+on refused connections, an alert whose description already names this mechanism. The alarm was
+wired and the limit was not.
+
+`api_db_connection_budget` is fleet-wide for the same reason `app.storage.max-concurrent-transfers`
+is: what runs out is on the server, so a per-replica limit silently means that number times the
+replica count. `modules/api_app` divides it by the same `var.max_replicas` it already feeds the
+attachment semaphore, so the two cannot drift; `DB_MIN_IDLE` stays at the property default of 2,
+which is the half that decides what an idle fleet holds.
+
+**Where the ceiling itself lives is the part with no natural home.** Azure sizes `max_connections`
+from the SKU and publishes it as no attribute of the resource, so `modules/postgres` records it as
+a map and exposes `usable_connections` — the SKU's limit less the superuser reserve — with an
+unlisted SKU a plan failure rather than a `lookup()` default, because being wrong optimistically
+here *is* the outage. The root module compares the budget against it on every plan, and
+`DatabasePoolBudgetTest` makes the same comparison on every build: a Terraform `check` block warns
+rather than fails and only runs where credentials do, which is not where this repository holds the
+rest of its two-file rules.
+
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
 
 `V5__add_boards.sql` is the one to read before adding another: it adds a column, backfills it, and
