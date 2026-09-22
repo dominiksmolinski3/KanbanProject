@@ -34,7 +34,7 @@ import java.util.Set;
  *
  * <p><em>Owner</em> may rename, delete and change membership - tracked separately via
  * {@code boards.owner_id} and unrelated to the role below. Everyone else on the member list carries
- * a {@link BoardRole} ({@code board_members.role}, added in {@code V20}): <em>member</em> may do
+ * a {@link BoardRole} ({@code board_members.role}, added in {@code V21}): <em>member</em> may do
  * anything to the board's contents, <em>viewer</em> may see it and nothing else. The owner is
  * nullable only for the one board V5 creates to hold data that predates boards; the first account to
  * open a board adopts it (see {@link BoardService#provisionFor}).

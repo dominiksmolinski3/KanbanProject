@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * Unlike the other mappers this one is not a bare {@code Function}: a board renders differently
  * depending on who is asking, so the caller is part of the input. It also reaches past the entity
- * graph for {@code board_members.role} ({@code V20}), which {@link Board}'s own {@code @ManyToMany}
+ * graph for {@code board_members.role} ({@code V21}), which {@link Board}'s own {@code @ManyToMany}
  * mapping does not carry - see {@link BoardRepository#findMemberRoles}.
  */
 @Component

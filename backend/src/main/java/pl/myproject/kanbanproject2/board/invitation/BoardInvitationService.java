@@ -70,7 +70,7 @@ public class BoardInvitationService {
             return invitationMapper.apply(existing.get());
         }
 
-        // An omitted role is MEMBER - V20's own default and the write access every invitation
+        // An omitted role is MEMBER - V21's own default and the write access every invitation
         // offered before there was a choice, so a client that predates the picker keeps working.
         var role = request.role() == null ? BoardRole.MEMBER : request.role();
         var invitation = invitationRepository.save(new BoardInvitation(board, email, caller, role));

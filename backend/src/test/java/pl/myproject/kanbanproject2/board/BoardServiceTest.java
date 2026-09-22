@@ -174,7 +174,7 @@ class BoardServiceTest {
         }
 
         @Test
-        @DisplayName("a row with no stored role reads as MEMBER, the write access every row had before V20")
+        @DisplayName("a row with no stored role reads as MEMBER, the write access every row had before V21")
         void noStoredRoleDefaultsToMember() {
             var board = boardOf(owner, member);
             when(boardRepository.findMemberRole(10, 2)).thenReturn(Optional.empty());

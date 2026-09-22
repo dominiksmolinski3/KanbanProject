@@ -62,7 +62,7 @@ public class BoardInvitation {
 
     /**
      * The role the invitee joins at if they accept - carried on the offer itself rather than
-     * decided afterward, so an owner can invite somebody specifically as a viewer. {@code V20}
+     * decided afterward, so an owner can invite somebody specifically as a viewer. {@code V21}
      * defaults every column-less row to {@link BoardRole#MEMBER}, which is also this field's own
      * default for the same backward-compatibility reason: the invite-creation UI predates a choice.
      */
