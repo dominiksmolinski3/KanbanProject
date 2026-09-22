@@ -8,9 +8,30 @@ export default defineConfig({
     global: 'window',
   },
   build: {
-    // Set the output directory to Spring Boot static resources folder
+    // nginx serves this directory from disk now (see CLAUDE.md, "Two containers, one origin") -
+    // Spring stopped serving static resources when the tier split landed.
     outDir: 'dist',
     emptyOutDir: true,
+    // Read by scripts/check-bundle-size.mjs, which walks the entry's static import graph to know
+    // what actually downloads before the sign-in form paints - a dynamic import() (a lazy route)
+    // does not appear in that graph, which is the distinction the budget is built on.
+    manifest: true,
+    rollupOptions: {
+      output: {
+        // React itself barely ever changes version between deploys, so it earns its own chunk
+        // under the immutable-asset caching the split gave /assets/ - a react-only chunk stays
+        // cached across a deploy that only touched application code. Route-specific weight
+        // (SockJS, the STOMP client, react-xarrows) is deliberately left alone here: it already
+        // lands in its own chunk from the dynamic `import()` boundary in App.jsx, and folding it
+        // into a single catch-all "vendor" bucket would force it to load before the sign-in form
+        // paints, undoing the point of that split.
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|scheduler)[\\/]/.test(id)) {
+            return 'vendor-react';
+          }
+        },
+      },
+    },
   },
   server: {
     proxy: {

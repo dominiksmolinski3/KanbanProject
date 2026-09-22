@@ -510,5 +510,13 @@
     "noTimeStatistics": "Brak statystyk czasu",
     "noColumnHistory": "Brak historii kolumn",
     "noColumnHistoryHint": "To zadanie nie zmieniło jeszcze kolumny"
+  },
+  "app": {
+    "loading": "Ładowanie..."
+  },
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "message": "Strona, której szukasz, nie istnieje.",
+    "backHome": "Powrót do strony głównej"
   }
 }

@@ -510,5 +510,13 @@
         "noTimeStatistics": "Aucune statistique de temps disponible",
         "noColumnHistory": "Aucun historique de colonnes disponible",
         "noColumnHistoryHint": "Cette tâche n'a pas encore changé de colonne"
+    },
+    "app": {
+        "loading": "Chargement..."
+    },
+    "notFound": {
+        "title": "Page introuvable",
+        "message": "La page que vous recherchez n'existe pas.",
+        "backHome": "Retour à l'accueil"
     }
 }
