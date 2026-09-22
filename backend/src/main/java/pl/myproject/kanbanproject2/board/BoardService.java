@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.board;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
@@ -69,6 +70,7 @@ public class BoardService {
     private final TaskActivityRepository activityRepository;
     private final ChatRepository chatRepository;
     private final BoardMapper boardMapper;
+    private final ApplicationEventPublisher events;
 
     // ------------------------------------------------------------------ access ---
 
@@ -255,6 +257,9 @@ public class BoardService {
             }
             taskRepository.saveAll(tasks);
             taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskIn(tasks));
+            // Whatever a feature hangs off a task goes first, removed by the feature that owns it -
+            // see BoardTasksDeleting for why this is an event and not one more line here.
+            events.publishEvent(new BoardTasksDeleting(board, tasks));
             taskRepository.deleteAll(tasks);
         }
 

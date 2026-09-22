@@ -10,6 +10,7 @@ import org.springframework.http.HttpRange;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.BoardTasksDeleting;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -503,6 +504,45 @@ class TaskAttachmentServiceTest {
 
             verify(attachments, never()).deleteAll(any());
             verify(blobStore, never()).remove(anyString());
+        }
+
+        @Test
+        @DisplayName("a board being deleted takes every attachment on every card, rows and blobs")
+        void boardDeletionTakesEverything() {
+            var other = taskOn(tenant.board(), 43);
+            var tasksOnBoard = List.of(task, other);
+            when(attachments.findByTaskIn(tasksOnBoard))
+                    .thenReturn(List.of(stored(task, 1L), stored(other, 2L)));
+
+            service.onBoardTasksDeleting(new BoardTasksDeleting(tenant.board(), tasksOnBoard));
+
+            verify(attachments).deleteAll(any());
+            verify(blobStore).remove("tasks/42/blob-1");
+            verify(blobStore).remove("tasks/43/blob-2");
+        }
+
+        @Test
+        @DisplayName("a board with no tasks does not ask")
+        void emptyBoardDoesNotAsk() {
+            service.onBoardTasksDeleting(new BoardTasksDeleting(tenant.board(), List.of()));
+
+            verify(attachments, never()).findByTaskIn(any());
+        }
+
+        /**
+         * The listener has to run inside deleteBoard's transaction, before the tasks' DELETE is
+         * flushed. A @TransactionalEventListener - the obvious-looking upgrade - runs after the
+         * commit, by which point the foreign key has already refused and the board is a 500 again.
+         */
+        @Test
+        @DisplayName("the listener is synchronous, not after-commit")
+        void listenerRunsInTheTransaction() throws NoSuchMethodException {
+            var listener = TaskAttachmentService.class
+                    .getMethod("onBoardTasksDeleting", BoardTasksDeleting.class);
+
+            assertThat(listener.isAnnotationPresent(org.springframework.context.event.EventListener.class)).isTrue();
+            assertThat(listener.isAnnotationPresent(
+                    org.springframework.transaction.event.TransactionalEventListener.class)).isFalse();
         }
     }
 
