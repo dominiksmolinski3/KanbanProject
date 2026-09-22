@@ -368,6 +368,17 @@ route is written to avoid. Four things about the row are load-bearing:
   history rows: nothing cascades to them, and an invitation whose board is gone renders as a board
   with no name on the invitee's own screen.
 
+**What hangs off a task is not on that by-hand list; its owner removes it (`BoardTasksDeleting`).**
+`deleteBoard` publishes the event inside its own transaction just before the tasks go, and each
+feature that keeps rows against a task listens with a plain synchronous `@EventListener` beside the
+`deleteAllFor(Task)` that `TaskService.deleteTask` already calls. It is an event because the call
+would be a cycle: every feature service depends on `BoardService` for its access checks. The
+by-hand list is how `task_attachments` got missed. Any board with a single file on a single card
+answered its owner `500` on `fk_task_attachments_task`, reproduced on the compose stack before the
+fix. **A new table with a `task_id` needs a listener, and it must not be a
+`@TransactionalEventListener`**: after-commit is after the foreign key has already refused. Each
+listener's own test asserts the annotation.
+
 Anything that is not a pending invitation the caller may act on — a wrong id, another board's row
 under an owner's path, somebody else's row under `/invitations`, one already answered — is one
 `404 INVITATION_NOT_FOUND`. `400 ALREADY_BOARD_MEMBER` is the exception and discloses nothing:
