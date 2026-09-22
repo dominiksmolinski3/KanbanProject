@@ -1,9 +1,12 @@
 package pl.myproject.kanbanproject2.exception;
 
 import io.jsonwebtoken.JwtException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -25,6 +28,28 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    /**
+     * Counts a 409 caused by a stale {@code @Version}, one shared series across every entity rather
+     * than one per type - {@code TaskService}, {@code ColumnService} and {@code RowService} all land
+     * here, and the interesting question ("are conflicts common") does not need them told apart.
+     * There is no export pipeline to Log Analytics in this branch's scope, so this is read from
+     * {@code /actuator/metrics} rather than replacing an alert - there was never a KQL rule for this
+     * one, since a 409 never reached the 5xx alert to begin with.
+     */
+    static final String OPTIMISTIC_LOCK_CONFLICTS_COUNTER = "kanban.task.optimistic_lock.conflicts";
+
+    private final MeterRegistry meterRegistry;
+
+    /** Kept so the many {@code .setControllerAdvice(new GlobalExceptionHandler())} slice tests need no change. */
+    public GlobalExceptionHandler() {
+        this(new SimpleMeterRegistry());
+    }
+
+    @Autowired
+    public GlobalExceptionHandler(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
 
     @ExceptionHandler(GlobalException.class)
     public ResponseEntity<ErrorResponse> handleGlobal(GlobalException ex) {
@@ -172,6 +197,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex) {
         log.debug("Optimistic lock conflict: {}", ex.getMessage());
+        meterRegistry.counter(OPTIMISTIC_LOCK_CONFLICTS_COUNTER).increment();
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(

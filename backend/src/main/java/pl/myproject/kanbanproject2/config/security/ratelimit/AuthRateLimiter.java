@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.security.ratelimit;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -28,26 +29,37 @@ import java.util.Map;
 @Component
 public class AuthRateLimiter {
 
+    /**
+     * Counts a refusal on the way out - the same moment the escalation is charged - tagged by the
+     * rule and dimension that fired so {@code CREDENTIALS}/{@code EMAIL} and {@code IP}/{@code
+     * ACCOUNT} are separate series rather than one undifferentiated rate. There is no export
+     * pipeline to Log Analytics in this branch's scope, so this is read from
+     * {@code /actuator/metrics} rather than replacing a KQL alert.
+     */
+    static final String REFUSED_COUNTER = "kanban.auth.ratelimit.refused";
+
     private final EscalationStore store;
     private final Map<AuthRateLimitRule, Map<AuthRateLimitDimension, EscalationStore.Limit>> limits;
     private final Clock clock;
+    private final MeterRegistry registry;
 
     /*
      * @Autowired is load-bearing, not decoration: with two constructors here, Spring otherwise
      * looks for a no-arg one that does not exist and the context fails to start.
      */
     @Autowired
-    public AuthRateLimiter(AuthRateLimitProperties properties, StringRedisTemplate redis) {
-        this(properties, new RedisEscalationStore(redis), Clock.systemUTC());
+    public AuthRateLimiter(AuthRateLimitProperties properties, StringRedisTemplate redis, MeterRegistry registry) {
+        this(properties, new RedisEscalationStore(redis), Clock.systemUTC(), registry);
     }
 
     /**
      * Visible for tests, which supply an in-memory store and a fixed clock so the escalation can be
      * asserted without a live Redis and without waiting a real cooldown out.
      */
-    AuthRateLimiter(AuthRateLimitProperties properties, EscalationStore store, Clock clock) {
+    AuthRateLimiter(AuthRateLimitProperties properties, EscalationStore store, Clock clock, MeterRegistry registry) {
         this.store = store;
         this.clock = clock;
+        this.registry = registry;
         this.limits = new EnumMap<>(AuthRateLimitRule.class);
         this.limits.put(AuthRateLimitRule.CREDENTIALS, dimensions(
                 properties.credentialAttemptsPerIp(),
@@ -68,7 +80,11 @@ public class AuthRateLimiter {
      */
     public AuthRateLimitDecision tryConsume(AuthRateLimitRule rule, AuthRateLimitDimension dimension, String key) {
         EscalationStore.Limit limit = limits.get(rule).get(dimension);
-        return store.attempt(cacheKey(rule, dimension, key), limit, clock.millis());
+        AuthRateLimitDecision decision = store.attempt(cacheKey(rule, dimension, key), limit, clock.millis());
+        if (!decision.allowed()) {
+            registry.counter(REFUSED_COUNTER, "rule", rule.name(), "dimension", dimension.name()).increment();
+        }
+        return decision;
     }
 
     private static Map<AuthRateLimitDimension, EscalationStore.Limit> dimensions(

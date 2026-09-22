@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.exception;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,11 +39,12 @@ class OptimisticLockConflictTest {
     }
 
     private MockMvc mvc;
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new ProbeController())
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(meterRegistry))
                 .build();
     }
 
@@ -63,5 +66,16 @@ class OptimisticLockConflictTest {
                 .contains("reload")
                 .doesNotContain("ObjectOptimisticLockingFailureException")
                 .doesNotContain("org.springframework");
+    }
+
+    @Test
+    @DisplayName("each stale write counts a conflict, so the rate is visible on /actuator/metrics")
+    void staleWriteCountsAConflict() throws Exception {
+        mvc.perform(get("/probe"));
+        mvc.perform(get("/probe"));
+
+        assertThat(meterRegistry.get(GlobalExceptionHandler.OPTIMISTIC_LOCK_CONFLICTS_COUNTER)
+                .counter().count())
+                .isEqualTo(2.0);
     }
 }
