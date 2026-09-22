@@ -1,5 +1,8 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -64,23 +67,40 @@ public class OutboxRelay {
      */
     static final String DEAD_LETTER_MARKER = "MAIL_DEAD_LETTER";
 
+    /**
+     * Counts every row that reaches {@code FAILED} - the same event the {@link #DEAD_LETTER_MARKER}
+     * log line marks, kept rather than replaced: {@code DeadLetterAlertTest} and the Log Analytics
+     * rule in {@code terraform/modules/diagnostics/main.tf} still depend on the token being written,
+     * since there is no export pipeline from this counter to Log Analytics. This is the in-process
+     * trend line the log line alone could never give - a WARN is one instant, not a rate.
+     */
+    static final String DEAD_LETTER_COUNTER = "kanban.mail.outbox.dead_letters";
+
     private final OutboxEmailRepository outbox;
     private final OutboxClaimer claimer;
     private final EmailSender transport;
     private final Clock clock;
+    private final Counter deadLetters;
 
     @Autowired
     public OutboxRelay(OutboxEmailRepository outbox,
                        OutboxClaimer claimer,
-                       @Qualifier("mailTransport") EmailSender transport) {
-        this(outbox, claimer, transport, Clock.systemUTC());
+                       @Qualifier("mailTransport") EmailSender transport,
+                       MeterRegistry registry) {
+        this(outbox, claimer, transport, Clock.systemUTC(), registry);
     }
 
     OutboxRelay(OutboxEmailRepository outbox, OutboxClaimer claimer, EmailSender transport, Clock clock) {
+        this(outbox, claimer, transport, clock, new SimpleMeterRegistry());
+    }
+
+    OutboxRelay(OutboxEmailRepository outbox, OutboxClaimer claimer, EmailSender transport, Clock clock,
+               MeterRegistry registry) {
         this.outbox = outbox;
         this.claimer = claimer;
         this.transport = transport;
         this.clock = clock;
+        this.deadLetters = registry.counter(DEAD_LETTER_COUNTER);
     }
 
     /**
@@ -132,6 +152,7 @@ public class OutboxRelay {
             if (row.getStatus() == OutboxStatus.FAILED) {
                 log.error("{}: outbox message {} was claimed and abandoned {} times; giving up",
                         DEAD_LETTER_MARKER, row.getId(), row.getAttempts());
+                deadLetters.increment();
             }
         }
     }
@@ -146,6 +167,7 @@ public class OutboxRelay {
             if (row.getStatus() == OutboxStatus.FAILED) {
                 log.error("{}: outbox message {} refused {} times; giving up",
                         DEAD_LETTER_MARKER, row.getId(), row.getAttempts(), refusal);
+                deadLetters.increment();
             } else {
                 log.warn("Outbox message {} refused on attempt {}; retrying at {}",
                         row.getId(), row.getAttempts(), row.getNextAttemptAt());

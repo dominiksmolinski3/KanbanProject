@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.task.attachment;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,13 +86,25 @@ public class TaskAttachmentService {
     private final long maxAttachmentsPerBoard;
     private final long maxTotalBytesPerBoard;
 
+    /**
+     * Counts a request refused with {@code ATTACHMENT_TRANSFER_BUSY}, tagged by which side of the
+     * transfer ran out of permits - {@code upload} or {@code download} - since the two compete for
+     * the same {@link #transferPermits} but a busy upload path and a busy download path point at
+     * different capacity questions.
+     */
+    static final String TRANSFER_BUSY_COUNTER = "kanban.attachment.transfer.refused";
+
+    private final Counter uploadBusy;
+    private final Counter downloadBusy;
+
     @Autowired
     public TaskAttachmentService(TaskAttachmentRepository attachments,
                                  TaskRepository tasks,
                                  TaskAttachmentMapper mapper,
                                  BlobStore blobStore,
-                                 BlobStorageProperties storageProperties) {
-        this(attachments, tasks, mapper, blobStore, storageProperties, Clock.systemUTC());
+                                 BlobStorageProperties storageProperties,
+                                 MeterRegistry meterRegistry) {
+        this(attachments, tasks, mapper, blobStore, storageProperties, Clock.systemUTC(), meterRegistry);
     }
 
     TaskAttachmentService(TaskAttachmentRepository attachments,
@@ -98,7 +112,8 @@ public class TaskAttachmentService {
                           TaskAttachmentMapper mapper,
                           BlobStore blobStore,
                           BlobStorageProperties storageProperties,
-                          Clock clock) {
+                          Clock clock,
+                          MeterRegistry meterRegistry) {
         this.attachments = attachments;
         this.tasks = tasks;
         this.mapper = mapper;
@@ -108,6 +123,8 @@ public class TaskAttachmentService {
                 storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
         this.maxAttachmentsPerBoard = storageProperties.maxAttachmentsPerBoard();
         this.maxTotalBytesPerBoard = storageProperties.maxTotalBytesPerBoard();
+        this.uploadBusy = meterRegistry.counter(TRANSFER_BUSY_COUNTER, "operation", "upload");
+        this.downloadBusy = meterRegistry.counter(TRANSFER_BUSY_COUNTER, "operation", "download");
     }
 
     public List<TaskAttachmentDto> list(User caller, Integer taskId) {
@@ -132,6 +149,7 @@ public class TaskAttachmentService {
         String blobName = blobNameFor(task);
 
         if (!transferPermits.tryAcquire()) {
+            uploadBusy.increment();
             throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
         }
         try (InputStream data = file.getInputStream()) {
@@ -195,6 +213,7 @@ public class TaskAttachmentService {
         }
 
         if (!transferPermits.tryAcquire()) {
+            downloadBusy.increment();
             throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
         }
         boolean handedOff = false;
