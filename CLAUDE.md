@@ -1194,6 +1194,27 @@ A schema change is therefore two edits, not one: the entity, **and** a new `V<n>
 
 **Two branches that each add a migration have an order between them even when they share no line of code**, and it is invisible to `FlywayMigrationsMatchEntitiesTest` (which compares names, not history). Merge them the wrong way round — a lower `V<n>` appearing under a higher one already applied — and the build stays green while the *next* deploy migrates and then refuses. The `migration-order.yml` PR check is the guard: it reads the highest migration version on the base branch and fails a PR that adds one at or below it, so a branch that has fallen behind `main` must renumber before it can merge. `MigrationOrderTest` is the database-free companion that catches a duplicate or a gap left by a sloppy merge; it cannot see the deploy-order trap and says so in its own Javadoc.
 
+**Postgres indexes no foreign key, so `V19` adds the sixteen that had none and
+`ForeignKeysAreIndexedTest` keeps it that way.** Unlike MySQL, Postgres indexes the side a key
+points *at* and leaves the referencing column bare — so each unindexed one was a sequential scan
+on "which rows point at this", plus a full scan of the child table on every delete or update of a
+referenced row. The nine indexes the earlier migrations declared were each added for a query
+somebody had in hand; these are the set nobody had a reason to add yet, read out of the foreign
+keys themselves. Four are on constant paths: `board_members (user_id)`, whose composite primary key
+leads on `board_id` and so cannot answer "which boards is this account on"; the same asymmetry on
+`user_task (user_id)`, behind `UserService.checkWipStatus`; `task_labels (task_id)`, an
+`@ElementCollection` with no key at all; and `task_column_history (column_id)`, which `V17` taught
+`ColumnService.deleteColumn` to write by.
+
+The guard is worth more than the migration, because the migration is a one-off and the next foreign
+key is not. It parses the migrations, collects every foreign key column and every index's **leading**
+column, and fails the build on one with no cover. Two of its rules are load-bearing and neither is
+obvious: only the leading column of a composite counts — reading `(board_id, user_id)` as covering
+both is exactly the mistake that left the membership check unindexed — and **a partial index covers
+nothing**, which is why `ux_board_invitations_pending` (`WHERE status = 'PENDING'`) does not answer
+`BoardService.deleteBoard`'s lookup by board. It carries its own control case, so a parser that has
+quietly stopped matching cannot pass as a schema with nothing to find.
+
 `V1__baseline_schema.sql` is the schema as `ddl-auto=update` left it, generated from the entity mappings under **Spring Boot's** naming strategies rather than Hibernate's bare defaults — that is the difference between `recipient_id` and `recipientId`, and between the `task` table and `Task`. `spring.flyway.baseline-on-migrate=true` means an environment that already has that schema is marked at V1 without re-running it, while a fresh database runs it like any other migration.
 
 `backend/db.sql` is gone. The default columns it seeded are `V3__seed_default_columns.sql`, so local development gets them by the same route as every other environment — and an init script would have left the volume non-empty, which is exactly the state `baseline-on-migrate` reads as "already migrated".
