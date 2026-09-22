@@ -29,7 +29,7 @@ public class StorageHealthIndicator implements HealthIndicator {
         if (!blobStore.isConfigured()) {
             return Health.outOfService()
                     .withDetail("reason", "no storage account is configured; "
-                            + "task attachments are refused rather than stored")
+                            + "task attachments and avatars are refused rather than stored")
                     .build();
         }
         return Health.up().build();

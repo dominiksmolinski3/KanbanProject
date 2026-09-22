@@ -82,7 +82,7 @@ class PublicChainPathsTest {
                 "/api/columns",
                 "/api/rows",
                 "/api/subtasks",
-                "/api/files/1");
+                "/api/users/1/avatar");
     }
 
     @Test
@@ -100,7 +100,7 @@ class PublicChainPathsTest {
         // /users was the one path that was both: a client route the chain permitted, and the name
         // UserController answered before the /api prefix existed. Neither is true here now, and a
         // matcher drifting back to any of them would otherwise be silent.
-        assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks", "/files");
+        assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks");
     }
 
     private void assertPermitted(String... uris) {

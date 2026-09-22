@@ -8,9 +8,6 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.file.File;
-import pl.myproject.kanbanproject2.file.FileRepository;
-import pl.myproject.kanbanproject2.file.FileService;
 import pl.myproject.kanbanproject2.layout.column.Column;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
@@ -48,8 +45,10 @@ import static org.mockito.Mockito.when;
 /**
  * SEC-01 and SEC-05, stated as the property they are: <b>one account's board is invisible to
  * another's, on every route that reaches it.</b> Two tenants, each with a board, a column, a
- * swimlane, a task and an upload; the services are real and only the repositories are mocked, so
- * the check under test is the one that ships, including {@link BoardService} itself.
+ * swimlane and a task; the services are real and only the repositories are mocked, so
+ * the check under test is the one that ships, including {@link BoardService} itself. Task
+ * attachment ownership has its own suite, {@code TaskAttachmentServiceTest}, and so does an
+ * avatar's, {@code AvatarServiceTest} - neither is board-scoped, so neither belongs here.
  *
  * <p>The expected status is 404 throughout, never 403 — a 403 on {@code /api/tasks/{id}} would let
  * a caller walk the id space and learn the size and shape of a board they cannot open.
@@ -64,7 +63,6 @@ class TenantIsolationTest {
     private ColumnRepository columnRepository;
     private RowRepository rowRepository;
     private UserRepository userRepository;
-    private FileRepository fileRepository;
 
     private BoardService boardService;
     private BoardMapper boardMapper;
@@ -72,7 +70,6 @@ class TenantIsolationTest {
     private ColumnService columnService;
     private RowService rowService;
     private UserService userService;
-    private FileService fileService;
 
     private User me;
     private User them;
@@ -86,7 +83,6 @@ class TenantIsolationTest {
         columnRepository = mock(ColumnRepository.class);
         rowRepository = mock(RowRepository.class);
         userRepository = mock(UserRepository.class);
-        fileRepository = mock(FileRepository.class);
         var historyRepository = mock(TaskColumnHistoryRepository.class);
 
         me = TenancyFixtures.user(MINE);
@@ -123,7 +119,6 @@ class TenantIsolationTest {
                 taskService, boardService, mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
         rowService = new RowService(rowRepository, new RowMapper(taskMapper), taskRepository, boardService, mock(BoardEventPublisher.class));
-        fileService = new FileService(fileRepository);
     }
 
     private Task theirTask(int id) {
@@ -376,40 +371,6 @@ class TenantIsolationTest {
 
             expect(ExceptionIdentifier.NOT_ACCOUNT_OWNER,
                     () -> userService.updateWipLimit(me, THEIRS, 5));
-        }
-    }
-
-    @Nested
-    @DisplayName("files")
-    class Files {
-
-        @Test
-        @DisplayName("an upload belongs to whoever uploaded it, and nobody else can read or delete it")
-        void uploadsAreOwned() {
-            var theirs = new File("secret.pdf", "application/pdf", new byte[]{1}, them);
-            theirs.setId(9L);
-            when(fileRepository.findById(9L)).thenReturn(Optional.of(theirs));
-
-            // Sequential ids: before there was an owner, GET /api/files/1..n read every upload in
-            // the deployment and DELETE destroyed them.
-            expect(ExceptionIdentifier.FILE_NOT_FOUND, () -> fileService.getFile(me, 9L));
-            expect(ExceptionIdentifier.FILE_NOT_FOUND, () -> fileService.deleteFile(me, 9L));
-            verify(fileRepository, never()).delete(any());
-
-            assertThat(fileService.getFile(them, 9L)).isSameAs(theirs);
-        }
-
-        @Test
-        @DisplayName("a file uploaded before there was an owner column belongs to nobody")
-        void unownedFilesAreUnreachable() {
-            var legacy = new File("old.bin", "application/octet-stream", new byte[]{1});
-            legacy.setId(3L);
-            when(fileRepository.findById(3L)).thenReturn(Optional.of(legacy));
-
-            // Guessing an owner would be worse than admitting there isn't one. V5 recovers the
-            // owner of an avatar from users.avatar_id and has nothing to go on for anything else.
-            expect(ExceptionIdentifier.FILE_NOT_FOUND, () -> fileService.getFile(me, 3L));
-            expect(ExceptionIdentifier.FILE_NOT_FOUND, () -> fileService.getFile(them, 3L));
         }
     }
 }
