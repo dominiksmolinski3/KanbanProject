@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Health;
@@ -32,8 +33,9 @@ class MailHealthIndicatorTest {
 
     private final OutboxEmailRepository outbox = mock(OutboxEmailRepository.class);
     private final EmailSender transport = mock(EmailSender.class);
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final MailHealthIndicator indicator =
-            new MailHealthIndicator(outbox, transport, Clock.fixed(NOW, ZoneOffset.UTC));
+            new MailHealthIndicator(outbox, transport, Clock.fixed(NOW, ZoneOffset.UTC), meterRegistry);
 
     @Test
     @DisplayName("mail that is not configured is out of service, and says how much it has thrown away")
@@ -157,6 +159,18 @@ class MailHealthIndicatorTest {
 
         verify(outbox, never()).findAll();
         verify(outbox, never()).claimBatch(any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("the pending gauge reads through the same query the health detail uses")
+    void thePendingGaugeTracksTheQueueDepth() {
+        when(outbox.countByStatus(OutboxStatus.PENDING)).thenReturn(3L);
+
+        assertThat(meterRegistry.get(MailHealthIndicator.PENDING_GAUGE).gauge().value()).isEqualTo(3.0);
+
+        when(outbox.countByStatus(OutboxStatus.PENDING)).thenReturn(9L);
+
+        assertThat(meterRegistry.get(MailHealthIndicator.PENDING_GAUGE).gauge().value()).isEqualTo(9.0);
     }
 
     @Test

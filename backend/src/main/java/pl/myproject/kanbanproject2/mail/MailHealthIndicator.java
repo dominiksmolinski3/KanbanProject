@@ -1,5 +1,8 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.health.contributor.Health;
@@ -67,20 +70,38 @@ public class MailHealthIndicator implements HealthIndicator {
      */
     static final Duration RECENT = Duration.ofHours(24);
 
+    /**
+     * The gauge name for the pending-row count - the trend line the {@code pending} health detail
+     * never had, since a health check is one instant and {@code /actuator/metrics} keeps a series.
+     * Reads through the same {@link OutboxEmailRepository#countByStatus} query {@link #health()}
+     * already runs, rather than a second one, and is held by a weak reference on this bean per
+     * {@link Gauge.Builder#register}, which is safe here because the indicator is a Spring
+     * singleton that outlives the registry.
+     */
+    static final String PENDING_GAUGE = "kanban.mail.outbox.pending";
+
     private final OutboxEmailRepository outbox;
     private final EmailSender transport;
     private final Clock clock;
 
     @Autowired
     public MailHealthIndicator(OutboxEmailRepository outbox,
-                               @Qualifier("mailTransport") EmailSender transport) {
-        this(outbox, transport, Clock.systemUTC());
+                               @Qualifier("mailTransport") EmailSender transport,
+                               MeterRegistry registry) {
+        this(outbox, transport, Clock.systemUTC(), registry);
     }
 
     MailHealthIndicator(OutboxEmailRepository outbox, EmailSender transport, Clock clock) {
+        this(outbox, transport, clock, new SimpleMeterRegistry());
+    }
+
+    MailHealthIndicator(OutboxEmailRepository outbox, EmailSender transport, Clock clock, MeterRegistry registry) {
         this.outbox = outbox;
         this.transport = transport;
         this.clock = clock;
+        Gauge.builder(PENDING_GAUGE, outbox, repo -> repo.countByStatus(OutboxStatus.PENDING))
+                .description("Outbox email rows currently pending delivery")
+                .register(registry);
     }
 
     @Override
