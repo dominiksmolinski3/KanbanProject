@@ -65,6 +65,7 @@
     "labels": "Etykiety",
     "dailyFocus": "Dzienne skupienie",
     "dailyFocusEmpty": "Brak zadań w dziennym skupieniu.",
+    "readOnlyBanner": "Ta tablica jest dla Ciebie tylko do odczytu — możesz ją zobaczyć, ale nie zmieniać",
     "search": {
       "assignees": "Przypisane do",
       "boardHas": "Tablica ma {{count}} zadań, żadne nie pasuje.",
@@ -155,7 +156,8 @@
     "boardInvitationSent": "Zaproszenie wysłane",
     "boardInvitationRevoked": "Zaproszenie anulowane",
     "boardInvitationAccepted": "Dołączono do tablicy \"{{name}}\"",
-    "boardInvitationDeclined": "Zaproszenie odrzucone"
+    "boardInvitationDeclined": "Zaproszenie odrzucone",
+    "readOnlyBoard": "Ta tablica jest dla Ciebie tylko do odczytu"
   },
   "boards": {
     "switcher": {
@@ -176,6 +178,7 @@
       "you": "(ty)",
       "owner": "Właściciel",
       "member": "Uczestnik",
+      "viewer": "Obserwator",
       "leave": "Opuść tę tablicę",
       "remove": "Usuń z tablicy",
       "removeConfirm": "Usunąć tę osobę z tablicy?",
@@ -195,6 +198,9 @@
       "revoke": "Anuluj to zaproszenie",
       "inviteLabel": "Zaproś kogoś do tej tablicy",
       "invitePlaceholder": "jego adres e-mail",
+      "roleLabel": "Rola",
+      "roleMember": "Uczestnik (może edytować)",
+      "roleViewer": "Obserwator (tylko do odczytu)",
       "invite": "Zaproś",
       "inviteNote": "Ta osoba dostanie zaproszenie e-mailem i dołączy tylko wtedy, gdy je przyjmie. Odpowiedź jest taka sama niezależnie od tego, czy ten adres ma tu konto, więc tego formularza nie da się użyć do sprawdzania, kto jest zarejestrowany."
     }
@@ -420,6 +426,7 @@
     "errors": {
       "empty": "Wiadomość nie może być pusta",
       "tooLong": "Ta wiadomość jest za długa",
+      "readOnly": "Ta tablica jest dla Ciebie tylko do odczytu",
       "notSent": "Wiadomość nie została wysłana"
     }
   },

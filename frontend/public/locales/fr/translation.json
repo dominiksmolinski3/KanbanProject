@@ -65,6 +65,7 @@
       "labels": "Étiquettes",
       "dailyFocus": "Focus du jour",
       "dailyFocusEmpty": "Aucune tâche dans le focus du jour.",
+      "readOnlyBanner": "Ce tableau est en lecture seule pour vous : vous pouvez le voir, mais pas le modifier",
       "search": {
         "assignees": "Assignée à",
         "boardHas": "Le tableau contient {{count}} tâches, aucune ne correspond.",
@@ -155,7 +156,8 @@
       "boardInvitationSent": "Invitation envoyée",
       "boardInvitationRevoked": "Invitation annulée",
       "boardInvitationAccepted": "Vous avez rejoint « {{name}} »",
-      "boardInvitationDeclined": "Invitation refusée"
+      "boardInvitationDeclined": "Invitation refusée",
+      "readOnlyBoard": "Ce tableau est en lecture seule pour vous"
     },
     "boards": {
       "switcher": {
@@ -176,6 +178,7 @@
         "you": "(vous)",
         "owner": "Propriétaire",
         "member": "Membre",
+        "viewer": "Lecteur",
         "leave": "Quitter ce tableau",
         "remove": "Retirer du tableau",
         "removeConfirm": "Retirer cette personne du tableau ?",
@@ -195,6 +198,9 @@
         "revoke": "Annuler cette invitation",
         "inviteLabel": "Inviter quelqu'un sur ce tableau",
         "invitePlaceholder": "son adresse e-mail",
+        "roleLabel": "Rôle",
+        "roleMember": "Membre (peut modifier)",
+        "roleViewer": "Lecteur (lecture seule)",
         "invite": "Inviter",
         "inviteNote": "Cette personne reçoit une invitation par e-mail et ne rejoint le tableau que si elle l'accepte. La réponse est la même que cette adresse ait un compte ici ou non, ce formulaire ne permet donc pas de savoir qui est inscrit."
       }
@@ -420,6 +426,7 @@
       "errors": {
         "empty": "Un message ne peut pas être vide",
         "tooLong": "Ce message est trop long",
+        "readOnly": "Ce tableau est en lecture seule pour vous",
         "notSent": "Le message n’a pas été envoyé"
       }
     },

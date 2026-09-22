@@ -65,6 +65,7 @@
     "labels": "Labels",
     "dailyFocus": "Daily focus",
     "dailyFocusEmpty": "No tasks in daily focus yet.",
+    "readOnlyBanner": "This board is read-only for you — you can see it, but not make changes",
     "search": {
       "assignees": "Assigned to",
       "boardHas": "The board has {{count}} tasks, none of them matching.",
@@ -155,7 +156,8 @@
     "boardInvitationSent": "Invitation sent",
     "boardInvitationRevoked": "Invitation cancelled",
     "boardInvitationAccepted": "You have joined \"{{name}}\"",
-    "boardInvitationDeclined": "Invitation declined"
+    "boardInvitationDeclined": "Invitation declined",
+    "readOnlyBoard": "This board is read-only for you"
   },
   "boards": {
     "switcher": {
@@ -176,6 +178,7 @@
       "you": "(you)",
       "owner": "Owner",
       "member": "Member",
+      "viewer": "Viewer",
       "leave": "Leave this board",
       "remove": "Remove from board",
       "removeConfirm": "Remove this person from the board?",
@@ -195,6 +198,9 @@
       "revoke": "Cancel this invitation",
       "inviteLabel": "Invite someone to this board",
       "invitePlaceholder": "their email address",
+      "roleLabel": "Role",
+      "roleMember": "Member (can edit)",
+      "roleViewer": "Viewer (read-only)",
       "invite": "Invite",
       "inviteNote": "They are emailed an invitation and join only if they accept it. The answer here is the same whether or not that address has an account, so this form cannot be used to find out who is registered."
     }
@@ -420,6 +426,7 @@
     "errors": {
       "empty": "A message cannot be empty",
       "tooLong": "That message is too long",
+      "readOnly": "This board is read-only for you",
       "notSent": "The message was not sent"
     }
   },
