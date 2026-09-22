@@ -12,7 +12,7 @@ package pl.myproject.kanbanproject2.config;
 public final class SpaRoutes {
 
     /** Every top-level path {@code App.jsx} declares a {@code <Route>} for, except {@code /}. */
-    public static final String[] ALL = {"/board", "/users", "/sessions", "/activity"};
+    public static final String[] ALL = {"/board", "/users", "/sessions", "/activity", "/flow"};
 
     private SpaRoutes() {
     }
