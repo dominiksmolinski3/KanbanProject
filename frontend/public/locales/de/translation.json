@@ -510,5 +510,13 @@
     "noTimeStatistics": "Keine Zeitstatistiken verfügbar",
     "noColumnHistory": "Kein Spaltenverlauf verfügbar",
     "noColumnHistoryHint": "Diese Aufgabe wurde noch nicht zwischen Spalten verschoben"
+  },
+  "app": {
+    "loading": "Wird geladen..."
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "message": "Die gesuchte Seite existiert nicht.",
+    "backHome": "Zurück zur Startseite"
   }
 }

@@ -1,57 +1,22 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { setupApiInterceptors } from './services/apiInterceptor';
-import { KanbanProvider } from './context/KanbanContext';
-import { ChatProvider } from './context/ChatContext'
 import HomePage from './components/HomePage';
-import Board from './components/Board';
-import UsersManagement from './components/UsersManagement';
-import Devices from './components/Devices';
-import ActivityFeed from './components/ActivityFeed';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import Bench from './components/Bench';
-import Chat from './components/Chat';
+import NotFound from './components/NotFound';
+import PageLoading from './components/PageLoading';
 import './styles/App.css';
 
+// Everything below is behind the sign-in form, so none of it should be in the chunk that paints
+// it: the chat panel (SockJS, the STOMP client), react-xarrows, and the task detail view all wait
+// until a route that needs them is actually visited.
+const ProtectedLayout = lazy(() => import('./components/ProtectedLayout'));
+const BoardPage = lazy(() => import('./components/BoardPage'));
+const UsersManagement = lazy(() => import('./components/UsersManagement'));
+const ActivityFeed = lazy(() => import('./components/ActivityFeed'));
+const Devices = lazy(() => import('./components/Devices'));
+
 setupApiInterceptors();
-
-const ProtectedRoute = ({ children }) => {
-  const { token, isLoading } = useAuth();
-  const { t } = useTranslation();
-  
-  if (isLoading) {
-    return <div>{t('auth.checkingSession')}</div>;
-  }
-  
-  if (!token) {
-    return <Navigate to="/" />;
-  }
-  
-  return children;
-};
-
-function Dashboard() {
-  return (
-    <KanbanProvider>
-      <ChatProvider>
-      <div className="app-container">
-        <Header />
-        <div className="content-container">
-          <div className="app">
-            <Bench />
-            <Board />
-          </div>
-        </div>
-        <Footer />
-        <Chat />
-      </div>
-      </ChatProvider>
-    </KanbanProvider>
-  );
-}
 
 function App() {
   return (
@@ -59,71 +24,19 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route 
-            path="/board" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/users" 
-            element={
-              <ProtectedRoute>
-                <KanbanProvider>
-                <ChatProvider>
-                  <div className="app-container">
-                    <Header />
-                    <div className="content-container">
-                      <UsersManagement />
-                    </div>
-                    <Footer />
-                    <Chat />
-                  </div>
-                </ChatProvider>
-                </KanbanProvider>
-              </ProtectedRoute>
-            } 
-          />
           <Route
-            path="/activity"
             element={
-              <ProtectedRoute>
-                <KanbanProvider>
-                <ChatProvider>
-                  <div className="app-container">
-                    <Header />
-                    <div className="content-container">
-                      <ActivityFeed />
-                    </div>
-                    <Footer />
-                    <Chat />
-                  </div>
-                </ChatProvider>
-                </KanbanProvider>
-              </ProtectedRoute>
+              <Suspense fallback={<PageLoading />}>
+                <ProtectedLayout />
+              </Suspense>
             }
-          />
-          <Route
-            path="/sessions"
-            element={
-              <ProtectedRoute>
-                <KanbanProvider>
-                <ChatProvider>
-                  <div className="app-container">
-                    <Header />
-                    <div className="content-container">
-                      <Devices />
-                    </div>
-                    <Footer />
-                    <Chat />
-                  </div>
-                </ChatProvider>
-                </KanbanProvider>
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/board" element={<Suspense fallback={<PageLoading />}><BoardPage /></Suspense>} />
+            <Route path="/users" element={<Suspense fallback={<PageLoading />}><UsersManagement /></Suspense>} />
+            <Route path="/activity" element={<Suspense fallback={<PageLoading />}><ActivityFeed /></Suspense>} />
+            <Route path="/sessions" element={<Suspense fallback={<PageLoading />}><Devices /></Suspense>} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

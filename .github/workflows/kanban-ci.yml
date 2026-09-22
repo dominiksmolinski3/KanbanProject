@@ -98,6 +98,10 @@ jobs:
       working-directory: frontend
       run: npm run build
 
+    - name: Check bundle size budget
+      working-directory: frontend
+      run: npm run check:bundle-size
+
     - name: Run linting
       working-directory: frontend
       run: npm run lint
