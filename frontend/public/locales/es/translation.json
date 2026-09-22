@@ -510,5 +510,13 @@
         "noTimeStatistics": "No hay estadísticas de tiempo",
         "noColumnHistory": "No hay historial de columnas",
         "noColumnHistoryHint": "Esta tarea aún no se ha movido entre columnas"
+    },
+    "app": {
+        "loading": "Cargando..."
+    },
+    "notFound": {
+        "title": "Página no encontrada",
+        "message": "La página que buscas no existe.",
+        "backHome": "Volver al inicio"
     }
 }
