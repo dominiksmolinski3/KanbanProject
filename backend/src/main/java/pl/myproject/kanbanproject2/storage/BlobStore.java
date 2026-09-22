@@ -3,10 +3,11 @@ package pl.myproject.kanbanproject2.storage;
 import java.io.InputStream;
 
 /**
- * Where the bytes of an uploaded file live. The same seam as {@code EmailSender}: the feature above
- * names what it wants, and which provider carries it out is one bean. {@link DisabledBlobStore} runs
- * when no account is configured, so a fresh clone and CI start normally with an honest 503 on upload
- * rather than failing to boot.
+ * Where the bytes of an uploaded file live - task attachments and, since FEAT-09, avatars, which
+ * moved off a {@code @Lob} column for the same reason attachments never used one. The same seam as
+ * {@code EmailSender}: the feature above names what it wants, and which provider carries it out is
+ * one bean. {@link DisabledBlobStore} runs when no account is configured, so a fresh clone and CI
+ * start normally with an honest 503 on upload rather than failing to boot.
  *
  * <p><b>Bytes go both ways through this application, deliberately.</b> The alternative - a signed
  * URL letting the browser fetch from Azure directly - would require the storage account to answer

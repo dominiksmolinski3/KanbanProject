@@ -317,18 +317,20 @@ in `frontend/src/services/` — through the endpoint constants, the one-line pat
 Neither suite can see this on its own: Jest stubs `fetch`, so a frontend test asserts a request was
 made to a string and never that anything serves it, and the backend suite asserts routes no client
 necessarily calls. It is a **subset** assertion, not an equality — a served route nothing calls is
-not a defect (`FileController` has been owned and unused for revisions). The handful of calls whose
+not a defect. `FileController` used to be the standing example (owned and unused for revisions);
+FEAT-09 read that as the finding it was and removed the controller, the entity and the `files`
+table together rather than leaving it as an illustration. The handful of calls whose
 path the caller supplies (`reorder(endpoint, ...)`, which is one function for three routes) are
 named in `CALLER_SUPPLIED_PATHS` with the routes they stand for, so a genuinely new way of building
 a URL fails rather than joining an unasserted set.
 
 ### Backend layering
 
-Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `layout/column/`, `layout/row/`, `chat/`, `file/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, `ChatController` and `FileController`, which have not been moved into their feature packages.)
+Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController` and `ChatController`, which have not been moved into their feature packages; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: FEAT-09 pointed avatars at `BlobStore` the same way attachments already used it, and retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
-- Mappers are `@Component` classes implementing `Function<Entity, EntityDTO>`; services call `mapper::apply`. Entities never leave the service layer except where controllers still accept raw entities as request bodies (e.g. `TaskController.createTask`/`patchTask` take a `Task`).
+- Mappers are `@Component` classes implementing `Function<Entity, EntityDTO>`; services call `mapper::apply`. Entities never leave the service layer, and controllers accept validated request DTOs rather than raw entities as request bodies (e.g. `TaskController.createTask`/`patchTask` take `CreateTaskRequest`/`PatchTaskRequest`, not a `Task`).
 - DTOs are Java `record`s living beside the feature they describe (`task/TaskDto.java`, `layout/column/ColumnDto.java`) — there is no shared `dto/` package.
 - Services throw `EntityNotFoundException`, catch it, and rethrow as `ResponseStatusException`; [GlobalExceptionHandler](backend/src/main/java/pl/myproject/kanbanproject2/exception/GlobalExceptionHandler.java) maps validation failures to 400 bodies.
 - Error messages in services are written in Polish; UI strings are translated separately through i18n.
@@ -522,12 +524,12 @@ application on the way out**. `task/attachment/` holds the feature; `storage/` h
 goes through — `BlobStore`, with `AzureBlobStore` and a `DisabledBlobStore`, exactly the shape
 `EmailSender` has and for the same reason.
 
-The existing `files` table is the counter-example rather than the model. It stores an upload as a
-`@Lob` in Postgres, which puts every attachment into the database's storage, its backups, its
-point-in-time window and its restore time, for data no query ever looks inside. At the 10 MB per
-file this allows and 32 GB of provisioned storage, a team attaching a mock a day fills the server in
-a year. `V12` stores metadata only: an opaque `blob_name`, the name a person typed, the type, the
-size, who uploaded it and when.
+The `files` table this replaced was the counter-example rather than the model, and is gone now
+(`V20`, see **Avatars**) — it stored an upload as a `@Lob` in Postgres, which put every attachment
+into the database's storage, its backups, its point-in-time window and its restore time, for data
+no query ever looked inside. At the 10 MB per file this allows and 32 GB of provisioned storage, a
+team attaching a mock a day fills the server in a year. `V12` stores metadata only: an opaque
+`blob_name`, the name a person typed, the type, the size, who uploaded it and when.
 
 Four decisions carry the feature:
 
@@ -542,7 +544,7 @@ Four decisions carry the feature:
   rather than kept unused.
 - **Nothing on either path holds a file.** Upload hands `MultipartFile.getInputStream()` straight to
   the store; download returns the store's own stream as an `InputStreamResource`, which Spring
-  copies through a buffer and closes. Nothing calls `getBytes()`. On a 512 MB container that is the
+  copies through a buffer and closes. Nothing calls `getBytes()`. On a 1 GiB container that is the
   difference between a buffer per transfer and 10 MB per concurrent one, and it is the only reason
   proxying the bytes is affordable at all. `Content-Length` comes from `size_bytes` on the row
   rather than from the stream, which is why that column is stored.
@@ -625,6 +627,56 @@ Terraform provisions the account and the role assignment but **not the container
 its own on first start, because creating one is a data-plane call and keeping Terraform off the data
 plane is what lets the account refuse shared-key access. See `terraform/README.md`, *Attachment
 storage*.
+
+### Avatars
+
+FEAT-09 pointed avatars at `BlobStore` too — the seam, the quota knobs and the private endpoint
+were already built for task attachments, and an avatar was the other place a `@Lob` was still
+carrying bytes Postgres never queried into. `user/avatar/` holds the feature: `AvatarService`
+(upload, `content`, `delete`) and `UserAvatarController`, at the same route the account-owned
+`/users/{id}/avatar` always used — the route did not move, only what backs it. The old `File`
+entity, `FileRepository`, `FileService` and `FileController` (`/api/files`, declared in the
+client's endpoint list and called by nothing — see `ClientRoutesExistTest`) went with it, and `V20`
+drops the `files` table outright rather than leaving it as a second, now-orphaned upload path.
+
+A user has at most one avatar, so this is four nullable columns directly on `users`
+(`avatar_blob_name`, `avatar_content_type`, `avatar_size_bytes`, `avatar_uploaded_at`) rather than a
+second table with a foreign key back — task attachments need that shape because a task holds many,
+a user holds at most one. `V20` adds the columns, drops `avatar_id` and its FK, and drops `files`;
+it does **not** attempt to backfill existing avatar bytes into a blob, because this repository has
+one deployed environment (dev, disposable for schema purposes — see **CI/CD and infrastructure**)
+and no running application to do that copy from inside a migration. An account with an avatar set
+before this shipped needs a re-upload; the migration's own comment says so.
+
+Three decisions depart from `TaskAttachmentService`'s shape, each for a stated reason rather than by
+accident:
+
+- **The upload is read into memory once, rather than streamed straight through.** An attachment
+  streams because it can be ten megabytes with many in flight; an avatar is capped at one megabyte
+  and the bytes are needed twice regardless — once to confirm the declared `Content-Type` is not a
+  lie and once to hand to the store. `AvatarService` keeps the magic-byte sniff the avatar upload
+  path already had before this move (PNG/JPEG/GIF/WebP signatures checked against the declared
+  type, both attacker-controlled halves of the same check), on the same reasoning
+  `TaskAttachmentService`'s doc states for why the declared type alone is not enough: a client can
+  lie about `Content-Type`, so the bytes decide.
+- **`Content-Disposition: inline`, never `attachment`.** A task attachment forces a download because
+  it can be any file an uploader chose, including HTML or SVG, and rendering one on this origin
+  would be same-origin with the board and every token in it. An avatar cannot be either: the
+  allow-list and the magic-byte check both refuse anything outside PNG/JPEG/WebP/GIF before a byte
+  reaches storage, so serving it inline is safe by construction rather than by trust in what the
+  uploader claimed — which is what lets it render as an `<img>` on cards and headers at all.
+  `X-Content-Type-Options: nosniff` stays on regardless.
+- **Its own transfer-permit `Semaphore`, not a shared one.** Sized the same way — dividing
+  `app.storage.max-concurrent-transfers` by `app.storage.replica-count-hint` — but kept separate so
+  a burst of avatar uploads cannot starve a task attachment transfer or the other way round.
+
+Reading goes through `UserService.requireVisibleUser` before `AvatarService.content` is ever called,
+the same peer-visibility rule `GET /api/users` is built from — an avatar is readable by anyone who
+shares a board with the account, not only by the account itself, since it renders on their cards too.
+Upload and delete are self-only, checked the same way every other account-mutating route in
+`UserController` is. `ATTACHMENT_STORAGE_UNAVAILABLE` and `ATTACHMENT_TRANSFER_BUSY` are reused
+rather than duplicated under an avatar-specific name, since both describe the same failure either
+way: no storage account configured, or the transfer cap is exhausted.
 
 ### Frontend state
 

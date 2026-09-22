@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.security.ratelimit;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,9 @@ import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimi
 class AuthRateLimiterTest {
 
     private final AuthRateLimitTestSupport.FakeClock clock = new AuthRateLimitTestSupport.FakeClock();
-    private final AuthRateLimiter limiter = new AuthRateLimiter(properties(), new InMemoryEscalationStore(), clock);
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final AuthRateLimiter limiter =
+            new AuthRateLimiter(properties(), new InMemoryEscalationStore(), clock, meterRegistry);
 
     @Test
     @DisplayName("a key is allowed through its burst and asked to wait after it")
@@ -172,6 +175,27 @@ class AuthRateLimiterTest {
         assertThat(allowedInARow(CREDENTIALS, ACCOUNT, "a")).isEqualTo(2);
         assertThat(allowedInARow(EMAIL, IP, "a")).isEqualTo(3);
         assertThat(allowedInARow(EMAIL, ACCOUNT, "a")).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("a refusal is counted, tagged by the rule and dimension that fired, and an allowed attempt is not")
+    void countsARefusalTaggedByRuleAndDimension() {
+        limiter.tryConsume(CREDENTIALS, IP, "198.51.100.9");
+        assertThat(meterRegistry.find(AuthRateLimiter.REFUSED_COUNTER).counters()).isEmpty();
+
+        for (int attempt = 0; attempt < 4; attempt++) {
+            limiter.tryConsume(CREDENTIALS, IP, "198.51.100.9");
+        }
+        limiter.tryConsume(EMAIL, ACCOUNT, "someone@example.test");
+        limiter.tryConsume(EMAIL, ACCOUNT, "someone@example.test");
+        limiter.tryConsume(EMAIL, ACCOUNT, "someone@example.test");
+
+        assertThat(meterRegistry.get(AuthRateLimiter.REFUSED_COUNTER)
+                .tags("rule", "CREDENTIALS", "dimension", "IP").counter().count())
+                .isEqualTo(1.0);
+        assertThat(meterRegistry.get(AuthRateLimiter.REFUSED_COUNTER)
+                .tags("rule", "EMAIL", "dimension", "ACCOUNT").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test
