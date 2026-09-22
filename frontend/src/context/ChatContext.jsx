@@ -94,7 +94,11 @@ function chatReducer(state, action) {
 export function ChatProvider({ children }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const { user, token } = useAuth();
-  const { activeBoardId } = useKanban();
+  const { activeBoardId, activeBoard } = useKanban();
+  // FEAT-08: read-only means read-only consistently, so a viewer can watch the board's chat but
+  // not post to it. This is the client's proactive refusal; ChatController.sendMessage refuses the
+  // same way on the server regardless of what this does.
+  const isBoardReadOnly = activeBoard?.role === 'VIEWER';
   const { t } = useTranslation();
   const chatApiRef = useRef(null);
 
@@ -217,6 +221,11 @@ export function ChatProvider({ children }) {
       return;
     }
 
+    if (state.messageType !== 'private' && isBoardReadOnly) {
+      toast.warning(t('chat.errors.readOnly'));
+      return;
+    }
+
     const sent = chatApiRef.current.sendMessage(
       state.messageType,
       state.message,
@@ -259,6 +268,7 @@ export function ChatProvider({ children }) {
   const value = {
     ...state,
     activeBoardId,
+    isBoardReadOnly,
     toggleChat,
     sendMessage,
     connect,

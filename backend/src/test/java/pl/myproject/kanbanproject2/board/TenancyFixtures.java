@@ -55,6 +55,9 @@ public final class TenancyFixtures {
         when(boardService.resolve(any(), any())).thenReturn(board);
         when(boardService.defaultFor(any())).thenReturn(board);
         when(boardService.requireVisible(any(User.class), any(Board.class))).thenReturn(board);
+        // Write-allowed by default, since every fixture caller before FEAT-08 owned the board it
+        // hands back - a test exercising a viewer stubs requireWritable itself to throw instead.
+        when(boardService.requireWritable(any(User.class), any(Board.class))).thenReturn(board);
         doCallRealMethod().when(boardService).requireSameBoard(any(), any());
         return boardService;
     }

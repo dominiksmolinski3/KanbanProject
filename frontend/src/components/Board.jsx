@@ -11,20 +11,21 @@ import TaskSearch from './TaskSearch';
 
 function Board() {
   const [addContext, setAddContext] = useState({ type: null, columnId: null, rowId: null });
-  const { 
-    columns, 
-    rows, 
-    tasks, 
-    loading, 
-    error, 
-    deleteRow, 
-    deleteColumn, 
+  const {
+    columns,
+    rows,
+    tasks,
+    loading,
+    error,
+    deleteRow,
+    deleteColumn,
     dragAndDrop,
     updateColumnName,
     updateRowName,
     dailyFocusOnly,
     setDailyFocusOnly,
     keyboardMove,
+    readOnly,
   } = useKanban();
   
   const { t } = useTranslation();
@@ -133,6 +134,7 @@ function Board() {
   };
 
   const handleDeleteRowClick = (rowId) => {
+    if (readOnly) return;
     if (rows.length <= 1) {
       toast.error(t('row.cannotDeleteLast') || 'Nie można usunąć ostatniego wiersza.');
       return;
@@ -175,6 +177,7 @@ function Board() {
   };
 
   const handleDeleteColumnClick = (columnId) => {
+    if (readOnly) return;
     const columnName = columns.find(c => c.id === columnId)?.name;
     const toastId = `delete-column-${columnId}`;
     
@@ -225,23 +228,24 @@ function Board() {
     };
     
     return (
-      <td 
+      <td
         className={`grid-row-header ${row.isOverLimit ? 'wip-exceeded' : ''}`}
-        draggable="true"
+        draggable={!readOnly}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
         data-row-id={row.id}
       >
         <div className="row-title">
-          <span className="row-drag-handle">☰</span>
-          <EditableText 
-            id={row.id} 
-            text={row.name} 
-            onUpdate={updateRowName} 
+          {!readOnly && <span className="row-drag-handle">☰</span>}
+          <EditableText
+            id={row.id}
+            text={row.name}
+            onUpdate={updateRowName}
             className="row-name"
             inputClassName="row-name-input"
             type="row"
+            disabled={readOnly}
           />
         </div>
   <div className="row-actions">
@@ -251,13 +255,15 @@ function Board() {
               ({row.taskCount || 0}/{row.wipLimit})
             </span>
           )}
-          <button 
-            className="delete-row-btn" 
-            title={t('row.delete') || "Usuń wiersz"}
-            onClick={() => handleDeleteRowClick(row.id)}
-          >
-            ×
-          </button>
+          {!readOnly && (
+            <button
+              className="delete-row-btn"
+              title={t('row.delete') || "Usuń wiersz"}
+              onClick={() => handleDeleteRowClick(row.id)}
+            >
+              ×
+            </button>
+          )}
         </div>
       </td>
     );
@@ -280,24 +286,25 @@ function Board() {
     };
     
     return (
-      <th 
-        key={column.id} 
+      <th
+        key={column.id}
         className={`grid-column-header ${isOverLimit ? 'wip-exceeded' : ''}`}
-        draggable="true"
+        draggable={!readOnly}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
         data-column-id={column.id}
       >
         <div className="column-title">
-          <span className="column-drag-handle">☰</span>
-          <EditableText 
-            id={column.id} 
-            text={column.name} 
-            onUpdate={updateColumnName} 
+          {!readOnly && <span className="column-drag-handle">☰</span>}
+          <EditableText
+            id={column.id}
+            text={column.name}
+            onUpdate={updateColumnName}
             className="column-name"
             inputClassName="column-name-input"
             type="column"
+            disabled={readOnly}
           />
         </div>
   <div className="column-actions">
@@ -307,13 +314,15 @@ function Board() {
               ({columnTaskCount}/{column.wipLimit})
             </span>
           )}
-          <button 
-            className="delete-column-btn" 
-            title={t('column.delete')}
-            onClick={() => handleDeleteColumnClick(column.id)}
-          >
-            ×
-          </button>
+          {!readOnly && (
+            <button
+              className="delete-column-btn"
+              title={t('column.delete')}
+              onClick={() => handleDeleteColumnClick(column.id)}
+            >
+              ×
+            </button>
+          )}
         </div>
       </th>
     );
@@ -350,21 +359,23 @@ function Board() {
         onDrop={onDrop}
       >
         {cellTasks.map(task => (
-          <Task 
-            key={task.id} 
+          <Task
+            key={task.id}
             task={task}
             columnId={column.id}
             rowId={row.id}
           />
         ))}
-        <button
-          className="add-task-placeholder"
-          onClick={() => setAddContext({ type: 'task', columnId: column.id, rowId: row.id })}
-          title={t('taskActions.addTaskHere', 'Add task')}
-          aria-label={t('taskActions.addTaskHere', 'Add task')}
-        >
-          {t('taskActions.addTaskHere', 'Add task')}
-        </button>
+        {!readOnly && (
+          <button
+            className="add-task-placeholder"
+            onClick={() => setAddContext({ type: 'task', columnId: column.id, rowId: row.id })}
+            title={t('taskActions.addTaskHere', 'Add task')}
+            aria-label={t('taskActions.addTaskHere', 'Add task')}
+          >
+            {t('taskActions.addTaskHere', 'Add task')}
+          </button>
+        )}
       </td>
     );
   };
@@ -386,6 +397,11 @@ function Board() {
       <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
         {announcement ? t(announcement.key, announcement.values) : ''}
       </div>
+      {readOnly && (
+        <div className="board-readonly-banner" role="status">
+          {t('board.readOnlyBanner')}
+        </div>
+      )}
       <div className="board-toolbar">
         <button
           type="button"
@@ -407,15 +423,17 @@ function Board() {
             <th className="grid-corner"></th>
 
             {enhancedColumns.map(column => renderColumnHeader(column))}
-      <th className="grid-column-header add-placeholder-header">
-              <button
-                className="add-column-btn"
-        title={t('column.add', 'Add column')}
-                onClick={() => setAddContext({ type: 'column', columnId: null, rowId: null })}
-              >
-        + {t('column.add', 'Add column')}
-              </button>
-            </th>
+            {!readOnly && (
+              <th className="grid-column-header add-placeholder-header">
+                <button
+                  className="add-column-btn"
+                  title={t('column.add', 'Add column')}
+                  onClick={() => setAddContext({ type: 'column', columnId: null, rowId: null })}
+                >
+                  + {t('column.add', 'Add column')}
+                </button>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -427,21 +445,23 @@ function Board() {
               <td className="grid-cell" />
             </tr>
           ))}
-          <tr>
-      <td className="grid-row-header add-placeholder-row">
-              <button
-                className="add-row-btn"
-        title={t('row.add', 'Add row')}
-                onClick={() => setAddContext({ type: 'row', columnId: null, rowId: null })}
-              >
-        + {t('row.add', 'Add row')}
-              </button>
-            </td>
-            {enhancedColumns.map((column) => (
-              <td key={`add-row-empty-${column.id}`} className="grid-cell"/>
-            ))}
-            <td className="grid-cell" />
-          </tr>
+          {!readOnly && (
+            <tr>
+              <td className="grid-row-header add-placeholder-row">
+                <button
+                  className="add-row-btn"
+                  title={t('row.add', 'Add row')}
+                  onClick={() => setAddContext({ type: 'row', columnId: null, rowId: null })}
+                >
+                  + {t('row.add', 'Add row')}
+                </button>
+              </td>
+              {enhancedColumns.map((column) => (
+                <td key={`add-row-empty-${column.id}`} className="grid-cell"/>
+              ))}
+              <td className="grid-cell" />
+            </tr>
+          )}
         </tbody>
       </table>
       {addContext.type === 'task' && (

@@ -32,10 +32,12 @@ import java.util.Set;
  * A board and the people allowed to see it — the unit of tenancy: every column, row and task
  * belongs to exactly one board, and membership is the only thing that grants access to any of them.
  *
- * <p>Two levels, deliberately, rather than a role table: <em>owner</em> may rename, delete and
- * change membership; <em>member</em> may do anything to its contents. The owner is nullable only
- * for the one board V5 creates to hold data that predates boards; the first account to open a board
- * adopts it (see {@link BoardService#provisionFor}).
+ * <p><em>Owner</em> may rename, delete and change membership - tracked separately via
+ * {@code boards.owner_id} and unrelated to the role below. Everyone else on the member list carries
+ * a {@link BoardRole} ({@code board_members.role}, added in {@code V21}): <em>member</em> may do
+ * anything to the board's contents, <em>viewer</em> may see it and nothing else. The owner is
+ * nullable only for the one board V5 creates to hold data that predates boards; the first account to
+ * open a board adopts it (see {@link BoardService#provisionFor}).
  */
 @NoArgsConstructor
 @Setter
@@ -110,6 +112,22 @@ public class Board {
         }
         return members != null && members.stream()
                 .anyMatch(member -> user.getId().equals(member.getId()));
+    }
+
+    /**
+     * True when {@code user} may change this board's contents, given {@code role} - the caller's own
+     * role on it, resolved by {@link BoardService} from {@code board_members.role} since this entity
+     * carries no per-member data of its own. The owner may always write, whatever the stored role
+     * says; a {@link BoardRole#VIEWER} may see the board ({@link #isVisibleTo}) and nothing else.
+     */
+    public boolean isWritableBy(User user, BoardRole role) {
+        if (!isVisibleTo(user)) {
+            return false;
+        }
+        if (isOwnedBy(user)) {
+            return true;
+        }
+        return role != BoardRole.VIEWER;
     }
 
     /** Adds a member, tolerating the lazily-initialised collection being absent. */

@@ -58,12 +58,15 @@ export const deleteBoard = async (boardId) => {
  * an invitation is an offer the person still has to accept. The answer is the invitation and never
  * the board - the route this replaced answered with the member list, letting an owner diff it to
  * learn whether an address had an account here.
+ *
+ * `role` is `'MEMBER'` or `'VIEWER'` (FEAT-08); omitted, the server defaults it to `'MEMBER'`, which
+ * is what every invitation offered before there was a choice.
  */
-export const inviteToBoard = async (boardId, email) => {
+export const inviteToBoard = async (boardId, email, role) => {
   const response = await fetch(`${BOARDS}/${boardId}/invitations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email })
+    body: JSON.stringify(role ? { email, role } : { email })
   });
   return read(response, 'sending an invitation');
 };

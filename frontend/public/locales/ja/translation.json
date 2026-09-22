@@ -65,6 +65,7 @@
       "labels": "ラベル",
       "dailyFocus": "今日のフォーカス",
       "dailyFocusEmpty": "今日のフォーカスにタスクはまだありません。",
+      "readOnlyBanner": "このボードはあなたには読み取り専用です。閲覧はできますが変更はできません",
       "search": {
         "assignees": "担当者",
         "boardHas": "ボードには {{count}} 件のタスクがありますが、該当するものはありません。",
@@ -155,7 +156,8 @@
       "boardInvitationSent": "招待を送信しました",
       "boardInvitationRevoked": "招待を取り消しました",
       "boardInvitationAccepted": "ボード「{{name}}」に参加しました",
-      "boardInvitationDeclined": "招待を辞退しました"
+      "boardInvitationDeclined": "招待を辞退しました",
+      "readOnlyBoard": "このボードはあなたには読み取り専用です"
     },
     "boards": {
       "switcher": {
@@ -176,6 +178,7 @@
         "you": "(自分)",
         "owner": "所有者",
         "member": "メンバー",
+        "viewer": "閲覧者",
         "leave": "このボードから退出",
         "remove": "ボードから削除",
         "removeConfirm": "この人をボードから削除しますか？",
@@ -195,6 +198,9 @@
         "revoke": "この招待を取り消す",
         "inviteLabel": "このボードに招待する",
         "invitePlaceholder": "相手のメールアドレス",
+        "roleLabel": "役割",
+        "roleMember": "メンバー（編集可）",
+        "roleViewer": "閲覧者（読み取り専用）",
         "invite": "招待する",
         "inviteNote": "相手には招待メールが届き、承諾した場合にのみ参加します。そのアドレスにアカウントがあってもなくても応答は同じなので、このフォームで登録済みかどうかを調べることはできません。"
       }
@@ -420,6 +426,7 @@
       "errors": {
         "empty": "メッセージを入力してください",
         "tooLong": "メッセージが長すぎます",
+        "readOnly": "このボードはあなたには読み取り専用です",
         "notSent": "メッセージは送信されませんでした"
       }
     },

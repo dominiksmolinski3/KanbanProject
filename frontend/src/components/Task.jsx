@@ -18,6 +18,7 @@ function Task({ task, columnId, rowId }) {
     updateTaskName,
     updateTaskCompletion,
     setDailyFocus,
+    readOnly,
   } = useKanban();
   const [showDetails, setShowDetails] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -254,8 +255,12 @@ function Task({ task, columnId, rowId }) {
   };
 
   const onDragStartHandler = (e) => {
+    if (readOnly) {
+      e.preventDefault();
+      return;
+    }
     console.log('Task drag start:', { taskId: task.id, columnId, isParentTask });
-    
+
     const data = {
       id: task.id,
       type: 'task',
@@ -325,6 +330,9 @@ function Task({ task, columnId, rowId }) {
       return;
     }
     if (e.key === ' ') {
+      if (readOnly) {
+        return;
+      }
       e.preventDefault();
       keyboardMove.grab(task, columnId, rowId ?? task.rowId);
       return;
@@ -355,7 +363,10 @@ function Task({ task, columnId, rowId }) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    
+    if (readOnly) {
+      return;
+    }
+
     setShowWarning(false);
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
@@ -503,7 +514,7 @@ function Task({ task, columnId, rowId }) {
           ${task.dailyFocus ? 'daily-focus' : ''} 
           ${isDeadlineExpired ? 'deadline-expired' : ''} 
           ${isDeadlineUpcoming ? 'deadline-upcoming' : ''}`}
-        draggable="true"
+        draggable={!readOnly}
         tabIndex={0}
         role="button"
         aria-roledescription={t('board.keyboardMove.roleDescription')}
@@ -532,13 +543,14 @@ function Task({ task, columnId, rowId }) {
             aria-label={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
           />
           <div className="task-content">
-            <EditableText 
-              id={task.id} 
-              text={task.title || "Untitled Task"} 
-              onUpdate={updateTaskName} 
+            <EditableText
+              id={task.id}
+              text={task.title || "Untitled Task"}
+              onUpdate={updateTaskName}
               className="task-title"
               inputClassName="task-title-input"
               type="task"
+              disabled={readOnly}
             />
             <div className="task-info-container">
               {renderTaskLabels()}
@@ -557,13 +569,15 @@ function Task({ task, columnId, rowId }) {
             >
               ★
             </button>
-            <button
-              className="delete-btn"
-              title={t('taskActions.delete')}
-              onClick={handleDeleteClick}
-            >
-              ×
-            </button>
+            {!readOnly && (
+              <button
+                className="delete-btn"
+                title={t('taskActions.delete')}
+                onClick={handleDeleteClick}
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import KanbanContext, { KanbanProvider, useKanban } from '../../context/KanbanContext';
 import * as api from '../../services/api';
+import * as boardApi from '../../services/boardApi';
 
 jest.mock('../../services/api', () => ({
   fetchColumns: jest.fn(),
@@ -1286,13 +1287,13 @@ describe('KanbanContext Provider', () => {
       return (
         <div>
           {error && <div data-testid="error-message">Error: {error}</div>}
-          <button 
+          <button
             data-testid="add-task-empty-columns"
             onClick={() => {
-              try {
-                addTask('New Task');
-              } catch (err) {
-              }
+              // addTask is async and rejects here; a synchronous try/catch around an
+              // unawaited call never sees that rejection, which otherwise surfaces as an
+              // unhandled rejection blamed on whichever test happens to run next.
+              addTask('New Task').catch(() => {});
             }}
           >
             Add Task Empty Columns
@@ -1324,5 +1325,164 @@ describe('KanbanContext Provider', () => {
     });
   });
 
+  describe('a viewer on the active board (FEAT-08)', () => {
+    const viewerBoard = { id: 1, name: 'Kanban', ownerId: 1, owned: false, members: [], role: 'VIEWER' };
 
+    beforeEach(() => {
+      boardApi.fetchBoards.mockResolvedValue([viewerBoard]);
+      boardApi.fetchCurrentBoard.mockResolvedValue(viewerBoard);
+    });
+
+    /*
+     * Several write handlers throw so a caller that awaits them can tell the write did not
+     * happen; a plain `fireEvent.click` on an async onClick cannot observe that rejection, and
+     * leaving it unhandled here would surface as a spurious failure on whichever test runs next.
+     * Every button below catches its own promise for exactly that reason - the file's own
+     * `TaskReorderTester` a few tests up does the same.
+     */
+    const ViewerWriteAttempts = () => {
+      const context = useKanban();
+      const guarded = (call) => () => { call(context).catch(() => {}); };
+
+      return (
+        <div>
+          <div data-testid="role">{context.activeBoard?.role || 'unresolved'}</div>
+          <button onClick={guarded(c => c.addTask('New Task'))}>Add Task</button>
+          <button onClick={guarded(c => c.deleteTask('1'))}>Delete Task</button>
+          <button onClick={guarded(c => c.addColumn('New Column', 5))}>Add Column</button>
+          <button onClick={guarded(c => c.addRow('New Row', 3))}>Add Row</button>
+          <button onClick={guarded(c => c.deleteColumn('col1'))}>Delete Column</button>
+          <button onClick={guarded(c => c.deleteRow('row1'))}>Delete Row</button>
+          <button onClick={guarded(c => c.moveTask('1', 'col2', 'row1'))}>Move Task</button>
+          <button onClick={guarded(c => c.updateTaskName('1', 'Updated Task'))}>Update Task Name</button>
+          <button onClick={guarded(c => c.updateColumnName('col1', 'Updated Column'))}>Update Column Name</button>
+          <button onClick={guarded(c => c.updateRowName('row1', 'Updated Row'))}>Update Row Name</button>
+        </div>
+      );
+    };
+
+    const renderAsViewer = async () => {
+      await act(async () => {
+        render(
+          <KanbanProvider>
+            <ViewerWriteAttempts />
+          </KanbanProvider>
+        );
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('role')).toHaveTextContent('VIEWER');
+      });
+    };
+
+    test('cannot add a task - the API is never called', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add Task'));
+      });
+
+      expect(api.addTask).not.toHaveBeenCalled();
+    });
+
+    test('cannot delete a task', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Delete Task'));
+      });
+
+      expect(api.deleteTask).not.toHaveBeenCalled();
+    });
+
+    test('cannot add a column or a row', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add Column'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add Row'));
+      });
+
+      expect(api.addColumn).not.toHaveBeenCalled();
+      expect(api.addRow).not.toHaveBeenCalled();
+    });
+
+    test('cannot delete a column or a row', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Delete Column'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Delete Row'));
+      });
+
+      expect(api.deleteColumn).not.toHaveBeenCalled();
+      expect(api.deleteRow).not.toHaveBeenCalled();
+    });
+
+    test('cannot move a task via drag-and-drop', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Move Task'));
+      });
+
+      expect(api.updateTaskColumn).not.toHaveBeenCalled();
+      expect(api.updateTaskRow).not.toHaveBeenCalled();
+    });
+
+    test('cannot rename a task, a column or a row', async () => {
+      await renderAsViewer();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Task Name'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Column Name'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Row Name'));
+      });
+
+      expect(api.updateTaskName).not.toHaveBeenCalled();
+      expect(api.updateColumnName).not.toHaveBeenCalled();
+      expect(api.updateRowName).not.toHaveBeenCalled();
+    });
+
+    test('the keyboard-move grab is a no-op, the same restriction the mouse path gets', async () => {
+      const KeyboardGrabTester = () => {
+        const { activeBoard, keyboardMove } = useKanban();
+        return (
+          <div>
+            <div data-testid="role">{activeBoard?.role || 'unresolved'}</div>
+            <div data-testid="held">{keyboardMove.isHeld('1') ? 'held' : 'not held'}</div>
+            <button data-testid="grab" onClick={() => keyboardMove.grab({ id: '1', title: 'Task 1' }, 'col1', 'row1')}>
+              Grab
+            </button>
+          </div>
+        );
+      };
+
+      await act(async () => {
+        render(
+          <KanbanProvider>
+            <KeyboardGrabTester />
+          </KanbanProvider>
+        );
+      });
+      await waitFor(() => expect(screen.getByTestId('role')).toHaveTextContent('VIEWER'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('grab'));
+      });
+
+      // A no-op grab never sets "held", so nothing calls moveTask - and moveTask is what would
+      // have called the write API a drop reaches.
+      expect(screen.getByTestId('held')).toHaveTextContent('not held');
+      expect(api.updateTaskColumn).not.toHaveBeenCalled();
+      expect(api.updateTaskRow).not.toHaveBeenCalled();
+    });
+  });
 });

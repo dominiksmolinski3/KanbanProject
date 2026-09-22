@@ -100,7 +100,7 @@ class TenantIsolationTest {
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
 
-        boardMapper = new BoardMapper(new UserMapper());
+        boardMapper = new BoardMapper(boardRepository);
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
                 taskRepository, historyRepository, userRepository,
                 mock(pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository.class),
