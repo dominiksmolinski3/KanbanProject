@@ -480,7 +480,8 @@
       "UNASSIGNED": "{{who}} hat {{detail}} von {{what}} entfernt",
       "COMPLETED": "{{who}} hat {{what}} abgeschlossen",
       "REOPENED": "{{who}} hat {{what}} wieder geöffnet",
-      "DELETED": "{{who}} hat {{what}} gelöscht"
+      "DELETED": "{{who}} hat {{what}} gelöscht",
+      "COMMENTED": "{{who}} hat {{what}} kommentiert"
     }
   },
   "demo": {
@@ -525,5 +526,25 @@
     "title": "Seite nicht gefunden",
     "message": "Die gesuchte Seite existiert nicht.",
     "backHome": "Zurück zur Startseite"
+  },
+  "taskComments": {
+    "heading": "Kommentare",
+    "placeholder": "Kommentar schreiben…",
+    "post": "Kommentieren",
+    "loading": "Kommentare werden geladen…",
+    "empty": "Noch keine Kommentare.",
+    "loadError": "Die Kommentare konnten nicht geladen werden.",
+    "postError": "Der Kommentar konnte nicht gesendet werden.",
+    "editError": "Der Kommentar konnte nicht gespeichert werden.",
+    "deleteError": "Der Kommentar konnte nicht gelöscht werden.",
+    "loadOlder": "Ältere Kommentare laden",
+    "edit": "Bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "confirmDelete": "Diesen Kommentar löschen?",
+    "edited": "(bearbeitet)",
+    "formerMember": "Ehemaliges Mitglied",
+    "remaining": "Noch {{count}} Zeichen"
   }
 }

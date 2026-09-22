@@ -480,7 +480,8 @@
         "UNASSIGNED": "{{who}} ha tolto {{detail}} da {{what}}",
         "COMPLETED": "{{who}} ha completato {{what}}",
         "REOPENED": "{{who}} ha riaperto {{what}}",
-        "DELETED": "{{who}} ha eliminato {{what}}"
+        "DELETED": "{{who}} ha eliminato {{what}}",
+        "COMMENTED": "{{who}} ha commentato {{what}}"
       }
     },
     "demo": {
@@ -525,5 +526,25 @@
         "title": "Pagina non trovata",
         "message": "La pagina che stai cercando non esiste.",
         "backHome": "Torna alla home"
+    },
+    "taskComments": {
+      "heading": "Commenti",
+      "placeholder": "Scrivi un commento…",
+      "post": "Commenta",
+      "loading": "Caricamento dei commenti…",
+      "empty": "Ancora nessun commento.",
+      "loadError": "Impossibile caricare i commenti.",
+      "postError": "Impossibile pubblicare il commento.",
+      "editError": "Impossibile salvare il commento.",
+      "deleteError": "Impossibile eliminare il commento.",
+      "loadOlder": "Carica commenti precedenti",
+      "edit": "Modifica",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "delete": "Elimina",
+      "confirmDelete": "Eliminare questo commento?",
+      "edited": "(modificato)",
+      "formerMember": "Ex membro",
+      "remaining": "{{count}} caratteri rimanenti"
     }
 }

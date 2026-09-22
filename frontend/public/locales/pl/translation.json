@@ -480,7 +480,8 @@
       "UNASSIGNED": "{{who}} usunął(-nęła) {{detail}} z {{what}}",
       "COMPLETED": "{{who}} ukończył(a) {{what}}",
       "REOPENED": "{{who}} otworzył(a) ponownie {{what}}",
-      "DELETED": "{{who}} usunął(-nęła) {{what}}"
+      "DELETED": "{{who}} usunął(-nęła) {{what}}",
+      "COMMENTED": "{{who}} skomentował(a) {{what}}"
     }
   },
   "demo": {
@@ -525,5 +526,25 @@
     "title": "Nie znaleziono strony",
     "message": "Strona, której szukasz, nie istnieje.",
     "backHome": "Powrót do strony głównej"
+  },
+  "taskComments": {
+    "heading": "Komentarze",
+    "placeholder": "Napisz komentarz…",
+    "post": "Skomentuj",
+    "loading": "Wczytywanie komentarzy…",
+    "empty": "Brak komentarzy.",
+    "loadError": "Nie udało się wczytać komentarzy.",
+    "postError": "Nie udało się dodać komentarza.",
+    "editError": "Nie udało się zapisać komentarza.",
+    "deleteError": "Nie udało się usunąć komentarza.",
+    "loadOlder": "Wczytaj starsze komentarze",
+    "edit": "Edytuj",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "confirmDelete": "Usunąć ten komentarz?",
+    "edited": "(edytowano)",
+    "formerMember": "Były członek",
+    "remaining": "Pozostało znaków: {{count}}"
   }
 }

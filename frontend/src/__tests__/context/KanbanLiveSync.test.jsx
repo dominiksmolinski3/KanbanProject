@@ -103,6 +103,27 @@ describe('KanbanContext live board sync', () => {
     expect(api.fetchRows).toHaveBeenCalledTimes(1);
   });
 
+  it('a comment event re-reads no board state and tells the open task panel instead', async () => {
+    const heard = jest.fn();
+    window.addEventListener('task-comments-changed', heard);
+
+    emit('COMMENTS');
+    await settle();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+    window.removeEventListener('task-comments-changed', heard);
+  });
+
+  it('a comment inside a burst of task events does not widen or swallow the task read', async () => {
+    emit('TASKS', 'COMMENTS');
+    await settle();
+
+    expect(api.fetchTasks).toHaveBeenCalledTimes(1);
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+  });
+
   it('nothing is re-read before the window closes', () => {
     emit('TASKS');
 
