@@ -18,7 +18,6 @@ import pl.myproject.kanbanproject2.task.activity.TaskActivityRepository;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
-import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.util.ArrayList;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -69,13 +69,14 @@ class BoardServiceTest {
 
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
                 taskRepository, historyRepository, userRepository, invitationRepository,
-                activityRepository, chatRepository, new BoardMapper(new UserMapper()));
+                activityRepository, chatRepository, new BoardMapper(boardRepository));
 
         owner = TenancyFixtures.user(1);
         member = TenancyFixtures.user(2);
         stranger = TenancyFixtures.user(3);
 
         when(boardRepository.save(any(Board.class))).thenAnswer(call -> call.getArgument(0));
+        when(boardRepository.saveAndFlush(any(Board.class))).thenAnswer(call -> call.getArgument(0));
         when(columnRepository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
     }
 
@@ -144,6 +145,84 @@ class BoardServiceTest {
             var sameAccountDifferentInstance = TenancyFixtures.user(2);
 
             assertThat(board.isVisibleTo(sameAccountDifferentInstance)).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("who can write to a board (FEAT-08)")
+    class Writability {
+
+        @Test
+        @DisplayName("the owner may write whatever board_members.role says, or doesn't say")
+        void ownerAlwaysWrites() {
+            var board = boardOf(owner);
+            when(boardRepository.findMemberRole(10, 1)).thenReturn(Optional.of("VIEWER"));
+
+            assertThat(boardService.roleOf(owner, board)).isEqualTo(BoardRole.MEMBER);
+            assertThat(boardService.isWritable(owner, board)).isTrue();
+            assertThatCode(() -> boardService.requireWritable(owner, board)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("a plain member - the stored default - may write")
+        void memberWrites() {
+            var board = boardOf(owner, member);
+            when(boardRepository.findMemberRole(10, 2)).thenReturn(Optional.of("MEMBER"));
+
+            assertThat(boardService.roleOf(member, board)).isEqualTo(BoardRole.MEMBER);
+            assertThat(boardService.isWritable(member, board)).isTrue();
+        }
+
+        @Test
+        @DisplayName("a row with no stored role reads as MEMBER, the write access every row had before V20")
+        void noStoredRoleDefaultsToMember() {
+            var board = boardOf(owner, member);
+            when(boardRepository.findMemberRole(10, 2)).thenReturn(Optional.empty());
+
+            assertThat(boardService.roleOf(member, board)).isEqualTo(BoardRole.MEMBER);
+        }
+
+        @Test
+        @DisplayName("a viewer may see the board but not write to it - 403, not 404")
+        void viewerCannotWrite() {
+            var board = boardOf(owner, member);
+            when(boardRepository.findMemberRole(10, 2)).thenReturn(Optional.of("VIEWER"));
+
+            assertThat(board.isVisibleTo(member)).isTrue();
+            assertThat(boardService.isWritable(member, board)).isFalse();
+
+            assertThatThrownBy(() -> boardService.requireWritable(member, 10))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.VIEWER_READ_ONLY)
+                    .extracting(id -> ((ExceptionIdentifier) id).getStatus().value())
+                    .isEqualTo(403);
+        }
+
+        @Test
+        @DisplayName("a stranger still gets 404 from requireWritable, never the viewer's 403")
+        void strangerIsNotFoundRatherThanReadOnly() {
+            boardOf(owner);
+
+            assertThatThrownBy(() -> boardService.requireWritable(stranger, 10))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.BOARD_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("Board.isWritableBy is the pure predicate this all rests on")
+        void theEntityPredicateItself() {
+            var board = boardOf(owner, member);
+
+            assertThat(board.isWritableBy(owner, BoardRole.VIEWER))
+                    .as("the owner writes whatever role is passed in")
+                    .isTrue();
+            assertThat(board.isWritableBy(member, BoardRole.MEMBER)).isTrue();
+            assertThat(board.isWritableBy(member, BoardRole.VIEWER)).isFalse();
+            assertThat(board.isWritableBy(stranger, BoardRole.MEMBER))
+                    .as("invisible is unwritable whatever the role")
+                    .isFalse();
         }
     }
 

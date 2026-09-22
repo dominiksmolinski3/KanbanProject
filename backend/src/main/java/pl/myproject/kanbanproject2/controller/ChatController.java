@@ -68,6 +68,16 @@ public class ChatController {
         if (board == null) {
             return;
         }
+        // Read-only means read-only consistently: a viewer can watch the board's conversation
+        // (BoardSubscriptionInterceptor asks only requireVisible) but not add to it. Answered rather
+        // than dropped, unlike a board the caller cannot see at all - the sender already knows their
+        // own role, so silence here would read as a delivery failure rather than a refusal.
+        if (!boardService.isWritable(sender, board)) {
+            log.warn("Dropped an attempt by {} to send a message on read-only board {}",
+                    sender.getUsername(), board.getId());
+            chatService.refuse(sender.getUsername(), ChatRefusal.READ_ONLY_BOARD);
+            return;
+        }
         if (!prepare(chatMessage, sender, MessageType.CHAT)) {
             return;
         }

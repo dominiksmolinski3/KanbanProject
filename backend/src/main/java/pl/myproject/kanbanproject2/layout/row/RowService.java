@@ -34,6 +34,7 @@ public class RowService {
 
     public RowResponseDto createRow(User caller, Integer boardId, CreateRowRequest request) {
         var board = boardService.resolve(caller, boardId);
+        boardService.requireWritable(caller, board);
 
         var row = new Row();
         row.setName(request.name());
@@ -68,6 +69,7 @@ public class RowService {
 
     public RowDto patchRow(User caller, RowDto rowDto, Integer id) {
         var existingRow = findRow(caller, id);
+        boardService.requireWritable(caller, existingRow.getBoard());
 
         if (rowDto.name() != null) {
             existingRow.setName(rowDto.name());
@@ -90,6 +92,7 @@ public class RowService {
      */
     public void deleteRow(User caller, Integer id) {
         var row = findRow(caller, id);
+        boardService.requireWritable(caller, row.getBoard());
 
         if (row.getTasks() != null) {
             for (Task task : List.copyOf(row.getTasks())) {
@@ -109,6 +112,7 @@ public class RowService {
 
     public RowDto updateRowPosition(User caller, Integer id, Integer position) {
         var row = findRow(caller, id);
+        boardService.requireWritable(caller, row.getBoard());
         row.setPosition(position);
         return saveAndAnnounce(row);
     }
@@ -125,6 +129,7 @@ public class RowService {
         }
 
         var rows = orderedIds.stream().map(id -> findRow(caller, id)).toList();
+        boardService.requireWritable(caller, rows.get(0).getBoard());
         rows.forEach(row -> boardService.requireSameBoard(rows.get(0).getBoard(), row.getBoard()));
 
         var reordered = new ArrayList<RowDto>(rows.size());
