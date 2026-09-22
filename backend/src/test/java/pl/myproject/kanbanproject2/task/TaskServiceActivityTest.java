@@ -76,7 +76,8 @@ class TaskServiceActivityTest {
                 tenant.boardService(),
                 mock(DeadlineNotifier.class),
                 attachmentService,
-                activityRecorder, mock(BoardEventPublisher.class));
+                activityRecorder, mock(BoardEventPublisher.class),
+                mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());

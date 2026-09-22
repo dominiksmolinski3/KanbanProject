@@ -35,6 +35,14 @@ public class TaskActivityRecorder {
         record(actor, task, TaskActivityType.UNASSIGNED, nameOf(assignee));
     }
 
+    /**
+     * No detail: the comment itself is in the card's thread, and copying its words into the feed
+     * would be a second copy that an edit or a delete could not reach.
+     */
+    public void commented(User actor, Task task) {
+        record(actor, task, TaskActivityType.COMMENTED, null);
+    }
+
     public void completionChanged(User actor, Task task, boolean completed) {
         record(actor, task,
                 completed ? TaskActivityType.COMPLETED : TaskActivityType.REOPENED, null);
