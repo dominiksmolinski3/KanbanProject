@@ -44,6 +44,10 @@ class SpaRoutesMatchTheClientTest {
         // and SpaRoutes has always said so in as many words.
         declared.remove("/");
 
+        // `*` is React Router's catch-all for a path nothing else matched, not a route the
+        // deployed-contract sweep can fetch - there is no URL that means "anything".
+        declared.remove("*");
+
         assertThat(SpaRoutes.ALL)
                 .as("SpaRoutes.ALL and App.jsx disagree. Its only consumers now are the "
                         + "deployed-contract sweep and this test, so a route missing here is a "
