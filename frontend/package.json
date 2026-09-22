@@ -20,7 +20,6 @@
   },
   "dependencies": {
     "@stomp/stompjs": "^7.3.0",
-    "@testing-library/dom": "^10.4.1",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.1",
     "i18next-http-backend": "^4.0.2",
@@ -43,6 +42,7 @@
     "@babel/preset-env": "^8.0.2",
     "@babel/preset-react": "^8.0.1",
     "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.3",
     "@testing-library/react-hooks": "^8.0.1",
@@ -50,7 +50,6 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitejs/plugin-react-swc": "^4.3.3",
     "babel-jest": "^30.5.1",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "cypress": "^16.0.0",
