@@ -689,6 +689,39 @@ Upload and delete are self-only, checked the same way every other account-mutati
 rather than duplicated under an avatar-specific name, since both describe the same failure either
 way: no storage account configured, or the transfer cap is exhausted.
 
+### Comments
+
+A card has its own thread (FEAT-06, `V22`), in `task/comment/`. Until then the only place to say
+anything about a card was chat, and chat is the whole board's conversation. The feature is built
+from parts the repo already had, and each part keeps its original rule:
+
+- **Scoped through the task, like attachments.** `task_comments` has no `board_id`. The routes
+  live under `/api/tasks/{taskId}/comments`, and the service checks the task before it looks at the
+  comment. A comment id from another board, named under a task the caller can see, is
+  `404 COMMENT_NOT_FOUND`; otherwise the task in the path would be decoration.
+- **Paged like the feed and chat.** Newest first, 25 by default, 100 at most, and
+  `400 INVALID_COMMENT_REQUEST` rather than a silent clamp. The body is 1 to 2 000 characters,
+  chat's limit, enforced by `@Valid` on `TaskCommentRequest`.
+- **Three rules for who may do what, and the server enforces them all.** A viewer reads the
+  thread but may not write in it, because FEAT-08 already decided that for chat and a comment is
+  the same act at a smaller scale. Only the author may edit a comment. The author or the board's
+  owner may delete it, since an owner who cannot remove something posted on their board is not
+  moderating it. Both refusals are `403 NOT_COMMENT_AUTHOR`, because the caller can already see the
+  comment. Authorship compares ids, not instances (the `Board.isVisibleTo` trap).
+  `WriteAccessCoverageTest` lists the three writes.
+- **Nothing cascades.** `TaskService.deleteTask` calls `TaskCommentService.deleteAllFor`.
+  `deleteBoard` reaches the comments through the `BoardTasksDeleting` listener; see the tenancy
+  section. `author_id` is `ON DELETE SET NULL`, so the thread outlives an account and the client
+  shows "former member".
+- **A comment announces `COMMENTS`, not `TASKS`.** Nothing on the board changed, so a board
+  re-read would fetch every card for one sentence. `KanbanContext` turns the frame into a
+  `task-comments-changed` window event (the same channel `subtask-updated` uses), and the open
+  task panel re-reads its own thread. The frame names the board, not the card, so every open
+  thread on the board re-reads; that is one page of one card, and it keeps the payload to the
+  `{type, boardId}` shape the live-sync section requires. A new comment also writes a `COMMENTED`
+  activity entry with no detail. The words stay in the thread, and a copy in the feed would be
+  one that an edit or a delete could not reach.
+
 ### Frontend state
 
 Three React contexts, composed in [App.jsx](frontend/src/App.jsx): `AuthProvider` wraps the router; `KanbanProvider` and `ChatProvider` wrap the protected routes.
