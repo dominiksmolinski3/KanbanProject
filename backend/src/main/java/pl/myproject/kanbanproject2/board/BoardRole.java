@@ -7,7 +7,7 @@ package pl.myproject.kanbanproject2.board;
  * separate check against {@code boards.owner_id}. The
  * commonest access level the two-level model left out was a stakeholder who should see a board and
  * not move anything on it. {@code MEMBER} is the write access every row in {@code board_members}
- * already had before this column existed (see {@code V20}), so it is the default rather than
+ * already had before this column existed (see {@code V21}), so it is the default rather than
  * {@code VIEWER}.
  */
 public enum BoardRole {

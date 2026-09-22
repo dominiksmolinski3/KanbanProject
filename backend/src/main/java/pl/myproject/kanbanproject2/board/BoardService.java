@@ -104,7 +104,7 @@ public class BoardService {
      * The caller's role on a board they can already see. The owner is not a row {@code board_members}
      * has to answer for - owning is checked separately - so this reads no role for them at all and
      * answers {@link BoardRole#MEMBER}, which is the write access an owner always has. A caller who
-     * is visible but has no row (should not happen past {@code V20}'s backfill, but a defensive
+     * is visible but has no row (should not happen past {@code V21}'s backfill, but a defensive
      * default all the same) reads the same way, since {@code MEMBER} was every existing row's role.
      */
     public BoardRole roleOf(User caller, Board board) {

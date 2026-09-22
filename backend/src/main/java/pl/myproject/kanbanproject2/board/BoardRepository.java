@@ -43,7 +43,7 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     Optional<Board> findWithMembersById(Integer id);
 
     /*
-     * board_members.role (V20) is native SQL rather than a mapped attribute of Board's own
+     * board_members.role (V21) is native SQL rather than a mapped attribute of Board's own
      * @ManyToMany, for the same reason the outbox claim and the deadline sweep are native: it is
      * data the collection mapping has no use for, so giving it one would mean a second, awkward
      * entity over the same join table for a single extra column. QueryStringsResolveTest compiles
