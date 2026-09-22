@@ -48,6 +48,7 @@ class BoardServiceTest {
     private BoardInvitationRepository invitationRepository;
     private TaskActivityRepository activityRepository;
     private ChatRepository chatRepository;
+    private org.springframework.context.ApplicationEventPublisher events;
     private BoardService boardService;
 
     private User owner;
@@ -66,10 +67,11 @@ class BoardServiceTest {
         invitationRepository = mock(BoardInvitationRepository.class);
         activityRepository = mock(TaskActivityRepository.class);
         chatRepository = mock(ChatRepository.class);
+        events = mock(org.springframework.context.ApplicationEventPublisher.class);
 
         boardService = new BoardService(boardRepository, columnRepository, rowRepository,
                 taskRepository, historyRepository, userRepository, invitationRepository,
-                activityRepository, chatRepository, new BoardMapper(boardRepository));
+                activityRepository, chatRepository, new BoardMapper(boardRepository), events);
 
         owner = TenancyFixtures.user(1);
         member = TenancyFixtures.user(2);
@@ -390,6 +392,42 @@ class BoardServiceTest {
             assertThat(child.getParentTask()).isNull();
             verify(historyRepository).deleteAll(any());
             verify(taskRepository).deleteAll(tasks);
+            verify(boardRepository).delete(board);
+        }
+
+        @Test
+        @DisplayName("tells the features hanging rows off the tasks before it deletes the tasks")
+        void announcesBeforeDeletingTheTasks() {
+            var board = boardOf(owner);
+            var task = new Task();
+            task.setId(1);
+            task.setBoard(board);
+            var tasks = List.of(task);
+            when(taskRepository.findByBoardOrderByIdAsc(board)).thenReturn(tasks);
+            when(historyRepository.findByTaskIn(tasks)).thenReturn(List.of());
+            when(columnRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
+            when(rowRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
+
+            boardService.deleteBoard(owner, 10);
+
+            // The order is the fix: a listener that ran after the tasks' DELETE would meet the
+            // foreign key that made this a 500 in the first place.
+            var order = org.mockito.Mockito.inOrder(events, taskRepository);
+            order.verify(events).publishEvent(new BoardTasksDeleting(board, tasks));
+            order.verify(taskRepository).deleteAll(tasks);
+        }
+
+        @Test
+        @DisplayName("an empty board announces nothing, since no feature has anything to remove")
+        void emptyBoardAnnouncesNothing() {
+            var board = boardOf(owner);
+            when(taskRepository.findByBoardOrderByIdAsc(board)).thenReturn(List.of());
+            when(columnRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
+            when(rowRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
+
+            boardService.deleteBoard(owner, 10);
+
+            verify(events, never()).publishEvent(any(Object.class));
             verify(boardRepository).delete(board);
         }
 
