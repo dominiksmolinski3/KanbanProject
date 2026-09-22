@@ -1,6 +1,7 @@
 package pl.myproject.kanbanproject2.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -103,7 +104,7 @@ class SecurityConfigurationRateLimitWiringTest {
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
             // This suite proves the filter's position in the chain, not the escalation itself, so
             // a mock Redis template is enough - nothing here ever calls tryConsume.
-            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class));
+            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 
         @Bean

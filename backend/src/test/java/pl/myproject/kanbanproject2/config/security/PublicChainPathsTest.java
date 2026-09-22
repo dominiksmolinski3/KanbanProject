@@ -1,6 +1,7 @@
 package pl.myproject.kanbanproject2.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -81,7 +82,16 @@ class PublicChainPathsTest {
                 "/api/columns",
                 "/api/rows",
                 "/api/subtasks",
-                "/api/files/1");
+                "/api/users/1/avatar");
+    }
+
+    @Test
+    @DisplayName("metrics is exposed but not public - it follows health's detail rule, not its route rule")
+    void metricsRequiresAuthentication() {
+        // Only /actuator/health, /actuator/health/** and /actuator/info are in PublicPaths.
+        // Exposing "metrics" in management.endpoints.web.exposure.include did not add it there, so
+        // it falls to anyRequest().authenticated() like the rest of the API - see OBS-01.
+        assertDenied("/actuator/metrics", "/actuator/metrics/kanban.mail.outbox.dead_letters");
     }
 
     @Test
@@ -90,7 +100,7 @@ class PublicChainPathsTest {
         // /users was the one path that was both: a client route the chain permitted, and the name
         // UserController answered before the /api prefix existed. Neither is true here now, and a
         // matcher drifting back to any of them would otherwise be silent.
-        assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks", "/files");
+        assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks");
     }
 
     private void assertPermitted(String... uris) {
@@ -154,7 +164,7 @@ class PublicChainPathsTest {
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
             // This suite is about path matching in the security chain, not the escalation itself,
             // so a mock Redis template is enough - nothing here ever calls tryConsume.
-            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class));
+            return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 
         @Bean

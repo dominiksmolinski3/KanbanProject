@@ -216,11 +216,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-
         <!--
             Jackson maps both an absent property and an explicit JSON null onto the same Java null,
             which is why every PATCH here used to mean "leave unchanged" and nothing could be
@@ -628,16 +623,18 @@
                                     </limits>
                                 </rule>
                                 <!--
-                                  file measures 97.7 and task.history 100, both up from the high
-                                  thirties. The floor is 0.90 rather than a shade under each,
-                                  because these are the two smallest packages in the build - 43 and
-                                  17 lines - and at that size a 0.95 floor is one uncovered line
-                                  away from failing, which turns the ratchet into a tripwire.
+                                  task.history measures 100, up from the high thirties. The floor is
+                                  0.90 rather than a shade under, because it is 17 lines and at that
+                                  size a 0.95 floor is one uncovered line away from failing, which
+                                  turns the ratchet into a tripwire. `file` carried this rule too
+                                  until FEAT-09 removed the package outright (avatars moved to
+                                  BlobStore and /api/files was unused) - gone rather than left as a
+                                  dead include, the same call V18 and V19 made for tables and
+                                  columns a migration dropped.
                                 -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>pl.myproject.kanbanproject2.file</include>
                                         <include>pl.myproject.kanbanproject2.task.history</include>
                                     </includes>
                                     <limits>
@@ -645,6 +642,29 @@
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!--
+                                  user.avatar arrives with FEAT-09, replacing the avatar half of the
+                                  old `service` and `file` packages. Measures 88.3 (128/145). 0.85 is
+                                  a shade under rather than tight against it, the same floor
+                                  task.attachment carries for the same reason: what is left uncovered
+                                  is the after-commit branch of the transaction-synchronization hook,
+                                  which needs a real transaction manager to reach, plus one path
+                                  through the transfer-permit's FilterInputStream that only a failed
+                                  release exercises.
+                                -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.user.avatar</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

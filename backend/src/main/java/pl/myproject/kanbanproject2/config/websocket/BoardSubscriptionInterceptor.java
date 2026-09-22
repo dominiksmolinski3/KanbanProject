@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.websocket;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -41,7 +42,17 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
     /** A board id no board has, for a destination under the prefix that names no number. */
     private static final Integer NOT_A_BOARD = -1;
 
+    /**
+     * Counts a dropped subscription, tagged by why - {@code no-principal} for a session the
+     * authentication interceptor never stamped, {@code not-visible} for a board the caller cannot
+     * see (which is also what a malformed destination's {@link #NOT_A_BOARD} id resolves to). The
+     * broker gives this no other signal: a drop here is a silently discarded frame by design, and
+     * this is the trend line the WARN log alone cannot give.
+     */
+    static final String DROPPED_COUNTER = "kanban.board.subscription.dropped";
+
     private final BoardService boardService;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
@@ -59,6 +70,7 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
         User caller = callerOf(accessor.getUser());
         if (caller == null) {
             log.warn("Dropped a board subscription with no principal on the session");
+            meterRegistry.counter(DROPPED_COUNTER, "reason", "no-principal").increment();
             return null;
         }
 
@@ -66,6 +78,7 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
             boardService.requireVisible(caller, boardId);
         } catch (GlobalException exception) {
             log.warn("Dropped a board subscription for {} to board {}", caller.getUsername(), boardId);
+            meterRegistry.counter(DROPPED_COUNTER, "reason", "not-visible").increment();
             return null;
         }
 
