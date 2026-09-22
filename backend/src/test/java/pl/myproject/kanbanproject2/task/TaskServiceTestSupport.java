@@ -53,6 +53,7 @@ final class TaskServiceTestSupport {
                 TenancyFixtures.boardServiceReturning(TENANT.board()),
                 mock(DeadlineNotifier.class),
                 mock(TaskAttachmentService.class),
-                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
+                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class),
+                mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
     }
 }

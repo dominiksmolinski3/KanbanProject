@@ -58,7 +58,12 @@ class WriteAccessCoverageTest {
                     "public RowDto patchRow(",
                     "public void deleteRow(",
                     "public RowDto updateRowPosition(",
-                    "public List<RowDto> reorderRows("));
+                    "public List<RowDto> reorderRows("),
+            // FEAT-06: a viewer reads a card's thread and writes none of it.
+            "task/comment/TaskCommentService.java", List.of(
+                    "public TaskCommentDto add(",
+                    "public TaskCommentDto edit(",
+                    "public void delete("));
 
     @Test
     @DisplayName("every task/column/row mutation asks BoardService.requireWritable, not just findX's visibility check")

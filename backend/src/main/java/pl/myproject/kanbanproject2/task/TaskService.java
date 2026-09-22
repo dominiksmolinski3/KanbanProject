@@ -20,6 +20,7 @@ import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryDto;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryMapper;
 import pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService;
+import pl.myproject.kanbanproject2.task.comment.TaskCommentService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -58,6 +59,7 @@ public class TaskService {
     private final TaskAttachmentService attachmentService;
     private final TaskActivityRecorder activityRecorder;
     private final BoardEventPublisher boardEvents;
+    private final TaskCommentService commentService;
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
@@ -186,6 +188,8 @@ public class TaskService {
         // A service call rather than a cascade: only this can take the blobs with the rows, and a
         // foreign-key cascade would leave every blob orphaned with nothing left that knows its name.
         attachmentService.deleteAllFor(task);
+        // The thread goes with the card, by the same hand: task_comments.task_id does not cascade.
+        commentService.deleteAllFor(task);
 
         if (task.getChildTasks() != null && !task.getChildTasks().isEmpty()) {
             for (Task child : task.getChildTasks()) {
