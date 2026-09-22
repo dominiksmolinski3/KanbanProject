@@ -253,6 +253,14 @@ resource "azurerm_container_app" "main" {
         name        = "STOMP_RELAY_PASSWORD"
         secret_name = "rabbitmq-password"
       }
+      # ECS JSON rather than prose, so Log Analytics gets fields - RequestIdFilter's requestId
+      # among them, which is what joins a line here to the nginx line carrying the same rid= on the
+      # web app's stream. Appended rather than inserted: env blocks match positionally, so anything
+      # but the tail turns an addition into a replace-in-place of every block after it.
+      env {
+        name  = "LOG_FORMAT"
+        value = "ecs"
+      }
 
       startup_probe {
         transport               = "HTTP"

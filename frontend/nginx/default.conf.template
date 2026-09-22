@@ -4,12 +4,55 @@
 # /etc/nginx/templates/*.template. Only ${API_UPSTREAM} and ${NGINX_LOCAL_RESOLVERS} are
 # substituted - nginx's own variables are written without braces and envsubst leaves them alone.
 
+# ---------------------------------------------------------------------------------------------
+# One identifier per request, shared by both containers' logs.
+#
+# Since the split there are two log streams and, until this, nothing joining them: a 502 recorded
+# here could not be matched to the API line for the same request, which is exactly the class of bug
+# the split has already produced twice - the SNI reset and the wrong Host. Both were diagnosed by
+# hand-built curl against the real origin, because the logs could not answer it.
+#
+# This block is at http level rather than inside `server`, which it can be because the stock
+# entrypoint renders templates into /etc/nginx/conf.d - a directory nginx.conf includes from http.
+# `map` and `log_format` are not valid in a server block and nginx would refuse to start.
+#
+# An inbound id is honoured only if it looks like one. $http_x_request_id reaches this from
+# whatever sent the request, and it ends up in every log line for that request: unbounded, it is a
+# log entry of the client's choosing. The pattern bounds the length and the alphabet, and anything
+# else is replaced by nginx's own $request_id (32 hex characters, per request). Trusting it at all
+# is deliberate - it is what lets a load test or a future client correlate its own request with
+# both halves of this deployment - and trusting it unchecked is what the regex refuses.
+#
+# It is passed upstream with proxy_set_header on every location that proxies, where RequestIdFilter
+# reads it into the MDC - so the edge's line and every application line for one request carry one
+# id. It is deliberately *not* echoed to the browser from here: add_header does not inherit into a
+# location that sets one of its own, so an edge-side echo would mean including the security-headers
+# snippet in each proxying location and overriding what Spring already sends on those responses.
+# The application echoes it on its own responses instead, which is the half a person reporting a
+# failure can read off.
+map $http_x_request_id $edge_request_id {
+    "~^[A-Za-z0-9_-]{8,64}$" $http_x_request_id;
+    default                  $request_id;
+}
+
+# The stock image already defines `main` and nginx refuses a duplicate log_format, so this is its
+# own name. rid= is the join key; the upstream fields are here because the whole point is telling
+# "the API answered 500" from "the API never answered".
+log_format edge '$remote_addr - $remote_user [$time_local] "$request" $status '
+                '$body_bytes_sent "$http_referer" "$http_user_agent" '
+                'rid=$edge_request_id upstream_status=$upstream_status '
+                'request_time=$request_time upstream_time=$upstream_response_time';
+
 server {
     listen 8080;
     server_name _;
     server_tokens off;
 
     root /usr/share/nginx/html;
+
+    # /var/log/nginx/access.log is a symlink to /dev/stdout in this image, which is what Container
+    # Apps and `docker compose logs` collect.
+    access_log /var/log/nginx/access.log edge;
 
     # Resolve the upstream per request rather than once at worker start.
     #
@@ -77,6 +120,7 @@ server {
         proxy_pass $api_upstream;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Request-Id      $edge_request_id;
         # Appends to the header the ingress already set. $remote_addr would replace it, collapsing
         # two hops into one and breaking ClientIpResolver from the other direction - see
         # ingress_trusted_proxy_count, which has to be 2 now that nginx is the second proxy.
@@ -103,6 +147,7 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Request-Id      $edge_request_id;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade           $http_upgrade;
@@ -124,6 +169,7 @@ server {
         proxy_pass $api_upstream;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Request-Id      $edge_request_id;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_http_version 1.1;
