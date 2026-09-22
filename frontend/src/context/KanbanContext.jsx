@@ -155,6 +155,22 @@ export function KanbanProvider({ children }) {
 
   const activeBoard = boards.find(board => board.id === activeBoardId) || null;
 
+  /*
+   * FEAT-08: a viewer may see the board and not change it. The server enforces this on every write
+   * route regardless of what the client does - this is the UX half, not the control - so every
+   * write handler below checks it first and answers with the same toast a rejected API call would
+   * have produced anyway, rather than sending a request the server was always going to refuse.
+   */
+  const isViewer = activeBoard?.role === 'VIEWER';
+
+  const blockIfReadOnly = () => {
+    if (isViewer) {
+      toast.error(t('notifications.readOnlyBoard'));
+      return true;
+    }
+    return false;
+  };
+
   /** Switches boards, which reloads the whole board through the effect above. */
   const selectBoard = (boardId) => {
     if (boardId === activeBoardId) {
@@ -240,9 +256,9 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  const handleInviteToBoard = async (boardId, email) => {
+  const handleInviteToBoard = async (boardId, email, role) => {
     try {
-      const invitation = await inviteToBoard(boardId, email);
+      const invitation = await inviteToBoard(boardId, email, role);
       // Deliberately not "added": nobody has joined anything, and the server answers the same
       // whether or not that address has an account here.
       toast.info(t('notifications.boardInvitationSent'));
@@ -308,6 +324,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleUpdateTaskName = async (taskId, newName) => {
+    if (blockIfReadOnly()) return false;
     try {
       await updateTaskName(taskId, newName);
       setTasks(tasks.map(task => 
@@ -324,6 +341,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleUpdateColumnName = async (columnId, newName) => {
+    if (blockIfReadOnly()) return false;
     try {
       await updateColumnName(columnId, newName);
       setColumns(columns.map(column => 
@@ -356,6 +374,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleUpdateRowName = async (rowId, newName) => {
+    if (blockIfReadOnly()) return false;
     try {
       await updateRowName(rowId, newName);
       setRows(rows.map(row => 
@@ -372,6 +391,11 @@ export function KanbanProvider({ children }) {
   };
 
   const handleAddTask = async (title, columnId, deadline = null, rowId = null) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       if (!columns || columns.length === 0) {
         const errorMessage = t('notifications.noColumnError');
@@ -411,6 +435,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleTaskReorder = async (draggedTaskId, targetTaskId) => {
+    if (blockIfReadOnly()) return;
     try {
       const draggedTask = tasks.find(t => t.id === draggedTaskId);
       const targetTask = tasks.find(t => t.id === targetTaskId);
@@ -557,6 +582,11 @@ export function KanbanProvider({ children }) {
   }, [activeBoardId]);
   
   const handleAddColumn = async (name, wipLimit) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       const newColumn = await addColumn(name, wipLimit);
       const columnKey = name.toLowerCase().replace(/\s+/g, '-');
@@ -576,6 +606,11 @@ export function KanbanProvider({ children }) {
   };
   
   const handleAddRow = async (name, wipLimit) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       const newRow = await addRow(name, wipLimit);
       setRows([...rows, newRow]);
@@ -604,6 +639,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleUpdateWipLimit = async (columnId, newLimit) => {
+    if (blockIfReadOnly()) return;
     try {
       const columnToUpdate = columns.find(col => String(col.id) === String(columnId));
       const columnName = columnToUpdate ? columnToUpdate.name : 'kolumny';
@@ -646,6 +682,7 @@ export function KanbanProvider({ children }) {
   };
   
   const handleUpdateRowWipLimit = async (rowId, newLimit) => {
+    if (blockIfReadOnly()) return;
     try {
       const rowToUpdate = rows.find(r => String(r.id) === String(rowId));
       const rowName = rowToUpdate ? rowToUpdate.name : 'wiersza';
@@ -664,6 +701,11 @@ export function KanbanProvider({ children }) {
   };
   
   const handleDeleteColumn = async (columnId) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       const columnToDelete = columns.find(col => col.id === columnId);
       const columnName = columnToDelete ? columnToDelete.name : 'kolumna';
@@ -716,6 +758,11 @@ export function KanbanProvider({ children }) {
   };
   
   const handleDeleteRow = async (rowId) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       const rowToDelete = rows.find(row => row.id === rowId);
       const rowName = rowToDelete ? rowToDelete.name : 'wiersz';
@@ -776,6 +823,7 @@ export function KanbanProvider({ children }) {
    * task that was asked about, not the dependents the server also changed.
    */
   const handleUpdateTaskCompletion = async (taskId, completed) => {
+    if (blockIfReadOnly()) return false;
     try {
       const updated = await updateTaskCompletion(taskId, completed);
       setTasks(previous => previous.map(task =>
@@ -801,6 +849,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleSetDailyFocus = async (taskId, dailyFocus) => {
+    if (blockIfReadOnly()) return false;
     try {
       await setTaskDailyFocus(taskId, dailyFocus);
       setTasks(previous => previous.map(task =>
@@ -819,6 +868,11 @@ export function KanbanProvider({ children }) {
   };
 
   const handleDeleteTask = async (taskId) => {
+    if (isViewer) {
+      const errorMessage = t('notifications.readOnlyBoard');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
       await deleteTask(taskId);
       setTasks(tasks.filter(task => task.id !== taskId));
@@ -831,6 +885,7 @@ export function KanbanProvider({ children }) {
   };
   
   const handleMoveTask = async (taskId, newColumnId, newRowId) => {
+    if (blockIfReadOnly()) return;
     try {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
@@ -892,6 +947,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleMoveColumn = async (columnId, targetColumnId) => {
+    if (blockIfReadOnly()) return;
     try {
       const columnIndex = columns.findIndex(col => col.id === columnId);
       const targetIndex = columns.findIndex(col => col.id === targetColumnId);
@@ -928,6 +984,7 @@ export function KanbanProvider({ children }) {
   };
 
   const handleMoveRow = async (rowId, targetRowId) => {
+    if (blockIfReadOnly()) return;
     try {
       const rowIndex = rows.findIndex(row => row.id === rowId);
       const targetIndex = rows.findIndex(row => row.id === targetRowId);
@@ -1072,8 +1129,20 @@ export function KanbanProvider({ children }) {
    * The keyboard's equivalent of a drag. Built on handleMoveTask, the same call handleDrop makes,
    * so a card moved with the keyboard takes exactly the path a dragged one does - the toast, the
    * resync and the activity entry are not a second implementation that can drift from the first.
+   *
+   * `grab` is wrapped rather than left as-is: `handleMoveTask` already refuses the eventual drop for
+   * a viewer, but without this a card could still be picked up and held - the same restriction the
+   * mouse path gets via `draggable={!readOnly}`, applied here so neither input method is the one
+   * that quietly still works.
    */
-  const keyboardMove = useKeyboardMove({ columns, rows, moveTask: handleMoveTask });
+  const keyboardMoveRaw = useKeyboardMove({ columns, rows, moveTask: handleMoveTask });
+  const keyboardMove = {
+    ...keyboardMoveRaw,
+    grab: (...args) => {
+      if (isViewer) return;
+      keyboardMoveRaw.grab(...args);
+    }
+  };
 
   const dragAndDrop = {
     draggedItem,
@@ -1083,11 +1152,12 @@ export function KanbanProvider({ children }) {
     handleDragEnd,
     handleTaskReorder
   };
-  
+
   const value = {
     boards,
     activeBoard,
     activeBoardId,
+    readOnly: isViewer,
     selectBoard,
     refreshBoards,
     createBoard: handleCreateBoard,

@@ -65,6 +65,7 @@
       "labels": "Etichette",
       "dailyFocus": "Focus giornaliero",
       "dailyFocusEmpty": "Nessuna attività nel focus giornaliero.",
+      "readOnlyBanner": "Questa bacheca è di sola lettura per te: puoi vederla, ma non modificarla",
       "search": {
         "assignees": "Assegnato a",
         "boardHas": "La board ha {{count}} task e nessuno corrisponde.",
@@ -155,7 +156,8 @@
       "boardInvitationSent": "Invito inviato",
       "boardInvitationRevoked": "Invito annullato",
       "boardInvitationAccepted": "Ti sei unito a \"{{name}}\"",
-      "boardInvitationDeclined": "Invito rifiutato"
+      "boardInvitationDeclined": "Invito rifiutato",
+      "readOnlyBoard": "Questa bacheca è di sola lettura per te"
     },
     "boards": {
       "switcher": {
@@ -176,6 +178,7 @@
         "you": "(tu)",
         "owner": "Proprietario",
         "member": "Membro",
+        "viewer": "Visualizzatore",
         "leave": "Esci da questa bacheca",
         "remove": "Rimuovi dalla bacheca",
         "removeConfirm": "Rimuovere questa persona dalla bacheca?",
@@ -195,6 +198,9 @@
         "revoke": "Annulla questo invito",
         "inviteLabel": "Invita qualcuno in questa bacheca",
         "invitePlaceholder": "il suo indirizzo e-mail",
+        "roleLabel": "Ruolo",
+        "roleMember": "Membro (può modificare)",
+        "roleViewer": "Visualizzatore (sola lettura)",
         "invite": "Invita",
         "inviteNote": "Riceverà un invito via e-mail e si unirà solo se lo accetta. La risposta qui è la stessa sia che quell'indirizzo abbia un account sia che non ce l'abbia, quindi questo modulo non serve a scoprire chi è registrato."
       }
@@ -420,6 +426,7 @@
       "errors": {
         "empty": "Un messaggio non può essere vuoto",
         "tooLong": "Questo messaggio è troppo lungo",
+        "readOnly": "Questa bacheca è di sola lettura per te",
         "notSent": "Il messaggio non è stato inviato"
       }
     },

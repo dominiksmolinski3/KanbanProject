@@ -17,6 +17,7 @@ function BoardMembers() {
   const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('MEMBER');
   const [invitations, setInvitations] = useState([]);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
@@ -58,9 +59,10 @@ function BoardMembers() {
       return;
     }
     setBusy(true);
-    const invitation = await inviteToBoard(activeBoard.id, address);
+    const invitation = await inviteToBoard(activeBoard.id, address, inviteRole);
     if (invitation) {
       setEmail('');
+      setInviteRole('MEMBER');
       await loadInvitations();
     }
     setBusy(false);
@@ -159,7 +161,9 @@ function BoardMembers() {
               {isOwner ? (
                 <span className="board-role owner">{t('boards.members.owner')}</span>
               ) : (
-                <span className="board-role">{t('boards.members.member')}</span>
+                <span className="board-role">
+                  {member.role === 'VIEWER' ? t('boards.members.viewer') : t('boards.members.member')}
+                </span>
               )}
               {/* The owner cannot be removed by anyone, including themselves: nothing can
                   appoint a replacement, so the board would be left unmanageable. */}
@@ -185,6 +189,9 @@ function BoardMembers() {
             {invitations.map(invitation => (
               <li key={invitation.id} className="board-invitation">
                 <span className="board-member-email">{invitation.email}</span>
+                <span className="board-role">
+                  {invitation.role === 'VIEWER' ? t('boards.members.viewer') : t('boards.members.member')}
+                </span>
                 <span className="board-role">{t('boards.invitations.pending')}</span>
                 <button
                   type="button"
@@ -212,6 +219,18 @@ function BoardMembers() {
               placeholder={t('boards.invitations.invitePlaceholder')}
               onChange={(event) => setEmail(event.target.value)}
             />
+            <label htmlFor="board-invite-role" className="visually-hidden">
+              {t('boards.invitations.roleLabel')}
+            </label>
+            <select
+              id="board-invite-role"
+              value={inviteRole}
+              onChange={(event) => setInviteRole(event.target.value)}
+              aria-label={t('boards.invitations.roleLabel')}
+            >
+              <option value="MEMBER">{t('boards.invitations.roleMember')}</option>
+              <option value="VIEWER">{t('boards.invitations.roleViewer')}</option>
+            </select>
             <button type="submit" disabled={busy}>{t('boards.invitations.invite')}</button>
           </div>
           {/* Not a hedge. Nobody is added by this form: it sends an invitation the other person

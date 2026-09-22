@@ -81,11 +81,34 @@ describe('BoardMembers', () => {
     fireEvent.click(screen.getByText('boards.invitations.invite'));
 
     await waitFor(() =>
-      expect(mockKanban.inviteToBoard).toHaveBeenCalledWith(3, 'new@example.com'));
+      expect(mockKanban.inviteToBoard).toHaveBeenCalledWith(3, 'new@example.com', 'MEMBER'));
     // The member list is what it was: an invitation is an offer, and the list only changes when
     // the other person accepts.
     expect(screen.getAllByText(/example\.com/).map(node => node.textContent))
       .toEqual(['owner@example.com', 'member@example.com']);
+  });
+
+  test('the owner can invite specifically as a viewer', async () => {
+    await renderPanel();
+
+    fireEvent.change(screen.getByLabelText('boards.invitations.inviteLabel'), {
+      target: { value: 'watcher@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('boards.invitations.roleLabel'), {
+      target: { value: 'VIEWER' }
+    });
+    fireEvent.click(screen.getByText('boards.invitations.invite'));
+
+    await waitFor(() =>
+      expect(mockKanban.inviteToBoard).toHaveBeenCalledWith(3, 'watcher@example.com', 'VIEWER'));
+  });
+
+  test('a viewer on the member list is labelled as one, not as a member', async () => {
+    mockKanban.activeBoard = board({ members: [owner, { ...member, role: 'VIEWER' }] });
+    await renderPanel();
+
+    expect(screen.getByText('boards.members.viewer')).toBeInTheDocument();
+    expect(screen.queryByText('boards.members.member')).not.toBeInTheDocument();
   });
 
   test('the form says the answer does not reveal who has an account', async () => {
