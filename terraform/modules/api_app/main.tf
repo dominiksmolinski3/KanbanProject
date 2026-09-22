@@ -260,6 +260,8 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "LOG_FORMAT"
         value = "ecs"
+      }
+
       # The connection pool, sized fleet-wide for the same reason the attachment semaphore is: what
       # runs out is on the Postgres server, so a per-replica limit is that limit times the replica
       # count. Divided by var.max_replicas - the ceiling, not the live count, which nothing here
