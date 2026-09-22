@@ -65,9 +65,11 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
      * acceptance (from the invitation) or when an owner edits the member list, never through the
      * {@code @ManyToMany} mapping that manages {@code board_id}/{@code user_id}. Callers flush the
      * membership insert first ({@code saveAndFlush}), or this runs before that row exists and
-     * updates nothing.
+     * updates nothing. No {@code clearAutomatically}: the column is mapped by nothing, so there is no
+     * stale state to evict, and clearing would detach the board the caller is about to map - whose
+     * lazy owner then throws, a 500 on every accepted invitation.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying
     @Query(value = "UPDATE board_members SET role = :role WHERE board_id = :boardId AND user_id = :userId",
             nativeQuery = true)
     int updateMemberRole(@Param("boardId") Integer boardId, @Param("userId") Integer userId,
