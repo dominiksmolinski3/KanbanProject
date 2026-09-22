@@ -115,3 +115,35 @@ resource "azurerm_key_vault_secret" "postgres_connection_string" {
   content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }
+
+# ---------------------------------------------------------------------------------------------
+# How many connections this server actually has, so something other than a live outage can answer
+# it.
+#
+# Azure sizes max_connections from the SKU and does not expose it as an attribute of the resource,
+# so it has to be written down. These two numbers were measured against the dev server rather than
+# read off a documentation page:
+#
+#   az postgres flexible-server parameter show -g kanban-dev-rg -s psql-dev-g1tuv \
+#      -n max_connections                 -> 50
+#      -n superuser_reserved_connections  -> 10
+#
+# The reserve is the half that is easy to miss and it is a fifth of this SKU: those ten are held
+# for superuser logins, so an application that plans against 50 plans against ten it cannot have.
+# usable_connections is what is left, and the root module checks the API's budget against it.
+#
+# An unlisted SKU is a plan failure rather than a guess. Getting this number wrong in the
+# optimistic direction is exactly the outage it exists to prevent, and a lookup() default would
+# make that silent.
+locals {
+  # Azure PostgreSQL Flexible Server's default max_connections, by SKU. Add a SKU here before
+  # using it in a tfvars file; DatabasePoolBudgetTest reads this map and will say so if you do not.
+  max_connections_by_sku = {
+    "B_Standard_B1ms"     = 50
+    "B_Standard_B2s"      = 429
+    "GP_Standard_D2ds_v4" = 859
+    "GP_Standard_D4ds_v4" = 1719
+  }
+
+  superuser_reserved_connections = 10
+}

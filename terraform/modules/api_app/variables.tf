@@ -104,6 +104,28 @@ variable "max_replicas" {
   }
 }
 
+variable "db_connection_budget" {
+  description = <<-EOT
+    How many PostgreSQL connections the whole API fleet may hold at once, divided by max_replicas
+    to reach the per-replica DB_MAX_POOL_SIZE. A fleet-wide number for the same reason
+    app.storage.max-concurrent-transfers is one: the thing that runs out is on the server, not in
+    any one JVM, so a per-replica limit silently means that number times the replica count.
+
+    It must fit inside modules/postgres's usable_connections - its max_connections less the
+    superuser reserve - with room left over for a psql session and for the overlap while Container
+    Apps runs a new revision beside the old one. The root module's check block compares the two on
+    every plan, and DatabasePoolBudgetTest fails the build on the same comparison, because a check
+    block only warns.
+  EOT
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.db_connection_budget >= 1
+    error_message = "The db_connection_budget must be at least 1."
+  }
+}
+
 variable "acs_email_connection_string" {
   type      = string
   sensitive = true
