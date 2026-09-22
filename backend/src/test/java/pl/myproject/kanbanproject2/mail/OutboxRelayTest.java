@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -44,8 +45,9 @@ class OutboxRelayTest {
     private final OutboxEmailRepository outbox = mock(OutboxEmailRepository.class);
     private final OutboxClaimer claimer = mock(OutboxClaimer.class);
     private final EmailSender transport = mock(EmailSender.class);
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final OutboxRelay relay =
-            new OutboxRelay(outbox, claimer, transport, Clock.fixed(NOW, ZoneOffset.UTC));
+            new OutboxRelay(outbox, claimer, transport, Clock.fixed(NOW, ZoneOffset.UTC), meterRegistry);
 
     @BeforeEach
     void nothingIsLapsedUnlessATestSaysSo() {
@@ -143,6 +145,22 @@ class OutboxRelayTest {
         }
 
         @Test
+        @DisplayName("giving up on an abandoned row counts a dead letter, once")
+        void anAbandonedGiveUpCountsADeadLetter() {
+            OutboxEmail poison = row("someone@example.test");
+            for (int attempt = 0; attempt < OutboxEmail.MAX_ATTEMPTS; attempt++) {
+                poison.claimed(NOW, OutboxRelay.CLAIM_LEASE);
+                poison.abandoned(NOW);
+            }
+            assertThat(poison.getStatus()).isEqualTo(OutboxStatus.FAILED);
+            when(claimer.reclaimLapsed(NOW, OutboxRelay.BATCH_SIZE)).thenReturn(List.of(poison));
+
+            relay.deliverPending();
+
+            assertThat(meterRegistry.counter(OutboxRelay.DEAD_LETTER_COUNTER).count()).isEqualTo(1.0);
+        }
+
+        @Test
         @DisplayName("the lease is written where the next relay looks for it")
         void theClaimLeaseIsTheNextAttemptTime() {
             OutboxEmail claimed = row("someone@example.test");
@@ -220,6 +238,21 @@ class OutboxRelayTest {
             assertThat(fine.getStatus()).isEqualTo(OutboxStatus.SENT);
             verify(outbox).save(broken);
             verify(outbox).save(fine);
+        }
+
+        @Test
+        @DisplayName("giving up on a refused row counts a dead letter, once, alongside the marker line")
+        void aRefusedGiveUpCountsADeadLetter() {
+            OutboxEmail queued = row("someone@example.test");
+            due(queued);
+            doThrow(refusal).when(transport).send(any());
+
+            for (int attempt = 0; attempt < OutboxEmail.MAX_ATTEMPTS; attempt++) {
+                relay.deliverPending();
+            }
+
+            assertThat(queued.getStatus()).isEqualTo(OutboxStatus.FAILED);
+            assertThat(meterRegistry.counter(OutboxRelay.DEAD_LETTER_COUNTER).count()).isEqualTo(1.0);
         }
 
         @Test

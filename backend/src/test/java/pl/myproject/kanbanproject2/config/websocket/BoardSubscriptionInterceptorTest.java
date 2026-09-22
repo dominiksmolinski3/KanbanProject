@@ -1,9 +1,10 @@
 package pl.myproject.kanbanproject2.config.websocket;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.Message;
@@ -42,10 +43,16 @@ class BoardSubscriptionInterceptorTest {
     @Mock
     private BoardService boardService;
 
-    @InjectMocks
+    private SimpleMeterRegistry meterRegistry;
     private BoardSubscriptionInterceptor interceptor;
 
     private final User caller = caller();
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        interceptor = new BoardSubscriptionInterceptor(boardService, meterRegistry);
+    }
 
     @Test
     @DisplayName("a member may subscribe to the board")
@@ -65,6 +72,9 @@ class BoardSubscriptionInterceptorTest {
         assertThat(interceptor.preSend(subscribe("/topic/boards.9", authenticated()), CHANNEL))
                 .as("the frame reached the broker, so the topic is open to any signed-in account")
                 .isNull();
+        assertThat(meterRegistry.get(BoardSubscriptionInterceptor.DROPPED_COUNTER)
+                .tags("reason", "not-visible").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -72,6 +82,9 @@ class BoardSubscriptionInterceptorTest {
     void dropsAnAnonymousSubscription() {
         assertThat(interceptor.preSend(subscribe("/topic/boards.7", null), CHANNEL)).isNull();
         verifyNoInteractions(boardService);
+        assertThat(meterRegistry.get(BoardSubscriptionInterceptor.DROPPED_COUNTER)
+                .tags("reason", "no-principal").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -82,6 +95,9 @@ class BoardSubscriptionInterceptorTest {
 
         assertThat(interceptor.preSend(subscribe("/topic/boards.7; drop", authenticated()), CHANNEL))
                 .isNull();
+        assertThat(meterRegistry.get(BoardSubscriptionInterceptor.DROPPED_COUNTER)
+                .tags("reason", "not-visible").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.task.attachment;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -61,6 +62,7 @@ class TaskAttachmentServiceTest {
     private TaskAttachmentRepository attachments;
     private TaskRepository tasks;
     private BlobStore blobStore;
+    private SimpleMeterRegistry meterRegistry;
     private TaskAttachmentService service;
 
     private TenancyFixtures.Tenant tenant;
@@ -73,6 +75,7 @@ class TaskAttachmentServiceTest {
         attachments = mock(TaskAttachmentRepository.class);
         tasks = mock(TaskRepository.class);
         blobStore = mock(BlobStore.class);
+        meterRegistry = new SimpleMeterRegistry();
 
         when(blobStore.isConfigured()).thenReturn(true);
         when(attachments.save(any(TaskAttachment.class))).thenAnswer(call -> {
@@ -113,7 +116,8 @@ class TaskAttachmentServiceTest {
                 new TaskAttachmentMapper(),
                 blobStore,
                 storageProperties,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                meterRegistry);
     }
 
     private static Task taskOn(Board board, int id) {
@@ -530,6 +534,9 @@ class TaskAttachmentServiceTest {
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+            assertThat(meterRegistry.get(TaskAttachmentService.TRANSFER_BUSY_COUNTER)
+                    .tags("operation", "upload").counter().count())
+                    .isEqualTo(1.0);
 
             releaseUpload.countDown();
             first.join(5000);
@@ -564,6 +571,9 @@ class TaskAttachmentServiceTest {
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
+            assertThat(meterRegistry.get(TaskAttachmentService.TRANSFER_BUSY_COUNTER)
+                    .tags("operation", "download").counter().count())
+                    .isEqualTo(1.0);
 
             first.stream().close();
 

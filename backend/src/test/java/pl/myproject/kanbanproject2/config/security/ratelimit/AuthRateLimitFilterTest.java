@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.config.security.ratelimit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -38,7 +39,8 @@ class AuthRateLimitFilterTest {
     void setUp() {
         // Test capacities: CREDENTIALS 4 per address / 2 per account, EMAIL 3 per address / 2 per account.
         limiter = spy(new AuthRateLimiter(
-                properties(), new InMemoryEscalationStore(), new AuthRateLimitTestSupport.FakeClock()));
+                properties(), new InMemoryEscalationStore(), new AuthRateLimitTestSupport.FakeClock(),
+                new SimpleMeterRegistry()));
         filter = new AuthRateLimitFilter(limiter, new ClientIpResolver(properties()), OBJECT_MAPPER);
     }
 
