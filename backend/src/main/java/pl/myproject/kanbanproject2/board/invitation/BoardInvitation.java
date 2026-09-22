@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDateTime;
@@ -59,16 +60,32 @@ public class BoardInvitation {
     @jakarta.persistence.Column(nullable = false, length = 16)
     private InvitationStatus status = InvitationStatus.PENDING;
 
+    /**
+     * The role the invitee joins at if they accept - carried on the offer itself rather than
+     * decided afterward, so an owner can invite somebody specifically as a viewer. {@code V20}
+     * defaults every column-less row to {@link BoardRole#MEMBER}, which is also this field's own
+     * default for the same backward-compatibility reason: the invite-creation UI predates a choice.
+     */
+    @Enumerated(EnumType.STRING)
+    @jakarta.persistence.Column(nullable = false, length = 16)
+    private BoardRole role = BoardRole.MEMBER;
+
     @jakarta.persistence.Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @jakarta.persistence.Column(name = "responded_at")
     private LocalDateTime respondedAt;
 
+    /** Joins as a {@link BoardRole#MEMBER}, the default every invitation had before this column. */
     public BoardInvitation(Board board, String email, User invitedBy) {
+        this(board, email, invitedBy, BoardRole.MEMBER);
+    }
+
+    public BoardInvitation(Board board, String email, User invitedBy, BoardRole role) {
         this.board = board;
         this.email = normaliseEmail(email);
         this.invitedBy = invitedBy;
+        this.role = role == null ? BoardRole.MEMBER : role;
     }
 
     /**

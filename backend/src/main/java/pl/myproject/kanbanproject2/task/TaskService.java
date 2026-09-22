@@ -61,6 +61,7 @@ public class TaskService {
 
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
+        boardService.requireWritable(caller, board);
         var column = request.column() != null ? findColumn(caller, board, request.column().id()) : null;
         var row = request.row() != null ? findRow(caller, board, request.row().id()) : null;
 
@@ -173,6 +174,7 @@ public class TaskService {
 
     public void deleteTask(User caller, Integer id) {
         var task = findTask(caller, id);
+        boardService.requireWritable(caller, task.getBoard());
 
         // Written before the row goes, then detached from it: the deletion record has to outlive
         // its subject, and nothing here cascades so a foreign key can't take the record down with it.
@@ -203,6 +205,7 @@ public class TaskService {
 
     public TaskDto patchTask(User caller, Integer id, PatchTaskRequest request) {
         var existingTask = findTask(caller, id);
+        boardService.requireWritable(caller, existingTask.getBoard());
         requireCurrentVersion(existingTask, request.version());
         var board = existingTask.getBoard();
 
@@ -329,6 +332,7 @@ public class TaskService {
      */
     public TaskDto assignUserToTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
         var user = findBoardMember(task.getBoard(), userId);
 
         if (!userService.checkWipStatus(userId)) {
@@ -349,6 +353,7 @@ public class TaskService {
      */
     public TaskDto removeUserFromTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
                         "User not found with id: " + userId));
@@ -363,6 +368,7 @@ public class TaskService {
 
     public TaskDto updateTaskPosition(User caller, Integer id, Integer position) {
         var task = findTask(caller, id);
+        boardService.requireWritable(caller, task.getBoard());
         task.setPosition(position);
         return saveAndAnnounce(task);
     }
@@ -379,6 +385,7 @@ public class TaskService {
         requireDistinct(orderedIds, "task");
 
         var tasks = orderedIds.stream().map(id -> findTask(caller, id)).toList();
+        boardService.requireWritable(caller, tasks.get(0).getBoard());
         requireOneCell(tasks);
 
         var reordered = new ArrayList<TaskDto>(tasks.size());
@@ -422,6 +429,7 @@ public class TaskService {
 
     public TaskDto addLabelToTask(User caller, Integer taskId, String label) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
         if (task.getLabels() == null) {
             task.setLabels(new HashSet<>());
         }
@@ -431,6 +439,7 @@ public class TaskService {
 
     public TaskDto removeLabelFromTask(User caller, Integer taskId, String label) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
         if (task.getLabels() != null) {
             task.getLabels().remove(label);
             return saveAndAnnounce(task);
@@ -440,6 +449,7 @@ public class TaskService {
 
     public TaskDto updateTaskLabels(User caller, Integer taskId, Set<String> labels) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
         task.setLabels(labels);
         return saveAndAnnounce(task);
     }
@@ -450,6 +460,7 @@ public class TaskService {
 
     public TaskDto assignParentTask(User caller, Integer childTaskId, Integer parentTaskId) {
         var childTask = findTask(caller, childTaskId);
+        boardService.requireWritable(caller, childTask.getBoard());
         var parentTask = taskRepository.findById(parentTaskId)
                 .orElseThrow(() -> parentNotFound(parentTaskId));
 
@@ -473,6 +484,7 @@ public class TaskService {
 
     public TaskDto removeParentTask(User caller, Integer childTaskId) {
         var childTask = findTask(caller, childTaskId);
+        boardService.requireWritable(caller, childTask.getBoard());
         if (childTask.getParentTask() != null) {
             var parentTask = childTask.getParentTask();
             parentTask.getChildTasks().remove(childTask);
@@ -530,6 +542,7 @@ public class TaskService {
 
     public TaskDto updateTaskCompletion(User caller, Integer taskId, boolean completed) {
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, task.getBoard());
 
         if (completed && !canTaskBeCompleted(task)) {
             throw new GlobalException(ExceptionIdentifier.PARENT_TASK_NOT_COMPLETED);
@@ -576,6 +589,7 @@ public class TaskService {
         if (task.isDailyFocus() == dailyFocus) {
             return taskMapper.apply(task);
         }
+        boardService.requireWritable(caller, task.getBoard());
         task.setDailyFocus(dailyFocus);
         return saveAndAnnounce(task);
     }

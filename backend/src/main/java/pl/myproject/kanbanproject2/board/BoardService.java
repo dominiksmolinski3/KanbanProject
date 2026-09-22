@@ -101,6 +101,47 @@ public class BoardService {
     }
 
     /**
+     * The caller's role on a board they can already see. The owner is not a row {@code board_members}
+     * has to answer for - owning is checked separately - so this reads no role for them at all and
+     * answers {@link BoardRole#MEMBER}, which is the write access an owner always has. A caller who
+     * is visible but has no row (should not happen past {@code V20}'s backfill, but a defensive
+     * default all the same) reads the same way, since {@code MEMBER} was every existing row's role.
+     */
+    public BoardRole roleOf(User caller, Board board) {
+        if (board == null || caller == null || caller.getId() == null) {
+            return BoardRole.MEMBER;
+        }
+        if (board.isOwnedBy(caller)) {
+            return BoardRole.MEMBER;
+        }
+        return boardRepository.findMemberRole(board.getId(), caller.getId())
+                .map(BoardRole::valueOf)
+                .orElse(BoardRole.MEMBER);
+    }
+
+    /** {@link Board#isWritableBy}, with the role resolved here rather than left to the caller. */
+    public boolean isWritable(User caller, Board board) {
+        return board != null && board.isWritableBy(caller, roleOf(caller, board));
+    }
+
+    /**
+     * {@link #requireVisible} plus the write check: a viewer reaches {@link ExceptionIdentifier#VIEWER_READ_ONLY}
+     * (403) rather than {@code BOARD_NOT_FOUND}, because they can already see the board - the
+     * 404-not-403 rule reserves 403 for exactly this caller.
+     */
+    public Board requireWritable(User caller, Board board) {
+        var visible = requireVisible(caller, board);
+        if (!isWritable(caller, visible)) {
+            throw new GlobalException(ExceptionIdentifier.VIEWER_READ_ONLY);
+        }
+        return visible;
+    }
+
+    public Board requireWritable(User caller, Integer boardId) {
+        return requireWritable(caller, boardRepository.findWithMembersById(boardId).orElse(null));
+    }
+
+    /**
      * Fails unless both objects sit on the same board. Without this, a caller on two boards could
      * move a task onto a column on the other one, splitting a board across two tenancies.
      */
@@ -239,10 +280,26 @@ public class BoardService {
      * diff the member list to learn whether that address had an account here). No access check of
      * its own: the caller is the person joining, and the check that matters — that the invitation is
      * pending and addressed to them — belongs to {@code board/invitation}, where it's made.
+     *
+     * <p>Kept for callers with no opinion on role, joining as a {@link BoardRole#MEMBER} - every
+     * caller before invitations carried one did, and it is {@code board_members.role}'s own default.
      */
     public Board addAcceptedMember(Board board, User user) {
+        return addAcceptedMember(board, user, BoardRole.MEMBER);
+    }
+
+    /**
+     * The same join, at the role the invitation offered. The membership row has to exist before its
+     * role can be set, so this flushes the {@code @ManyToMany} insert before running the role update
+     * — {@code saveAndFlush} rather than {@code save}, since a plain {@code save} makes no promise
+     * about when Hibernate actually sends the insert, and the native {@code UPDATE} below runs
+     * against whatever is already committed to the connection, not the persistence context.
+     */
+    public Board addAcceptedMember(Board board, User user, BoardRole role) {
         board.addMember(user);
-        return boardRepository.save(board);
+        var saved = boardRepository.saveAndFlush(board);
+        boardRepository.updateMemberRole(saved.getId(), user.getId(), role.name());
+        return saved;
     }
 
     /**

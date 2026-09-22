@@ -130,6 +130,12 @@ public enum ExceptionIdentifier {
     NOT_BOARD_OWNER(FORBIDDEN, "Only the board owner can do that"),
     CANNOT_REMOVE_BOARD_OWNER(BAD_REQUEST, "The board owner cannot be removed from the board"),
     BOARD_MISMATCH(BAD_REQUEST, "That object belongs to a different board"),
+    /*
+     * A viewer trying to write - the 403 case the 404-not-403 rule reserves for a caller who can
+     * already see the board, the same shape as NOT_BOARD_OWNER. Unlike that one this is reachable by
+     * anyone on the board, not only a caller who tried an owner-only route.
+     */
+    VIEWER_READ_ONLY(FORBIDDEN, "This board is read-only for you"),
 
     /*
      * Any invitation not the caller's to act on (wrong id, another board's row, someone else's,

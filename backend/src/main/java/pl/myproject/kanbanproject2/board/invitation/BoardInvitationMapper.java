@@ -22,6 +22,7 @@ public class BoardInvitationMapper implements Function<BoardInvitation, BoardInv
                 invitation.getEmail(),
                 invitedBy == null ? null : invitedBy.getName(),
                 invitation.getStatus(),
+                invitation.getRole(),
                 invitation.getCreatedAt());
     }
 }

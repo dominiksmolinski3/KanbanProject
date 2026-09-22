@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardDto;
 import pl.myproject.kanbanproject2.board.BoardMapper;
+import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
@@ -69,7 +70,10 @@ public class BoardInvitationService {
             return invitationMapper.apply(existing.get());
         }
 
-        var invitation = invitationRepository.save(new BoardInvitation(board, email, caller));
+        // An omitted role is MEMBER - V20's own default and the write access every invitation
+        // offered before there was a choice, so a client that predates the picker keeps working.
+        var role = request.role() == null ? BoardRole.MEMBER : request.role();
+        var invitation = invitationRepository.save(new BoardInvitation(board, email, caller, role));
         announce(invitation, caller);
         return invitationMapper.apply(invitation);
     }
@@ -107,13 +111,14 @@ public class BoardInvitationService {
         return pendingRowsFor(caller).stream().map(invitationMapper).toList();
     }
 
-    /** Takes it up. This is the only way onto a board's member list. */
+    /** Takes it up, at the role the offer named. This is the only way onto a board's member list. */
     public BoardDto accept(User caller, Integer invitationId) {
         var invitation = mineOrNotFound(caller, invitationId);
         invitation.resolveAs(InvitationStatus.ACCEPTED);
         invitationRepository.save(invitation);
         return boardMapper.apply(
-                boardService.addAcceptedMember(invitation.getBoard(), caller), caller);
+                boardService.addAcceptedMember(invitation.getBoard(), caller, invitation.getRole()),
+                caller);
     }
 
     /**

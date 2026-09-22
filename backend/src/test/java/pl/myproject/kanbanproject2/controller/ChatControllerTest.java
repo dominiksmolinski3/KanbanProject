@@ -59,6 +59,8 @@ class ChatControllerTest {
         board = new Board();
         board.setId(BOARD_ID);
         when(boardService.requireVisible(any(User.class), eq(BOARD_ID))).thenReturn(board);
+        // Write-allowed by default; the read-only refusal is its own test below.
+        when(boardService.isWritable(any(User.class), any(Board.class))).thenReturn(true);
     }
 
     private static User user(int id, String username) {
@@ -160,6 +162,22 @@ class ChatControllerTest {
 
             verifyNoInteractions(chatService);
             verifyNoInteractions(boardService);
+        }
+
+        /*
+         * FEAT-08: read-only means read-only consistently, so a viewer's own board - one they can
+         * see, unlike the invisibleBoardIsDropped case above - refuses the send rather than
+         * dropping it in silence. The sender already knows their own role.
+         */
+        @Test
+        @DisplayName("a viewer cannot post to the board's conversation, and is told so")
+        void viewerIsRefusedNotDropped() {
+            when(boardService.isWritable(anna, board)).thenReturn(false);
+
+            controller.sendMessage(message("hello"), principal(anna));
+
+            verify(chatService).refuse("anna", ChatRefusal.READ_ONLY_BOARD);
+            verify(chatService, never()).sendBoardMessage(any(), any());
         }
     }
 
