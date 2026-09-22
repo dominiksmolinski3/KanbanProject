@@ -328,7 +328,7 @@ Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/su
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
-- Mappers are `@Component` classes implementing `Function<Entity, EntityDTO>`; services call `mapper::apply`. Entities never leave the service layer except where controllers still accept raw entities as request bodies (e.g. `TaskController.createTask`/`patchTask` take a `Task`).
+- Mappers are `@Component` classes implementing `Function<Entity, EntityDTO>`; services call `mapper::apply`. Entities never leave the service layer, and controllers accept validated request DTOs rather than raw entities as request bodies (e.g. `TaskController.createTask`/`patchTask` take `CreateTaskRequest`/`PatchTaskRequest`, not a `Task`).
 - DTOs are Java `record`s living beside the feature they describe (`task/TaskDto.java`, `layout/column/ColumnDto.java`) — there is no shared `dto/` package.
 - Services throw `EntityNotFoundException`, catch it, and rethrow as `ResponseStatusException`; [GlobalExceptionHandler](backend/src/main/java/pl/myproject/kanbanproject2/exception/GlobalExceptionHandler.java) maps validation failures to 400 bodies.
 - Error messages in services are written in Polish; UI strings are translated separately through i18n.
@@ -542,7 +542,7 @@ Four decisions carry the feature:
   rather than kept unused.
 - **Nothing on either path holds a file.** Upload hands `MultipartFile.getInputStream()` straight to
   the store; download returns the store's own stream as an `InputStreamResource`, which Spring
-  copies through a buffer and closes. Nothing calls `getBytes()`. On a 512 MB container that is the
+  copies through a buffer and closes. Nothing calls `getBytes()`. On a 1 GiB container that is the
   difference between a buffer per transfer and 10 MB per concurrent one, and it is the only reason
   proxying the bytes is affordable at all. `Content-Length` comes from `size_bytes` on the row
   rather than from the stream, which is why that column is stored.

@@ -73,6 +73,15 @@ jobs:
       working-directory: backend
       run: ./mvnw --batch-mode clean verify
 
+    # Informational only, not a gate: dependency:analyze can false-positive on
+    # annotation-processor-only or reflection-based dependencies, so a real unused dependency
+    # (like the caffeine one this cleanup removed) is something a human reads off this log rather
+    # than something that blocks a PR on a tool's guess.
+    - name: Analyze dependencies (informational)
+      working-directory: backend
+      continue-on-error: true
+      run: ./mvnw --batch-mode dependency:analyze
+
     - name: Upload test coverage
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
