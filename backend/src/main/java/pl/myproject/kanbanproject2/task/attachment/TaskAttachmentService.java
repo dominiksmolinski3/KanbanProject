@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
@@ -72,6 +73,7 @@ public class TaskAttachmentService {
     private final TaskRepository tasks;
     private final TaskAttachmentMapper mapper;
     private final BlobStore blobStore;
+    private final BoardService boardService;
     private final Clock clock;
 
     /**
@@ -102,15 +104,18 @@ public class TaskAttachmentService {
                                  TaskRepository tasks,
                                  TaskAttachmentMapper mapper,
                                  BlobStore blobStore,
+                                 BoardService boardService,
                                  BlobStorageProperties storageProperties,
                                  MeterRegistry meterRegistry) {
-        this(attachments, tasks, mapper, blobStore, storageProperties, Clock.systemUTC(), meterRegistry);
+        this(attachments, tasks, mapper, blobStore, boardService, storageProperties, Clock.systemUTC(),
+                meterRegistry);
     }
 
     TaskAttachmentService(TaskAttachmentRepository attachments,
                           TaskRepository tasks,
                           TaskAttachmentMapper mapper,
                           BlobStore blobStore,
+                          BoardService boardService,
                           BlobStorageProperties storageProperties,
                           Clock clock,
                           MeterRegistry meterRegistry) {
@@ -118,6 +123,7 @@ public class TaskAttachmentService {
         this.tasks = tasks;
         this.mapper = mapper;
         this.blobStore = blobStore;
+        this.boardService = boardService;
         this.clock = clock;
         this.transferPermits = new Semaphore(Math.max(1,
                 storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
@@ -140,6 +146,9 @@ public class TaskAttachmentService {
      */
     public TaskAttachmentDto upload(User caller, Integer taskId, MultipartFile file) {
         var task = findTask(caller, taskId);
+        // Before storage and quota, so a viewer is told the board is read-only rather than that
+        // the deployment has no storage - the one refusal that is about them.
+        boardService.requireWritable(caller, task.getBoard());
         requireStorage();
         validate(file);
         requireQuota(task.getBoard(), file.getSize());
@@ -259,6 +268,7 @@ public class TaskAttachmentService {
 
     public void delete(User caller, Integer taskId, Long attachmentId) {
         var attachment = findAttachment(caller, taskId, attachmentId);
+        boardService.requireWritable(caller, attachment.getTask().getBoard());
         attachments.delete(attachment);
         removeAfterCommit(attachment.getBlobName());
     }
