@@ -10,7 +10,9 @@ import java.io.InputStream;
  * What runs when no storage account is configured - the same allowance {@code DisabledEmailSender}
  * makes, but the opposite behaviour: a dropped mail is invisible to whoever caused it, while a
  * stalled upload has somebody watching a progress bar, so this refuses with
- * {@code 503 ATTACHMENT_STORAGE_UNAVAILABLE} rather than pretending. Refusing here rather than at
+ * {@code 503 ATTACHMENT_STORAGE_UNAVAILABLE} rather than pretending - reused by
+ * {@code pl.myproject.kanbanproject2.user.avatar.AvatarService} for exactly the same reason, since
+ * an avatar upload is watched the same way a task attachment's is. Refusing here rather than at
  * startup is what lets a fresh clone and CI run without an Azure subscription;
  * {@code BlobStorageConfiguration}'s startup warning names the missing properties.
  */

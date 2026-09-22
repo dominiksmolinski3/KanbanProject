@@ -14,14 +14,20 @@ public enum ExceptionIdentifier {
     AVATAR_NOT_FOUND(NOT_FOUND, "Avatar not found"),
     INVALID_AVATAR_FILE_TYPE(UNSUPPORTED_MEDIA_TYPE, "Only image files are allowed"),
     AVATAR_FILE_TOO_LARGE(PAYLOAD_TOO_LARGE, "The maximum file size is 1 MB"),
+    /*
+     * Shared with task attachments (FEAT-09 put avatars through the same BlobStore seam), which is
+     * why the name says "file" rather than "avatar": the failure it describes - the store would not
+     * take the bytes, or the upload could not be read - is the same failure either way.
+     */
     FILE_UPLOAD_FAILED(INTERNAL_SERVER_ERROR, "A server error occurred while processing the file"),
-    FILE_NOT_FOUND(NOT_FOUND, "File not found"),
 
     /*
      * ATTACHMENT_NOT_FOUND is 404 for the same oracle reason as BOARD_NOT_FOUND - ids are
      * sequential, so a wrong status would map every board's attachments.
      * ATTACHMENT_STORAGE_UNAVAILABLE is 503, the deployment's fault (no storage account configured,
-     * the state CI and a fresh clone run in) rather than the caller's.
+     * the state CI and a fresh clone run in) rather than the caller's - and it is reused by avatar
+     * uploads too, since both features read the same BlobStore.isConfigured(). ATTACHMENT_TRANSFER_BUSY
+     * is reused the same way, by the avatar transfer semaphore.
      */
     ATTACHMENT_NOT_FOUND(NOT_FOUND, "Attachment not found"),
     ATTACHMENT_TOO_LARGE(PAYLOAD_TOO_LARGE, "The maximum attachment size is 10 MB"),
