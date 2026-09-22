@@ -204,6 +204,7 @@ module "api_app" {
   rbac_propagation_delay           = var.rbac_propagation_delay
   app_image_tag                    = var.app_image_tag
   max_replicas                     = var.api_max_replicas
+  db_connection_budget             = var.api_db_connection_budget
   key_vault_uri                    = module.key_vault.uri
   key_vault_id                     = module.key_vault.id
   github_repository_owner          = var.github_repository_owner
@@ -241,6 +242,26 @@ module "api_app" {
 # which is what keeps them independent and is also how they could silently disagree: rename the API
 # app and the edge goes on proxying to a name nothing answers, which is a 502 on every API call and
 # a green apply. Checked here because this is the one place both outputs are in scope.
+# The pool and the server, which are a rule in two files with nothing but arithmetic between them:
+# api_db_connection_budget is what the fleet will ask for and usable_connections is what the SKU
+# has, and the failure when they disagree is the postgres_connections alert firing on refused
+# connections - a live outage as the diagnosis path. A check block warns rather than fails, which
+# is why DatabasePoolBudgetTest makes the same comparison on every build; this one is here because
+# it is the only place that reads the SKU actually being applied.
+check "api_connection_budget_fits_the_server" {
+  assert {
+    condition     = var.api_db_connection_budget <= module.postgres.usable_connections
+    error_message = "The API fleet may hold ${var.api_db_connection_budget} connections and ${var.postgres_sku_name} leaves ${module.postgres.usable_connections} for ordinary logins once the superuser reserve is taken. Lower api_db_connection_budget or move to a larger SKU."
+  }
+}
+
+check "every_api_replica_gets_a_connection" {
+  assert {
+    condition     = floor(var.api_db_connection_budget / var.api_max_replicas) >= 1
+    error_message = "api_db_connection_budget (${var.api_db_connection_budget}) divided by api_max_replicas (${var.api_max_replicas}) is less than one connection per replica, so the pool size would be floored at 1 and the budget would no longer mean what it says."
+  }
+}
+
 check "api_upstream_matches_api_app" {
   assert {
     condition     = strcontains(module.web_app.api_upstream, "//${module.api_app.app_name}.internal.")

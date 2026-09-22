@@ -22,3 +22,11 @@ storage_replication_type = "LRS"
 # this deployment has no data yet suggesting the API needs a different ceiling than the edge does.
 web_max_replicas = 5
 api_max_replicas = 5
+
+# The fleet's share of the database's connections, divided by api_max_replicas to reach each
+# replica's Hikari pool (30 / 5 = 6). B_Standard_B1ms has max_connections = 50 and reserves 10 for
+# superusers - both measured on psql-dev-g1tuv, not read off a table - so 40 are available and this
+# leaves 10 of them: enough for a psql session and for the overlap while Container Apps runs a new
+# revision beside the old one. Hikari's own default would have been 10 per replica, held idle, or
+# 50 against a server with 40.
+api_db_connection_budget = 30

@@ -260,6 +260,16 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "LOG_FORMAT"
         value = "ecs"
+      # The connection pool, sized fleet-wide for the same reason the attachment semaphore is: what
+      # runs out is on the Postgres server, so a per-replica limit is that limit times the replica
+      # count. Divided by var.max_replicas - the ceiling, not the live count, which nothing here
+      # can read - so the number the server sees is the budget whatever the autoscaler is doing.
+      # Hikari's own default is 10 per replica *and* holds all ten idle, which at five replicas is
+      # fifty against a B1ms that has forty usable. Appended rather than inserted, for the reason
+      # the STOMP blocks above give: env blocks match positionally.
+      env {
+        name  = "DB_MAX_POOL_SIZE"
+        value = tostring(max(1, floor(var.db_connection_budget / var.max_replicas)))
       }
 
       startup_probe {
