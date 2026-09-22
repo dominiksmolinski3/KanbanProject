@@ -52,6 +52,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitejs/plugin-react-swc": "^4.3.3",
     "babel-jest": "^30.5.1",
+    "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "cypress": "^16.0.0",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
