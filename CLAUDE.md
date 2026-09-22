@@ -1189,6 +1189,31 @@ it at creation time, so the app has to be deployed and serving before this can a
 
 **Attachment storage takes one of two ways in, never both.** `app.storage.endpoint` with no key is production — a managed identity against an account with shared-key access off — and `app.storage.connection-string` is a local Azurite container. Neither set turns attachments off rather than failing to boot. `AZURE_STORAGE_IDENTITY_CLIENT_ID` is read as a property rather than left to the SDK's own `AZURE_CLIENT_ID`, because a variable Terraform passes and nothing in this repo binds is one `ConfigurationTest` reports as dead configuration — and it would be right to.
 
+**The connection pool is sized for the fleet, not for one replica.** HikariCP defaults
+`maximum-pool-size` to 10 and `minimum-idle` to *whatever that is*, so an idle replica does not
+merely allow ten connections — it holds ten. At `api_max_replicas = 5` that is fifty held at rest,
+and the dev server has fifty in total of which ten are reserved: measured, not assumed, with
+`az postgres flexible-server parameter show` reporting `max_connections = 50` and
+`superuser_reserved_connections = 10`. Forty usable, fifty asked for — the fleet could not reach
+its own replica ceiling, and the first sign would have been the `postgres_connections` alert firing
+on refused connections, an alert whose description already names this mechanism. The alarm was
+wired and the limit was not.
+
+`api_db_connection_budget` is fleet-wide for the same reason `app.storage.max-concurrent-transfers`
+is: what runs out is on the server, so a per-replica limit silently means that number times the
+replica count. `modules/api_app` divides it by the same `var.max_replicas` it already feeds the
+attachment semaphore, so the two cannot drift; `DB_MIN_IDLE` stays at the property default of 2,
+which is the half that decides what an idle fleet holds.
+
+**Where the ceiling itself lives is the part with no natural home.** Azure sizes `max_connections`
+from the SKU and publishes it as no attribute of the resource, so `modules/postgres` records it as
+a map and exposes `usable_connections` — the SKU's limit less the superuser reserve — with an
+unlisted SKU a plan failure rather than a `lookup()` default, because being wrong optimistically
+here *is* the outage. The root module compares the budget against it on every plan, and
+`DatabasePoolBudgetTest` makes the same comparison on every build: a Terraform `check` block warns
+rather than fails and only runs where credentials do, which is not where this repository holds the
+rest of its two-file rules.
+
 **Flyway owns the schema; Hibernate only validates against it** (`spring.jpa.hibernate.ddl-auto=validate`). Migrations live in [backend/src/main/resources/db/migration/](backend/src/main/resources/db/migration/) and run at startup.
 
 `V5__add_boards.sql` is the one to read before adding another: it adds a column, backfills it, and
@@ -1200,6 +1225,27 @@ every existing account a member of it, which is precisely the arrangement those 
 A schema change is therefore two edits, not one: the entity, **and** a new `V<n>__description.sql`. `ddl-auto=validate` will not add a column for you — it refuses to start without it, which on Container Apps is a revision that never becomes healthy. `FlywayMigrationsMatchEntitiesTest` regenerates the DDL Hibernate would emit and fails the build when an entity has moved on without a migration, so that mismatch is caught at build time rather than at startup.
 
 **Two branches that each add a migration have an order between them even when they share no line of code**, and it is invisible to `FlywayMigrationsMatchEntitiesTest` (which compares names, not history). Merge them the wrong way round — a lower `V<n>` appearing under a higher one already applied — and the build stays green while the *next* deploy migrates and then refuses. The `migration-order.yml` PR check is the guard: it reads the highest migration version on the base branch and fails a PR that adds one at or below it, so a branch that has fallen behind `main` must renumber before it can merge. `MigrationOrderTest` is the database-free companion that catches a duplicate or a gap left by a sloppy merge; it cannot see the deploy-order trap and says so in its own Javadoc.
+
+**Postgres indexes no foreign key, so `V19` adds the sixteen that had none and
+`ForeignKeysAreIndexedTest` keeps it that way.** Unlike MySQL, Postgres indexes the side a key
+points *at* and leaves the referencing column bare — so each unindexed one was a sequential scan
+on "which rows point at this", plus a full scan of the child table on every delete or update of a
+referenced row. The nine indexes the earlier migrations declared were each added for a query
+somebody had in hand; these are the set nobody had a reason to add yet, read out of the foreign
+keys themselves. Four are on constant paths: `board_members (user_id)`, whose composite primary key
+leads on `board_id` and so cannot answer "which boards is this account on"; the same asymmetry on
+`user_task (user_id)`, behind `UserService.checkWipStatus`; `task_labels (task_id)`, an
+`@ElementCollection` with no key at all; and `task_column_history (column_id)`, which `V17` taught
+`ColumnService.deleteColumn` to write by.
+
+The guard is worth more than the migration, because the migration is a one-off and the next foreign
+key is not. It parses the migrations, collects every foreign key column and every index's **leading**
+column, and fails the build on one with no cover. Two of its rules are load-bearing and neither is
+obvious: only the leading column of a composite counts — reading `(board_id, user_id)` as covering
+both is exactly the mistake that left the membership check unindexed — and **a partial index covers
+nothing**, which is why `ux_board_invitations_pending` (`WHERE status = 'PENDING'`) does not answer
+`BoardService.deleteBoard`'s lookup by board. It carries its own control case, so a parser that has
+quietly stopped matching cannot pass as a schema with nothing to find.
 
 `V1__baseline_schema.sql` is the schema as `ddl-auto=update` left it, generated from the entity mappings under **Spring Boot's** naming strategies rather than Hibernate's bare defaults — that is the difference between `recipient_id` and `recipientId`, and between the `task` table and `Task`. `spring.flyway.baseline-on-migrate=true` means an environment that already has that schema is marked at V1 without re-running it, while a fresh database runs it like any other migration.
 
