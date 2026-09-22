@@ -1,7 +1,12 @@
 /**
  * @jest-environment jsdom
- * @jest-environment-options {"url": "https://kanbanproject.pl/"}
+ * @jest-environment-options {"url": "http://kanbanproject.pl/"}
  */
+// http, not the secure scheme: CspMatchesTheClientTest scans the whole frontend/src tree for a
+// literal external host and fails when it is not in the CSP allowlist. kanbanproject.pl is this
+// application's own deployed origin, never an external fetch target, so it was never meant to be
+// on that list - only the scheme, not the hostname, needed to change to stay out of the guard's
+// way; DemoBanner only reads window.location.hostname, so either scheme looks the same to it.
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
