@@ -65,6 +65,7 @@
       "labels": "Etiquetas",
       "dailyFocus": "Foco diario",
       "dailyFocusEmpty": "Aún no hay tareas en el foco diario.",
+      "readOnlyBanner": "Este tablero es de solo lectura para ti: puedes verlo, pero no hacer cambios",
       "search": {
         "assignees": "Asignada a",
         "boardHas": "El tablero tiene {{count}} tareas y ninguna coincide.",
@@ -155,7 +156,8 @@
       "boardInvitationSent": "Invitación enviada",
       "boardInvitationRevoked": "Invitación cancelada",
       "boardInvitationAccepted": "Te has unido a \"{{name}}\"",
-      "boardInvitationDeclined": "Invitación rechazada"
+      "boardInvitationDeclined": "Invitación rechazada",
+      "readOnlyBoard": "Este tablero es de solo lectura para ti"
     },
     "boards": {
       "switcher": {
@@ -176,6 +178,7 @@
         "you": "(tú)",
         "owner": "Propietario",
         "member": "Miembro",
+        "viewer": "Espectador",
         "leave": "Salir de este tablero",
         "remove": "Quitar del tablero",
         "removeConfirm": "¿Quitar a esta persona del tablero?",
@@ -195,6 +198,9 @@
         "revoke": "Cancelar esta invitación",
         "inviteLabel": "Invitar a alguien a este tablero",
         "invitePlaceholder": "su dirección de correo",
+        "roleLabel": "Rol",
+        "roleMember": "Miembro (puede editar)",
+        "roleViewer": "Espectador (solo lectura)",
         "invite": "Invitar",
         "inviteNote": "Recibirá una invitación por correo y se unirá solo si la acepta. La respuesta aquí es la misma tenga o no cuenta esa dirección, así que este formulario no sirve para averiguar quién está registrado."
       }
@@ -420,6 +426,7 @@
       "errors": {
         "empty": "Un mensaje no puede estar vacío",
         "tooLong": "Ese mensaje es demasiado largo",
+        "readOnly": "Este tablero es de solo lectura para ti",
         "notSent": "El mensaje no se envió"
       }
     },

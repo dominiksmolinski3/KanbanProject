@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-function EditableText({ 
-  id, 
-  text, 
-  onUpdate, 
-  className = "", 
-  inputClassName = "", 
-  type = "default" // 'column', 'row', 'task', or 'default'
+function EditableText({
+  id,
+  text,
+  onUpdate,
+  className = "",
+  inputClassName = "",
+  type = "default", // 'column', 'row', 'task', or 'default'
+  disabled = false
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(text);
@@ -25,6 +26,7 @@ function EditableText({
   }, [text]);
 
   const handleDoubleClick = () => {
+    if (disabled) return;
     setIsEditing(true);
   };
 
@@ -65,12 +67,13 @@ function EditableText({
   }
 
   return (
-    <span 
-      ref={spanRef} 
-      onDoubleClick={handleDoubleClick} 
+    <span
+      ref={spanRef}
+      onDoubleClick={handleDoubleClick}
       className={`editable-text ${className}`}
       title={text}
       data-type={type}
+      aria-disabled={disabled}
     >
       {text}
     </span>

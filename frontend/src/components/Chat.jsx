@@ -15,6 +15,7 @@ function Chat() {
     messageType,
     hasMoreHistory,
     isLoadingHistory,
+    isBoardReadOnly,
     toggleChat,
     sendMessage,
     loadOlderMessages,
@@ -23,6 +24,8 @@ function Chat() {
     setMessageType,
     setRecipient
   } = useChat();
+
+  const boardConversationIsReadOnly = messageType !== 'private' && isBoardReadOnly;
 
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -37,6 +40,9 @@ function Chat() {
   }, [messages, isOpen]);
 
   const handleKeyPress = (e) => {
+    if (boardConversationIsReadOnly) {
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -150,6 +156,9 @@ function Chat() {
             <div ref={messagesEndRef} />
           </div>
 
+          {boardConversationIsReadOnly && (
+            <p className="chat-readonly-note">{t('chat.errors.readOnly')}</p>
+          )}
           <div className="chat-input-container">
             <textarea
               value={message}
@@ -158,10 +167,11 @@ function Chat() {
               placeholder={t('chat.typingMessage')}
               aria-label={t('chat.typingMessage')}
               className="chat-input"
+              disabled={boardConversationIsReadOnly}
             />
             <button
               onClick={sendMessage}
-              disabled={!isConnected || !message.trim()}
+              disabled={!isConnected || !message.trim() || boardConversationIsReadOnly}
               className="send-button"
             >
               {t('chat.send')}

@@ -556,8 +556,69 @@ describe('Board Component', () => {
     };
     
     fireEvent.dragOver(boardGrid, dragOverEvent);
-    
+
     expect(mockDragAndDrop.handleDragOver).toHaveBeenCalled();
   });
 
+  describe('a viewer (FEAT-08)', () => {
+    const readOnlyContext = { ...mockContextValue, readOnly: true };
+
+    test('sees a read-only banner', () => {
+      render(
+        <KanbanContext.Provider value={readOnlyContext}>
+          <Board />
+        </KanbanContext.Provider>
+      );
+
+      expect(screen.getByText('board.readOnlyBanner')).toBeInTheDocument();
+    });
+
+    test('gets no add-column, add-row or add-task controls', () => {
+      render(
+        <KanbanContext.Provider value={readOnlyContext}>
+          <Board />
+        </KanbanContext.Provider>
+      );
+
+      expect(screen.queryByTitle('Add column')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Add row')).not.toBeInTheDocument();
+      expect(screen.queryAllByTitle('Add task')).toHaveLength(0);
+    });
+
+    test('gets no delete buttons on columns or swimlanes', () => {
+      render(
+        <KanbanContext.Provider value={readOnlyContext}>
+          <Board />
+        </KanbanContext.Provider>
+      );
+
+      expect(screen.queryAllByTitle('column.delete')).toHaveLength(0);
+      expect(screen.queryByTitle('row.delete')).not.toBeInTheDocument();
+    });
+
+    test('column and row headers are not draggable', () => {
+      render(
+        <KanbanContext.Provider value={readOnlyContext}>
+          <Board />
+        </KanbanContext.Provider>
+      );
+
+      const columnHeader = screen.getByTestId('editable-column-col1').closest('th');
+      const rowHeader = screen.getByTestId('editable-row-row1').closest('td');
+      expect(columnHeader).toHaveAttribute('draggable', 'false');
+      expect(rowHeader).toHaveAttribute('draggable', 'false');
+    });
+
+    test('a writable board (the default) still gets every control', () => {
+      render(
+        <KanbanContext.Provider value={mockContextValue}>
+          <Board />
+        </KanbanContext.Provider>
+      );
+
+      expect(screen.queryByText('board.readOnlyBanner')).not.toBeInTheDocument();
+      expect(screen.getByTitle('Add column')).toBeInTheDocument();
+      expect(screen.getByTitle('Add row')).toBeInTheDocument();
+    });
+  });
 });

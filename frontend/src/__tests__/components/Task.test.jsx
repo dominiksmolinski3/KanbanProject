@@ -591,8 +591,66 @@ describe('Task Component', () => {
             expect(fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
             expect(consoleErrorSpy).toHaveBeenCalled();
         });
-        
+
         consoleErrorSpy.mockRestore();
     });
-  
+
+    describe('on a read-only board (FEAT-08)', () => {
+        const readOnlyContext = { ...mockContextValue, readOnly: true };
+
+        test('the card is not draggable', async () => {
+            await act(async () => {
+                render(
+                    <KanbanContext.Provider value={readOnlyContext}>
+                        <Task task={mockTask} columnId="col1" />
+                    </KanbanContext.Provider>
+                );
+            });
+
+            expect(screen.getByText('Test Task').closest('.task')).toHaveAttribute('draggable', 'false');
+        });
+
+        test('there is no delete button', async () => {
+            await act(async () => {
+                render(
+                    <KanbanContext.Provider value={readOnlyContext}>
+                        <Task task={mockTask} columnId="col1" />
+                    </KanbanContext.Provider>
+                );
+            });
+
+            expect(screen.queryByTitle('taskActions.delete')).not.toBeInTheDocument();
+        });
+
+        test('pressing Space does not pick the card up for a keyboard move', async () => {
+            await act(async () => {
+                render(
+                    <KanbanContext.Provider value={readOnlyContext}>
+                        <Task task={mockTask} columnId="col1" />
+                    </KanbanContext.Provider>
+                );
+            });
+
+            const card = screen.getByText('Test Task').closest('.task');
+            await act(async () => {
+                fireEvent.keyDown(card, { key: ' ' });
+            });
+
+            expect(readOnlyContext.keyboardMove.grab).not.toHaveBeenCalled();
+        });
+
+        test('a writable board (the default) keeps the card draggable and deletable', async () => {
+            await act(async () => {
+                render(
+                    <KanbanContext.Provider value={mockContextValue}>
+                        <Task task={mockTask} columnId="col1" />
+                    </KanbanContext.Provider>
+                );
+            });
+
+            expect(screen.getByText('Test Task').closest('.task')).toHaveAttribute('draggable', 'true');
+            expect(screen.getByTitle('taskActions.delete')).toBeInTheDocument();
+        });
+    });
+
 });

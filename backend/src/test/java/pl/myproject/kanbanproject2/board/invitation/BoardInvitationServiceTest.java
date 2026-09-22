@@ -7,13 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardMapper;
+import pl.myproject.kanbanproject2.board.BoardRepository;
+import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
-import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.util.List;
@@ -58,7 +59,7 @@ class BoardInvitationServiceTest {
         emailService = mock(EmailService.class);
 
         service = new BoardInvitationService(invitationRepository, new BoardInvitationMapper(),
-                boardService, new BoardMapper(new UserMapper()), userRepository, emailService);
+                boardService, new BoardMapper(mock(BoardRepository.class)), userRepository, emailService);
 
         owner = TenancyFixtures.user(1);
         owner.setName("Ada");
@@ -219,20 +220,36 @@ class BoardInvitationServiceTest {
         }
 
         @Test
-        @DisplayName("accepting is what puts somebody on the board")
+        @DisplayName("accepting is what puts somebody on the board, at the role the invite offered")
         void acceptingJoins() {
             var invitation = pending("invitee@example.test");
             when(invitationRepository.findById(500)).thenReturn(Optional.of(invitation));
-            when(boardService.addAcceptedMember(board, invitee)).thenAnswer(call -> {
+            when(boardService.addAcceptedMember(board, invitee, BoardRole.MEMBER)).thenAnswer(call -> {
                 board.addMember(invitee);
                 return board;
             });
 
             var dto = service.accept(invitee, 500);
 
-            assertThat(dto.members()).extracting(u -> u.id()).containsExactly(1, 2);
+            assertThat(dto.members()).extracting(m -> m.id()).containsExactly(1, 2);
             assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.ACCEPTED);
             assertThat(invitation.getRespondedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("accepting a viewer invitation joins as a viewer")
+        void acceptingAsViewerJoinsAsAViewer() {
+            var invitation = new BoardInvitation(board, "invitee@example.test", owner, BoardRole.VIEWER);
+            invitation.setId(500);
+            when(invitationRepository.findById(500)).thenReturn(Optional.of(invitation));
+            when(boardService.addAcceptedMember(board, invitee, BoardRole.VIEWER)).thenAnswer(call -> {
+                board.addMember(invitee);
+                return board;
+            });
+
+            service.accept(invitee, 500);
+
+            verify(boardService).addAcceptedMember(board, invitee, BoardRole.VIEWER);
         }
 
         @Test

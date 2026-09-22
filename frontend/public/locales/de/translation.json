@@ -65,6 +65,7 @@
     "labels": "Labels",
     "dailyFocus": "Tagesfokus",
     "dailyFocusEmpty": "Noch keine Aufgaben im Tagesfokus.",
+    "readOnlyBanner": "Dieses Board ist für dich schreibgeschützt — du kannst es sehen, aber nicht ändern",
     "search": {
       "assignees": "Zugewiesen an",
       "boardHas": "Das Board hat {{count}} Aufgaben, keine davon passt.",
@@ -155,7 +156,8 @@
     "boardInvitationSent": "Einladung gesendet",
     "boardInvitationRevoked": "Einladung zurückgenommen",
     "boardInvitationAccepted": "Sie sind dem Board \"{{name}}\" beigetreten",
-    "boardInvitationDeclined": "Einladung abgelehnt"
+    "boardInvitationDeclined": "Einladung abgelehnt",
+    "readOnlyBoard": "Dieses Board ist für dich schreibgeschützt"
   },
   "boards": {
     "switcher": {
@@ -176,6 +178,7 @@
       "you": "(du)",
       "owner": "Eigentümer",
       "member": "Mitglied",
+      "viewer": "Betrachter",
       "leave": "Dieses Board verlassen",
       "remove": "Vom Board entfernen",
       "removeConfirm": "Diese Person vom Board entfernen?",
@@ -195,6 +198,9 @@
       "revoke": "Diese Einladung zurücknehmen",
       "inviteLabel": "Jemanden zu diesem Board einladen",
       "invitePlaceholder": "seine E-Mail-Adresse",
+      "roleLabel": "Rolle",
+      "roleMember": "Mitglied (kann bearbeiten)",
+      "roleViewer": "Betrachter (nur lesen)",
       "invite": "Einladen",
       "inviteNote": "Die Person erhält eine Einladung per E-Mail und tritt nur bei, wenn sie annimmt. Die Antwort hier ist dieselbe, ob diese Adresse ein Konto hat oder nicht, also lässt sich mit diesem Formular nicht herausfinden, wer registriert ist."
     }
@@ -420,6 +426,7 @@
     "errors": {
       "empty": "Eine Nachricht darf nicht leer sein",
       "tooLong": "Diese Nachricht ist zu lang",
+      "readOnly": "Dieses Board ist für dich schreibgeschützt",
       "notSent": "Die Nachricht wurde nicht gesendet"
     }
   },

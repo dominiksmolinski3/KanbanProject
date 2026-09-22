@@ -37,6 +37,7 @@ public class ColumnService {
 
     public ColumnResponseDto addNewColumn(User caller, Integer boardId, CreateColumnRequest request) {
         var board = boardService.resolve(caller, boardId);
+        boardService.requireWritable(caller, board);
 
         var column = new Column();
         column.setName(request.name());
@@ -71,6 +72,7 @@ public class ColumnService {
 
     public ColumnDto patchColumn(User caller, ColumnDto columnDto, Integer id) {
         var existingColumn = findColumn(caller, id);
+        boardService.requireWritable(caller, existingColumn.getBoard());
 
         if (columnDto.name() != null) {
             existingColumn.setName(columnDto.name());
@@ -97,6 +99,7 @@ public class ColumnService {
      */
     public void deleteColumn(User caller, Integer id) {
         var column = findColumn(caller, id);
+        boardService.requireWritable(caller, column.getBoard());
 
         if (column.getTasks() != null) {
             for (Task task : List.copyOf(column.getTasks())) {
@@ -119,6 +122,7 @@ public class ColumnService {
 
     public ColumnDto updateColumnPosition(User caller, Integer id, Integer position) {
         var column = findColumn(caller, id);
+        boardService.requireWritable(caller, column.getBoard());
         column.setPosition(position);
         return saveAndAnnounce(column);
     }
@@ -135,6 +139,7 @@ public class ColumnService {
         }
 
         var columns = orderedIds.stream().map(id -> findColumn(caller, id)).toList();
+        boardService.requireWritable(caller, columns.get(0).getBoard());
         columns.forEach(column -> boardService.requireSameBoard(columns.get(0).getBoard(), column.getBoard()));
 
         var reordered = new ArrayList<ColumnDto>(columns.size());
