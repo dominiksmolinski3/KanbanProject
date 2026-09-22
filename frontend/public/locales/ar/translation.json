@@ -480,7 +480,8 @@
         "UNASSIGNED": "أزال {{who}} {{detail}} من {{what}}",
         "COMPLETED": "أكمل {{who}} {{what}}",
         "REOPENED": "أعاد {{who}} فتح {{what}}",
-        "DELETED": "حذف {{who}} {{what}}"
+        "DELETED": "حذف {{who}} {{what}}",
+        "COMMENTED": "علّق {{who}} على {{what}}"
       }
     },
     "demo": {
@@ -525,5 +526,25 @@
         "title": "الصفحة غير موجودة",
         "message": "الصفحة التي تبحث عنها غير موجودة.",
         "backHome": "العودة إلى الصفحة الرئيسية"
+    },
+    "taskComments": {
+      "heading": "التعليقات",
+      "placeholder": "اكتب تعليقًا…",
+      "post": "علّق",
+      "loading": "جارٍ تحميل التعليقات…",
+      "empty": "لا توجد تعليقات بعد.",
+      "loadError": "تعذّر تحميل التعليقات.",
+      "postError": "تعذّر نشر التعليق.",
+      "editError": "تعذّر حفظ التعليق.",
+      "deleteError": "تعذّر حذف التعليق.",
+      "loadOlder": "تحميل التعليقات الأقدم",
+      "edit": "تعديل",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "confirmDelete": "هل تريد حذف هذا التعليق؟",
+      "edited": "(معدّل)",
+      "formerMember": "عضو سابق",
+      "remaining": "الأحرف المتبقية: {{count}}"
     }
 }

@@ -480,7 +480,8 @@
       "UNASSIGNED": "{{who}} took {{detail}} off {{what}}",
       "COMPLETED": "{{who}} completed {{what}}",
       "REOPENED": "{{who}} reopened {{what}}",
-      "DELETED": "{{who}} deleted {{what}}"
+      "DELETED": "{{who}} deleted {{what}}",
+      "COMMENTED": "{{who}} commented on {{what}}"
     }
   },
   "demo": {
@@ -525,5 +526,25 @@
     "title": "Page not found",
     "message": "The page you're looking for doesn't exist.",
     "backHome": "Back to home"
+  },
+  "taskComments": {
+    "heading": "Comments",
+    "placeholder": "Write a comment…",
+    "post": "Comment",
+    "loading": "Loading comments…",
+    "empty": "No comments yet.",
+    "loadError": "Comments could not be loaded.",
+    "postError": "The comment could not be posted.",
+    "editError": "The comment could not be saved.",
+    "deleteError": "The comment could not be deleted.",
+    "loadOlder": "Load older comments",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirmDelete": "Delete this comment?",
+    "edited": "(edited)",
+    "formerMember": "Former member",
+    "remaining": "{{count}} characters left"
   }
 }

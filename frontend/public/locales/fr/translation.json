@@ -480,7 +480,8 @@
         "UNASSIGNED": "{{who}} a retiré {{detail}} de {{what}}",
         "COMPLETED": "{{who}} a terminé {{what}}",
         "REOPENED": "{{who}} a rouvert {{what}}",
-        "DELETED": "{{who}} a supprimé {{what}}"
+        "DELETED": "{{who}} a supprimé {{what}}",
+        "COMMENTED": "{{who}} a commenté {{what}}"
       }
     },
     "demo": {
@@ -525,5 +526,25 @@
         "title": "Page introuvable",
         "message": "La page que vous recherchez n'existe pas.",
         "backHome": "Retour à l'accueil"
+    },
+    "taskComments": {
+      "heading": "Commentaires",
+      "placeholder": "Écrire un commentaire…",
+      "post": "Commenter",
+      "loading": "Chargement des commentaires…",
+      "empty": "Aucun commentaire pour l’instant.",
+      "loadError": "Impossible de charger les commentaires.",
+      "postError": "Impossible de publier le commentaire.",
+      "editError": "Impossible d’enregistrer le commentaire.",
+      "deleteError": "Impossible de supprimer le commentaire.",
+      "loadOlder": "Charger les commentaires plus anciens",
+      "edit": "Modifier",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer ce commentaire ?",
+      "edited": "(modifié)",
+      "formerMember": "Ancien membre",
+      "remaining": "{{count}} caractères restants"
     }
 }

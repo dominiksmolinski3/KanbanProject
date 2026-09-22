@@ -1441,3 +1441,62 @@ export const deleteTaskAttachment = async (taskId, attachmentId) => {
 
   return true;
 };
+
+// ====== TASK COMMENTS ======
+//
+// A card's own thread, addressed under the task the way attachments are, so the task decides who
+// may read it. Paged newest first like the activity feed and chat: a thread is bounded by nothing.
+
+const commentsOf = (taskId) => `${API_ENDPOINTS.TASKS}/${taskId}/comments`;
+
+/** Matches TaskCommentRequest.MAX_LENGTH, so an over-long comment is refused before it is sent. */
+export const MAX_COMMENT_LENGTH = 2000;
+
+export const COMMENT_PAGE_SIZE = 25;
+
+export const fetchTaskComments = async (taskId, { page = 0, size = COMMENT_PAGE_SIZE } = {}) => {
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('size', String(size));
+
+  const response = await fetch(`${commentsOf(taskId)}?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching comments: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const addTaskComment = async (taskId, body) => {
+  const response = await fetch(commentsOf(taskId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body })
+  });
+  if (!response.ok) {
+    throw new Error(`Error adding comment: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const editTaskComment = async (taskId, commentId, body) => {
+  const response = await fetch(`${commentsOf(taskId)}/${commentId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body })
+  });
+  if (!response.ok) {
+    throw new Error(`Error editing comment: ${response.status}`);
+  }
+  return response.json();
+};
+
+/** A 404 is success: somebody else removed it first, and the thread re-reads either way. */
+export const deleteTaskComment = async (taskId, commentId) => {
+  const response = await fetch(`${commentsOf(taskId)}/${commentId}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Error deleting comment: ${response.status}`);
+  }
+  return true;
+};
