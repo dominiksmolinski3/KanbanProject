@@ -231,6 +231,38 @@ to `dhi.io/nginx` for consistency with the node stage was the alternative and is
 carries no `/docker-entrypoint.d`, no `envsubst` and no `wget`, so it would mean hand-writing the
 templating, the resolver discovery and the healthcheck.
 
+**One identifier per request joins the two log streams, which had nothing in common before.** A
+502 recorded at the edge could not be matched to the API line for the same request — and that is
+not a hypothetical class of bug here, it is the class the split has already produced twice (the SNI
+reset and the wrong `Host`), both diagnosed by hand-building `curl` against the real origin because
+the logs could not answer it. nginx mints the id from its own `$request_id`, forwards it on
+`X-Request-Id` from every location that proxies, and logs it as `rid=` beside `upstream_status` —
+the field that separates "the API answered 500" from "the API never answered".
+`RequestIdFilter` reads it into the MDC and echoes it on the response, which the **edge
+deliberately does not do**: `add_header` does not inherit into a location that sets one of its own,
+so an edge-side echo would mean including the security-headers snippet in every proxying location
+and overriding what Spring already sends there.
+
+Four details carry it. An inbound id is **bounded on both sides of the hop** — same length, same
+alphabet — because whatever arrives ends up in every log line for that request, and the API
+container is reachable without going through nginx (`127.0.0.1:8081` locally, the platform's probes
+in the deployment); honouring one at all is deliberate, since it is what lets a load test correlate
+its own request with both halves. The filter runs at `HIGHEST_PRECEDENCE`, ahead of the security
+chain's `-100`, because a request refused with a 401 is exactly the one somebody asks about. The
+MDC entry is removed in a `finally`, since servlet threads are pooled and a leak stamps the next
+request with the previous one's id — which reads as true. And the `map` and `log_format` sit at
+**http** level rather than inside `server`, which the template can do because the stock entrypoint
+renders it into `conf.d`; nginx refuses to start on either directive in a server block.
+
+**Structured logging needed no `logback-spring.xml` and no encoder dependency.** Spring Boot writes
+ECS JSON from `logging.structured.format.console` alone and turns every MDC entry into a field, so
+`requestId` is queryable next to the edge's `rid=`. It defaults to **off**, because a unit test's
+output and `spring-boot:run` are read by a person; `docker-compose` and the container app both set
+it to `ecs`, so the two places a machine collects logs are configured alike and the local stack
+still exercises the format. `RequestIdMatchesTheEdgeTest` holds all of it together, including that
+*every* proxying location forwards the header — a fourth added later without it would be a route
+whose application lines carry an id the edge never logged.
+
 Two guards carry the parts no compiler can see. `SecurityHeadersMatchTheEdgeTest` reads
 [frontend/nginx/security-headers.conf](frontend/nginx/security-headers.conf) and fails when it and
 `SecurityHeaders` disagree — nginx serves `index.html`, so a CSP Spring writes reaches nobody on the
