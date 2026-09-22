@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,6 +38,7 @@ class SubTaskServiceTest {
     private SubTaskService service;
     private pl.myproject.kanbanproject2.board.Board board;
     private pl.myproject.kanbanproject2.user.User caller;
+    private pl.myproject.kanbanproject2.board.BoardService boardService;
 
     @BeforeEach
     void setUp() {
@@ -45,8 +47,9 @@ class SubTaskServiceTest {
         var tenant = pl.myproject.kanbanproject2.board.TenancyFixtures.tenant();
         board = tenant.board();
         caller = tenant.caller();
+        boardService = tenant.boardService();
         service = new SubTaskService(subTaskRepository, taskRepository, new SubTaskMapper(),
-                tenant.boardService());
+                boardService);
 
         when(subTaskRepository.save(any(SubTask.class))).thenAnswer(i -> i.getArgument(0));
     }
@@ -409,6 +412,56 @@ class SubTaskServiceTest {
         @DisplayName("the mapper answers null for a null entity rather than throwing")
         void mapperToleratesNull() {
             assertThat(new SubTaskMapper().toDto(null)).isNull();
+        }
+    }
+
+    /**
+     * FEAT-08 left this service out: a viewer could see a card and still add, tick, reorder, move
+     * or delete its subtasks, because every lookup here checked visibility and nothing checked the
+     * role. Each write now asks {@code requireWritable}; the reads still do not.
+     */
+    @Nested
+    @DisplayName("a viewer")
+    class Viewer {
+
+        private final GlobalException readOnly = new GlobalException(ExceptionIdentifier.VIEWER_READ_ONLY);
+
+        @BeforeEach
+        void refuseWrites() {
+            doThrow(readOnly).when(boardService).requireWritable(any(), any(pl.myproject.kanbanproject2.board.Board.class));
+            when(subTaskRepository.findById(1)).thenReturn(Optional.of(subTask(1, "a", 1)));
+            when(taskRepository.findById(7)).thenReturn(Optional.of(task(7)));
+        }
+
+        @Test
+        @DisplayName("cannot add a subtask")
+        void cannotAdd() {
+            var request = new CreateSubTaskRequest("t", null, false, null, new IdRef(7));
+
+            assertThatThrownBy(() -> service.addSubTask(caller, request)).isSameAs(readOnly);
+            verify(subTaskRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("cannot patch, tick, reposition, reassign or delete one")
+        void cannotChangeOne() {
+            var rename = patch(JsonNullable.of("b"), null, null, null, null);
+
+            assertThatThrownBy(() -> service.patchSubTask(caller, 1, rename)).isSameAs(readOnly);
+            assertThatThrownBy(() -> service.toggleSubTaskCompletion(caller, 1)).isSameAs(readOnly);
+            assertThatThrownBy(() -> service.updateSubTaskPosition(caller, 1, 3)).isSameAs(readOnly);
+            assertThatThrownBy(() -> service.assignTaskToSubTask(caller, 1, 7)).isSameAs(readOnly);
+            assertThatThrownBy(() -> service.deleteSubTask(caller, 1)).isSameAs(readOnly);
+
+            verify(subTaskRepository, never()).save(any());
+            verify(subTaskRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("can still read them")
+        void canRead() {
+            assertThat(service.getSubTaskById(caller, 1).title()).isEqualTo("a");
+            assertThat(service.getSubTasksByTaskId(caller, 7)).isEmpty();
         }
     }
 }

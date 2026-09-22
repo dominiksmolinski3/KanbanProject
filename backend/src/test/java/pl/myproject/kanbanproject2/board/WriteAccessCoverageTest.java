@@ -17,7 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * announce is silent, and a mutation that forgets the <em>write</em> check is worse - a viewer gets
  * full access rather than a stale screen, and every existing unit test still passes because they all
  * hand a caller who already owns the board. So this reads the same three services'
- * source and fails the build when a known mutation entry point's body has no call to
+ * source - and, since they were missed the first time, the subtask and attachment services - and
+ * fails the build when a known mutation entry point's body has no call to
  * {@code BoardService.requireWritable}, plus {@code ChatController}'s board-send path, which asks
  * {@code isWritable} directly since a refusal there is answered rather than thrown.
  *
@@ -58,10 +59,23 @@ class WriteAccessCoverageTest {
                     "public RowDto patchRow(",
                     "public void deleteRow(",
                     "public RowDto updateRowPosition(",
-                    "public List<RowDto> reorderRows("));
+                    "public List<RowDto> reorderRows("),
+            // Neither was on this list when FEAT-08 shipped, and neither checked the role: a viewer
+            // could tick a subtask or delete somebody's file. A card's contents are the board's
+            // contents - anything hanging off a task writes through the task's board.
+            "task/subtask/SubTaskService.java", List.of(
+                    "public SubTaskDto addSubTask(",
+                    "public void deleteSubTask(",
+                    "public SubTaskDto patchSubTask(",
+                    "public SubTaskDto assignTaskToSubTask(",
+                    "public SubTaskDto toggleSubTaskCompletion(",
+                    "public SubTaskDto updateSubTaskPosition("),
+            "task/attachment/TaskAttachmentService.java", List.of(
+                    "public TaskAttachmentDto upload(",
+                    "public void delete("));
 
     @Test
-    @DisplayName("every task/column/row mutation asks BoardService.requireWritable, not just findX's visibility check")
+    @DisplayName("every task/column/row/subtask/attachment mutation asks BoardService.requireWritable, not just findX's visibility check")
     void everyMutationChecksWritability() throws IOException {
         for (var entry : MUTATIONS.entrySet()) {
             String body = read(entry.getKey());
