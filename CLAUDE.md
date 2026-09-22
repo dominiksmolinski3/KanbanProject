@@ -338,9 +338,20 @@ Within a feature the flow is controller → service → repository, with `mapper
 ### Tenancy: boards with members
 
 `Board` is the unit of access. Every `Column`, `Row` and `Task` carries a non-null `board_id`, and
-being on a board's member list is the only thing that grants access to anything on it. Two levels
-only: the **owner** may rename, delete and change the membership; a **member** may do anything to the
-board's contents.
+being on a board's member list is the only thing that grants access to anything on it. The
+**owner** may rename, delete and change the membership. A **member** may do anything to the board's
+contents. A **viewer** (`board_members.role`, `V21`, FEAT-08) may see all of it and change none of
+it.
+
+**Read-only is enforced per mutation, and `WriteAccessCoverageTest` lists the mutations.** Every
+write asks `BoardService.requireWritable`. A viewer can already see the board, so the refusal is
+`403 VIEWER_READ_ONLY`, the one case the 404-not-403 rule reserves 403 for. The visibility check
+the lookups already make is not a write check. That is how the first cut left `SubTaskService` and
+`TaskAttachmentService` open: a viewer could tick subtasks and delete files, every existing test
+passed, and the guard never noticed because it only reads the files it names. **A new service
+that writes board contents belongs in its map.** The client reads `readOnly` from `KanbanContext`
+on the board and in the task panel and hides what the server would refuse. That is a courtesy;
+the server's check is the rule.
 
 **Membership is offered and accepted, not assigned (`V14`).** `board_invitations` holds one row per
 offer, and `POST /api/boards/{id}/invitations` is the only thing that creates one;
