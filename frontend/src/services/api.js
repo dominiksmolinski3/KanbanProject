@@ -8,8 +8,7 @@ const API_ENDPOINTS = {
   TASKS: '/api/tasks',
   USERS: '/api/users',
   ROWS: '/api/rows',
-  SUBTASKS: '/api/subtasks',
-  FILES: '/api/files'
+  SUBTASKS: '/api/subtasks'
 };
 
 // Which board this session is looking at. Only listings and creates need it explicitly - every

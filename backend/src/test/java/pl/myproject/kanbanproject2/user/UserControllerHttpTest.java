@@ -4,9 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -19,7 +17,6 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
-import pl.myproject.kanbanproject2.service.AvatarService;
 
 import java.util.List;
 
@@ -33,15 +30,15 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * {@code UserControllerOwnershipTest} calls the controller methods directly, so it proves the
  * refusal but not the status the client sees. These go through the dispatcher: the ownership
- * refusal has to arrive as a 403 carrying {@code NOT_ACCOUNT_OWNER}, and the avatar response has
- * to keep the headers that stop user-supplied bytes rendering as a document on the app's origin.
+ * refusal has to arrive as a 403 carrying {@code NOT_ACCOUNT_OWNER}. The avatar routes moved to
+ * {@code UserAvatarControllerHttpTest} along with {@code AvatarService} - see that suite for the
+ * response headers that stop user-supplied bytes rendering as a document on the app's origin.
  */
 class UserControllerHttpTest {
 
@@ -49,7 +46,6 @@ class UserControllerHttpTest {
     private static final Integer OTHER_ID = 2;
 
     private UserService userService;
-    private AvatarService avatarService;
     private UserMapper userMapper;
     private PasswordResetService passwordResetService;
     private MockMvc mvc;
@@ -72,21 +68,16 @@ class UserControllerHttpTest {
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        avatarService = mock(AvatarService.class);
         userMapper = mock(UserMapper.class);
         passwordResetService = mock(PasswordResetService.class);
 
         caller = new User();
         caller.setId(CALLER_ID);
 
-        // The avatar route answers byte[], so the byte-array converter has to be listed
-        // alongside Jackson - overriding the converters drops the defaults entirely.
-        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, avatarService, passwordResetService))
+        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
-                .setMessageConverters(
-                        new ByteArrayHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(new ObjectMapper()))
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(new ObjectMapper()))
                 .build();
     }
 
@@ -128,15 +119,6 @@ class UserControllerHttpTest {
     }
 
     @Test
-    @DisplayName("deleting another account's avatar is a 403 as well")
-    void avatarDeleteChecksOwnership() throws Exception {
-        mvc.perform(delete("/users/" + OTHER_ID + "/avatar"))
-                .andExpect(status().isForbidden());
-
-        verifyNoInteractions(avatarService);
-    }
-
-    @Test
     @DisplayName("an unauthenticated caller is refused rather than treated as the owner")
     void nullPrincipalIsRefused() throws Exception {
         caller = null;
@@ -144,30 +126,6 @@ class UserControllerHttpTest {
         mvc.perform(delete("/users/" + CALLER_ID))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_ACCOUNT_OWNER"));
-    }
-
-    @Test
-    @DisplayName("the avatar is served as an attachment with nosniff, never inline")
-    void avatarKeepsItsHeaders() throws Exception {
-        when(avatarService.getAvatar(CALLER_ID)).thenReturn(new byte[]{1, 2, 3});
-        when(avatarService.getAvatarContentType(CALLER_ID)).thenReturn("image/png");
-
-        mvc.perform(get("/users/" + CALLER_ID + "/avatar"))
-                .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment"))
-                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
-                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "image/png"));
-    }
-
-    @Test
-    @DisplayName("a missing avatar reaches the client as a 404, not an empty 200")
-    void missingAvatarIs404() throws Exception {
-        when(avatarService.getAvatar(OTHER_ID))
-                .thenThrow(new GlobalException(ExceptionIdentifier.AVATAR_NOT_FOUND));
-
-        mvc.perform(get("/users/" + OTHER_ID + "/avatar"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("AVATAR_NOT_FOUND"));
     }
 
     @Test

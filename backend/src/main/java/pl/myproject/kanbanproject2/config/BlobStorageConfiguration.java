@@ -18,10 +18,11 @@ import pl.myproject.kanbanproject2.storage.BlobStore;
 import pl.myproject.kanbanproject2.storage.DisabledBlobStore;
 
 /**
- * Builds the attachment store from {@link BlobStorageProperties}. Same shape as
- * {@link EmailConfiguration}: an unconfigured deployment starts and refuses uploads rather than
- * failing to boot, and {@code StorageHealthIndicator} reports that state on
- * {@code /actuator/health}.
+ * Builds the blob store from {@link BlobStorageProperties} - one container shared by task
+ * attachments and, since FEAT-09, avatars, each writing under their own prefix
+ * ({@code tasks/<id>/...} and {@code avatars/<id>/...}). Same shape as {@link EmailConfiguration}:
+ * an unconfigured deployment starts and refuses uploads rather than failing to boot, and
+ * {@code StorageHealthIndicator} reports that state on {@code /actuator/health}.
  */
 @Slf4j
 @Configuration
@@ -32,14 +33,14 @@ public class BlobStorageConfiguration {
     public BlobStore blobStore(BlobStorageProperties properties) {
         if (!properties.isConfigured()) {
             log.warn("Neither app.storage.endpoint nor app.storage.connection-string is set; "
-                    + "task attachments will be refused rather than stored");
+                    + "task attachments and avatars will be refused rather than stored");
             return new DisabledBlobStore();
         }
         BlobServiceClient service = blobServiceClient(properties);
         BlobContainerClient container = service.getBlobContainerClient(properties.container());
         createContainerIfMissing(container);
 
-        log.info("Task attachments are stored in the {} container of {}",
+        log.info("Task attachments and avatars are stored in the {} container of {}",
                 properties.container(), service.getAccountUrl());
         return new AzureBlobStore(container);
     }
