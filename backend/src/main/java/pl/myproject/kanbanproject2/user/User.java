@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import pl.myproject.kanbanproject2.file.File;
 import pl.myproject.kanbanproject2.task.Task;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
@@ -63,9 +63,23 @@ public class User implements UserDetails {
     @ManyToMany(mappedBy = "users")
     @JsonIgnore
     private Set<Task> tasks = new HashSet<>();
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "avatar_id")
-    private File avatar;
+    /*
+     * The avatar's bytes live in Azure Blob Storage (pl.myproject.kanbanproject2.user.avatar), the
+     * same move task attachments made in V12 and for the same reason: a @Lob put every upload into
+     * Postgres's own storage, backups and restore window for data no query ever looked inside. One
+     * user has at most one avatar, so this is four columns rather than a second table with a foreign
+     * key back - the shape task_attachments needs because a task holds many. All four are null
+     * together when there is no avatar; avatarBlobName is opaque (avatars/<id>/<uuid>), and nothing
+     * a person typed is in it, the same rule task_attachments.blobName follows.
+     */
+    @Column(name = "avatar_blob_name", length = 200)
+    private String avatarBlobName;
+    @Column(name = "avatar_content_type")
+    private String avatarContentType;
+    @Column(name = "avatar_size_bytes")
+    private Long avatarSizeBytes;
+    @Column(name = "avatar_uploaded_at")
+    private Instant avatarUploadedAt;
 
 
     public User(String name, String email, String password) {

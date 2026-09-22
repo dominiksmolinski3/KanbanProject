@@ -5,12 +5,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.service.AvatarService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,6 +19,8 @@ import static org.mockito.Mockito.when;
  * The filter chain ends at {@code .anyRequest().authenticated()} and {@code getAuthorities()} is
  * empty, so nothing below the controller distinguishes one caller from another. These tests pin
  * the ownership check that stands in for the authorization model the app does not have yet.
+ * {@code UserAvatarControllerOwnershipTest} pins the same rule for the avatar routes, which moved
+ * to their own controller.
  */
 class UserControllerOwnershipTest {
 
@@ -28,15 +28,13 @@ class UserControllerOwnershipTest {
     private static final Integer VICTIM_ID = 2;
 
     private UserService userService;
-    private AvatarService avatarService;
     private UserController controller;
     private User caller;
 
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        avatarService = mock(AvatarService.class);
-        controller = new UserController(userService, mock(UserMapper.class), avatarService,
+        controller = new UserController(userService, mock(UserMapper.class),
                 mock(pl.myproject.kanbanproject2.config.security.PasswordResetService.class));
 
         caller = new User();
@@ -68,17 +66,6 @@ class UserControllerOwnershipTest {
     }
 
     @Test
-    @DisplayName("avatar upload and delete are refused on another user's account")
-    void avatarMutationsRejectOtherAccounts() {
-        assertThatThrownBy(() -> controller.uploadAvatar(VICTIM_ID, null, caller))
-                .isInstanceOf(GlobalException.class);
-        assertThatThrownBy(() -> controller.deleteAvatar(VICTIM_ID, caller))
-                .isInstanceOf(GlobalException.class);
-
-        verifyNoInteractions(avatarService);
-    }
-
-    @Test
     @DisplayName("an unauthenticated principal is refused rather than treated as the target")
     void nullPrincipalIsRejected() {
         assertThatThrownBy(() -> controller.deleteUser(OWNER_ID, null))
@@ -95,22 +82,8 @@ class UserControllerOwnershipTest {
 
         controller.deleteUser(OWNER_ID, caller);
         var patched = controller.patchUser(OWNER_ID, own, caller);
-        controller.deleteAvatar(OWNER_ID, caller);
 
         verify(userService).deleteUser(OWNER_ID);
-        verify(avatarService).deleteAvatar(OWNER_ID);
         assertThat(patched.getBody()).isEqualTo(own);
-    }
-
-    @Test
-    @DisplayName("avatars are served as an attachment with nosniff, whatever type is stored")
-    void avatarResponseCannotRenderInline() {
-        when(avatarService.getAvatar(eq(VICTIM_ID))).thenReturn(new byte[]{1, 2, 3});
-        when(avatarService.getAvatarContentType(eq(VICTIM_ID))).thenReturn("image/svg+xml");
-
-        var response = controller.getAvatar(VICTIM_ID, caller);
-
-        assertThat(response.getHeaders().getFirst("Content-Disposition")).isEqualTo("attachment");
-        assertThat(response.getHeaders().getFirst("X-Content-Type-Options")).isEqualTo("nosniff");
     }
 }

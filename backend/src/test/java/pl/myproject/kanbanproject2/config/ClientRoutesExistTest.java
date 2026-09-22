@@ -31,10 +31,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that anything serves it, while the backend suite asserts routes no client necessarily calls -
  * between them a route can be renamed or removed and both suites stay green while the feature is
  * dead in the browser. It does <em>not</em> check the other direction: a backend route nothing
- * calls is not a defect ({@code FileController} is owned and unused on purpose), so this is a
- * subset assertion. Same shape as {@link ConfigurationTest}: a rule spanning two trees, checked in
- * one, and it does not skip when files are missing, since a guard that turns itself off leaves the
- * build green either way.
+ * calls is not a defect on its own, so this is a subset assertion - though when this test's own
+ * Javadoc once said exactly that about {@code FileController}, FEAT-09 read it as the finding it
+ * was and removed the controller rather than leaving it standing. Same shape as
+ * {@link ConfigurationTest}: a rule spanning two trees, checked in one, and it does not skip when
+ * files are missing, since a guard that turns itself off leaves the build green either way.
  */
 class ClientRoutesExistTest {
 
