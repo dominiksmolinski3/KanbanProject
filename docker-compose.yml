@@ -36,6 +36,10 @@ x-api: &api
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
     SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
     SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    # ECS JSON on the console, the same as the deployment. The local stack is where an edge
+    # misconfiguration gets caught before Azure, and it cannot be while the two log differently -
+    # `docker compose logs app | jq 'select(.requestId==...)'` is the thing being checked.
+    LOG_FORMAT: ecs
     # The same per-replica pool size the deployment computes, rather than Hikari's default of
     # ten. Not because a local Postgres cannot spare the connections - it has a hundred - but
     # because this stack is the only place the shape gets checked before Azure, and with the
