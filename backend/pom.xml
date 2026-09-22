@@ -216,11 +216,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-
         <!--
             Jackson maps both an absent property and an explicit JSON null onto the same Java null,
             which is why every PATCH here used to mean "leave unchanged" and nothing could be
