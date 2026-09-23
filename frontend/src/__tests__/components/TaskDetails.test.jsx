@@ -110,6 +110,75 @@ describe('TaskDetails Component', () => {
     expect(screen.getByText('board.loading').closest('.task-details-panel')).toHaveClass('loading');
   });
 
+  test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
+    renderTaskDetails();
+    const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
+
+    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
+    let finishReread;
+    api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
+
+    fireEvent.change(input, { target: { value: 'New Subtask' } });
+    await act(async () => {
+      fireEvent.click(screen.getByText('header.addTask'));
+    });
+
+    await waitFor(() => expect(finishReread).toBeDefined());
+    // The form someone is typing into is still there, and no loading line has replaced it.
+    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
+
+    await act(async () => {
+      finishReread({ ...mockTask });
+    });
+  });
+
+  test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
+    renderTaskDetails();
+    const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
+
+    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
+    let finishReread;
+    api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
+
+    fireEvent.change(input, { target: { value: 'New Subtask' } });
+    await act(async () => {
+      fireEvent.click(screen.getByText('header.addTask'));
+    });
+
+    await waitFor(() => expect(finishReread).toBeDefined());
+    // The form someone is typing into is still there, and no loading line has replaced it.
+    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
+
+    await act(async () => {
+      finishReread({ ...mockTask });
+    });
+  });
+
+  test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
+    renderTaskDetails();
+    const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
+
+    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
+    let finishReread;
+    api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
+
+    fireEvent.change(input, { target: { value: 'New Subtask' } });
+    await act(async () => {
+      fireEvent.click(screen.getByText('header.addTask'));
+    });
+
+    await waitFor(() => expect(finishReread).toBeDefined());
+    // The form someone is typing into is still there, and no loading line has replaced it.
+    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
+
+    await act(async () => {
+      finishReread({ ...mockTask });
+    });
+  });
+
   test('loads and displays task data correctly', async () => {
     api.fetchTask.mockResolvedValue({
       ...mockTask,
