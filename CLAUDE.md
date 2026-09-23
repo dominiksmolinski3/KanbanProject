@@ -1468,10 +1468,15 @@ three were measured on a capture of what the agent actually sends rather than re
   coupling moved from a log string and a KQL list to a metric name rather than disappearing.
 - **Probe requests are sampled out** (`/actuator.*` at 0%), since Container Apps probes every
   replica every few seconds and each would otherwise be a stored request.
-- **No agent without a connection string.** The entrypoint adds `-javaagent` only when
-  `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, so docker-compose and CI run the JVM exactly as
-  before. `ConfigurationTest` exempts the two `APPLICATIONINSIGHTS_*` variables from "passes nothing
-  unread" only while the Dockerfile still attaches the agent.
+- **No agent without a connection string, and docker-compose sets one.** The entrypoint adds
+  `-javaagent` only when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set. Compose points it at
+  **`appinsights-sink`** (`observability/appinsights-sink/server.mjs`), a stand-in for the ingestion
+  endpoint in the role azurite plays for Blob Storage - there is no official emulator, but the agent
+  only POSTs JSON lines, so recording them is enough. The e2e job runs
+  `assert-exported.mjs` after both Cypress runs: the metrics the alerts read arrived from both
+  replicas, nothing outside `kanban_*` did, and no probe request was recorded. `curl :8099/summary`
+  shows the same locally. `ConfigurationTest` exempts the `APPLICATIONINSIGHTS_*` variables from
+  "passes nothing unread" only while the Dockerfile still attaches the agent.
 - **No ingestion key.** The resource has `local_authentication_enabled = false`; the agent signs its
   exports as the API's managed identity (`APPLICATIONINSIGHTS_AUTHENTICATION_STRING`), which
   `modules/api_app` grants `Monitoring Metrics Publisher`. The connection string is then an address
