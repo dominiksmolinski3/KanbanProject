@@ -1,11 +1,5 @@
 import { authService } from '../../services/authService';
 
-/**
- * Signup and resend now answer 202 with no body, whatever the address turns out to be. That is
- * only worth anything if the client stops trying to read one: `response.json()` on an empty body
- * throws, which would have turned a successful registration into an error toast and handed the
- * caller back the very distinction the uniform response exists to remove.
- */
 describe('authService registration and resend', () => {
   const accepted = () => ({
     ok: true,
@@ -82,11 +76,6 @@ describe('authService registration and resend', () => {
   });
 });
 
-/**
- * Verifying answers 200 with a session now, and the client signs in with it. The 204 it used to
- * answer is still handled - a client can be newer than the server it is talking to - and the
- * caller has to be able to tell the two apart, which is what these two cases are.
- */
 describe('authService verification', () => {
   beforeEach(() => {
     window.fetch = jest.fn();

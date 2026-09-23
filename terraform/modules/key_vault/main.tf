@@ -39,11 +39,6 @@ resource "azurerm_role_assignment" "terraform_caller_secrets_officer" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# RBAC grants aren't usable at the data plane the instant ARM accepts them, and Terraform has no
-# "wait until this works" primitive - so this sleeps and guesses. Keyed on the assignment's own id
-# via `triggers`, not `depends_on`: `depends_on` only orders a create, so it protected exactly the
-# first apply and silently did nothing on every later one, including replacements where the grant is
-# genuinely new.
 resource "time_sleep" "wait_for_secrets_officer" {
   triggers = {
     role_assignment_id = azurerm_role_assignment.terraform_caller_secrets_officer.id

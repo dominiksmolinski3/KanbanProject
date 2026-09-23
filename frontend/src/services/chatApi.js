@@ -1,21 +1,6 @@
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 
-/**
- * The chat panel's own STOMP connection.
- *
- * It used to subscribe to `/topic/public` on connect - one global room every signed-in account
- * was on, where a member of one board read the messages of every other board's members - and to
- * rooms named by free text the client chose. Neither is addressable any more: a message belongs to
- * a board, it travels `/topic/boards.{id}.chat`, and `BoardSubscriptionInterceptor` refuses that
- * subscription for anybody the board is not visible to. **A dot, not a slash**: everything after
- * `/topic/` is one AMQP routing key, and RabbitMQ refuses a destination containing a further `/`.
- *
- * Two user destinations, not one. `/queue/messages` is where a direct message arrives;
- * `/queue/errors` is where the server says one of *your own* messages was not sent, which it can
- * now do without throwing - a throw on the inbound channel closes the session, so pasting
- * something too long used to drop the connection rather than bounce the message.
- */
 export default class ChatApi {
   constructor(onMessageReceived, onError, onRefusal) {
     this.stompClient = null;
@@ -27,19 +12,6 @@ export default class ChatApi {
     this.serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
   }
 
-  /**
-   * **A user destination is subscribed to without a name.** `/user/queue/messages` is the whole
-   * destination: Spring's `DefaultUserDestinationResolver` reads the account off the session it
-   * authenticated at CONNECT and rewrites the subscription to a queue of its own. Naming the
-   * account in it - `/user/{email}/queue/messages`, which is the *sending* form and is what this
-   * file used to send - is read as a destination literally called that, so the subscription binds
-   * to a queue nothing publishes to. Measured against the compose stack: the broker held the
-   * frames in `messages-user<session>` with a consumer count of zero, which is to say **no direct
-   * message has been delivered since the STOMP relay replaced `enableSimpleBroker`**, and nothing
-   * errored to say so. The previous version of this comment asserted the opposite.
-   *
-   * @param {string} token the JWT. WebSocketAuthInterceptor refuses a CONNECT frame without it.
-   */
   connect(token) {
     return new Promise((resolve, reject) => {
       try {
@@ -91,14 +63,6 @@ export default class ChatApi {
     return false;
   }
 
-  /**
-   * Listens to one board, replacing whatever was being listened to before - the board switcher
-   * calls this on every switch, and tearing the socket down to move a destination would cost a
-   * handshake for nothing.
-   *
-   * A subscription the caller may not have is dropped by the server rather than refused, so this
-   * returning true means the frame was sent, not that anything will arrive on it.
-   */
   joinBoard(boardId) {
     if (!this.stompClient || !this.stompClient.active || boardId === null || boardId === undefined) {
       return false;
@@ -133,10 +97,6 @@ export default class ChatApi {
     return true;
   }
 
-  /**
-   * Sends one message. `sender`, the type and the timestamp are stamped by the server over
-   * whatever is put here, so only the content, the board and the recipient carry anything.
-   */
   sendMessage(messageType, message, boardId, recipient) {
     if (!this.stompClient || !this.stompClient.active || !message.trim()) return false;
 

@@ -4,7 +4,6 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -13,14 +12,12 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
 .env
 
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -30,7 +27,6 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
 .vscode/
 hs_err_pid14848.log
 *.log
@@ -38,27 +34,13 @@ hs_err_pid14848.log
 /frontend/coverage
 secrets.yaml
 /terraform/.terraform
-# Per-environment local overrides: the ACS connection string, the captcha secret, the alert
-# address, a workstation's own IP for the Key Vault firewall. tf.sh passes the one matching the
-# environment you asked for. Every environment, not just dev - the old single-environment line here
-# meant doing MAIL-02 the documented way for prod staged prod's ACS connection string and captcha
-# secret for commit.
 terraform/*.local.tfvars
-# The name these used to have. Terraform auto-loads any *.auto.tfvars on every run whatever
-# -var-file is passed, so one of these leaks its values into every other environment's plan; tf.sh
-# refuses to run while one exists. Still ignored so that a leftover cannot be committed either.
 terraform/*.local.auto.tfvars
-# A saved plan holds the resource values it would write, secrets among them, in the clear - and
-# `plan -out=` is the workflow tf.sh's own header documents, so the file lands here by following
-# the instructions rather than by going off them. Exactly TF-07's shape: the remedy the docs
-# prescribe is what stages the secret.
 terraform/*.tfplan
 terraform/errored.tfstate
 INFRASTRUCTURE-REVIEW.md
 /.claude
 docker-compose.override.yml
 
-# Cypress writes a screenshot for every failed test and, when enabled, a video per spec. They are
-# artefacts of one run on one machine, and a failing local run should not leave a diff behind.
 frontend/cypress/screenshots/
 frontend/cypress/videos/

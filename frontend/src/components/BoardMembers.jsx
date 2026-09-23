@@ -5,12 +5,6 @@ import { useKanban } from '../context/KanbanContext';
 import { fetchBoardInvitations } from '../services/boardApi';
 import '../styles/components/BoardMembers.css';
 
-/**
- * The board, and who is on it: since access is decided by membership, there has to be somewhere a
- * person can see the list and change it, or every account is a board of one with nobody for the
- * assignees, WIP limits or chat to talk to. Only the owner can rename the board, delete it, or
- * change who is on it; everyone else sees the same list and a way out.
- */
 function BoardMembers() {
   const { activeBoard, renameBoard, deleteBoard, inviteToBoard, revokeInvitation, removeBoardMember } = useKanban();
   const { user } = useAuth();
@@ -23,11 +17,6 @@ function BoardMembers() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
-  /*
-   * Kept here rather than in KanbanContext. A board's outstanding invitations are only ever read
-   * on this panel, by the one person allowed to see them, and putting them in the shared context
-   * would mean every screen carrying a list nothing else asks about.
-   */
   const boardId = activeBoard?.id;
   const owned = Boolean(activeBoard?.owned);
 
@@ -165,8 +154,6 @@ function BoardMembers() {
                   {member.role === 'VIEWER' ? t('boards.members.viewer') : t('boards.members.member')}
                 </span>
               )}
-              {/* The owner cannot be removed by anyone, including themselves: nothing can
-                  appoint a replacement, so the board would be left unmanageable. */}
               {!isOwner && (owned || isMe) && (
                 <button
                   type="button"
@@ -233,9 +220,6 @@ function BoardMembers() {
             </select>
             <button type="submit" disabled={busy}>{t('boards.invitations.invite')}</button>
           </div>
-          {/* Not a hedge. Nobody is added by this form: it sends an invitation the other person
-              has to accept, and the server answers identically whether or not that address has an
-              account here, so it cannot be used to find out which addresses do. */}
           <p className="board-invite-note">{t('boards.invitations.inviteNote')}</p>
         </form>
       )}

@@ -25,31 +25,11 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every URL the client asks for against every URL the server answers on, compared at build time.
- * Jest stubs {@code fetch}, so a frontend test asserts a request was made to a string and never
- * that anything serves it, while the backend suite asserts routes no client necessarily calls -
- * between them a route can be renamed or removed and both suites stay green while the feature is
- * dead in the browser. It does <em>not</em> check the other direction: a backend route nothing
- * calls is not a defect on its own, so this is a subset assertion - though when this test's own
- * Javadoc once said exactly that about {@code FileController}, FEAT-09 read it as the finding it
- * was and removed the controller rather than leaving it standing. Same shape as
- * {@link ConfigurationTest}: a rule spanning two trees, checked in one, and it does not skip when
- * files are missing, since a guard that turns itself off leaves the build green either way.
- */
 class ClientRoutesExistTest {
-
     private static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path SERVICES = Path.of("..", "frontend", "src", "services");
 
-    /**
-     * The calls whose path is decided by the caller, with the routes each one stands for. Named
-     * rather than skipped: {@code reorder(endpoint, ...)} serves three routes through one function,
-     * a shape this file cannot resolve by reading, so listing it here means a genuinely new
-     * unresolvable call fails the build rather than quietly joining a set nothing asserts about.
-     */
     private static final Map<String, List<String>> CALLER_SUPPLIED_PATHS = Map.of(
             "{}/positions", List.of("/api/tasks/positions", "/api/columns/positions", "/api/rows/positions"));
 
@@ -74,8 +54,6 @@ class ClientRoutesExistTest {
         Map<String, String> calls = clientCalls();
         Map<String, String> unresolved = new TreeMap<>();
         calls.forEach((call, site) -> {
-            // A path whose first segment is a placeholder was assembled from something this file
-            // could not follow - a parameter, an import, a value off a response.
             if (call.startsWith("{}")) {
                 unresolved.put(call, site);
             }
@@ -100,8 +78,6 @@ class ClientRoutesExistTest {
     @Test
     @DisplayName("the comparison is actually reading both sides")
     void bothSidesAreNonEmpty() throws IOException {
-        // Either half silently reading nothing makes a subset assertion pass for the wrong reason,
-        // which is the failure mode of every test that compares two collections.
         assertThat(servedRoutes()).hasSizeGreaterThan(40);
         assertThat(clientCalls().keySet()).hasSizeGreaterThan(40);
     }
@@ -109,9 +85,6 @@ class ClientRoutesExistTest {
     @Test
     @DisplayName("no fetch call is quietly skipped on the way")
     void everyFetchCallIsAccountedFor() throws IOException {
-        // Stops this test from reading less than it claims to: every fetch is either inside a
-        // comment (blanked already) or produces a path - anything else means the scanner walked
-        // past a call, which looks exactly like a client with fewer calls.
         Map<String, List<String>> skipped = new TreeMap<>();
         for (Path file : serviceFiles()) {
             String source = Files.readString(file);
@@ -133,9 +106,6 @@ class ClientRoutesExistTest {
                 .isEmpty();
     }
 
-    // ---------------------------------------------------------------- the server side
-
-    /** Every mapped path, with {@code /api} applied as {@code WebConfig} applies it. */
     private static Set<String> servedRoutes() {
         ClassPathScanningCandidateComponentProvider scanner =
                 new ClassPathScanningCandidateComponentProvider(false);
@@ -149,9 +119,6 @@ class ClientRoutesExistTest {
             } catch (ClassNotFoundException cause) {
                 throw new IllegalStateException("scanned a controller that will not load", cause);
             }
-            // A nested controller is a probe defined inside a test - ApiPathPrefixTest has two -
-            // and the scan cannot tell test-classes from classes. Leaving them in would let a
-            // throwaway @RequestMapping in a test satisfy a client call for a route that has gone.
             if (type.getEnclosingClass() != null) {
                 continue;
             }
@@ -170,7 +137,6 @@ class ClientRoutesExistTest {
         return routes;
     }
 
-    /** The declared paths, or a single empty one - a mapping with no path still maps its parent. */
     private static String[] pathsOf(RequestMapping mapping) {
         if (mapping == null || mapping.value().length == 0) {
             return new String[]{""};
@@ -178,26 +144,16 @@ class ClientRoutesExistTest {
         return mapping.value();
     }
 
-    // ---------------------------------------------------------------- the client side
-
     private static final Pattern FETCH = Pattern.compile("\\bfetch\\s*\\(");
-    /** {@code const NAME = '...'} or a backtick template, on one line. */
     private static final Pattern CONSTANT =
             Pattern.compile("const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(`[^`]*`|'[^']*'|\"[^\"]*\")\\s*;");
-    /** {@code const NAME = (args) => `...`} - a one-line path helper. */
     private static final Pattern HELPER =
             Pattern.compile("const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*\\([^)]*\\)\\s*=>\\s*(`[^`]*`)\\s*;");
-    /** {@code KEY: '/api/...'} inside an endpoint object. */
     private static final Pattern OBJECT_ENTRY =
             Pattern.compile("const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*\\{([^}]*)}", Pattern.DOTALL);
     private static final Pattern OBJECT_FIELD =
             Pattern.compile("([A-Za-z_$][\\w$]*)\\s*:\\s*'([^']*)'");
 
-    /**
-     * Every path {@code fetch} is called with, against the first place it is called from - carried
-     * so a failure names a line rather than a normalised string, after a first draft's bare string
-     * turned out to be a {@code fetch()} written inside a doc comment.
-     */
     private static Map<String, String> clientCalls() throws IOException {
         Map<String, String> calls = new TreeMap<>();
         for (Path file : serviceFiles()) {
@@ -216,16 +172,6 @@ class ClientRoutesExistTest {
         return calls;
     }
 
-    /**
-     * The source with its comments blanked out, keeping every offset where it was (so line numbers
-     * a failure reports still point at the file). Scanned character by character rather than
-     * matched with a pattern: a regex comment matcher found a comment start inside the string
-     * literal {@code 'Accept': 'image/*, application/json'} in {@code getUserAvatar} and blanked
-     * four real {@code fetch} calls before the next real close, leaving the test green while
-     * reading less than it claimed to. The remaining limit: a regex literal containing a quote
-     * would confuse this the same way - there is none in these files, and
-     * {@code everyFetchCallIsAccountedFor} is what would notice.
-     */
     private static String withoutComments(String source) {
         StringBuilder stripped = new StringBuilder(source);
         char quote = 0;
@@ -292,7 +238,6 @@ class ClientRoutesExistTest {
         }
     }
 
-    /** Constants, one-line path helpers and endpoint-object fields, by the name a call would use. */
     private static Map<String, String> namesIn(String source) {
         Map<String, String> names = new LinkedHashMap<>();
 
@@ -314,7 +259,6 @@ class ClientRoutesExistTest {
         return names;
     }
 
-    /** The text of the first argument, balanced across nested calls and template literals. */
     private static String firstArgument(String source, int from) {
         int depth = 0;
         StringBuilder argument = new StringBuilder();
@@ -335,24 +279,12 @@ class ClientRoutesExistTest {
         return argument.toString().trim();
     }
 
-    /**
-     * A request expression reduced to a path. Wrappers that only add a query string are unwrapped,
-     * names are looked up, and anything still an expression becomes {@code {}} - what a path
-     * variable is on the server side too, so the two normalise onto the same string.
-     */
     private static String resolve(String expression, Map<String, String> names) {
         String text = expression.trim();
 
-        // onActiveBoard(x) appends ?boardId=, which the path does not carry. Unwrapping it leaves
-        // the call's own closing paren behind, and a stray one turns unquote into an off-by-one
-        // that keeps a backtick on the end of the path.
         if (text.startsWith("onActiveBoard(")) {
             return resolve(unwrap(text, "onActiveBoard("), names);
         }
-        // A name resolves to its value, which is already raw text rather than a literal - so it
-        // goes to interpolate, not back through here. Sending it back through here was the first
-        // draft, and every path in the client came out as a bare placeholder, because
-        // `/api/boards` is not a quoted string and fell off the end of this method.
         if (names.containsKey(text)) {
             return interpolate(names.get(text), names);
         }
@@ -366,7 +298,6 @@ class ClientRoutesExistTest {
         return "{}";
     }
 
-    /** Replaces every {@code ${...}} with what it resolves to, or with a path placeholder. */
     private static String interpolate(String template, Map<String, String> names) {
         StringBuilder path = new StringBuilder();
         for (int index = 0; index < template.length(); index++) {
@@ -401,7 +332,6 @@ class ClientRoutesExistTest {
         return -1;
     }
 
-    /** The argument of a single-argument wrapper call, without the call's own closing paren. */
     private static String unwrap(String text, String prefix) {
         String inner = text.substring(prefix.length()).trim();
         return inner.endsWith(")") ? inner.substring(0, inner.length() - 1).trim() : inner;
@@ -411,9 +341,6 @@ class ClientRoutesExistTest {
         return literal.length() >= 2 ? literal.substring(1, literal.length() - 1) : literal;
     }
 
-    // ---------------------------------------------------------------- shared normalisation
-
-    /** One spelling for both sides: no query string, no trailing slash, every variable as {@code {}}. */
     private static String normalise(String path) {
         String normalised = path.replaceAll("\\{[^}]*}", "{}").replaceAll("/{2,}", "/");
         int query = normalised.indexOf('?');

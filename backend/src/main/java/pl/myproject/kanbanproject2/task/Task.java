@@ -28,9 +28,6 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    // Optimistic lock: a reordered cell sends one position PATCH per card, so concurrent drags race
-    // by construction. Without this the second write silently wins; with it the stale transaction
-    // fails and the caller gets a 409 instead of losing the move.
     @Version
     private Integer version;
     private String title;
@@ -43,18 +40,11 @@ public class Task {
     private boolean expired = false;
     @jakarta.persistence.Column(name = "daily_focus")
     private boolean dailyFocus = false;
-    // To-one associations are LAZY because @ManyToOne defaults to EAGER, which fetched a column and
-    // row per task whether or not anything read them; the ones a listing needs are named in an
-    // @EntityGraph instead. Collections use @BatchSize rather than being joined, since two Set
-    // joins would multiply into a cartesian product Hibernate won't refuse on its own.
     @ElementCollection
     @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
     @jakarta.persistence.Column(name = "label")
     @BatchSize(size = 50)
     private Set<String> labels;
-    // Carried on the task itself, not read through the column, because the column is nullable — a
-    // task removed from the board would otherwise have no owner at all. TaskService refuses any
-    // move that would put the task in a column or row on a different board.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;

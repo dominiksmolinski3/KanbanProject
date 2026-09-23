@@ -36,14 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * Who may read a card's thread, who may write in it, and who may change what was written. The task
- * is the only thing that grants access, so a comment id from another board, presented under a task
- * the caller can see, must be a 404 or the task in the path is decoration. Every write announces
- * the board, since a thread nobody else's panel re-reads is a thread only its author can see live.
- */
 class TaskCommentServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-09-23T10:15:30Z");
 
     private TaskCommentRepository comments;

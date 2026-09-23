@@ -9,12 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * SYNC-01: the card's "unfinished subtasks" warning reads {@code openSubtasks} off the listing, so a
- * wrong count is a warning that lies to everybody on the board at once rather than to one screen.
- */
 class TaskMapperOpenSubtasksTest {
-
     private final TaskMapper mapper = new TaskMapper();
 
     @Test

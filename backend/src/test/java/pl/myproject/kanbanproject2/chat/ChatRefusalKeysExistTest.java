@@ -15,23 +15,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A rule in two files, checked in one - {@code MetricAlertsMatchTheMetersTest}'s shape, applied to the one
- * thing the server now says to a person in words it does not own.
- *
- * <p>{@link ChatRefusal} carries a translation key rather than a sentence, which is the activity
- * feed's rule and is what lets the same refusal read in nine languages. The cost of that is a
- * coupling no compiler sees: the key is written in Java and resolved in
- * {@code frontend/public/locales}, and a rename on either side is a toast that renders the key
- * itself. Nothing else can see it - the client never names these keys in its own source, because
- * the server is what chooses them, so the frontend's own {@code i18n.test.js} cannot either.
- *
- * <p>It asserts all nine bundles, not just English: a key present in {@code en} and missing from
- * {@code ja} is a Japanese screen showing {@code chat.errors.tooLong}.
- */
 class ChatRefusalKeysExistTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path CLIENT_LOCALES = Path.of("..", "frontend", "public", "locales");
 
     @Test
@@ -78,11 +62,6 @@ class ChatRefusalKeysExistTest {
                 .toList();
     }
 
-    /**
-     * Walks {@code chat.errors.tooLong} through the bundle's nesting by text rather than by parsing
-     * it, which keeps this test free of a JSON dependency the backend has no other use for: each
-     * segment but the last must appear as an object key, and the last as a key with a string value.
-     */
     private static boolean resolves(String bundle, String key) {
         String[] segments = key.split("\\.");
         int at = 0;

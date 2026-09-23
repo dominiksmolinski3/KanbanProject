@@ -46,20 +46,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The service decides what happens; this decides what the caller can see. Both halves have to
- * hold: a uniform status with a body that names the created account leaks just as clearly as a
- * 409 did, so the assertion that matters here is that signup answers 202 with nothing in it.
- */
 class AuthenticationControllerHttpTest {
-
     private AuthenticationService authenticationService;
     private PasswordResetService passwordResetService;
     private CaptchaVerifier captchaVerifier;
     private MockMvc mvc;
     private User caller;
 
-    /** Stands in for {@code @AuthenticationPrincipal}, which the standalone setup does not wire. */
     private class PrincipalResolver implements HandlerMethodArgumentResolver {
         @Override
         public boolean supportsParameter(MethodParameter parameter) {
@@ -77,8 +70,6 @@ class AuthenticationControllerHttpTest {
     void setUp() {
         authenticationService = mock(AuthenticationService.class);
         passwordResetService = mock(PasswordResetService.class);
-        // A mock rather than a disabled real one: these tests are about what the caller sees, and
-        // a stub that throws is how the captcha failure below is provoked without a provider.
         captchaVerifier = mock(CaptchaVerifier.class);
         caller = new User("someone", "someone@example.test", "hashed");
         caller.setId(7);
@@ -224,8 +215,6 @@ class AuthenticationControllerHttpTest {
                         .content("{\"email\":\"a@b.test\",\"password\":\"correct-horse\"}"))
                 .andExpect(status().isOk());
 
-        // Not skipped here: when verification is on, absent and wrong are the same answer, and
-        // that decision lives in one place rather than being half-made at the controller.
         verify(captchaVerifier).verify(eq(null), any());
     }
 
@@ -243,8 +232,6 @@ class AuthenticationControllerHttpTest {
                 .andExpect(jsonPath("$.refreshToken").value("rotated-refresh"))
                 .andExpect(jsonPath("$.expiresIn").value(900_000L));
 
-        // No widget is on screen when a token lapses mid-session, so a captcha here would be a
-        // challenge nobody could answer.
         verifyNoInteractions(captchaVerifier);
     }
 

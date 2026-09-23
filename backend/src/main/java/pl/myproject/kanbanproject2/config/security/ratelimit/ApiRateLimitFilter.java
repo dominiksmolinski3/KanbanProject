@@ -18,19 +18,6 @@ import pl.myproject.kanbanproject2.user.User;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Spends one of the caller's tokens on every authenticated {@code /api} call, and answers {@code 429}
- * with a {@code Retry-After} once the account's bucket is empty - see {@link ApiRateLimiter}.
- *
- * <p>Placed after the JWT filter, because the account is what it keys on and the JWT filter is what
- * finds it. A request with no account passes straight through: every route it could reach is either
- * public - the auth routes carry {@link AuthRateLimitFilter}'s own limits - or about to be refused by
- * the authorization rules, and the edge's per-address limit is what bounds a flood of those.
- *
- * <p>Built in {@code SecurityConfiguration} rather than declared as a bean, for the reason the auth
- * filter is: a {@code Filter} bean is also registered with the servlet container, where it would run
- * ahead of CORS and send a 429 the browser cannot read.
- */
 @Slf4j
 public class ApiRateLimitFilter extends OncePerRequestFilter {
 
@@ -60,9 +47,6 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Debug, not warn: a refused call is one line per request exactly when requests are arriving
-        // fastest, and kanban.api.ratelimit.refused already counts them. The account id rather than
-        // anything from the request line: it is what the limit keys on, and not caller-chosen text.
         log.debug("API rate limit hit by account {}, retry in {}s", accountId, decision.retryAfterSeconds());
         response.setStatus(ExceptionIdentifier.TOO_MANY_REQUESTS.getStatus().value());
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(decision.retryAfterSeconds()));
@@ -73,7 +57,6 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
                 ExceptionIdentifier.TOO_MANY_REQUESTS.getDefaultMessage()));
     }
 
-    /** The signed-in account behind an {@code /api} call, or null for anything else. */
     private static Integer accountId(HttpServletRequest request) {
         String uri = request.getRequestURI();
         if (uri == null || !uri.startsWith(request.getContextPath() + API_PREFIX)) {

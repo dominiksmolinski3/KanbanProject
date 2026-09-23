@@ -25,16 +25,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Covers the two things the {@code /api} prefix exists to do: keep the REST API off the paths
- * React Router owns, and keep it in one place so no controller can be added without it.
- *
- * <p>Before the prefix, {@code /users} was both a page and an endpoint — the endpoint won, and the
- * page was unreachable on a refresh. The frontend cannot catch a regression here, because its
- * tests stub {@code fetch} and never resolve a URL against this mapping.
- */
 class ApiPathPrefixTest {
-
     private static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
@@ -51,8 +42,6 @@ class ApiPathPrefixTest {
     @Test
     @DisplayName("a plain @Controller is left alone, so STOMP destinations keep their paths")
     void leavesPlainControllersAlone() {
-        // ChatController is a @Controller carrying @MessageMapping. Prefixing it would rewrite the
-        // destinations the STOMP client subscribes to, which the browser resolves, not Spring MVC.
         contextRunner.run(context -> assertThat(mappedPatterns(context.getBean(RequestMappingHandlerMapping.class)))
                 .contains("/plain/ping")
                 .doesNotContain("/api/plain/ping"));
@@ -61,8 +50,6 @@ class ApiPathPrefixTest {
     @Test
     @DisplayName("a library's own @RestController keeps its documented path")
     void leavesLibraryControllersAlone() {
-        // springdoc's OpenApiWebMvcResource is a @RestController, so an unscoped predicate would
-        // serve the published contract at /api/v3/api-docs - a path nothing asks for.
         assertThat(WebConfig.prefixedControllers().test(OpenApiWebMvcResource.class))
                 .as("the /api prefix must not move a dependency's endpoint")
                 .isFalse();
@@ -104,12 +91,7 @@ class ApiPathPrefixTest {
     @Test
     @DisplayName("nothing forwards to a shell this application no longer has")
     void forwardsNothingToTheShell() {
-        // The inverse of what this asserted until the split: WebConfig used to forward each
-        // SpaRoutes entry to classpath:/static/index.html, which no longer exists in the jar.
         contextRunner.run(context -> {
-            // With nothing registered, Spring MVC leaves the bean as a NullBean rather than as an
-            // empty mapping — so this asks for it untyped and reads whichever of the two it gets.
-            // Naming the type would make the test throw on the very state it is asserting.
             Object viewControllers = context.getBean("viewControllerHandlerMapping");
 
             Map<String, ?> forwards = viewControllers instanceof SimpleUrlHandlerMapping mapping

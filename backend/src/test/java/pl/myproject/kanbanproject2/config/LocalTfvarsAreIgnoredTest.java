@@ -11,21 +11,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over the one coupling on the mail-configuration path whose failure is a committed
- * secret. Values that must never be committed - the ACS connection string, the captcha secret, a
- * workstation's own IP - live in {@code terraform/<env>.local.tfvars}, which {@code tf.sh} loads
- * and {@code .gitignore} keeps out of the repository; nothing checks the two name the same file.
- * That drift already cost something once: {@code .gitignore} named exactly one environment's file
- * while the pattern was documented for every environment, so following the pattern for prod staged
- * its ACS connection string and captcha secret for commit. The fix was a glob, and this test is
- * what keeps it one. It also pins the old {@code .auto.} spelling as still ignored, since Terraform
- * loads every {@code *.auto.tfvars} on every run regardless of {@code -var-file}, silently feeding
- * one environment's values into another's plan.
- */
 class LocalTfvarsAreIgnoredTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path REPO_ROOT = Path.of("..");
 
     private static final Path GITIGNORE = REPO_ROOT.resolve(".gitignore");
@@ -83,7 +69,6 @@ class LocalTfvarsAreIgnoredTest {
                 .contains("-out=");
     }
 
-    /** Non-blank, non-comment lines, trimmed - which is what git itself reads them as. */
     private static List<String> ignorePatterns() throws IOException {
         return Files.readAllLines(exists(GITIGNORE), StandardCharsets.UTF_8).stream()
                 .map(String::trim)

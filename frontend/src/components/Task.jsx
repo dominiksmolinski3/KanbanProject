@@ -44,11 +44,6 @@ function Task({ task, columnId, rowId }) {
 
   const { t } = useTranslation();
 
-  /*
-   * How many subtasks are still open rides on the task itself (SYNC-01), so the warning follows
-   * the board listing: a subtask ticked on somebody else's screen arrives as a SUBTASKS frame and
-   * the ordinary task re-read, instead of each card fetching its own subtasks and never again.
-   */
   const hasUnfinishedSubtasks = (task.openSubtasks ?? 0) > 0;
 
   useEffect(() => {
@@ -70,8 +65,6 @@ function Task({ task, columnId, rowId }) {
     };
   }, [task.userIds, task.id]);
 
-  // The popover's subtask preview is fetched once and kept; a change in the open count means it is
-  // out of date, so drop it and let the next opening read it again.
   useEffect(() => {
     setTaskSubtasks([]);
   }, [task.openSubtasks]);
@@ -183,7 +176,6 @@ function Task({ task, columnId, rowId }) {
       return;
     }
     
-    // All the data fetching will now happen in the useEffect
     setShowDescription(true);
   };
 
@@ -286,14 +278,6 @@ function Task({ task, columnId, rowId }) {
 
   const heldByKeyboard = keyboardMove.isHeld(task.id);
 
-  /**
-   * The keyboard's half of drag-and-drop: HTML5 DnD has no keyboard equivalent, so without this
-   * the card cannot be moved without a pointer. Space picks it up, arrows choose a cell, Space or
-   * Enter drops it, Escape puts it back (the ARIA authoring-practice set); Enter opens the task
-   * when nothing is held, since that's what a click does and the card is a button first. Keys are
-   * bound on the card itself, so typing into the inline title or a panel textarea never gets
-   * mistaken for a shortcut.
-   */
   const onKeyDown = (e) => {
     if (e.target !== e.currentTarget) {
       return;
@@ -301,7 +285,6 @@ function Task({ task, columnId, rowId }) {
     if (heldByKeyboard) {
       const direction = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
       if (direction) {
-        // Or the board scrolls under the card the person is trying to place.
         e.preventDefault();
         keyboardMove.step(direction);
         return;

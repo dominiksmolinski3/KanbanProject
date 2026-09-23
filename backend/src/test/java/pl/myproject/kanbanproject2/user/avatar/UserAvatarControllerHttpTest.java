@@ -30,15 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The response this route serves once a caller may reach it - {@code AvatarServiceTest} and
- * {@code UserAvatarControllerOwnershipTest} cover who may. The one thing worth pinning here that
- * {@code TaskAttachmentControllerHttpTest} does not need to: {@code Content-Disposition: inline},
- * never {@code attachment} - the opposite of a task attachment, and safe only because
- * {@code AvatarService.upload} already refused anything outside a validated raster allow-list.
- */
 class UserAvatarControllerHttpTest {
-
     private static final Integer CALLER_ID = 1;
     private static final Integer OTHER_ID = 2;
     private static final byte[] CONTENT = {(byte) 0x89, 'P', 'N', 'G'};

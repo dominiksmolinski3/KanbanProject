@@ -6,15 +6,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
-/** Shared fixtures for the rate-limit tests. */
 final class AuthRateLimitTestSupport {
-
     private AuthRateLimitTestSupport() {
     }
 
-    /** A clock the tests move by hand, so a cooldown can be asserted without waiting one out. */
     static final class FakeClock extends Clock {
-
         private long millis = 5_000_000L;
 
         void advance(Duration duration) {
@@ -37,7 +33,6 @@ final class AuthRateLimitTestSupport {
         }
     }
 
-    /** Defaults with the bursts small enough to exhaust in a readable number of calls. */
     static AuthRateLimitProperties properties() {
         return properties(0);
     }

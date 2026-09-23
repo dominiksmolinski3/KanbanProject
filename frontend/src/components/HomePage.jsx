@@ -20,7 +20,6 @@ const HomePage = () => {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerification, setShowVerification] = useState(false);
-  // 'request' asks for a code, 'confirm' redeems it. null means the reset flow is not showing.
   const [resetStage, setResetStage] = useState(null);
   const [resetEmail, setResetEmail] = useState('');
   const [resetCode, setResetCode] = useState('');
@@ -76,29 +75,17 @@ const HomePage = () => {
     };
   }, [loading]);
 
-  /**
-   * These two views replace the login form, taking the captcha widget down with
-   * it. Its readiness has to go down too: left set, the placeholder is skipped
-   * when the form comes back and the box sits blank until the widget paints.
-   */
   useEffect(() => {
     if (resetStage || showVerification) setCaptchaReady(false);
   }, [resetStage, showVerification]);
 
-  /**
-   * A reCAPTCHA token is single-use: the provider accepts it once and rejects every replay. Until
-   * the server actually checked one that did not matter, because nothing was replayed anywhere.
-   * Now it does - so a failed attempt has to hand the user a fresh challenge, or their second try
-   * fails on a spent token and reports a captcha problem for what was really a wrong password.
-   */
   const resetCaptcha = () => {
     if (!isCaptchaRequired) return;
     setCaptchaToken('');
     try {
       recaptchaRef.current?.reset();
     } catch {
-      // The widget is not mounted, or the script never loaded. Clearing the token is enough:
-      // the submit button stays disabled until a fresh one arrives.
+      // The widget was never mounted; clearing the token is enough.
     }
   };
 
@@ -138,9 +125,6 @@ const HomePage = () => {
     setLoading(true);
 
     try {
-  // The language this form is being read in - the only evidence available before the account has
-  // a setting of its own, and what decides which language the verification mail arrives in. The
-  // server falls back to Accept-Language and then English if this is missing.
   const payload = { username, email, password, locale: (i18n.language || 'en').split('-')[0] };
   if (isCaptchaRequired && captchaToken) payload.captcha = { token: captchaToken };
   await authService.register(payload);
@@ -203,8 +187,6 @@ const HomePage = () => {
 
     try {
       await authService.requestPasswordReset(resetEmail);
-      // The server answers the same either way, so the message says what was accepted rather
-      // than what happened - claiming a code was sent would be a membership oracle in the UI.
       toast.info(t('auth.resetRequested', 'If that address has an account, a reset code is on its way.'));
       setResetStage('confirm');
     } catch (error) {
@@ -510,8 +492,6 @@ const HomePage = () => {
                     ref={recaptchaRef}
                     sitekey={siteKey}
                     onChange={(val) => setCaptchaToken(val || '')}
-                    // Fires once the widget is in the DOM, so the spinner gives way
-                    // to something that is already there rather than to a blank gap.
                     onReady={() => setCaptchaReady(true)}
                     onLoadError={() => {
                       setCaptchaLoadError(true);
@@ -535,8 +515,6 @@ const HomePage = () => {
                       setCaptchaLoadError(false);
                       setCaptchaWarn(false);
                       setCaptchaReady(false);
-                      // Drop the failed attempt first: remounting the widget alone
-                      // would just await the same cached rejection.
                       resetRecaptchaLoader();
                       setCaptchaKey(k => k + 1);
                     }}>{t('auth.retry')}</button>

@@ -14,7 +14,6 @@ function FormModal({ children, onClose, ariaLabel = 'Dialog' }) {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus the modal container for accessibility
     setTimeout(() => {
       modalRef.current?.focus();
     }, 0);

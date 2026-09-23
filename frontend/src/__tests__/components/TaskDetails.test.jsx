@@ -114,7 +114,6 @@ describe('TaskDetails Component', () => {
     renderTaskDetails();
     const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
 
-    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
     let finishReread;
     api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
 
@@ -124,7 +123,6 @@ describe('TaskDetails Component', () => {
     });
 
     await waitFor(() => expect(finishReread).toBeDefined());
-    // The form someone is typing into is still there, and no loading line has replaced it.
     expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
 
@@ -137,7 +135,6 @@ describe('TaskDetails Component', () => {
     renderTaskDetails();
     const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
 
-    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
     let finishReread;
     api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
 
@@ -147,7 +144,6 @@ describe('TaskDetails Component', () => {
     });
 
     await waitFor(() => expect(finishReread).toBeDefined());
-    // The form someone is typing into is still there, and no loading line has replaced it.
     expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
 
@@ -160,7 +156,6 @@ describe('TaskDetails Component', () => {
     renderTaskDetails();
     const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
 
-    // Hold the re-read that adding a subtask triggers, to look at the panel while it is in flight.
     let finishReread;
     api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
 
@@ -170,7 +165,6 @@ describe('TaskDetails Component', () => {
     });
 
     await waitFor(() => expect(finishReread).toBeDefined());
-    // The form someone is typing into is still there, and no loading line has replaced it.
     expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
 
@@ -892,7 +886,6 @@ describe('TaskDetails Component', () => {
     expect(api.fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
     expect(api.fetchTaskAttachments).toHaveBeenCalledWith(mockTask.id);
     expect(await screen.findByText('Ticked elsewhere')).toBeInTheDocument();
-    // Neither goes back through loadTaskData, which would re-read the task itself and flash the panel.
     expect(api.fetchTask).not.toHaveBeenCalled();
   });
 

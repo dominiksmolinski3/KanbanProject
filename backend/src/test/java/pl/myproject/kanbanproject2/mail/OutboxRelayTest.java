@@ -28,18 +28,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The relay is where every failure that used to be a caller's problem now lives, so its failure
- * behaviour is most of what's worth testing: an accepted message is marked sent and never reposted;
- * a refusal waits and retries rather than being lost; enough refusals stop; and one bad row doesn't
- * take the rest of the batch with it.
- *
- * <p>What no unit test can show: that the schedule fires, that the claim transaction is real, and
- * that {@code SKIP LOCKED} makes two relays take disjoint rows - the first two are Spring's, the
- * third the database's, guarded only by {@code OutboxClaimQueryTest} pinning the clause.
- */
 class OutboxRelayTest {
-
     private static final Instant NOW = Instant.parse("2026-09-02T12:00:00Z");
 
     private final OutboxEmailRepository outbox = mock(OutboxEmailRepository.class);
@@ -101,8 +90,6 @@ class OutboxRelayTest {
 
             relay.deliverPending();
 
-            // The lease and the batch size are the relay's to choose; that they are passed at all
-            // is what makes the row invisible to another relay for the length of the send.
             verify(claimer).claimDue(NOW, OutboxRelay.CLAIM_LEASE, OutboxRelay.BATCH_SIZE);
         }
 
@@ -116,8 +103,6 @@ class OutboxRelayTest {
 
             relay.deliverPending();
 
-            // Back in the queue rather than sent again inside the same pass: the process that
-            // claimed it may have posted it a moment before it died.
             assertThat(abandoned.getStatus()).isEqualTo(OutboxStatus.PENDING);
             assertThat(abandoned.getNextAttemptAt()).isEqualTo(NOW);
             verify(transport, never()).send(any());
@@ -191,7 +176,6 @@ class OutboxRelayTest {
             assertThat(queued.getStatus()).isEqualTo(OutboxStatus.PENDING);
             assertThat(queued.getAttempts()).isEqualTo(1);
             assertThat(queued.getNextAttemptAt()).isEqualTo(NOW.plus(OutboxRelay.FIRST_BACKOFF));
-            // The provider's complaint, not this application's wrapper around it.
             assertThat(queued.getLastError()).isEqualTo("unknown sender address");
             verify(outbox).save(queued);
         }

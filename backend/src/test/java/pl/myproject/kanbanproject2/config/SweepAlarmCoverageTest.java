@@ -20,37 +20,11 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over the thing every unattended workflow here can lose silently: the job that tells
- * somebody it went red. These workflows run on a cron because a push made with the default
- * {@code GITHUB_TOKEN} - which is what Dependabot's auto-merge uses - starts no workflow run;
- * measured on 12 Sep 2026, that let five consecutive merge commits reach {@code main} with no CD
- * run at all. The sweeps close that hole; the alarm job is what turns a red sweep into something a
- * person is told about, and three couplings hold each alarm together with nothing but this test to
- * check them: it must be as wide as its {@code needs} list (a job left out fails silently), as
- * wide as the {@code results} string it forwards (the same gap one level in, introduced by the
- * move to a reusable workflow), and as wide as the triggers it answers to (a workflow gaining
- * {@code workflow_dispatch} without the alarm's condition naming it made a manual sweep run and
- * report nothing). It also checks the sweep itself cannot pass having done nothing -
- * {@code external-scan.yml} once skipped every step when its target was unset and reported
- * success, which no amount of alarm correctness could see.
- */
 class SweepAlarmCoverageTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path WORKFLOWS = Path.of("..", ".github", "workflows");
 
-    /** The shared implementation every alarm job delegates to. */
     private static final Path ALARM_WORKFLOW = WORKFLOWS.resolve("sweep-alarm.yml");
 
-    /**
-     * Every workflow that runs with nobody watching, and the job in it that speaks up.
-     *
-     * <p>This list is the one thing here that is maintained by hand. A new scheduled workflow
-     * added and not listed is not caught - which is stated rather than solved, because the
-     * alternative is guessing from the trigger block and silently covering workflows that were
-     * never meant to alarm.
-     */
     private static Stream<String[]> sweeps() {
         return Stream.of(
                 new String[] { "kanban-ci.yml", "trunk-alarm" },
@@ -61,11 +35,6 @@ class SweepAlarmCoverageTest {
                 new String[] { "deployed-contract.yml", "contract-alarm" });
     }
 
-    /**
-     * The triggers that are a sweep of a ref nobody is already watching, rather than a push or a
-     * pull request somebody just made and is looking at. These are the ones an alarm has to
-     * answer to; everything else in a trigger block it must leave alone.
-     */
     private static final Set<String> NOT_A_SWEEP = Set.of("push", "pull_request");
 
     @ParameterizedTest(name = "{0}")
@@ -124,11 +93,6 @@ class SweepAlarmCoverageTest {
                 .contains("always()");
     }
 
-    /**
-     * Deliberately an allow-list assertion: the condition has to <em>name</em> every sweep
-     * trigger. A deny-list ({@code event_name != 'push'}) would read correctly today and silently
-     * stop covering the next trigger somebody adds, so the form is pinned, not only the meaning.
-     */
     @ParameterizedTest(name = "{0}")
     @DisplayName("the alarm answers to every trigger that is a sweep, not just the cron")
     @MethodSource("sweeps")
@@ -190,15 +154,6 @@ class SweepAlarmCoverageTest {
                 .contains("--add-assignee");
     }
 
-    /**
-     * The same rule as the alarm's, one level in: a sweep that did not do its work must not report
-     * that it passed. The alarm reads {@code skipped} as red because a job that did not run proved
-     * nothing, but {@code external-scan.yml} once slipped underneath that by skipping every
-     * <em>step</em> instead - an unset target repository variable wrote {@code skip=true}, every
-     * step read it, and the job succeeded in five seconds having scanned nothing, invisible to the
-     * alarm because the job really had succeeded. This pins one spelling of the pattern rather than
-     * the idea; a sweep can still be made to do nothing by other means.
-     */
     @ParameterizedTest(name = "{0}")
     @DisplayName("a sweep cannot switch its own steps off and still report success")
     @MethodSource("sweeps")
@@ -216,7 +171,6 @@ class SweepAlarmCoverageTest {
                 .doesNotContain("outputs.skip");
     }
 
-    /** The inputs one alarm job forwards to the shared workflow. */
     private static Map<String, Object> with(String workflow, String alarmJob) {
         Object declared = job(workflow, alarmJob).get("with");
 
@@ -230,13 +184,6 @@ class SweepAlarmCoverageTest {
         return inputs;
     }
 
-    /**
-     * A workflow's trigger block.
-     *
-     * <p>{@code on} is a YAML 1.1 boolean, so the key parses as {@link Boolean#TRUE} rather than
-     * as the string. Both are read so that a future parser resolving it the other way does not
-     * turn every check above into one that quietly passes over a missing section.
-     */
     private static Map<String, Object> triggers(String workflow) {
         Map<String, Object> parsed = workflow(workflow);
         Object declared = parsed.containsKey(Boolean.TRUE) ? parsed.get(Boolean.TRUE) : parsed.get("on");

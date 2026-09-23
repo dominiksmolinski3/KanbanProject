@@ -29,14 +29,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The feed, from both ends. Two things matter most: the page bound is a refusal rather than a
- * clamp, for the same reason the search route establishes — a caller handed fewer rows than it
- * asked for can't tell that from a short last page — and an entry must survive its task, which is
- * why the title and actor's name are copies rather than references.
- */
 class TaskActivityServiceTest {
-
     private TaskActivityRepository repository;
     private BoardService boardService;
     private TaskActivityService service;
@@ -91,10 +84,6 @@ class TaskActivityServiceTest {
             assertThat(entry.getOccurredAt()).isNotNull();
         }
 
-        /**
-         * The reason the two names are columns rather than joins: a renamed task would rewrite
-         * history, and a deleted one would take the entry with it.
-         */
         @Test
         @DisplayName("the title and the actor's name are copied, so a later rename does not rewrite history")
         void namesAreCopiedNotResolved() {
@@ -132,9 +121,6 @@ class TaskActivityServiceTest {
             assertThat(captureSaved().getTaskTitle()).isEmpty();
         }
 
-        // A feed entry is a side effect of somebody else's operation; nothing here makes a
-        // boardless task, but if one reached this, throwing would turn a failed recording into a
-        // failed edit.
         @Test
         @DisplayName("a task with no board records nothing rather than throwing into somebody else's edit")
         void aBoardlessTaskIsIgnored() {
@@ -189,11 +175,6 @@ class TaskActivityServiceTest {
             assertThat(results.activities().getFirst().detail()).isEqualTo("Done");
         }
 
-        /**
-         * A clamp is the worse alternative: 500 rows silently answered with 100 reads like a short
-         * last page, so the caller pages past rows it never saw — same trade as
-         * {@code INVALID_SEARCH}.
-         */
         @ParameterizedTest(name = "page={0} size={1}")
         @CsvSource({"-1,25", "0,0", "0,101", "0,-5"})
         @DisplayName("a page this route will not serve is refused rather than quietly clamped")

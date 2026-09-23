@@ -11,27 +11,13 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Replays a prefix of the request body that has already been read, then hands the rest of the
- * stream through untouched.
- *
- * <p>The filter has to look at the body to find which account a request targets, but the body is a
- * one-shot stream — reading it would leave nothing for {@code @RequestBody} to bind. Buffering the
- * <em>whole</em> body instead would hand an unauthenticated caller a way to make the app allocate
- * however much it sends, so only a bounded prefix is kept and anything past it stays streaming.
- */
 final class BufferedBodyRequestWrapper extends HttpServletRequestWrapper {
-
     private final byte[] prefix;
     private final ServletInputStream remainder;
 
     private ServletInputStream stream;
     private BufferedReader reader;
 
-    /**
-     * @param prefix    bytes already consumed from {@code remainder}, to be served again first
-     * @param remainder the original stream, positioned immediately after {@code prefix}
-     */
     BufferedBodyRequestWrapper(HttpServletRequest request, byte[] prefix, ServletInputStream remainder) {
         super(request);
         this.prefix = prefix;
@@ -62,8 +48,6 @@ final class BufferedBodyRequestWrapper extends HttpServletRequestWrapper {
         try {
             return Charset.forName(encoding);
         } catch (IllegalArgumentException e) {
-            // Matches what the container does with an encoding it cannot honour: fall back rather
-            // than fail, since the body has already been accepted by this point.
             return StandardCharsets.UTF_8;
         }
     }
@@ -92,8 +76,6 @@ final class BufferedBodyRequestWrapper extends HttpServletRequestWrapper {
             if (position >= prefix.length) {
                 return remainder.read(target, offset, length);
             }
-            // Stop at the prefix boundary rather than topping the read up from the stream behind it,
-            // which keeps every byte in one call coming from a single source.
             int available = Math.min(length, prefix.length - position);
             System.arraycopy(prefix, position, target, offset, available);
             position += available;

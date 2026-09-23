@@ -14,17 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
-/**
- * The production {@link EscalationStore}: one Redis key per (rule, dimension, key) triple, read,
- * scored and rewritten inside a single Lua script - {@code redis/auth-rate-limit.lua} - so every
- * replica of the API sees the same escalation regardless of which pod a caller's next attempt lands
- * on. The script is this migration's equivalent of the outbox's {@code FOR UPDATE SKIP LOCKED} and
- * the deadline sweep's claim: the atomic unit lives where the shared state lives, not in the calling
- * process. As with those two, no compiler checks the Lua string - {@code AuthRateLimitScriptTest} is
- * the text guard, and {@code RedisEscalationStoreIntegrationTest} is the behavioural one, run
- * against a real Redis rather than mocked, because a script that only ever runs against a fake is a
- * script nothing has actually executed.
- */
 @Slf4j
 final class RedisEscalationStore implements EscalationStore {
 
@@ -54,10 +43,6 @@ final class RedisEscalationStore implements EscalationStore {
                     ? AuthRateLimitDecision.allow()
                     : AuthRateLimitDecision.refuse(Duration.ofMillis(result.get(1)));
         } catch (DataAccessException | IllegalStateException e) {
-            // Fails open, whether Redis was unreachable or answered something this store cannot
-            // read. The limiter is defence in depth, not the control that stops a stolen password
-            // working - losing the escalation for the length of an outage is a smaller cost than
-            // an outage that also locks every caller out of authentication.
             log.warn("Rate limiter could not use Redis, allowing the attempt: {}", e.getMessage());
             return AuthRateLimitDecision.allow();
         }

@@ -14,21 +14,9 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two branches that each add a migration have an order between them, invisible to every other
- * guard here: a wrong-order merge produces a green build and a contiguous {@code V1..Vn} on
- * {@code main}, but Flyway refuses at deploy time on the revision after the merge (default
- * {@code out-of-order=false}) once it sees a lower version turn up pending after a higher one
- * already ran. This test cannot see that trap either, but it can fail the sloppy merge that
- * produces it - a duplicated version, a gap, a malformed filename - and is paired with the
- * pull-request check in {@code .github/workflows/migration-order.yml}, which forces a branch that
- * has fallen behind to renumber before it can merge.
- */
 class MigrationOrderTest {
-
     private static final Path MIGRATIONS = Path.of("src", "main", "resources", "db", "migration");
 
-    /** Flyway's versioned-migration naming: {@code V<version>__<description>.sql}. */
     private static final Pattern VERSIONED = Pattern.compile("V(\\d+)__[a-z0-9]+(?:_[a-z0-9]+)*\\.sql");
 
     @Test

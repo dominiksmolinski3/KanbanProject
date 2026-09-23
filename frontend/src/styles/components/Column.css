@@ -260,7 +260,7 @@
 .header-top .column-title {
   flex: 1;
   margin: 0 0.5rem;
-  min-width: 0; /* Important for text overflow to work */
+  min-width: 0;
 }
 
 .header-top .column-name {
@@ -271,5 +271,5 @@
 }
 
 .header-top .column-name-input {
-  width: 100%; /* Take full width of the flex container */
+  width: 100%;
 }

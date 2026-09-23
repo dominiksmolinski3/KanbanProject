@@ -5,14 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/**
- * Redeeming a reset code.
- *
- * <p>The password bounds are the same ones {@link RegisterUserDto} carries, and for the same
- * reason: BCrypt silently truncates at 72 bytes, so an unbounded field would let two different
- * passwords authenticate the same account. A reset that accepted what signup refuses would be a
- * way around the rule rather than a second path to the same place.
- */
 public record ResetPasswordRequest(
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email address")

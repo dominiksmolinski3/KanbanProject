@@ -1,12 +1,5 @@
 import * as api from '../../services/api';
 
-/**
- * The attachment client, and the two things about it that are easy to get quietly wrong: the
- * upload must not set a Content-Type header, since only the browser knows the multipart boundary
- * it is about to write, and the download must go through `fetch` rather than a link click, because
- * the route is authenticated and an `<a href>` carries no `Authorization` header. The object URL
- * it produces has to be revoked, or every download pins its file in memory for the tab's life.
- */
 describe('task attachments', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
@@ -139,9 +132,6 @@ describe('task attachments', () => {
     });
   });
 
-  // The whole reason the server answers 206 at all: this is the only client that ever asks. A
-  // fetch() that dies part way is a rejected promise and the bytes it had already moved are gone,
-  // so the resume has to be built here rather than left to the browser.
   describe('resuming a download that broke', () => {
     const streamOf = (...chunks) => {
       let next = 0;
@@ -218,8 +208,6 @@ describe('task attachments', () => {
     });
 
     test('it gives up rather than resuming forever', async () => {
-      // A fresh stream per call: one shared `streamOf` would hand the second attempt a reader
-      // whose cursor is already past the failure, and the retry would succeed for the wrong reason.
       fetch.mockImplementation(async () => ({
         ok: true,
         status: 206,

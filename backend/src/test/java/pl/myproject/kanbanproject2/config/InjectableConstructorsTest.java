@@ -16,19 +16,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every Spring-managed bean has to have a constructor Spring can actually pick. With exactly one
- * constructor Spring uses it; add a second and Spring looks for {@code @Autowired}, then a no-arg
- * constructor, and fails the whole context with "No default constructor found" if it finds neither.
- * {@code AuthRateLimiter} shipped in exactly that state unnoticed, because its own unit tests
- * construct it directly rather than through a context. This runs without a database, so it holds
- * even where a full context test cannot.
- */
 class InjectableConstructorsTest {
-
     private static final String BASE_PACKAGE = "pl.myproject.kanbanproject2";
 
-    /** Classes carrying a stereotype annotation, which is what makes them candidates for scanning. */
     private static List<Class<?>> componentClasses() {
         var scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Component.class));
@@ -53,7 +43,6 @@ class InjectableConstructorsTest {
         return classes;
     }
 
-    /** Spring's own resolution order, reduced to the question of whether a choice exists. */
     private static boolean hasAnInjectableConstructor(Class<?> type) {
         Constructor<?>[] constructors = type.getDeclaredConstructors();
 

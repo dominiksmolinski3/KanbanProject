@@ -22,16 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The two-query search, and the three things a single query would have got wrong. Ids are paged
- * and rows fetched separately so {@code LIMIT} stays in SQL rather than in-memory over a
- * multiplying join, and the second lookup is put back into the first's order, since a set-based
- * {@code IN} makes no such promise. The board is resolved before anything is searched, keeping
- * search from reaching across boards, and an empty page never becomes an empty {@code IN} list,
- * since paging past the end must be an empty answer, not a refused query.
- */
 class TaskSearchServiceTest {
-
     private TaskRepository taskRepository;
     private TaskService service;
 
@@ -78,8 +69,6 @@ class TaskSearchServiceTest {
     @Test
     @DisplayName("the rows come back in the order the paged query chose, not the order they loaded in")
     void preservesTheQueryOrder() {
-        // findByIdIn answers by id; the page asked for 3 before 1. Handing the rows straight
-        // through would shuffle the result list, and only on boards long enough to page.
         matching(List.of(3, 1), 2, List.of(task(1, "one"), task(3, "three")));
 
         var results = service.searchTasks(TaskServiceTestSupport.caller(), null, criteria());

@@ -29,13 +29,6 @@ resource "azurerm_resource_group" "main" {
       error_message = "resource_group_name (${var.resource_group_name}) does not name env (${var.env}); the -var-file and the backend key are probably from different environments."
     }
 
-    /*
-     * MAIL-02: refuse the plan rather than deploy prod with mail silently off. With no connection
-     * string the app starts and drops every message - signup answers 200, the account is written
-     * unverified, and nothing in the log says so. dev/uat are allowed to run without mail (Cypress,
-     * local boots); prod is not, and there's no escape hatch, since "production without mail" means
-     * users who can't complete signup.
-     */
     precondition {
       condition = var.env != "prod" || (
         var.acs_email_connection_string != "" && var.acs_email_sender_address != ""
@@ -70,19 +63,6 @@ resource "azurerm_log_analytics_workspace" "main" {
   retention_in_days   = lookup(local.log_retention_days, var.env, 30)
 }
 
-# Where the API's own meters go (OBS-01's loose end). The Application Insights agent in the backend
-# image exports the kanban.* meters, and only those; applicationinsights.json filters out the
-# ~190 other series Spring publishes per replica, and without that filter they would be the bulk
-# of this workspace's bill. Workspace-based, so the telemetry lands in AppMetrics/AppRequests in the
-# same workspace the alerts in modules/diagnostics already query, and inherits its retention.
-#
-# local_authentication_enabled = false: ingestion accepts Entra tokens only. The connection string
-# in the container's environment is then an address rather than a credential - nobody holding it
-# can send telemetry here - and the API authenticates as its managed identity, the way it reaches
-# blob storage. The grant is in modules/api_app, beside the identity it is granted to.
-#
-# Here rather than in modules/diagnostics because api_app needs its connection string, and
-# diagnostics already depends on api_app.
 resource "azurerm_application_insights" "main" {
   tags                         = local.tags
   name                         = "appi-kanban-${var.env}"
@@ -151,16 +131,9 @@ module "storage" {
   private_endpoint_subnet_id = module.vnet.storage_subnet_id
   tags                       = local.tags
 
-  # The two stores hold halves of the same attachment and nothing joins them, so the windows in
-  # which each can be rolled back have to be the same length or a restore produces rows with no
-  # bytes. Tied by default; attachment_retention_days unties it deliberately.
   retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
 }
 
-# Backs AuthRateLimiter's escalation (phase 3 of the container split plan): the one remaining
-# multi-replica blocker that costs a mailbox nothing to get wrong, unlike the outbox and the
-# deadline sweep already fixed. Shares the private-endpoint subnet with Key Vault rather than
-# getting one of its own - no new subnet, no new NSG rule.
 module "redis" {
   source                     = "./modules/redis"
   resource_group_name        = azurerm_resource_group.main.name
@@ -174,10 +147,6 @@ module "redis" {
   depends_on = [module.key_vault]
 }
 
-# WebSocketConfig's broker relay (the other half of phase 3): the one remaining piece of in-JVM
-# state the container split left behind. Lands in the same Container Apps environment as web_app and
-# api_app rather than a subnet of its own - internal TCP ingress within one environment needs no
-# private endpoint, unlike redis and postgres, which are separate managed services outside it.
 module "broker" {
   source                 = "./modules/broker"
   resource_group_name    = azurerm_resource_group.main.name
@@ -192,9 +161,6 @@ module "broker" {
   depends_on = [module.key_vault]
 }
 
-# The public edge: nginx, the bundle, and the proxy in front of the API. It holds the only external
-# ingress in this deployment, which is why the ingress restrictions and the origin everything else
-# is told about are its.
 module "web_app" {
   source                           = "./modules/web_app"
   resource_group_name              = azurerm_resource_group.main.name
@@ -246,16 +212,10 @@ module "api_app" {
   broker_username                  = module.broker.username
   tags                             = local.tags
 
-  # The browser's origin is the edge's FQDN, not this app's. Read from the web module's output
-  # rather than composed a second time here - see local.browser_origin in the module.
   web_app_name = module.web_app.app_name
 
   ingress_trusted_proxy_count = var.ingress_trusted_proxy_count
 
-  # module.redis and module.broker are here for the same reason module.postgres and module.storage
-  # are: the container app references REDIS-ACCESS-KEY and RABBITMQ-PASSWORD by Key Vault secret
-  # names it builds as strings, not as Terraform attribute references, so nothing but this
-  # depends_on orders either secret's creation ahead of the app that reads it.
   depends_on = [module.key_vault, module.postgres, module.storage, module.redis, module.broker]
 
   mail_delivery_report_key = var.mail_delivery_report_key
@@ -264,16 +224,6 @@ module "api_app" {
   app_insights_connection_string = azurerm_application_insights.main.connection_string
 }
 
-# Two modules compose the same FQDN from the same pattern and neither reads the other's resources,
-# which is what keeps them independent and is also how they could silently disagree: rename the API
-# app and the edge goes on proxying to a name nothing answers, which is a 502 on every API call and
-# a green apply. Checked here because this is the one place both outputs are in scope.
-# The pool and the server, which are a rule in two files with nothing but arithmetic between them:
-# api_db_connection_budget is what the fleet will ask for and usable_connections is what the SKU
-# has, and the failure when they disagree is the postgres_connections alert firing on refused
-# connections - a live outage as the diagnosis path. A check block warns rather than fails, which
-# is why DatabasePoolBudgetTest makes the same comparison on every build; this one is here because
-# it is the only place that reads the SKU actually being applied.
 check "api_connection_budget_fits_the_server" {
   assert {
     condition     = var.api_db_connection_budget <= module.postgres.usable_connections
@@ -301,24 +251,16 @@ module "diagnostics" {
   env                        = var.env
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-  # The API app. Every alert in this module is about the JVM - restarts, 5xx, the dead-letter and
-  # bounce queries - and none of them is about nginx. An edge that falls over takes the whole origin
-  # with it and shows up in the same 5xx rule from the other side, so a second set of alerts here
-  # would mostly double every page.
-  container_app_id     = module.api_app.container_app_id
-  container_app_env_id = module.vnet.container_app_env_id
-  resource_group_name  = azurerm_resource_group.main.name
-  alert_email          = var.alert_email
-  tags                 = local.tags
+  container_app_id           = module.api_app.container_app_id
+  container_app_env_id       = module.vnet.container_app_env_id
+  resource_group_name        = azurerm_resource_group.main.name
+  alert_email                = var.alert_email
+  tags                       = local.tags
 
   key_vault_id                 = module.key_vault.id
   postgres_server_id           = module.postgres.postgres_server_id
   acs_communication_service_id = var.acs_communication_service_id
 
-  # The webhook URL is the *edge's* ingress plus the key, assembled here so the two can't drift
-  # apart. Must be the edge: Event Grid can't reach an internal ingress, and nginx proxies
-  # /api/mail/delivery-reports for free. Event Grid validates this URL at creation time, so the web
-  # app must already be serving before this resource can be created.
   container_app_url        = module.web_app.container_app_url
   mail_delivery_report_key = var.mail_delivery_report_key
 }

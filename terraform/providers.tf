@@ -18,33 +18,24 @@ terraform {
     storage_account_name = "tfstatekanban"
     container_name       = "tfstate"
     use_azuread_auth     = true
-    // key = "terraform.tfstate" // optional
   }
 }
 
-# Every Azure service this deployment uses, so a subscription that has never used one registers it
-# rather than the resource failing with `MissingSubscriptionRegistration` (hit for
-# Microsoft.EventGrid on the first delivery-report apply - the provider's own defaults didn't cover
-# it). Listed exhaustively rather than just the gap, since registering an already-registered
-# namespace is a no-op and the list should describe this deployment, not one provider version's
-# blind spots. TerraformResourceProvidersRegisteredTest derives the same set from `resource
-# "azurerm_*"` blocks and fails the build if they disagree. Microsoft.Resources/Authorization are
-# the control plane itself and can't be unregistered, so they're absent deliberately.
 provider "azurerm" {
   use_cli         = true
   subscription_id = var.subscription_id
 
   resource_providers_to_register = [
-    "Microsoft.App",                 # container app + its managed environment
-    "Microsoft.Cache",               # the rate limiter's Redis instance
-    "Microsoft.DBforPostgreSQL",     # flexible server
-    "Microsoft.EventGrid",           # mail delivery-report system topic and subscription
-    "Microsoft.Insights",            # action group, alerts, scheduled query rules, diagnostics, application insights
-    "Microsoft.KeyVault",            # vault and secrets
-    "Microsoft.ManagedIdentity",     # the app's user-assigned identity
-    "Microsoft.Network",             # vnet, subnets, NSGs, private endpoints, private DNS
-    "Microsoft.OperationalInsights", # log analytics workspace
-    "Microsoft.Storage",             # attachment storage account
+    "Microsoft.App",
+    "Microsoft.Cache",
+    "Microsoft.DBforPostgreSQL",
+    "Microsoft.EventGrid",
+    "Microsoft.Insights",
+    "Microsoft.KeyVault",
+    "Microsoft.ManagedIdentity",
+    "Microsoft.Network",
+    "Microsoft.OperationalInsights",
+    "Microsoft.Storage",
   ]
 
   features {

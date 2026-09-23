@@ -14,14 +14,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-/**
- * Two things are worth pinning here, and neither is that mail gets sent: each named send composes
- * its own message and posts exactly one of them, and a refusal from the transport reaches the caller
- * - {@code AuthenticationService} and {@code PasswordResetService} both turn it into
- * {@code EMAIL_SEND_FAILED}, which they can only do if it gets past this class.
- */
 class EmailServiceTest {
-
     private static final LocalDateTime DEADLINE = LocalDateTime.of(2026, 1, 1, 9, 0);
 
     private final EmailSender sender = mock(EmailSender.class);

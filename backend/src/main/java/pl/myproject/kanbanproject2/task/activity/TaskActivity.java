@@ -19,14 +19,6 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDateTime;
 
-/**
- * One thing that happened to one task, and who did it. {@code task_column_history} already
- * records moves as an interval series with no actor, so it doesn't replace this table — both are
- * written from the same method in {@code TaskService}, which is what keeps them from drifting.
- * {@code taskTitle} and {@code actorName} are copies rather than references, since an entry that
- * resolved names on read would misrepresent a renamed task and lose everything once the task
- * itself is deleted.
- */
 @NoArgsConstructor
 @Setter
 @Getter
@@ -42,7 +34,6 @@ public class TaskActivity {
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
 
-    /** Null once the task is gone. The entry stays; see {@link #taskTitle}. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id")
     private Task task;
@@ -61,7 +52,6 @@ public class TaskActivity {
     @jakarta.persistence.Column(nullable = false, length = 24)
     private TaskActivityType type;
 
-    /** The column moved to, or the person assigned. Null for the types that need no object. */
     @jakarta.persistence.Column(name = "detail")
     private String detail;
 
@@ -78,11 +68,6 @@ public class TaskActivity {
         this.detail = detail;
     }
 
-    /**
-     * A task has no NOT NULL on its title, so the stand-in is chosen at write time — a marker
-     * rather than a sentence, since the client renders it in whichever of nine languages it's
-     * showing.
-     */
     private static String titleOf(Task task) {
         String title = task == null ? null : task.getTitle();
         return title == null || title.isBlank() ? "" : title;

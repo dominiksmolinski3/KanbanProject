@@ -8,12 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Unlike the other mappers this one is not a bare {@code Function}: a board renders differently
- * depending on who is asking, so the caller is part of the input. It also reaches past the entity
- * graph for {@code board_members.role} ({@code V21}), which {@link Board}'s own {@code @ManyToMany}
- * mapping does not carry - see {@link BoardRepository#findMemberRoles}.
- */
 @Component
 public class BoardMapper {
 
@@ -44,8 +38,6 @@ public class BoardMapper {
                         roleOf(roleByUserId, user.getId())))
                 .toList();
 
-        // The owner's write access never depends on the stored role, so this reads MEMBER for them
-        // without a lookup - BoardService.roleOf makes the same call for the access check itself.
         BoardRole callerRole = board.isOwnedBy(caller)
                 ? BoardRole.MEMBER
                 : roleOf(roleByUserId, caller == null ? null : caller.getId());

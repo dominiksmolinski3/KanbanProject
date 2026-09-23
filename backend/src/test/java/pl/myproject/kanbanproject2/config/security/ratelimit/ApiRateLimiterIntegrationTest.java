@@ -18,14 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The real {@code redis/api-rate-limit.lua} against a real Redis, on the same terms as
- * {@code RedisEscalationStoreIntegrationTest}: the CI backend job runs one as a service container,
- * and {@code REDIS_HOST}/{@code REDIS_PORT} point elsewhere locally. The clock is the test's, so a
- * refill is asserted without the test ever sleeping.
- */
 class ApiRateLimiterIntegrationTest {
-
     private static final ApiRateLimitProperties LIMIT = new ApiRateLimitProperties(true, 20, 100);
 
     private JedisConnectionFactory connectionFactory;
@@ -60,7 +53,6 @@ class ApiRateLimiterIntegrationTest {
         redis = new StringRedisTemplate(connectionFactory);
         redis.afterPropertiesSet();
         registry = new SimpleMeterRegistry();
-        // A fresh account per test, far above any id a real run would create.
         account = 1_000_000 + ThreadLocalRandom.current().nextInt(1_000_000);
     }
 
@@ -85,7 +77,6 @@ class ApiRateLimiterIntegrationTest {
         var refused = limiter.attempt(account);
 
         assertThat(refused.allowed()).isFalse();
-        // One token at twenty a second is fifty milliseconds away, which Retry-After rounds to a second.
         assertThat(refused.retryAfter().toMillis()).isEqualTo(50);
         assertThat(refused.retryAfterSeconds()).isEqualTo(1);
         assertThat(registry.counter(ApiRateLimiter.REFUSED_COUNTER).count()).isEqualTo(1);
@@ -149,7 +140,6 @@ class ApiRateLimiterIntegrationTest {
         replica().attempt(account);
 
         Long ttl = redis.getExpire("api-rate-limit:account:" + account);
-        // Full after 100 / 20 = 5 s, plus a second of margin.
         assertThat(ttl).isBetween(1L, 6L);
     }
 }

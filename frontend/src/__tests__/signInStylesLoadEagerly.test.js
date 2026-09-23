@@ -1,19 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-/*
- * The sign-in screen is the one screen that loads before any lazy route (FE-01), so a class it uses
- * that is styled only in a lazily-loaded stylesheet renders unstyled there - and only there, since
- * every other screen has pulled that stylesheet in by the time it draws. That is how the language
- * switcher fell out of its corner: `.language-switcher-container` sat in Board.css, which the
- * sign-in screen stopped loading when the routes were split. Jest maps every stylesheet to a proxy,
- * so no component test can see this; it is read out of the source instead.
- */
-
 const SRC = path.resolve(__dirname, '..');
 const SIGN_IN_COMPONENTS = ['components/HomePage.jsx', 'components/LanguageSwitcher.jsx', 'components/DemoBanner.jsx'];
 
-/** Stylesheets reachable from main.jsx through static imports only; `import()` is a lazy chunk. */
 function eagerStylesheets() {
   const seen = new Set();
   const css = new Set();
@@ -76,7 +66,6 @@ describe('the sign-in screen', () => {
   });
 
   test('the reader still sees the split it exists for', () => {
-    // A walk that followed lazy imports too would find Board.css eager and pass everything above.
     const names = [...eager].map(sheet => path.basename(sheet));
     expect(names).toEqual(expect.arrayContaining(['HomePage.css', 'LanguageSwitcher.css']));
     expect(names).not.toContain('Board.css');

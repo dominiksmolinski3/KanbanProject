@@ -51,21 +51,12 @@ public class ColumnService {
         return columnMapper.toResponseDto(created);
     }
 
-    /**
-     * Saves a column, tells the board's other viewers, and maps it. See
-     * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
-     */
     private ColumnDto saveAndAnnounce(Column column) {
         var saved = columnRepository.save(column);
         boardEvents.columnsChanged(saved.getBoard());
         return columnMapper.apply(saved);
     }
 
-    /**
-     * The next free position on this board, taken from the highest one in use rather than from a
-     * row count, since a count drops after any delete and two concurrent creates would read the
-     * same one.
-     */
     private int nextPosition(Board board) {
         return columnRepository.findMaxPosition(board).orElse(0) + 1;
     }
@@ -86,26 +77,11 @@ public class ColumnService {
         return saveAndAnnounce(existingColumn);
     }
 
-    /**
-     * Removes the column and, with it, the tasks still in it. {@code Column.tasks} cascades ALL,
-     * but the cascade alone fails on the foreign key from each task's {@code task_column_history}
-     * rows (not nullable), so the deletion goes through {@link TaskService#deleteTask} instead,
-     * which already unwinds history and parent/child links.
-     *
-     * <p>A task that passed through this column and later moved on leaves a
-     * {@code task_column_history} row behind that the loop above never touches, hitting the same
-     * foreign key. Those entries are detached rather than deleted, leaving the task and the rest of
-     * its history unaffected — the same reasoning {@code TaskActivityRecorder.detachFrom} applies.
-     */
     public void deleteColumn(User caller, Integer id) {
         var column = findColumn(caller, id);
         boardService.requireWritable(caller, column.getBoard());
 
-        // Emptied before the loop, not after it. Column.tasks cascades ALL, and deleting each task
-        // runs queries that flush first - so a task deleted in one iteration, still sitting in this
-        // collection, was persisted straight back by the next iteration's flush, and the commit then
-        // failed on a live task pointing at the deleted column. A column with two or more cards
-        // could not be deleted at all: 500, every time, measured.
+        // Clear before the loop: Column.tasks cascades ALL, so a mid-loop flush would re-persist tasks already deleted.
         if (column.getTasks() != null) {
             var tasks = List.copyOf(column.getTasks());
             column.getTasks().clear();
@@ -118,8 +94,6 @@ public class ColumnService {
         strandedHistory.forEach(entry -> entry.setColumn(null));
         taskColumnHistoryRepository.saveAll(strandedHistory);
 
-        // V23's ON DELETE SET NULL does the same in the database; clearing it here as well stops a
-        // board already loaded in this transaction from flushing the deleted id back over it.
         column.getBoard().forgetFlowColumn(column);
 
         columnRepository.delete(column);
@@ -137,11 +111,6 @@ public class ColumnService {
         return saveAndAnnounce(column);
     }
 
-    /**
-     * Renumbers a board's stages in one transaction, from the ids in the order they should read.
-     * One PATCH per column, the previous shape, could leave the board half-reordered once
-     * {@code @Version} made one write in the batch fail and the rest succeed.
-     */
     public List<ColumnDto> reorderColumns(User caller, List<Integer> orderedIds) {
         if (orderedIds.size() != Set.copyOf(orderedIds).size()) {
             throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
@@ -161,13 +130,6 @@ public class ColumnService {
         return reordered;
     }
 
-    /**
-     * Looks the column up and refuses to hand it back unless the caller is on its board.
-     *
-     * <p>A column on somebody else's board answers as one that is not there at all: same status,
-     * same body. Answering 403 would confirm the id is in use, which is enough to map out a board
-     * the caller cannot open.
-     */
     private Column findColumn(User caller, Integer id) {
         var column = columnRepository.findById(id).orElseThrow(() -> columnNotFound(id));
         if (!column.getBoard().isVisibleTo(caller)) {

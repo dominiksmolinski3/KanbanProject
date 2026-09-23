@@ -21,8 +21,6 @@ export const authService = {
       throw new Error(errorData || 'Registration failed');
     }
 
-    // 202 with no body, whether or not the address was new. Parsing this as JSON used to throw on
-    // an empty response, and reading an id out of it was the other half of the enumeration leak.
     return undefined;
   },
   
@@ -71,10 +69,6 @@ export const authService = {
     }
   },
   
-  /**
-   * Asks for a reset code. Answers 202 whether or not the address has an account, so there is
-   * nothing in the response to branch on - and nothing for a caller to learn from it either.
-   */
   requestPasswordReset: async (email) => {
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
@@ -105,7 +99,6 @@ export const authService = {
     }
   },
 
-  /** Authenticated: the interceptor attaches the token, since this path has no `/auth/` in it. */
   changePassword: async (userId, currentPassword, newPassword) => {
     const response = await fetch(`${API_BASE_URL}/users/${userId}/password`, {
       method: 'PATCH',
@@ -121,11 +114,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Exchanges a refresh token for a new pair. The old one is spent by the time this returns, so
-   * every caller has to go through `session.refreshSession`, which serialises them - presenting a
-   * spent token is what the server reads as theft.
-   */
   refresh: async (refreshToken) => {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
@@ -143,7 +131,6 @@ export const authService = {
     return await response.json();
   },
 
-  /** Ends one session on the server. Answers 204 whether or not the token was still live. */
   logout: async (refreshToken) => {
     const response = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
@@ -159,10 +146,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Every session the account can still use. Authenticated, unlike its neighbours here, so the
-   * interceptor has to attach a token - see `PUBLIC_AUTH_PATHS` in `apiInterceptor.js`.
-   */
   listDevices: async () => {
     const response = await fetch(`${API_BASE_URL}/auth/devices`);
 
@@ -174,10 +157,6 @@ export const authService = {
     return await response.json();
   },
 
-  /**
-   * Ends one session by id. A 404 covers every reason it could not be ended - it was somebody
-   * else's, or it had already lapsed - because the server refuses to say which.
-   */
   endDevice: async (sessionId) => {
     const response = await fetch(`${API_BASE_URL}/auth/devices/${sessionId}`, {
       method: 'DELETE'

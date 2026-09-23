@@ -5,14 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Both of these values arrive from the caller on an unauthenticated route, and both go into a
- * fixed-width column. That combination is the whole reason this record has a compact constructor
- * rather than being two bare strings: the alternative is a login that fails because somebody sent
- * a four-kilobyte {@code User-Agent}, which is a denial of service made of nothing.
- */
 class DeviceContextTest {
-
     @Test
     @DisplayName("a user agent longer than the column is cut, not refused - a login is not the place to be strict")
     void truncatesAnOverlongUserAgent() {

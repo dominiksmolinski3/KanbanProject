@@ -20,15 +20,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The indicator exists to make two deliberately quiet failures loud again, so what's worth
- * asserting is which status each produces and that neither is one a probe would act on. What this
- * can't show: the container's probes address the readiness/liveness groups rather than the root
- * endpoint, so mail being off can't restart the app - a fact about the Dockerfile and Terraform, not
- * this class.
- */
 class MailHealthIndicatorTest {
-
     private static final Instant NOW = Instant.parse("2026-09-03T12:00:00Z");
 
     private final OutboxEmailRepository outbox = mock(OutboxEmailRepository.class);
@@ -126,8 +118,6 @@ class MailHealthIndicatorTest {
 
         Health health = indicator.health();
 
-        // Still UP: reports arrive minutes late, so this can't be a status without going red after
-        // every signup - it just needs to be visible, since undelivered reads zero either way.
         assertThat(health.getStatus()).isEqualTo(Status.UP);
         assertThat(health.getDetails())
                 .containsEntry("undelivered", 0L)
@@ -182,8 +172,6 @@ class MailHealthIndicatorTest {
 
         Health health = indicator.health();
 
-        // Without this, a relay part-way through a batch and a relay with nothing to do report the
-        // same thing - and a relay killed mid-batch reports it until the lease lapses.
         assertThat(health.getDetails()).containsEntry("pending", 0L).containsEntry("sending", 6L);
     }
 }

@@ -189,7 +189,6 @@
   font-size: 0.9rem;
 }
 
-/* Menu Controls */
 .menu-controls {
   display: flex;
   justify-content: center;
@@ -230,7 +229,6 @@
   font-weight: 500;
 }
 
-/* Responsive Adjustments */
 @media (max-width: 768px) {
   .app-header {
     flex-direction: column;
@@ -272,7 +270,6 @@
   }
 }
 
-/* Dark Mode Styles */
 @media (prefers-color-scheme: dark) {
   .app-header {
     background-color: var(--surface-dark);

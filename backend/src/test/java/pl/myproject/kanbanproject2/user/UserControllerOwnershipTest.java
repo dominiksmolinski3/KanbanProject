@@ -15,15 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * The filter chain ends at {@code .anyRequest().authenticated()} and {@code getAuthorities()} is
- * empty, so nothing below the controller distinguishes one caller from another. These tests pin
- * the ownership check that stands in for the authorization model the app does not have yet.
- * {@code UserAvatarControllerOwnershipTest} pins the same rule for the avatar routes, which moved
- * to their own controller.
- */
 class UserControllerOwnershipTest {
-
     private static final Integer OWNER_ID = 1;
     private static final Integer VICTIM_ID = 2;
 

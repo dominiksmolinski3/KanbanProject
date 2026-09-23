@@ -44,29 +44,17 @@ export function AuthProvider({ children }) {
     verifyToken();
   }, [token]);
 
-  /**
-   * Takes the whole login response rather than the two fields it used to, because there are three
-   * now and the third one is the session. A response with no `refreshToken` — a server that has not
-   * been deployed yet — still signs in and simply cannot be renewed, which is the behaviour that
-   * was there before.
-   */
   const login = (session) => {
     storeSession(session);
     setToken(session.token);
   };
 
-  /** Drops what is held here without telling the server, for a session that is already over. */
   const forget = () => {
     clearSession();
     setToken(null);
     setUser(null);
   };
 
-  /**
-   * Signing out deliberately, which now means something on the server: the refresh token is
-   * withdrawn, so the session cannot be renewed by whoever else may hold it. The access token still
-   * runs to its own expiry — fifteen minutes — because nothing can retract a signed claim.
-   */
   const logout = async () => {
     setToken(null);
     setUser(null);

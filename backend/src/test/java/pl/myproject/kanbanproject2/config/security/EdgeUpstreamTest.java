@@ -10,25 +10,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Fails the build if the edge stops speaking to the API the way a Container Apps ingress requires.
- * The edge template is one file used two ways: {@code docker-compose} points it at a bare
- * container, and the deployment points it at an <em>ingress</em>, which is a router and turns away
- * two requests a bare container would have accepted - one without SNI, one whose {@code Host}
- * names a different app. Neither rejection can happen locally, which is why the container split
- * broke twice in a row on exactly these two lines and passed every suite in this repository both
- * times: first a 502 on every API call (SNI defaults off, so envoy can't tell which app the TLS
- * connection is for), then, once SNI was fixed, a 404 that was really the ingress's own
- * "Unavailable" page because {@code Host} still carried the browser's name instead of
- * {@code $proxy_host}.
- *
- * <p>This is deliberately a set of text assertions over the template rather than behavioural ones -
- * a behavioural test needs a real https upstream and an ingress that routes by name, a network
- * dependency this suite has none of. Both directives were verified by hand instead: the same image
- * against the same https upstream answers 403 with the TLS directives and 502 without them.
- */
 class EdgeUpstreamTest {
-
     private static final Path TEMPLATE = Path.of("..", "frontend", "nginx", "default.conf.template");
 
     @Test
@@ -80,16 +62,9 @@ class EdgeUpstreamTest {
     @Test
     @DisplayName("the name being verified is the host the upstream resolved to")
     void verifiesTheNameItResolved() throws IOException {
-        // $proxy_host is proxy_ssl_name's default; written out so a reader does not have to know
-        // that to see which name is being asserted. Anything else here would verify a certificate
-        // against a hostname nobody connected to.
         assertThat(directives()).contains("proxy_ssl_name $proxy_host;");
     }
 
-    /**
-     * The template with runs of whitespace collapsed, since the directives in it are column-aligned
-     * and what is being asserted is that a directive is present, not how it is spaced.
-     */
     private static String directives() throws IOException {
         assertThat(TEMPLATE).as("the edge template has moved or gone").isRegularFile();
         return Files.readString(TEMPLATE, StandardCharsets.UTF_8).replaceAll("[ \\t]+", " ");

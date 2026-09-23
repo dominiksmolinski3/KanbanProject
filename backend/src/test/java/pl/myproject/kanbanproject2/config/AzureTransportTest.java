@@ -10,15 +10,7 @@ import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Guards the transport swap in the POM, which nothing else can see. The Azure SDK picks its HTTP
- * client through a {@code ServiceLoader} at runtime, not compile time; the POM excludes Netty (the
- * Email client's default) in favour of the JDK client so a Tomcat application does not carry Netty
- * and Reactor Netty for a handful of messages a minute. Nothing about that exclusion is checked by
- * the compiler, so this is a build-time assertion about a runtime lookup instead.
- */
 class AzureTransportTest {
-
     @Test
     @DisplayName("the SDK resolves the JDK HTTP client, which is the one the POM leaves on the classpath")
     void theJdkTransportIsTheOneWiredUp() {

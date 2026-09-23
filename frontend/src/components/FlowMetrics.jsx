@@ -5,10 +5,8 @@ import { toast } from 'react-toastify';
 import { defineFlow, fetchFlowMetrics } from '../services/flowApi';
 import '../styles/components/FlowMetrics.css';
 
-/** The windows offered; all inside the server's 180-day limit, which it refuses rather than clamps. */
 const WINDOWS = [14, 30, 90, 180];
 
-/** Eight validated categorical slots (see FlowMetrics.css); a ninth column folds into "Other". */
 const MAX_SERIES = 8;
 
 const WIDTH = 720;
@@ -19,7 +17,6 @@ const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 const isoDate = (date) => date.toISOString().slice(0, 10);
 
-/** A round step giving three or four gridlines, so the axis reads without competing with the data. */
 function niceMax(value) {
   if (value <= 4) return Math.max(1, value);
   const step = Math.pow(10, Math.floor(Math.log10(value)));
@@ -37,10 +34,6 @@ function useDuration() {
   }, [t]);
 }
 
-/**
- * Where a tooltip sits: right of the point in the left half of the plot and left of it in the right
- * half, so a point at either edge never pushes its tooltip off the card.
- */
 const tooltipAt = (px) => {
   const left = (px / WIDTH) * 100;
   return { left: `${left}%`, transform: left > 50 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' };
@@ -48,14 +41,6 @@ const tooltipAt = (px) => {
 
 const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-/**
- * The board's flow (FEAT-07): a cumulative flow diagram, the cycle times of what finished, and
- * throughput - all read from `task_column_history`, which the server has recorded on every move
- * all along and which, until now, only the task panel read, one card at a time.
- *
- * Every chart has a table beside it: three of the eight band colours sit under 3:1 against the
- * light surface, and a table is the relief that makes the numbers readable without the colour.
- */
 function FlowMetrics() {
   const { activeBoardId, activeBoard } = useKanban();
   const { t } = useTranslation();
@@ -67,12 +52,8 @@ function FlowMetrics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  // Bumped after the board's definition changes, so the same choices are asked for again.
   const [revision, setRevision] = useState(0);
 
-  // Only the newest request may draw. Changing two controls quickly sends two requests, and the
-  // older one arriving last would otherwise show numbers for a choice nobody can see any more -
-  // the race TaskSearch guards the same way.
   const latest = useRef(0);
 
   const load = useCallback(async () => {
@@ -106,9 +87,6 @@ function FlowMetrics() {
     load();
   }, [load, revision]);
 
-  // A column id means nothing on another board, and the server would refuse it with a 400. Only a
-  // real switch clears the choice: the board resolving for the first time is not one, and treating
-  // it as one threw away a column somebody had already picked.
   const shownBoard = useRef(activeBoardId);
   useEffect(() => {
     if (shownBoard.current !== null && shownBoard.current !== undefined && shownBoard.current !== activeBoardId) {
@@ -123,12 +101,7 @@ function FlowMetrics() {
   const definedStart = nameOf(data?.definedStartColumnId);
   const definedDone = nameOf(data?.definedDoneColumnId);
 
-  // FLOW-02: the board's own definition is what the screen opens on, so everyone reads one answer.
-  // The owner may make what they are looking at the board's; everyone else can still look through
-  // other columns, which changes nothing for anybody but them.
   const [saving, setSaving] = useState(false);
-  // Offered once somebody has picked a column and the answer no longer matches the board's - not
-  // on opening, where saving would only write the default down under another name.
   const differsFromBoard = data !== null && (start !== '' || done !== '')
     && (data.startColumnId !== data.definedStartColumnId || data.doneColumnId !== data.definedDoneColumnId);
   const hasDefinition = data !== null
@@ -139,8 +112,6 @@ function FlowMetrics() {
     try {
       await defineFlow({ boardId: activeBoardId, ...definition });
       toast.success(t('flow.definitionSaved'));
-      // The board now says what the selects were saying, so they go back to "as the board defines",
-      // and the revision asks again even when they already were.
       setStart('');
       setDone('');
       setRevision(value => value + 1);
@@ -249,13 +220,6 @@ function FlowMetrics() {
   );
 }
 
-// ------------------------------------------------------------------ cumulative flow ---
-
-/**
- * The series the chart draws, in board order. Past eight columns the earliest fold into one
- * "Other" band - a ninth generated hue would be indistinguishable from its neighbours - and the
- * columns people watch most (the later ones, nearest done) keep their own colours.
- */
 function useSeries(data) {
   const { t } = useTranslation();
   return useMemo(() => {
@@ -283,8 +247,6 @@ function CumulativeFlow({ data }) {
   const x = (i) => MARGIN.left + (days.length === 1 ? PLOT_W / 2 : (i / (days.length - 1)) * PLOT_W);
   const y = (v) => MARGIN.top + PLOT_H - (v / max) * PLOT_H;
 
-  // Stacked from the bottom in reverse board order, so done sits on the baseline and the backlog
-  // on top - the conventional reading, where the band widths are the work in each stage.
   const stacked = [...series].reverse();
   const bands = [];
   const base = days.map(() => 0);
@@ -368,7 +330,6 @@ function CumulativeFlow({ data }) {
   );
 }
 
-/** `counts` keeps every gridline on a whole number - half a card is not a quantity anybody has. */
 function Axis({ max, y, days, x, counts = false, format = (v) => Math.round(v * 10) / 10 }) {
   const ticks = [...new Set(counts ? [0, Math.round(max / 2), max] : [0, max / 2, max])];
   const labelled = days.length > 2 ? [0, Math.floor((days.length - 1) / 2), days.length - 1] : days.map((_, i) => i);
@@ -388,8 +349,6 @@ function Axis({ max, y, days, x, counts = false, format = (v) => Math.round(v * 
     </g>
   );
 }
-
-// ------------------------------------------------------------------ cycle time ---
 
 function CycleTimes({ data, duration }) {
   const { t } = useTranslation();
@@ -474,8 +433,6 @@ function CycleTimes({ data, duration }) {
     </section>
   );
 }
-
-// ------------------------------------------------------------------ throughput ---
 
 function Throughput({ data }) {
   const { t } = useTranslation();

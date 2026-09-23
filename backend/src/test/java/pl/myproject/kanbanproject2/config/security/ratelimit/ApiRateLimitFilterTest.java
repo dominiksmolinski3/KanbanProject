@@ -27,12 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Which requests spend a token, and what a refusal looks like on the wire. The bucket itself is
- * {@link ApiRateLimiterIntegrationTest}'s, against real Redis.
- */
 class ApiRateLimitFilterTest {
-
     private final ApiRateLimiter limiter = mock(ApiRateLimiter.class);
     private final ApiRateLimitFilter filter = new ApiRateLimitFilter(limiter, new ObjectMapper());
 

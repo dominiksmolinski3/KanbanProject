@@ -12,15 +12,7 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two ways this could go back to being decorative, checked at build time: a DTO field being
- * deleted or renamed (Spring Boot disables {@code FAIL_ON_UNKNOWN_PROPERTIES}, so a token sent to a
- * DTO with no matching field is dropped in silence), and a new route taking a body with a captcha
- * that never verifies it - which the list below forces to be a deliberate omission.
- */
 class CaptchaCoverageTest {
-
-    /** The routes the widget covers on the client, and therefore the ones that must verify. */
     private static final String[] CAPTCHA_ROUTES = {"login", "register"};
 
     @Test

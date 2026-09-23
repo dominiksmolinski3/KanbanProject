@@ -42,19 +42,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * SEC-01 and SEC-05, stated as the property they are: <b>one account's board is invisible to
- * another's, on every route that reaches it.</b> Two tenants, each with a board, a column, a
- * swimlane and a task; the services are real and only the repositories are mocked, so
- * the check under test is the one that ships, including {@link BoardService} itself. Task
- * attachment ownership has its own suite, {@code TaskAttachmentServiceTest}, and so does an
- * avatar's, {@code AvatarServiceTest} - neither is board-scoped, so neither belongs here.
- *
- * <p>The expected status is 404 throughout, never 403 — a 403 on {@code /api/tasks/{id}} would let
- * a caller walk the id space and learn the size and shape of a board they cannot open.
- */
 class TenantIsolationTest {
-
     private static final int MINE = 1;
     private static final int THEIRS = 2;
 
@@ -230,8 +218,6 @@ class TenantIsolationTest {
             when(taskRepository.findById(3)).thenReturn(Optional.of(mine));
             theirTask(7);
 
-            // Otherwise one board's progress would wait on work its members cannot see, and the
-            // un-completion cascade would reach into a board the caller was never on.
             expect(ExceptionIdentifier.PARENT_TASK_NOT_FOUND,
                     () -> taskService.assignParentTask(me, 3, 7));
         }
@@ -296,7 +282,6 @@ class TenantIsolationTest {
             verify(rowRepository).findByBoardOrderByPositionAsc(myBoard);
         }
 
-        /** ColumnDto carries a task list; only the patched fields matter here. */
         private static final class ColumnDtoStub {
             pl.myproject.kanbanproject2.layout.column.ColumnDto dto() {
                 return new pl.myproject.kanbanproject2.layout.column.ColumnDto(
@@ -315,8 +300,6 @@ class TenantIsolationTest {
             var listed = userService.getVisibleUsers(me);
 
             assertThat(listed).extracting(u -> u.id()).containsExactly(MINE);
-            // It used to answer userRepository.findAll(): every address and display name on the
-            // deployment, to anyone who could log in.
             verify(userRepository, never()).findAll();
         }
 
@@ -333,8 +316,6 @@ class TenantIsolationTest {
         @Test
         @DisplayName("the caller is listed once, not once per instance of themselves")
         void theCallerIsNotDuplicated() {
-            // Found by running it: the caller and the board's members are two objects for the same
-            // account, and User inherits identity equality, so a Set kept both.
             myBoard.addMember(me);
 
             assertThat(userService.getVisibleUsers(me)).hasSize(1);

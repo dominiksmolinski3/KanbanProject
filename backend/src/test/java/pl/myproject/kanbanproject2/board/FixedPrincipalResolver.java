@@ -7,15 +7,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import pl.myproject.kanbanproject2.user.User;
 
-/**
- * Stands in for {@code @AuthenticationPrincipal}, which a standalone MockMvc setup does not wire.
- *
- * <p>Every board route now takes the caller, so every HTTP test needs one. Hoisting it out of
- * {@code UserControllerHttpTest}, where it started, keeps the six of them from each growing their
- * own copy.
- */
 public final class FixedPrincipalResolver implements HandlerMethodArgumentResolver {
-
     private final User caller;
 
     public FixedPrincipalResolver(User caller) {

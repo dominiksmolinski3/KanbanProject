@@ -33,12 +33,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The rules the whole authorization model rests on, asserted where they are written rather than
- * once per feature that consults them.
- */
 class BoardServiceTest {
-
     private BoardRepository boardRepository;
     private ColumnRepository columnRepository;
     private RowRepository rowRepository;
@@ -142,8 +137,6 @@ class BoardServiceTest {
         @DisplayName("membership compares ids - the caller and the member are different instances")
         void comparesOnIdRatherThanIdentity() {
             var board = boardOf(owner, member);
-            // The caller arrives from the JWT filter; the members come out of the persistence
-            // context. User does not implement equals, so identity comparison would fail here.
             var sameAccountDifferentInstance = TenancyFixtures.user(2);
 
             assertThat(board.isVisibleTo(sameAccountDifferentInstance)).isTrue();
@@ -258,8 +251,6 @@ class BoardServiceTest {
 
             var board = boardService.provisionFor(owner);
 
-            // Done, not the last column: the default board ends Done, Closed, and measuring to Closed
-            // is what opened the flow screen on "0 finished" for a team that stops at Done.
             assertThat(board.getFlowStartColumn().getName()).isEqualTo("In Progress");
             assertThat(board.getFlowDoneColumn().getName()).isEqualTo("Done");
         }
@@ -274,8 +265,6 @@ class BoardServiceTest {
 
             assertThat(board).isSameAs(legacy);
             assertThat(board.isOwnedBy(owner)).isTrue();
-            // Adopting rather than creating is what keeps V3's eight seeded stages reachable; a
-            // second set would mean the fresh install came up with sixteen.
             verify(columnRepository, never()).save(any());
         }
 
@@ -305,8 +294,6 @@ class BoardServiceTest {
     @DisplayName("members")
     class Members {
 
-        // Putting somebody on a board is now the last step of accepting an invitation; the checks
-        // that used to live here moved to BoardInvitationServiceTest.
         @Test
         @DisplayName("an accepted invitee joins the list, and joining twice does not double them up")
         void acceptedInviteeJoins() {
@@ -332,8 +319,6 @@ class BoardServiceTest {
             boardService.removeMember(member, 10, 2);
 
             assertThat(board.isVisibleTo(member)).isFalse();
-            // A stale assignment would keep their name on a board they can no longer open, and
-            // keep counting against their WIP limit for work they cannot reach.
             assertThat(task.getUsers()).isEmpty();
         }
 
@@ -354,8 +339,6 @@ class BoardServiceTest {
         void theOwnerStays() {
             boardOf(owner, member);
 
-            // Nothing anywhere can appoint a new owner, so a board without one would be a board
-            // nobody could rename, share or delete.
             assertThatThrownBy(() -> boardService.removeMember(owner, 10, 1))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
@@ -399,9 +382,6 @@ class BoardServiceTest {
 
             boardService.deleteBoard(owner, 10);
 
-            // task_column_history.task_id is not nullable and nothing cascades to it; a parent
-            // cannot be deleted while a child still points at it. Both are why this is not a
-            // single deleteAll.
             assertThat(child.getParentTask()).isNull();
             verify(historyRepository).deleteAll(any());
             verify(taskRepository).deleteAll(tasks);
@@ -441,8 +421,6 @@ class BoardServiceTest {
 
             boardService.deleteBoard(owner, 10);
 
-            // The order is the fix: a listener that ran after the tasks' DELETE would meet the
-            // foreign key that made this a 500 in the first place.
             var order = org.mockito.Mockito.inOrder(events, taskRepository);
             order.verify(events).publishEvent(new BoardTasksDeleting(board, tasks));
             order.verify(taskRepository).deleteAll(tasks);

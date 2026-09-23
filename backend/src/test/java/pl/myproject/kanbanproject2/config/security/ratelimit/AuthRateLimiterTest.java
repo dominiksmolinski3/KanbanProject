@@ -14,12 +14,7 @@ import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimi
 import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitRule.EMAIL;
 import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitTestSupport.properties;
 
-/**
- * The test properties give CREDENTIALS four free attempts per address and two per account, and
- * EMAIL three per address and two per account, with a fifteen-second base cooldown throughout.
- */
 class AuthRateLimiterTest {
-
     private final AuthRateLimitTestSupport.FakeClock clock = new AuthRateLimitTestSupport.FakeClock();
     private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final AuthRateLimiter limiter =
@@ -44,14 +39,11 @@ class AuthRateLimiterTest {
             limiter.tryConsume(CREDENTIALS, IP, "198.51.100.7");
         }
 
-        // Each retry is taken exactly when the previous wait runs out, which is what a person
-        // watching a countdown does - so the next one is the next rung of the ladder.
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(15);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(30);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(60);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(120);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(240);
-        // 480 would be next, but the test ceiling is five minutes.
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(300);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(300);
     }
@@ -59,8 +51,6 @@ class AuthRateLimiterTest {
     @Test
     @DisplayName("the first wait a person meets is fifteen seconds, not the rest of the hour")
     void theFirstWaitOnTheEmailLimitIsShort() {
-        // The signup that started this: an address that has just asked for two mails asks for a
-        // third. It used to be refused for the eleven minutes until a token trickled back.
         limiter.tryConsume(EMAIL, ACCOUNT, "someone@example.test");
         limiter.tryConsume(EMAIL, ACCOUNT, "someone@example.test");
 
@@ -100,8 +90,6 @@ class AuthRateLimiterTest {
         assertThat(first.retryAfterSeconds()).isEqualTo(15);
         assertThat(afterTenMoreTries).isNotNull();
         assertThat(afterTenMoreTries.allowed()).isFalse();
-        // Five seconds of hammering later, five seconds less to wait - the countdown is the clock's,
-        // not a punishment that restarts on every try.
         assertThat(afterTenMoreTries.retryAfterSeconds()).isEqualTo(10);
     }
 
@@ -125,8 +113,6 @@ class AuthRateLimiterTest {
             limiter.tryConsume(CREDENTIALS, IP, "198.51.100.7");
         }
 
-        // Twenty minutes of trying once a minute - longer than the fifteen-minute window, but never
-        // fifteen quiet minutes, so the escalation stands rather than resetting under the traffic.
         for (int minute = 0; minute < 20; minute++) {
             clock.advance(Duration.ofMinutes(1));
             limiter.tryConsume(CREDENTIALS, IP, "198.51.100.7");
@@ -241,13 +227,10 @@ class AuthRateLimiterTest {
     @Test
     @DisplayName("a ceiling below the base, or a window below the ceiling, is refused too")
     void rejectsAnEscalationThatCouldNotEscalate() {
-        // A ceiling under the base would make the first wait the longest one there is.
         assertThatThrownBy(() -> withCredentialLimits(4, 2, Duration.ofMinutes(1), Duration.ofSeconds(15)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("credential-max-cooldown");
 
-        // A window under the ceiling would forgive a key while it is still serving its longest
-        // wait, so sitting one out would hand the whole burst back.
         assertThatThrownBy(() -> new AuthRateLimitProperties(
                 true, 0, 1000,
                 4, 2, Duration.ofSeconds(15), Duration.ofMinutes(30), Duration.ofMinutes(15),
@@ -276,13 +259,10 @@ class AuthRateLimiterTest {
         assertThat(AuthRateLimitRule.forPath("/api/tasks")).isEmpty();
         assertThat(AuthRateLimitRule.forPath(null)).isEmpty();
 
-        // The endpoints moved under /api with the global path prefix. Matching the old paths would
-        // mean the limiter is guarding URLs nothing serves any more, while the live ones run free.
         assertThat(AuthRateLimitRule.forPath("/auth/login")).isEmpty();
         assertThat(AuthRateLimitRule.forPath("/auth/signup")).isEmpty();
     }
 
-    /** Takes the attempt the moment its cooldown expires, and answers the next wait in seconds. */
     private long waitAfterSittingOutTheCooldown() {
         AuthRateLimitDecision refused = limiter.tryConsume(CREDENTIALS, IP, "198.51.100.7");
         assertThat(refused.allowed()).isFalse();

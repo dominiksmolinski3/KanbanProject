@@ -1,38 +1,3 @@
-// ***********************************************
-// This example commands.js shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-
-
-// Cypress's default test isolation clears localStorage before every single test, and nearly
-// every spec logs in from its own beforeEach - across the whole suite that is dozens of real
-// POST /api/auth/login calls inside a couple of minutes, which is exactly what AuthRateLimiter's
-// escalating cooldown (see CLAUDE.md, "The rate limiter is a burst then a doubling cooldown") is
-// built to slow down. cy.session() is the Cypress-native fix: it logs in for real once, caches
-// the resulting localStorage, and restores that cache for every later test instead of re-running
-// the login form - `cacheAcrossSpecs` extends that cache to the whole `cypress run`, not just one
-// spec file, since every spec here shares the one seeded account.
 Cypress.Commands.add('login', (email, password) => {
   cy.session(
     [email, password],
@@ -56,10 +21,6 @@ Cypress.Commands.add('login', (email, password) => {
   cy.wait(300);
 });
 
-// The one seeded, project-owned account the whole suite signs in as - see
-// frontend/cypress/fixtures/test-account.json and frontend/cypress/seed-test-account.js for how
-// it gets created and verified before the run starts. Specs should call this rather than
-// cy.login() with credentials of their own, so the account lives in exactly one place.
 Cypress.Commands.add('loginAsTestUser', () => {
   cy.fixture('test-account').then((account) => {
     cy.login(account.email, account.password);
@@ -131,18 +92,6 @@ Cypress.Commands.add('drag', { prevSubject: 'element' }, (subject, targetSelecto
   target.trigger('dragover', { dataTransfer });
   target.trigger('drop', { dataTransfer });
 
-  // The drop above can make the app re-render and replace this exact node - moving a task
-  // optimistically re-renders the column/row it left, and if that happens before dragend fires,
-  // `subject` (captured once, at the top of this command) is a detached element. dragend is
-  // native drag-and-drop cleanup on the *source*, and a source that is no longer in the document
-  // has nothing left to clean up, so it is only fired when the node is still attached.
-  //
-  // `{ force: true }` matters as much as the check above: without it, `.trigger()` still spends
-  // up to its own command timeout *waiting* for the element to become actionable before firing,
-  // and the same re-render can detach it during that wait - the isAttached check above passing
-  // proves nothing about what happens a moment later, inside trigger()'s own retry loop. Forcing
-  // skips that wait and dispatches immediately against the node this command already confirmed
-  // is still there, which is the only way to close the race rather than just narrow it.
   cy.wrap(subject, { log: false }).then($el => {
     if (Cypress.dom.isAttached($el)) {
       cy.wrap($el, { log: false }).trigger('dragend', { dataTransfer, force: true });
@@ -168,12 +117,6 @@ Cypress.Commands.add('setupTaskWithSubtasks', (title, subtasks = []) => {
   cy.createTask(title);
   cy.contains('.task', title).click();
     
-  // Each add waits for its own result before the next one types. Adding a subtask makes the panel
-  // re-read itself, and while it does it swaps the whole form for a loading line - so typing the
-  // next title straight after the click raced that swap, and on a slower machine lost it: Cypress
-  // typed into an input that was already on its way out and reported it disabled. The subtask
-  // appearing in the list, and the input coming back empty, are the two things that say the
-  // re-read has finished.
   subtasks.forEach(subtask => {
     cy.get('.subtask-input').should('have.value', '').type(`${subtask}`);
     cy.get('.add-subtask-btn').click();
@@ -184,11 +127,6 @@ Cypress.Commands.add('setupTaskWithSubtasks', (title, subtasks = []) => {
   cy.wait(300);
 });
 
-// Cleanup's own first move, regardless of which spec called it: a task panel left open by a
-// failed test sits in the same component tree as the board grid (see Board.jsx/Task.jsx), so it
-// does not block clicks on `.delete-btn`/`.delete-column-btn` underneath it - but every command
-// below still expects a clean board, and closing the panel first is one assertion cheaper than
-// discovering later that it was in the way.
 Cypress.Commands.add('closePanelIfOpen', () => {
   cy.get('body').then($body => {
     if ($body.find('.close-panel-btn').length > 0) {
@@ -197,13 +135,6 @@ Cypress.Commands.add('closePanelIfOpen', () => {
   });
 });
 
-// Guarded on `.delete-btn`, which is the element the next line actually clicks, rather than on
-// `.task`. Task.jsx renders the button unconditionally inside every card, so the two could only
-// ever disagree across a re-render - and that is exactly what happened: the snapshot caught a card
-// on its way out, `cy.get('.delete-btn')` then retried for four seconds against a board that was
-// legitimately empty, and the whole afterEach hook failed. Guarding on the thing being clicked
-// turns that into the recursion stopping, which is what it meant. It survived for as long as it
-// did because the specs using it left one or two tasks behind; the journey spec leaves four.
 Cypress.Commands.add('deleteTasks', () => {
   cy.closePanelIfOpen();
   cy.get('body').then($body => {
@@ -212,32 +143,12 @@ Cypress.Commands.add('deleteTasks', () => {
       return;
     }
     cy.get('.delete-btn').first().click();
-    // Task.jsx renders the confirmation as an overlay beside the card rather than in place of it,
-    // so the card and its .delete-btn stay mounted throughout - which is what makes counting them
-    // a reliable measure of how many cards are left.
     cy.get('.confirm-delete-btn').first().click({ force: true });
-    // Wait for the board to actually lose the card rather than a fixed 300ms, which is what let
-    // the next iteration snapshot a board that had not caught up yet.
     cy.get('.delete-btn', { timeout: 10000 }).should('have.length', remaining - 1);
     cy.deleteTasks();
   });
 });
 
-// Deleting a column or row asks for confirmation through a react-toastify toast
-// (Board.jsx's handleDeleteColumnClick/handleDeleteRowClick render a `.confirm-button` inside
-// the toast) rather than a native window.confirm(). cy.on('window:confirm', ...) in the specs'
-// afterEach hooks never sees that dialog, so the delete button alone only opens the toast - the
-// item is never actually removed. Clicking `.confirm-button` is what completes the deletion;
-// without it these commands recurse forever, since their own exit condition never becomes true.
-//
-// The toast's exit animation outlives a fixed cy.wait(), so the still-fading-out toast from one
-// iteration can still be in the DOM when the next delete opens a new one - `.first()` picks the
-// live one over the stale one, and asserting the toast is gone (rather than just waiting a fixed
-// amount of time) is what stops two of them from ever being on screen at once.
-//
-// `th` here is [grid-corner, column, column, ..., add-placeholder-header] - a real column never
-// sits at index 0 (the corner) or the last index (the "+ Add column" placeholder, which has no
-// .delete-column-btn), so eq(1) is always a real one to delete, all the way down to none left.
 Cypress.Commands.add('deleteColumns', () => {
   cy.get('th').then($columns => {
     if ($columns.length > 2) {
@@ -250,11 +161,6 @@ Cypress.Commands.add('deleteColumns', () => {
   cy.wait(300);
 });
 
-// `.grid-row-header` here is [row, row, ..., add-placeholder-row] - no leading structural cell
-// the way columns have a corner, but the trailing "+ Add row" placeholder carries the same class
-// and has no .delete-row-btn. The app itself refuses to delete the last row (Board.jsx's
-// handleDeleteRowClick), so this stops one row early: length > 2 means at least two real rows
-// remain, and eq(0) is always one of them.
 Cypress.Commands.add('deleteRows', () => {
   cy.get('.grid-row-header').then($rowHeaders => {
     if ($rowHeaders.length > 2) {
@@ -267,14 +173,6 @@ Cypress.Commands.add('deleteRows', () => {
   cy.wait(300);
 });
 
-// Board.jsx only draws a grid band per entry in `rows` (`enhancedRows = rows.map(...)`), so a task
-// with no row of its own renders nowhere at all the moment the board has zero real rows - a task
-// still exists, the toast still says so, but there is no cell to draw its card in. A brand-new
-// board (BoardService.DEFAULT_COLUMNS seeds columns, never a row) starts at exactly zero, so any
-// spec that creates a task without first creating - or otherwise being sure of - a row of its own
-// was always leaning on one being left behind by whichever spec happened to run first. This makes
-// that assumption true rather than lucky: `.grid-row-header` is [row, row, ..., add-placeholder],
-// so length 1 means no real row exists yet.
 Cypress.Commands.add('ensureRowExists', () => {
   cy.get('.grid-row-header').then($rowHeaders => {
     if ($rowHeaders.length <= 1) {

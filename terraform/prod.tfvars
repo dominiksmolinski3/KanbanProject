@@ -9,8 +9,6 @@ postgres_zone                      = "1"
 postgres_high_availability_mode    = "ZoneRedundant"
 postgres_standby_availability_zone = "2"
 
-# 35 days is the longest point-in-time window Azure offers. Geo-redundancy is fixed at create
-# time, so it has to be right before the server holds anything worth keeping.
 postgres_backup_retention_days        = 35
 postgres_geo_redundant_backup_enabled = true
 
@@ -18,6 +16,4 @@ key_vault_purge_protection_enabled     = true
 key_vault_soft_delete_retention_days   = 90
 key_vault_purge_soft_delete_on_destroy = false
 
-# The app's own generated Container Apps URL is always allowed automatically; this is the
-# custom domain visitors actually use, which needs to be an allowed CORS origin too.
 extra_cors_origins = ["https://kanbanproject.pl", "https://www.kanbanproject.pl"]

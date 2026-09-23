@@ -31,14 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * The unauthenticated routes used to answer a different status for every state an address could be
- * in (409 exists, 404 does not, 400 already verified), partitioning every address into answerable
- * buckets. These tests are written as differences rather than outcomes: what matters is that two
- * calls a caller could use to tell states apart are indistinguishable from the outside.
- */
 class AuthenticationServiceEnumerationTest {
-
     private static final String KNOWN = "known@example.test";
     private static final String UNKNOWN = "unknown@example.test";
 
@@ -63,8 +56,6 @@ class AuthenticationServiceEnumerationTest {
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
-        // Issuing is somebody else's contract; every path that reaches a session needs one back,
-        // and the cases below that care about its contents restub it.
         when(refreshTokenService.issue(any(), any()))
                 .thenReturn(new RefreshTokenService.Issued("a-refresh-token", 12L));
     }

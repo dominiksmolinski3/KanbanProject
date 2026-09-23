@@ -1,9 +1,5 @@
 name: Dependency vulnerability sweep
 
-# dependency-review.yml only ever looks at what a PR diff adds, so a CVE disclosed
-# against a dependency nobody's PR touches is invisible until Dependabot's own
-# advisory sync opens a bump PR for it. This scans the whole tree on a schedule,
-# independent of that lag.
 on:
   schedule:
     - cron: '0 6 * * 1'
@@ -38,9 +34,6 @@ jobs:
           sarif_file: trivy-fs-results.sarif
           category: trivy-fs
 
-  # A CVE disclosed against a dependency is the output of this sweep, and until now the only place
-  # it landed was the Security tab - which has to be visited. A sweep that breaks outright landed
-  # nowhere at all: a red weekly cron on a repository nobody watches is invisible.
   scan-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ trivy-fs-scan ]

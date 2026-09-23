@@ -30,14 +30,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * That the feed is actually fed. {@link pl.myproject.kanbanproject2.task.activity.TaskActivityServiceTest}
- * covers what an entry is and how the feed is read; this covers the half that can silently stop
- * happening — a recording call is a side effect nothing else depends on, so deleting one breaks no
- * test and just leaves a feed that quietly stops mentioning an event.
- */
 class TaskServiceActivityTest {
-
     private TaskRepository taskRepository;
     private UserRepository userRepository;
     private UserService userService;
@@ -129,8 +122,6 @@ class TaskServiceActivityTest {
         taskService.updateTaskCompletion(caller, 5, true);
         verify(activityRecorder).completionChanged(caller, task, true);
 
-        // Already complete. A request that changes nothing is not an event, and a feed that
-        // records it fills with entries nobody performed.
         taskService.updateTaskCompletion(caller, 5, true);
         verify(activityRecorder).completionChanged(caller, task, true);
 
@@ -138,11 +129,6 @@ class TaskServiceActivityTest {
         verify(activityRecorder).completionChanged(caller, task, false);
     }
 
-    /**
-     * The order is the assertion: the entry is written while the task still exists, so it can
-     * copy the title, and remaining entries are detached before the row goes, since there is no
-     * cascade on that column.
-     */
     @Test
     @DisplayName("a deletion is recorded before the task goes, and its entries are detached rather than deleted")
     void deletionIsRecordedThenDetached() {
@@ -165,11 +151,6 @@ class TaskServiceActivityTest {
         return column;
     }
 
-    /**
-     * The move is the one event with two records, written together in {@code moveToColumn} so
-     * they can't drift — {@code task_column_history} is an interval series with no actor, and this
-     * is the actor log.
-     */
     @Test
     @DisplayName("a move writes a history row and a feed entry, and the entry names the column")
     void aMoveIsRecordedBesideTheHistoryRow() {

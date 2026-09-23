@@ -19,12 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * The per-user WIP limit is the only one the server actually enforces — column and row limits are
- * advisory — so what this route reports is what a client can say about it.
- */
 class UserServiceWipStatusTest {
-
     private static final Integer USER_ID = 7;
 
     private UserRepository userRepository;
@@ -35,9 +30,6 @@ class UserServiceWipStatusTest {
     void setUp() {
         userRepository = mock(UserRepository.class);
         var tenant = TenancyFixtures.tenant();
-        // The caller asks about their own account, which is the one id the visibility check lets
-        // through without consulting a board at all. What these tests are about is the arithmetic
-        // on the far side of that check.
         caller = tenant.caller();
         caller.setId(USER_ID);
         userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class),

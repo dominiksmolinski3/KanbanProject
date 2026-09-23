@@ -24,10 +24,6 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      // v7's `recommended` folded in the React Compiler rule set (immutability, refs,
-      // set-state-in-effect, purity, ...) as errors. Adopting that across the app is a
-      // deliberate refactor, not a dependency bump, so pin to the rules this project has
-      // always enforced and leave the rest for a follow-up.
       'react-hooks/rules-of-hooks': reactHooks.configs.recommended.rules['react-hooks/rules-of-hooks'],
       'react-hooks/exhaustive-deps': reactHooks.configs.recommended.rules['react-hooks/exhaustive-deps'],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
@@ -38,7 +34,6 @@ export default [
     },
   },
   {
-    // Run by node in CI, not bundled for the browser.
     files: ['cypress/shard.js'],
     languageOptions: { globals: globals.node },
   },

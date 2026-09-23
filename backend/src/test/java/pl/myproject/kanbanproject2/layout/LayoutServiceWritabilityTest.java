@@ -39,15 +39,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * FEAT-08 on the layout side, the {@code ColumnService}/{@code RowService} half of
- * {@code TaskServiceWritabilityTest}: every mutation asks {@code BoardService.requireWritable},
- * which a viewer fails with {@code VIEWER_READ_ONLY} (403) even though the object is visible to
- * them. A fresh {@link TenancyFixtures.Tenant} per test, unlike {@code LayoutServiceTest}'s shared
- * static one, since a re-stubbed {@code requireWritable} would otherwise leak into other tests.
- */
 class LayoutServiceWritabilityTest {
-
     private TenancyFixtures.Tenant tenant;
     private User caller;
     private Board board;

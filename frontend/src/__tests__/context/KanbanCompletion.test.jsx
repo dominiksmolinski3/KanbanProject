@@ -42,11 +42,6 @@ jest.mock('../../services/api', () => ({
   setActiveBoardId: jest.fn(),
 }));
 
-/*
- * The context resolves which board it is looking at before it fetches anything, so every suite
- * that renders it has to answer that question first. One board, owned by the caller, which is the
- * shape a single-tenant install has had all along.
- */
 jest.mock('../../services/boardApi', () => ({
   fetchBoards: jest.fn(() => Promise.resolve([
     { id: 1, name: 'Kanban', ownerId: 1, owned: true, members: [] }
@@ -130,8 +125,6 @@ describe('completion through the context', () => {
       fireEvent.click(screen.getByText('Reopen'));
     });
 
-    // The response describes the task that was asked about; the cascade below it is only
-    // visible in a fresh listing.
     expect(api.fetchTasks).toHaveBeenCalled();
   });
 
