@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openapitools.jackson.nullable.JsonNullable;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.IdRef;
@@ -21,7 +22,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -39,6 +42,7 @@ class SubTaskServiceTest {
     private pl.myproject.kanbanproject2.board.Board board;
     private pl.myproject.kanbanproject2.user.User caller;
     private pl.myproject.kanbanproject2.board.BoardService boardService;
+    private BoardEventPublisher boardEvents;
 
     @BeforeEach
     void setUp() {
@@ -48,8 +52,9 @@ class SubTaskServiceTest {
         board = tenant.board();
         caller = tenant.caller();
         boardService = tenant.boardService();
+        boardEvents = mock(BoardEventPublisher.class);
         service = new SubTaskService(subTaskRepository, taskRepository, new SubTaskMapper(),
-                boardService);
+                boardService, boardEvents);
 
         when(subTaskRepository.save(any(SubTask.class))).thenAnswer(i -> i.getArgument(0));
     }
@@ -455,6 +460,7 @@ class SubTaskServiceTest {
 
             verify(subTaskRepository, never()).save(any());
             verify(subTaskRepository, never()).delete(any());
+            verifyNoInteractions(boardEvents);
         }
 
         @Test
@@ -462,6 +468,68 @@ class SubTaskServiceTest {
         void canRead() {
             assertThat(service.getSubTaskById(caller, 1).title()).isEqualTo("a");
             assertThat(service.getSubTasksByTaskId(caller, 7)).isEmpty();
+        }
+    }
+
+    /**
+     * SYNC-01: a card carries its open-subtask count, so every subtask write has to tell the board's
+     * other viewers or their "unfinished subtasks" warning sits wrong until a reload. The publisher
+     * holds the frame until the commit, so announcing inside the service is not announcing early.
+     */
+    @Nested
+    @DisplayName("announcing")
+    class Announcing {
+
+        @Test
+        @DisplayName("adding, ticking, editing and repositioning each announce the board")
+        void writesAnnounce() {
+            var existing = subTask(1, "a", 1);
+            when(subTaskRepository.findById(1)).thenReturn(Optional.of(existing));
+            when(taskRepository.findById(7)).thenReturn(Optional.of(task(7)));
+
+            service.addSubTask(caller, new CreateSubTaskRequest("t", null, false, 1, new IdRef(7)));
+            service.toggleSubTaskCompletion(caller, 1);
+            service.patchSubTask(caller, 1, patch(JsonNullable.of("b"), null, null, null, null));
+            service.updateSubTaskPosition(caller, 1, 4);
+
+            verify(boardEvents, times(4)).subtasksChanged(board);
+        }
+
+        @Test
+        @DisplayName("a delete announces too, though it maps nothing")
+        void deleteAnnounces() {
+            when(subTaskRepository.findById(1)).thenReturn(Optional.of(subTask(1, "a", 1)));
+
+            service.deleteSubTask(caller, 1);
+
+            verify(boardEvents).subtasksChanged(board);
+        }
+
+        @Test
+        @DisplayName("moving a subtask to another board's card announces both boards")
+        void moveAnnouncesBothBoards() {
+            var elsewhere = pl.myproject.kanbanproject2.board.TenancyFixtures.board(2, caller);
+            var target = task(8);
+            target.setBoard(elsewhere);
+            when(subTaskRepository.findById(1)).thenReturn(Optional.of(subTask(1, "a", 1)));
+            when(taskRepository.findById(8)).thenReturn(Optional.of(target));
+
+            service.patchSubTask(caller, 1, patch(null, null, null, null, JsonNullable.of(new IdRef(8))));
+
+            verify(boardEvents).subtasksChanged(board);
+            verify(boardEvents).subtasksChanged(elsewhere);
+        }
+
+        @Test
+        @DisplayName("a read announces nothing")
+        void readsAreSilent() {
+            when(subTaskRepository.findById(1)).thenReturn(Optional.of(subTask(1, "a", 1)));
+            when(taskRepository.findById(7)).thenReturn(Optional.of(task(7)));
+
+            service.getSubTaskById(caller, 1);
+            service.getSubTasksByTaskId(caller, 7);
+
+            verifyNoInteractions(boardEvents);
         }
     }
 }

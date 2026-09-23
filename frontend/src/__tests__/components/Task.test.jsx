@@ -188,22 +188,17 @@ describe('Task Component', () => {
         expect(avatar).toHaveClass('avatar-preview');
     });
 
-    test('checks for unfinished subtasks on mount', async () => {
-        fetchSubTasksByTaskId.mockResolvedValue([
-            { id: 1, completed: false, title: 'Subtask 1' }
-        ]);
-    
+    test('reads its open subtasks off the task rather than fetching them per card (SYNC-01)', async () => {
         await act(async () => {
             render(
                 <KanbanContext.Provider value={mockContextValue}>
-                    <Task task={mockTask} columnId="col1" />
+                    <Task task={{ ...mockTask, openSubtasks: 1 }} columnId="col1" />
                 </KanbanContext.Provider>
             );
-        
-            await new Promise(resolve => setTimeout(resolve, 0));
         });
 
-        expect(fetchSubTasksByTaskId).toHaveBeenCalledWith('1');
+        // A board of forty cards used to be forty subtask requests on every load, and none after.
+        expect(fetchSubTasksByTaskId).not.toHaveBeenCalled();
     });
 
     test('handles user assignment when user is dropped on task', async () => {
@@ -283,25 +278,20 @@ describe('Task Component', () => {
       expect(taskElement).toHaveClass('task');
     });
 
-    test('renders task with blocked indicator when subtasks are incomplete', async () => {
-        fetchSubTasksByTaskId.mockResolvedValue([
-            { id: 1, completed: false, title: 'Subtask 1' },
-            { id: 2, completed: false, title: 'Subtask 2' }
-        ]);
-    
+    test('warns on pick-up when the task says it has open subtasks', async () => {
         await act(async () => {
             render(
                 <KanbanContext.Provider value={mockContextValue}>
-                    <Task task={mockTask} columnId="col1" />
+                    <Task task={{ ...mockTask, openSubtasks: 2 }} columnId="col1" />
                 </KanbanContext.Provider>
             );
-            
-            await new Promise(resolve => setTimeout(resolve, 100));
         });
-    
-        expect(fetchSubTasksByTaskId).toHaveBeenCalledWith('1');
-        const taskElement = screen.getByText('Test Task').closest('.task');
-        expect(taskElement).toHaveClass('task');
+        const dataTransfer = { setData: jest.fn(), effectAllowed: null };
+        await act(async () => {
+            fireEvent.dragStart(screen.getByText('Test Task').closest('.task'), { dataTransfer });
+        });
+
+        expect(document.querySelector('.subtask-warning')).toBeInTheDocument();
     });
 
     test('allows editing task title with double click', async () => {
@@ -504,26 +494,48 @@ describe('Task Component', () => {
         expect(mockContextValue.refreshTasks).toHaveBeenCalled();
     });
     
-    test('handles subtasks properly', async () => {
-        fetchSubTasksByTaskId.mockResolvedValue([
-            { id: 1, completed: true, title: 'Subtask 1' },
-            { id: 2, completed: false, title: 'Subtask 2' }
-        ]);
-    
+    test('does not warn when every subtask is done', async () => {
         await act(async () => {
             render(
                 <KanbanContext.Provider value={mockContextValue}>
-                    <Task task={mockTask} columnId="col1" />
+                    <Task task={{ ...mockTask, openSubtasks: 0 }} columnId="col1" />
                 </KanbanContext.Provider>
             );
-            
-            await new Promise(resolve => setTimeout(resolve, 100));
         });
-    
-        expect(fetchSubTasksByTaskId).toHaveBeenCalledWith('1');
-        const taskElement = screen.getByText('Test Task').closest('.task');
-        expect(taskElement).toBeInTheDocument();
-    }); 
+        const dataTransfer = { setData: jest.fn(), effectAllowed: null };
+        await act(async () => {
+            fireEvent.dragStart(screen.getByText('Test Task').closest('.task'), { dataTransfer });
+        });
+
+        expect(document.querySelector('.subtask-warning')).not.toBeInTheDocument();
+    });
+
+    test('a later listing with the last subtask ticked clears the warning, with no fetch of its own', async () => {
+        let rerender;
+        await act(async () => {
+            ({ rerender } = render(
+                <KanbanContext.Provider value={mockContextValue}>
+                    <Task task={{ ...mockTask, openSubtasks: 1 }} columnId="col1" />
+                </KanbanContext.Provider>
+            ));
+        });
+
+        // What a SUBTASKS frame from somebody else's screen amounts to: the same card, re-read.
+        await act(async () => {
+            rerender(
+                <KanbanContext.Provider value={mockContextValue}>
+                    <Task task={{ ...mockTask, openSubtasks: 0 }} columnId="col1" />
+                </KanbanContext.Provider>
+            );
+        });
+        const dataTransfer = { setData: jest.fn(), effectAllowed: null };
+        await act(async () => {
+            fireEvent.dragStart(screen.getByText('Test Task').closest('.task'), { dataTransfer });
+        });
+
+        expect(document.querySelector('.subtask-warning')).not.toBeInTheDocument();
+        expect(fetchSubTasksByTaskId).not.toHaveBeenCalled();
+    });
     
     test('shows task labels', async () => {
         const taskWithMultipleLabels = {
@@ -573,26 +585,6 @@ describe('Task Component', () => {
         expect(avatar).toBeInTheDocument();
         const avatarCount = screen.getByText('+1');
         expect(avatarCount).toBeInTheDocument();
-    });
-    
-    test('handles error when fetching subtasks fails', async () => {
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        fetchSubTasksByTaskId.mockRejectedValue(new Error('Failed to fetch subtasks'));
-        
-        await act(async () => {
-            render(
-                <KanbanContext.Provider value={mockContextValue}>
-                    <Task task={mockTask} columnId="col1" />
-                </KanbanContext.Provider>
-            );
-        });
-        
-        await waitFor(() => {
-            expect(fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
-            expect(consoleErrorSpy).toHaveBeenCalled();
-        });
-
-        consoleErrorSpy.mockRestore();
     });
 
     describe('on a read-only board (FEAT-08)', () => {

@@ -116,6 +116,40 @@ describe('KanbanContext live board sync', () => {
     window.removeEventListener('task-comments-changed', heard);
   });
 
+  it('a subtask event re-reads the tasks, since the card carries its open count, and tells the panel', async () => {
+    const heard = jest.fn();
+    window.addEventListener('task-subtasks-changed', heard);
+
+    emit('SUBTASKS');
+    await settle();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(api.fetchTasks).toHaveBeenCalledTimes(1);
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+    window.removeEventListener('task-subtasks-changed', heard);
+  });
+
+  it('a subtask event in a burst of task events is still one task read', async () => {
+    emit('TASKS', 'SUBTASKS', 'TASKS');
+    await settle();
+
+    expect(api.fetchTasks).toHaveBeenCalledTimes(1);
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+  });
+
+  it('an attachment event re-reads no board state and tells the open task panel instead', async () => {
+    const heard = jest.fn();
+    window.addEventListener('task-attachments-changed', heard);
+
+    emit('ATTACHMENTS');
+    await settle();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+    window.removeEventListener('task-attachments-changed', heard);
+  });
+
   it('a comment inside a burst of task events does not widen or swallow the task read', async () => {
     emit('TASKS', 'COMMENTS');
     await settle();

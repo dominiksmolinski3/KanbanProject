@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import TaskDetails from './TaskDetails';
 import EditableText from './EditableText';
@@ -26,7 +26,6 @@ function Task({ task, columnId, rowId }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [assignmentError, setAssignmentError] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [hasUnfinishedSubtasks, setHasUnfinishedSubtasks] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   const [taskDescription, setTaskDescription] = useState('');
   const [loadingDescription, setLoadingDescription] = useState(false);
@@ -45,15 +44,12 @@ function Task({ task, columnId, rowId }) {
 
   const { t } = useTranslation();
 
-  const checkUnfinishedSubtasks = useCallback(async () => {
-    try {
-      const subtasks = await fetchSubTasksByTaskId(task.id);
-      const unfinishedExists = subtasks.some(subtask => !subtask.completed);
-      setHasUnfinishedSubtasks(unfinishedExists);
-    } catch (error) {
-      console.error('Error checking subtasks:', error);
-    }
-  }, [task.id]);
+  /*
+   * How many subtasks are still open rides on the task itself (SYNC-01), so the warning follows
+   * the board listing: a subtask ticked on somebody else's screen arrives as a SUBTASKS frame and
+   * the ordinary task re-read, instead of each card fetching its own subtasks and never again.
+   */
+  const hasUnfinishedSubtasks = (task.openSubtasks ?? 0) > 0;
 
   useEffect(() => {
     if (task.userIds && task.userIds.length > 0) {
@@ -63,9 +59,7 @@ function Task({ task, columnId, rowId }) {
         }
       });
     }
-    
-    checkUnfinishedSubtasks();
-  
+
     return () => {
       if (avatarUrl && avatarUrl.startsWith('blob:')) {
         URL.revokeObjectURL(avatarUrl);
@@ -74,19 +68,13 @@ function Task({ task, columnId, rowId }) {
         clearTimeout(warningTimeoutRef.current);
       }
     };
-  }, [task.userIds, task.id, checkUnfinishedSubtasks]);
+  }, [task.userIds, task.id]);
 
+  // The popover's subtask preview is fetched once and kept; a change in the open count means it is
+  // out of date, so drop it and let the next opening read it again.
   useEffect(() => {
-    const handleSubtaskUpdate = () => {
-      checkUnfinishedSubtasks();
-    };
-
-    window.addEventListener('subtask-updated', handleSubtaskUpdate);
-
-    return () => {
-      window.removeEventListener('subtask-updated', handleSubtaskUpdate);
-    };
-  }, [checkUnfinishedSubtasks]);
+    setTaskSubtasks([]);
+  }, [task.openSubtasks]);
 
   useEffect(() => {
     if (assignmentError) {
@@ -744,7 +732,7 @@ function Task({ task, columnId, rowId }) {
         <TaskDetails 
           task={task} 
           onClose={() => setShowDetails(false)}
-          onSubtaskUpdate={checkUnfinishedSubtasks} 
+          onSubtaskUpdate={refreshTasks} 
         />
       )}
     </>
