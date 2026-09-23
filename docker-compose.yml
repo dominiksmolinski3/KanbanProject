@@ -32,6 +32,8 @@ x-api: &api
       condition: service_healthy
     rabbitmq:
       condition: service_healthy
+    appinsights-sink:
+      condition: service_healthy
   environment:
     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SPRING_DATASOURCE_DB}
     SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -79,6 +81,12 @@ x-api: &api
     # ever run the emulator, and worth nothing. Point AZURE_STORAGE_CONNECTION_STRING somewhere
     # else, or set it empty, to change or switch off local attachment storage.
     AZURE_STORAGE_CONNECTION_STRING: '${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}'
+    # local stack and CI's e2e job run the real agent with the real applicationinsights.json, and
+    # the e2e job asks the sink afterwards whether the export was what the alerts expect. The key
+    # is all zeros because nothing checks it; ingestion in Azure is Entra-only regardless.
+    APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://appinsights-sink:8080/;LiveEndpoint=http://appinsights-sink:8080/'
+    # Ten seconds rather than the agent's sixty, so a short CI run still sees several exports.
+    APPLICATIONINSIGHTS_METRIC_INTERVAL_SECONDS: 10
   deploy:
     resources:
       limits:
@@ -123,6 +131,28 @@ services:
     profiles: ["replicas"]
     ports:
       - "127.0.0.1:8082:8080"
+
+  # The Application Insights stand-in - see observability/appinsights-sink/server.mjs. No image of
+  # its own: a stock node image runs the script from this checkout, which is one less thing for the
+  # image scan and hadolint to cover. Published on loopback only, for `curl :8099/summary` and for
+  # the e2e job's assertion.
+  appinsights-sink:
+    image: node:24-alpine
+    restart: unless-stopped
+    command: node /sink/server.mjs
+    volumes:
+      - ./observability/appinsights-sink:/sink:ro
+    ports:
+      - "127.0.0.1:8099:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   # The Blob Storage emulator, so `docker-compose up` gives you attachments as well as a board.
   azurite:

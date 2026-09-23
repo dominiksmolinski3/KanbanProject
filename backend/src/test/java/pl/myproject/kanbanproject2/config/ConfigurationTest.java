@@ -67,8 +67,10 @@ class ConfigurationTest {
      * the agent - {@link #theApiImageAttachesTheAgentItsVariablesAreFor()} - or the exemption would
      * outlive the thing it exempts, which is exactly MAIL-02's dead configuration.
      */
-    private static final Set<String> AGENT_READ =
-            Set.of("APPLICATIONINSIGHTS_CONNECTION_STRING", "APPLICATIONINSIGHTS_AUTHENTICATION_STRING");
+    private static final Set<String> AGENT_READ = Set.of(
+            "APPLICATIONINSIGHTS_CONNECTION_STRING",
+            "APPLICATIONINSIGHTS_AUTHENTICATION_STRING",
+            "APPLICATIONINSIGHTS_METRIC_INTERVAL_SECONDS");
 
     private static final Path API_DOCKERFILE = Path.of("Dockerfile");
 
@@ -134,7 +136,7 @@ class ConfigurationTest {
                 .contains("APPLICATIONINSIGHTS_CONNECTION_STRING");
         assertThat(terraformContainerAppEnvironment())
                 .as("the container app no longer sets what attaches the agent, so no metric reaches an alert")
-                .containsAll(AGENT_READ);
+                .contains("APPLICATIONINSIGHTS_CONNECTION_STRING", "APPLICATIONINSIGHTS_AUTHENTICATION_STRING");
     }
 
     // ------------------------------------------------------------------------------- the edge
@@ -196,6 +198,7 @@ class ConfigurationTest {
     void dockerComposePassesNothingUnread() throws IOException {
         Set<String> unread = new TreeSet<>(composeAppEnvironment().keySet());
         unread.removeAll(readable());
+        unread.removeAll(AGENT_READ);
 
         assertThat(unread)
                 .as("the local stack sets these on the app container and nothing reads them at runtime")
