@@ -286,7 +286,7 @@ In local development the two run separately (`:5173` and `:8080`) and [vite.conf
 
 **Every REST route is served under `/api`.** [WebConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix `ChatController` too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
-The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users`, `/sessions` and `/activity`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
+The prefix exists to keep the API off the paths React Router owns. `App.jsx` serves `/board`, `/users`, `/sessions`, `/activity` and `/flow`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
 
 [SpaRoutes](backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java) used to be load-bearing twice — `WebConfig` forwarded each route to `/index.html` and `SecurityConfiguration` permitted each one — and neither is true any more. nginx's `try_files` answers every client route with no list at all, which is why **the routes are deliberately not enumerated in the edge config**: a list in two places is the drift every guard here exists to catch. What survives is the claim, read by `deployed-contract.yml` (does the origin still answer each route with the shell?) and by `SpaRoutesMatchTheClientTest`, which parses `App.jsx`. That test is new with the split and is the reason to keep the class: while Spring served the shell, a route missing from the list was a deep link that 403'd and somebody noticed on the first try. Now it would be a contract sweep that silently checks one route fewer.
 
@@ -499,6 +499,40 @@ Four details carry it:
   A board is bounded by what a team will put on one; a feed only grows.
 
 `/activity` is a client route, so it is in `SpaRoutes.ALL` — see the SPA-routing note above.
+
+**Flow metrics are read from `task_column_history`, not stored anywhere (FEAT-07).**
+`GET /api/flow` answers a board's cumulative flow diagram, the cycle times of the cards that
+finished in a window, and daily throughput. It needs no new table and no new write path. The
+interval series has been written on every move since the start and, until this, only the task
+panel read it, one card at a time. `FlowMetricsService` does the fold, and five rules decide its
+numbers:
+
+- **A window, not paging.** The answer is an aggregate. It defaults to the last 30 days and refuses
+  more than 180 with `400 INVALID_FLOW_REQUEST`, the same refusal the other bounded reads make.
+- **"Done" is a column, and arriving at or past it counts.** A card that skips Done for Closed
+  has still finished. The start works the same way. Positions are today's, because a history
+  row points at a column and a column has only its current position. The defaults are the
+  board's last column and arrival on the board, which makes the default a lead time; the screen
+  lets people choose both.
+- **The first finish is the finish.** A card bounced between Review and Done counts once, or
+  one card would read as throughput.
+- **What the history cannot say is not guessed.** A deleted card takes its history with it. A
+  card taken off the board has an open last interval with no recorded end, so it is in no column
+  from then on. A detached row (a deleted column, `V17`) is still an interval boundary but draws
+  no band.
+- **Days are the server's calendar days,** in the same zone `LocalDateTime.now()` writes the rows
+  in. A move at 00:00 belongs to the new day. Percentiles are nearest-rank, so every reported
+  number is one a card actually took.
+
+`/flow` is a client route, so it is in `SpaRoutes.ALL` too. The screen draws the diagram, a
+cycle-time scatter with median and 85th-percentile lines, and throughput bars, in hand-written SVG
+with no chart dependency. The eight band colours are a validated categorical palette, and columns
+past eight fold into one "earlier columns" band. Every chart has a table view, because three of
+the light-mode colours sit below 3:1 against the chart surface.
+
+The same branch fixed `TaskColumnHistoryMapper`. It dereferenced `history.getColumn()`, which
+`V17` made nullable, so any task that had left a column that was later deleted answered `500` on
+its whole history panel.
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 
