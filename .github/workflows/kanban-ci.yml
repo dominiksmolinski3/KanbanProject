@@ -125,8 +125,19 @@ jobs:
         name: frontend-test-coverage
         path: frontend/coverage
 
+  # Sharded three ways, each leg with a whole stack of its own - two API replicas, the broker,
+  # Redis, Postgres, nginx - so no leg runs against less than the unsharded job did. Run end to
+  # end, the thirteen specs were three and a half minutes of a seven-minute job, and they share
+  # nothing but the seeded account, which every leg seeds for itself. Which leg runs which spec is
+  # derived from cypress.config.js by cypress/shard.js rather than listed here, so a new spec
+  # cannot land in no leg. The matrix aggregates into one `needs.e2e.result`, which is why
+  # trunk-alarm and SweepAlarmCoverageTest need nothing new.
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 1, 2, 3 ]
     env:
       POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
@@ -237,6 +248,16 @@ jobs:
           *) echo "/api is not reaching the API container" >&2; exit 1 ;;
         esac
 
+    # setup-node caches ~/.npm, not the Cypress binary, which npm ci would otherwise download
+    # (~10s) and the first `cypress run` would then verify (~15s, "first time using Cypress").
+    # The verified state is written into this directory, so a hit skips both. Keyed on the
+    # lockfile, which pins the Cypress version the binary has to match.
+    - name: Cache the Cypress binary
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/Cypress
+        key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
     - name: Install frontend dependencies
       working-directory: frontend
       run: npm ci --legacy-peer-deps
@@ -252,17 +273,24 @@ jobs:
         SEED_PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
       run: npm run cypress:seed
 
-    - name: Run Cypress
+    - name: Run this shard's Cypress specs
       working-directory: frontend
       env:
         CYPRESS_BASE_URL: http://localhost:8080
-      run: npm run cypress:run
+        SHARD: ${{ matrix.shard }}
+        SHARDS: ${{ strategy.job-total }}
+      run: |
+        specs=$(node cypress/shard.js "$SHARD" "$SHARDS")
+        echo "shard $SHARD of $SHARDS: $specs"
+        npm run cypress:run -- --spec "$specs"
 
     # Not in the default spec pattern, and not skipped either - see cypress.config.js. A step
     # rather than a job, so "did it run" is answered by this job's own log rather than by a
     # `needs` list somebody has to remember to grow; CrossReplicaStackTest fails the build if this
-    # step stops naming the script.
+    # step stops naming the script. It runs on one leg, the one cypress/shard.js deals the fewest
+    # seconds of specs to - every leg has the second replica, so any of them could.
     - name: Run the cross-replica board-sync spec
+      if: matrix.shard == 1
       working-directory: frontend
       env:
         CYPRESS_BASE_URL: http://localhost:8080
@@ -275,15 +303,17 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: cypress-artifacts
+        name: cypress-artifacts-shard-${{ matrix.shard }}
         path: |
           frontend/cypress/screenshots
           frontend/cypress/videos
         if-no-files-found: ignore
 
-    - name: Tear down the stack
-      if: always()
-      run: docker compose --profile replicas down -v
+    # In place of a `compose down`, which spent thirteen seconds tidying a runner that is thrown
+    # away when the job ends. What a red leg needs instead is what the containers said.
+    - name: Show the stack's logs
+      if: failure()
+      run: docker compose --profile replicas logs --no-color --timestamps app app2 web
 
   # kanban-cd.yml's Trivy gate only ever runs on push to main, after a PR has already merged - so
   # a base image that picks up a fresh HIGH between when a PR was opened and when it merges goes

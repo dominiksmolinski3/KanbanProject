@@ -1516,6 +1516,15 @@ and reasons in `local.refusal_alerts`.
 ### CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing.
+  **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
+  run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
+  two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
+  round-robin from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep
+  in step and a new spec cannot land in no leg; an empty share is a failure, because an empty
+  `--spec` means *every* spec to Cypress. The cross-replica spec runs on leg 1. The Cypress binary
+  is cached on the lockfile hash, which also caches its verified state, and the job no longer
+  spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
+  logs on failure instead.
   A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
   both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
