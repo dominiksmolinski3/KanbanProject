@@ -66,6 +66,29 @@ refers to JIRA-1337
 BREAKING CHANGE: ticket endpoints no longer supports list all entities.
 ```
 
+## Code comments
+
+**Comment only what is CRITICAL.** A comment is critical when it states a constraint that a
+reasonable edit would break and that nothing else catches: an ordering that matters, a framework
+trap, a value that looks wrong and is not. Keep it to one line that states the constraint.
+
+Everything else stays out of the source:
+
+- no Javadoc or JSDoc that restates a name, a signature or what the code plainly does;
+- no history, such as what the code used to do, which bug led to it, finding ids, PR numbers or
+  measurements. That belongs in the commit message, the PR, or this file;
+- no section banners and no commented-out code.
+
+If a guard test already enforces the constraint, the test is the documentation and the comment is
+not needed. When in doubt, leave it out.
+
+Two exceptions:
+
+- **Tool directives are not comments in this sense and stay:** `eslint-disable`,
+  `@jest-environment`, `checkov:skip`, `hadolint ignore`, `# syntax=` and shebangs.
+- **Never edit a Flyway migration that is already on `main`, comments included.** Flyway
+  checksums the whole file, so a changed comment fails validation on the next deploy.
+
 ## Commands
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and `backend/Dockerfile` runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
