@@ -233,7 +233,80 @@ describe('a board event crosses from one API replica to another', () => {
   });
 
   /**
-   * The control. Without it the three tests above are evidence that a card can appear, not that
+   * A card with one open subtask, made on the other replica before the board is opened, so the
+   * browser loads it the ordinary way and only the tick has to cross.
+   */
+  const memberCreatesTaskWithSubtask = (title, subtaskTitle) =>
+    memberCreatesTaskOnTheOtherReplica(title).then((task) =>
+      asOnTheOtherReplica(memberToken, {
+        method: 'POST',
+        url: '/api/subtasks',
+        body: { title: subtaskTitle, completed: false, task: { id: task.body.id } },
+      })
+    );
+
+  const subtaskLabel = (subtaskTitle, options) => cy.contains('.subtask-item label', subtaskTitle, options);
+
+  /**
+   * SYNC-01. A subtask write used to announce nothing, so another person's open panel kept the
+   * box unticked, and each card kept its "unfinished subtasks" warning, until a reload. It now
+   * sends a SUBTASKS frame: the board re-reads its tasks, which carry the open count, and the open
+   * panel re-reads its own list. The panel is the part a browser can see without a drag, so that is
+   * what this checks, with the tick made on the replica that does not hold the socket.
+   */
+  it('ticks a subtask in an open task panel when the other replica ticks it', () => {
+    const title = `cross-replica-subtask-${Date.now()}`;
+    const subtaskTitle = `tick me ${Date.now()}`;
+
+    cy.then(() => memberCreatesTaskWithSubtask(title, subtaskTitle)).then((subtask) => {
+      openBoard({ live: true });
+      cy.contains('.task', title).click();
+      subtaskLabel(subtaskTitle).should('not.have.class', 'completed');
+
+      cy.then(() =>
+        asOnTheOtherReplica(memberToken, {
+          method: 'PATCH',
+          url: `/api/subtasks/${subtask.body.id}/change`,
+        })
+      );
+    });
+
+    subtaskLabel(subtaskTitle, { timeout: LIVE_TIMEOUT }).should('have.class', 'completed');
+    stillTheSameDocument();
+    cy.get('.close-panel-btn').click();
+  });
+
+  /**
+   * Its own control, for the reason the one below exists: without it the test above shows that
+   * a box can turn ticked, not that the frame is what ticked it. The panel reads its subtasks once
+   * when it opens and has no timer, so with the socket refused it must stay as it was.
+   */
+  it('does not tick it when the board has no live connection', () => {
+    const title = `cross-replica-subtask-no-socket-${Date.now()}`;
+    const subtaskTitle = `stays open ${Date.now()}`;
+
+    cy.then(() => memberCreatesTaskWithSubtask(title, subtaskTitle)).then((subtask) => {
+      openBoard({ live: false });
+      cy.contains('.task', title).click();
+      subtaskLabel(subtaskTitle).should('not.have.class', 'completed');
+
+      cy.then(() =>
+        asOnTheOtherReplica(memberToken, {
+          method: 'PATCH',
+          url: `/api/subtasks/${subtask.body.id}/change`,
+        })
+      );
+    });
+
+    // Waited out in full rather than retried, since "still unticked" is true from the first try.
+    cy.wait(NO_LIVE_TIMEOUT);
+    subtaskLabel(subtaskTitle).should('not.have.class', 'completed');
+    stillTheSameDocument();
+    cy.get('.close-panel-btn').click();
+  });
+
+  /**
+   * The control. Without it the task tests above are evidence that a card can appear, not that
    * the socket is what made it appear - and here that matters more than it does at one replica,
    * because a cross-replica failure is silent by construction: the row is written, the API answers
    * correctly, and only somebody else's screen is wrong.
