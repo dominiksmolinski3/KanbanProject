@@ -481,7 +481,8 @@
         "UNASSIGNED": "{{who}} が {{what}} から {{detail}} を外しました",
         "COMPLETED": "{{who}} が {{what}} を完了しました",
         "REOPENED": "{{who}} が {{what}} を再開しました",
-        "DELETED": "{{who}} が {{what}} を削除しました"
+        "DELETED": "{{who}} が {{what}} を削除しました",
+        "COMMENTED": "{{who}} が {{what}} にコメントしました"
       }
     },
     "demo": {
@@ -561,5 +562,25 @@
       "card": "カード",
       "throughput": "スループット",
       "throughputCaption": "日ごとに完了したカード。"
+    },
+    "taskComments": {
+      "heading": "コメント",
+      "placeholder": "コメントを書く…",
+      "post": "コメントする",
+      "loading": "コメントを読み込み中…",
+      "empty": "まだコメントはありません。",
+      "loadError": "コメントを読み込めませんでした。",
+      "postError": "コメントを投稿できませんでした。",
+      "editError": "コメントを保存できませんでした。",
+      "deleteError": "コメントを削除できませんでした。",
+      "loadOlder": "以前のコメントを読み込む",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "confirmDelete": "このコメントを削除しますか？",
+      "edited": "（編集済み）",
+      "formerMember": "元メンバー",
+      "remaining": "残り {{count}} 文字"
     }
 }

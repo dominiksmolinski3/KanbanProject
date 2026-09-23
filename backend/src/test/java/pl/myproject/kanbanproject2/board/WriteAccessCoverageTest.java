@@ -72,6 +72,11 @@ class WriteAccessCoverageTest {
                     "public SubTaskDto updateSubTaskPosition("),
             "task/attachment/TaskAttachmentService.java", List.of(
                     "public TaskAttachmentDto upload(",
+                    "public void delete("),
+            // FEAT-06: a viewer reads a card's thread and writes none of it.
+            "task/comment/TaskCommentService.java", List.of(
+                    "public TaskCommentDto add(",
+                    "public TaskCommentDto edit(",
                     "public void delete("));
 
     @Test

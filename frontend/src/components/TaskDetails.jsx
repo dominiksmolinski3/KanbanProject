@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { fetchUsers, fetchColumns, assignUserToTask, WipLimitExceededError, fetchTask, removeUserFromTask, getUserAvatar, addSubTask, toggleSubTaskCompletion, deleteSubTask, updateSubTask, fetchSubTask, fetchSubTasksByTaskId, updateTask, assignParentTask, removeParentTask, getChildTasks, fetchTasks, getTaskColumnHistory, getTaskColumnTimeSpentSummary, ConcurrentModificationError, fetchTaskAttachments, uploadTaskAttachment, downloadTaskAttachment, deleteTaskAttachment, AttachmentUploadError, MAX_ATTACHMENT_SIZE } from '../services/api';
 import '../styles/components/TaskDetails.css';
 import TaskLabels from './TaskLabels';
+import TaskComments from './TaskComments';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
@@ -1216,6 +1217,8 @@ id={`subtask-${subtask.id}`}
                 <p className="no-attachments">{t('taskActions.noAttachments')}</p>
               )}
             </div>
+
+            <TaskComments taskId={task.id} />
 
           </>
         ) : currentView === 'relationships' ? (

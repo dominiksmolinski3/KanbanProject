@@ -78,6 +78,20 @@ public enum ExceptionIdentifier {
     INVALID_CHAT_REQUEST(BAD_REQUEST, "The chat history cannot be paged as asked"),
 
     /*
+     * The fourth of the same shape, for a card's comment thread (FEAT-06), separate for the same
+     * reason the other three are.
+     */
+    INVALID_COMMENT_REQUEST(BAD_REQUEST, "The comment thread cannot be paged as asked"),
+
+    /*
+     * COMMENT_NOT_FOUND is 404 for the oracle reason ATTACHMENT_NOT_FOUND is - ids are sequential.
+     * NOT_COMMENT_AUTHOR is 403 because it is only reached by a caller who can already read the
+     * comment and is trying to rewrite or remove somebody else's.
+     */
+    COMMENT_NOT_FOUND(NOT_FOUND, "Comment not found"),
+    NOT_COMMENT_AUTHOR(FORBIDDEN, "Only the author can change this comment"),
+
+    /*
      * The flow metrics' window or column choice (FEAT-07): a window over the limit or running
      * backwards, a column not on the board, or a start column after the done column. Separate for
      * the reason the three above are.

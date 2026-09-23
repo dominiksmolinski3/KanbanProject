@@ -115,7 +115,8 @@ class TenantIsolationTest {
                 historyRepository, mock(TaskColumnHistoryMapper.class), columnRepository,
                 rowRepository, boardService, mock(pl.myproject.kanbanproject2.task.DeadlineNotifier.class),
                 mock(pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService.class),
-                mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder.class), mock(BoardEventPublisher.class));
+                mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder.class), mock(BoardEventPublisher.class),
+                mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
         columnService = new ColumnService(columnRepository, new ColumnMapper(taskMapper),
                 taskService, boardService, mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));

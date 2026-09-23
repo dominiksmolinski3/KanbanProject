@@ -13,5 +13,7 @@ public enum TaskActivityType {
     UNASSIGNED,
     COMPLETED,
     REOPENED,
-    DELETED
+    DELETED,
+    /** Somebody commented on the card. The words stay in the thread; the feed only says it happened. */
+    COMMENTED
 }
