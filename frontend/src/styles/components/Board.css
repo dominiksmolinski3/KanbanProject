@@ -506,12 +506,6 @@
   background-color: #bdbdbd;
 }
 
-.language-switcher-container {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 100;
-}
 /* ====== READ-ONLY BANNER (FEAT-08) ====== */
 .board-readonly-banner {
   padding: var(--spacing-sm) var(--spacing-md);

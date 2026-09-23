@@ -1,3 +1,13 @@
+.language-switcher-container {
+  /* The sign-in screen's corner placement. It lived in Board.css, which the sign-in screen stopped
+     loading when the routes were split into lazy chunks (FE-01), so the switcher fell into the page
+     flow beside the form. Kept here because this file is imported by the switcher itself. */
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
 .language-switcher {
   position: relative;
   display: inline-block;
