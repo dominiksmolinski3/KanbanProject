@@ -561,7 +561,12 @@
     "finishedOn": "Abgeschlossen",
     "card": "Karte",
     "throughput": "Durchsatz",
-    "throughputCaption": "Pro Tag abgeschlossene Karten."
+    "throughputCaption": "Pro Tag abgeschlossene Karten.",
+    "asTheBoardDefines": "Wie vom Board festgelegt ({{name}})",
+    "saveDefinition": "Als Definition des Boards festlegen",
+    "resetDefinition": "Zurück zur Voreinstellung",
+    "definitionSaved": "Die Definition von Beginn und Fertig für das Board wurde gespeichert.",
+    "definitionFailed": "Die Definition des Boards konnte nicht gespeichert werden."
   },
   "taskComments": {
     "heading": "Kommentare",

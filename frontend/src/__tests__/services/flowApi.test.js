@@ -1,4 +1,4 @@
-import { fetchFlowMetrics } from '../../services/flowApi';
+import { defineFlow, fetchFlowMetrics } from '../../services/flowApi';
 
 /**
  * The request the flow screen makes: only the parameters it was given, so that "no start column"
@@ -31,5 +31,33 @@ describe('fetchFlowMetrics', () => {
     global.fetch.mockResolvedValue({ ok: false, status: 400 });
 
     await expect(fetchFlowMetrics({})).rejects.toThrow('400');
+  });
+});
+
+describe('defineFlow', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ boardId: 3 }) });
+  });
+
+  test('puts both ends, with a null for an end going back to the default', async () => {
+    await defineFlow({ boardId: 3, start: null, done: 12 });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/flow/definition?boardId=3', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startColumnId: null, doneColumnId: 12 })
+    });
+  });
+
+  test("leaves the board out when there is none, which means the caller's own", async () => {
+    await defineFlow({ done: 12 });
+
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/flow/definition?');
+  });
+
+  test('throws on a refusal so the screen can say so', async () => {
+    global.fetch.mockResolvedValue({ ok: false, status: 403 });
+
+    await expect(defineFlow({ boardId: 3 })).rejects.toThrow('403');
   });
 });

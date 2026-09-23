@@ -102,10 +102,25 @@ public class FlowMetricsService {
         if (columns.isEmpty()) {
             return empty(board.getId(), firstDay, lastDay, days);
         }
-        var done = doneColumnId == null ? columns.getLast() : columnOn(columns, doneColumnId);
-        var start = startColumnId == null ? null : columnOn(columns, startColumnId);
+        var definedStart = storedOn(columns, board.getFlowStartColumn());
+        var definedDone = storedOn(columns, board.getFlowDoneColumn());
+        // A choice made in the request wins over the board's definition, which wins over FEAT-07's
+        // rule: the last column is done, and a card starts when it arrives on the board.
+        var done = doneColumnId != null ? columnOn(columns, doneColumnId)
+                : definedDone != null ? definedDone : columns.getLast();
+        var start = startColumnId != null ? columnOn(columns, startColumnId) : definedStart;
         if (start != null && position(start) > position(done)) {
-            throw invalid("work cannot start in a column after the one it is done in");
+            if (startColumnId != null && doneColumnId != null) {
+                throw invalid("work cannot start in a column after the one it is done in");
+            }
+            // One half came from the board and no longer fits the other - a reorder since it was
+            // saved, or a request choosing only one end. The board's half gives way rather than
+            // refusing a screen nobody asked to be refused.
+            if (startColumnId == null) {
+                start = null;
+            } else {
+                done = columns.getLast();
+            }
         }
 
         var windowEnd = lastDay.plusDays(1).atStartOfDay();
@@ -158,6 +173,7 @@ public class FlowMetricsService {
         return new FlowMetricsDto(
                 board.getId(), firstDay, lastDay,
                 start == null ? null : start.getId(), done.getId(),
+                idOf(definedStart), idOf(definedDone),
                 columns.stream().map(c -> new FlowMetricsDto.Column(c.getId(), c.getName(), c.getPosition())).toList(),
                 cumulativeFlow,
                 summarise(samples),
@@ -257,6 +273,45 @@ public class FlowMetricsService {
      * A column id that is not on this board is a 400, the same answer whether it exists elsewhere
      * or not at all - it names nothing the caller could not already see, so it discloses nothing.
      */
+    // ---------------------------------------------------------------- definition ---
+
+    /**
+     * Stores the board's own definition of start and done (FLOW-02), so the screen opens on one
+     * shared answer rather than on whatever each viewer last picked. The owner's to set, as the name
+     * is: a member who disagrees can still look at the board through other columns, they just cannot
+     * move everyone's definition. Nulls put either end back on the default.
+     *
+     * <p>{@code resolve} before {@code requireOwned}, so a board the caller cannot see is the 404
+     * every tenancy miss is, and only a board they can see and do not own is the 403.
+     */
+    public FlowDefinitionDto define(User caller, Integer boardId, FlowDefinitionRequest request) {
+        var board = boardService.requireOwned(caller, boardService.resolve(caller, boardId).getId());
+        var columns = columnRepository.findByBoardOrderByPositionAsc(board);
+        var start = request.startColumnId() == null ? null : columnOn(columns, request.startColumnId());
+        var done = request.doneColumnId() == null ? null : columnOn(columns, request.doneColumnId());
+        var effectiveDone = done != null ? done : columns.isEmpty() ? null : columns.getLast();
+        if (start != null && effectiveDone != null && position(start) > position(effectiveDone)) {
+            throw invalid("work cannot start in a column after the one it is done in");
+        }
+
+        // A managed entity in this transaction; the flush writes it.
+        board.setFlowStartColumn(start);
+        board.setFlowDoneColumn(done);
+        return new FlowDefinitionDto(board.getId(), idOf(start), idOf(done));
+    }
+
+    /** The board's stored column, if it is still one of the board's columns. */
+    private static Column storedOn(List<Column> columns, Column stored) {
+        if (stored == null || stored.getId() == null) {
+            return null;
+        }
+        return columns.stream().filter(column -> stored.getId().equals(column.getId())).findFirst().orElse(null);
+    }
+
+    private static Integer idOf(Column column) {
+        return column == null ? null : column.getId();
+    }
+
     private static Column columnOn(List<Column> columns, Integer id) {
         return columns.stream()
                 .filter(column -> id.equals(column.getId()))
@@ -271,7 +326,7 @@ public class FlowMetricsService {
             cumulative.add(new FlowMetricsDto.CumulativeFlowDay(from.plusDays(i), List.of()));
             throughput.add(new FlowMetricsDto.ThroughputDay(from.plusDays(i), 0));
         }
-        return new FlowMetricsDto(boardId, from, to, null, null, List.of(), cumulative,
+        return new FlowMetricsDto(boardId, from, to, null, null, null, null, List.of(), cumulative,
                 summarise(List.of()), List.of(), throughput);
     }
 

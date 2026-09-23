@@ -561,7 +561,12 @@
       "finishedOn": "Completata",
       "card": "Scheda",
       "throughput": "Throughput",
-      "throughputCaption": "Schede completate ogni giorno."
+      "throughputCaption": "Schede completate ogni giorno.",
+      "asTheBoardDefines": "Come definito dalla bacheca ({{name}})",
+      "saveDefinition": "Rendila la definizione della bacheca",
+      "resetDefinition": "Torna al predefinito",
+      "definitionSaved": "La definizione di inizio e fine della bacheca è stata salvata.",
+      "definitionFailed": "Non è stato possibile salvare la definizione della bacheca."
     },
     "taskComments": {
       "heading": "Commenti",

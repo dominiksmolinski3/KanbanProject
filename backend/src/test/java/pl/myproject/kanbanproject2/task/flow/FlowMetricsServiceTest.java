@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,6 +55,7 @@ class FlowMetricsServiceTest {
     private FlowMetricsService service;
     private User caller;
     private Board board;
+    private pl.myproject.kanbanproject2.board.BoardService boardService;
     private Column a;
     private Column b;
     private Column c;
@@ -66,7 +68,9 @@ class FlowMetricsServiceTest {
         var tenant = TenancyFixtures.tenant();
         caller = tenant.caller();
         board = tenant.board();
-        service = new FlowMetricsService(historyRepository, columnRepository, tenant.boardService(),
+        boardService = tenant.boardService();
+        when(boardService.requireOwned(caller, board.getId())).thenReturn(board);
+        service = new FlowMetricsService(historyRepository, columnRepository, boardService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
 
         a = column(10, "A", 1);
@@ -323,5 +327,136 @@ class FlowMetricsServiceTest {
         assertThat(result.columns()).isEmpty();
         assertThat(result.throughput()).hasSize(3);
         assertThat(result.cycleTime().count()).isZero();
+    }
+
+    /**
+     * FLOW-02: the board carries its own definition of start and done, so the screen opens on one
+     * shared answer. With done = B, cards 1 and 2 both finish inside the window; with FEAT-07's
+     * default (the last column, C) only card 1 does, which is what tells the two apart below.
+     */
+    @Nested
+    @DisplayName("the board's own definition")
+    class Definition {
+
+        @Test
+        @DisplayName("is what a read with no choice of its own measures to")
+        void storedDoneIsTheDefault() {
+            board.setFlowDoneColumn(b);
+
+            var flow = metrics(null, null);
+
+            assertThat(flow.doneColumnId()).isEqualTo(b.getId());
+            assertThat(flow.definedDoneColumnId()).isEqualTo(b.getId());
+            assertThat(flow.cycleTime().count()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("gives way to a choice made in the request, and still says what it is")
+        void requestWins() {
+            board.setFlowDoneColumn(b);
+
+            var flow = metrics(null, c.getId());
+
+            assertThat(flow.doneColumnId()).isEqualTo(c.getId());
+            assertThat(flow.definedDoneColumnId()).isEqualTo(b.getId());
+            assertThat(flow.cycleTime().count()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("an unset board reads exactly as FEAT-07 did")
+        void unsetIsTheOldRule() {
+            var flow = metrics(null, null);
+
+            assertThat(flow.doneColumnId()).isEqualTo(c.getId());
+            assertThat(flow.startColumnId()).isNull();
+            assertThat(flow.definedStartColumnId()).isNull();
+            assertThat(flow.definedDoneColumnId()).isNull();
+        }
+
+        @Test
+        @DisplayName("a stored start that no longer fits gives way rather than refusing the screen")
+        void storedStartGivesWay() {
+            // What a reorder after saving looks like: start now sits after done.
+            board.setFlowStartColumn(c);
+            board.setFlowDoneColumn(b);
+
+            assertThat(metrics(null, null).startColumnId()).isNull();
+            // And against a done column picked in the request.
+            assertThat(metrics(null, a.getId()).startColumnId()).isNull();
+        }
+
+        @Test
+        @DisplayName("a stored done that no longer fits a chosen start gives way to the last column")
+        void storedDoneGivesWay() {
+            board.setFlowDoneColumn(a);
+
+            var flow = metrics(b.getId(), null);
+
+            assertThat(flow.startColumnId()).isEqualTo(b.getId());
+            assertThat(flow.doneColumnId()).isEqualTo(c.getId());
+        }
+
+        @Test
+        @DisplayName("two explicit choices that contradict each other are still a 400")
+        void explicitContradictionRefused() {
+            board.setFlowDoneColumn(c);
+
+            assertThatThrownBy(() -> metrics(c.getId(), a.getId()))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_FLOW_REQUEST);
+        }
+
+        @Test
+        @DisplayName("a stored column that is no longer the board's is ignored")
+        void foreignStoredColumnIgnored() {
+            var elsewhere = column(99, "Elsewhere", 4);
+            board.setFlowDoneColumn(elsewhere);
+
+            var flow = metrics(null, null);
+
+            assertThat(flow.doneColumnId()).isEqualTo(c.getId());
+            assertThat(flow.definedDoneColumnId()).isNull();
+        }
+
+        @Test
+        @DisplayName("the owner stores it, and nulls put either end back on the default")
+        void ownerDefines() {
+            var saved = service.define(caller, null, new FlowDefinitionRequest(a.getId(), b.getId()));
+
+            assertThat(saved).isEqualTo(new FlowDefinitionDto(board.getId(), a.getId(), b.getId()));
+            assertThat(board.getFlowStartColumn()).isSameAs(a);
+            assertThat(board.getFlowDoneColumn()).isSameAs(b);
+
+            service.define(caller, null, new FlowDefinitionRequest(null, null));
+            assertThat(board.getFlowStartColumn()).isNull();
+            assertThat(board.getFlowDoneColumn()).isNull();
+        }
+
+        @Test
+        @DisplayName("refuses a column from another board, and a start after done")
+        void refusesNonsense() {
+            assertThatThrownBy(() -> service.define(caller, null, new FlowDefinitionRequest(null, 404)))
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_FLOW_REQUEST);
+            assertThatThrownBy(() -> service.define(caller, null, new FlowDefinitionRequest(c.getId(), a.getId())))
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_FLOW_REQUEST);
+            // A start with no done is measured to the last column, so it cannot be after it.
+            service.define(caller, null, new FlowDefinitionRequest(c.getId(), null));
+            assertThat(board.getFlowStartColumn()).isSameAs(c);
+        }
+
+        @Test
+        @DisplayName("is the owner's alone to set, and a refusal changes nothing")
+        void onlyTheOwner() {
+            doThrow(new GlobalException(ExceptionIdentifier.NOT_BOARD_OWNER))
+                    .when(boardService).requireOwned(caller, board.getId());
+
+            assertThatThrownBy(() -> service.define(caller, null, new FlowDefinitionRequest(null, b.getId())))
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.NOT_BOARD_OWNER);
+            assertThat(board.getFlowDoneColumn()).isNull();
+        }
     }
 }
