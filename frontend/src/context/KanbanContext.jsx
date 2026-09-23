@@ -609,8 +609,8 @@ export function KanbanProvider({ children }) {
         ...prev,
         [columnKey]: newColumn.id
       }));
-      
-      setColumns([...columns, newColumn]);
+
+      setColumns(prev => [...prev, newColumn]);
       toast.success(t('notifications.columnAdded', { name }));
       return newColumn;
     } catch (err) {
