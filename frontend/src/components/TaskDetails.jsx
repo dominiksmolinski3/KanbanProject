@@ -153,9 +153,20 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     };
   }, [task.id]);
   
+  /*
+   * Only the first load of a card has nothing to show yet. Every edit here re-reads the task
+   * through this function, and blanking the panel for each one - the whole form swapped for a
+   * loading line after adding one subtask or one assignee - was a flash for the person using it
+   * and a race for anything typing into it next: the input the next keystroke went to was already
+   * on its way out. Board.jsx makes the same distinction for the board's own refreshes.
+   */
+  const loadedTaskId = useRef(null);
+
   const loadTaskData = async () => {
     try {
-      setLoading(true);
+      if (loadedTaskId.current !== task.id) {
+        setLoading(true);
+      }
       const taskData = await fetchTask(task.id);
       setTaskVersion(typeof taskData.version === 'number' ? taskData.version : null);
       let assignedData = [];
@@ -259,6 +270,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         setAvatarPreviews(avatarMap);
       }
       
+      loadedTaskId.current = task.id;
       setLoading(false);
     } catch (error) {
       console.error('Error loading task data:', error);
