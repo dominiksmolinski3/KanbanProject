@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,20 @@ import java.util.Set;
  */
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Integer> {
+
+    /**
+     * Takes every task out of a swimlane that is about to be deleted, in one statement and with no
+     * version check. The per-task save this replaced bumped each task's {@code @Version}, so a row
+     * deleted while a column holding the same tasks was being deleted made one of the two a 409 -
+     * every time, measured, with the two requests sent together. A delete of the whole row has no
+     * stale form to protect against, which is what the version is for; not bumping it is also what
+     * lets the column's concurrent delete of the same tasks still match the version it loaded.
+     * Not {@code clearAutomatically}: that detaches everything else the caller has loaded, which is
+     * how an accepted invitation once became a 500.
+     */
+    @Modifying
+    @Query("update Task t set t.row = null where t.row = :row")
+    int detachFromRow(@Param("row") Row row);
 
     @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
     List<Task> findByBoardOrderByIdAsc(Board board);

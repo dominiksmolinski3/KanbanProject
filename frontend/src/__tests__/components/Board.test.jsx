@@ -85,7 +85,7 @@ describe('Board Component', () => {
     tasks: mockTasks,
     loading: false,
     error: null,
-    deleteRow: jest.fn(),
+    deleteRow: jest.fn(() => Promise.resolve()),
     deleteColumn: jest.fn(),
     updateColumnName: jest.fn(),
     updateRowName: jest.fn(),

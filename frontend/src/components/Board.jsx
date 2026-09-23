@@ -149,7 +149,9 @@ function Board() {
         <div className="toast-buttons">
           <button 
             onClick={() => {
-              deleteRow(rowId);
+              // The context has already toasted a failure; catching here keeps it from also
+              // surfacing as an unhandled rejection from a click handler.
+              deleteRow(rowId).catch(() => {});
               toast.dismiss(toastId);
             }}
             className="confirm-button"

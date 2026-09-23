@@ -789,8 +789,14 @@ export function KanbanProvider({ children }) {
         const remainingRows = rows.filter(row => row.id !== rowId);
         const targetRowId = remainingRows[0].id;
       
+        // A card somebody else changed or deleted a moment ago answers 409 or 404 here. Neither is a
+        // reason to abandon deleting the row: the server takes the row off whatever is still in it.
         for (const task of tasksToUpdate) {
-          await updateTaskRow(task.id, targetRowId);
+          try {
+            await updateTaskRow(task.id, targetRowId);
+          } catch (moveErr) {
+            console.error('Could not move a task out of the row being deleted:', moveErr);
+          }
         }
       
         await deleteRow(rowId);

@@ -35,10 +35,11 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,10 +82,15 @@ class DeleteDetachesReferencesTest {
 
             rowService.deleteRow(CALLER, 3);
 
-            assertThat(task.getRow()).isNull();
             InOrder order = inOrder(taskRepository, rowRepository);
-            order.verify(taskRepository).save(task);
+            order.verify(taskRepository).detachFromRow(row);
             order.verify(rowRepository).delete(row);
+            // One statement, not a versioned save per task: the saves are what made a row deleted
+            // alongside a column holding the same tasks answer 409. The loaded task is left alone,
+            // or Hibernate would write it back with the same version check at flush.
+            verify(taskRepository, never()).save(any());
+            assertThat(task.getRow()).isSameAs(row);
+            assertThat(row.getTasks()).isEmpty();
         }
 
         @Test
@@ -132,6 +138,37 @@ class DeleteDetachesReferencesTest {
             InOrder order = inOrder(taskService, columnRepository);
             order.verify(taskService).deleteTask(CALLER, 7);
             order.verify(columnRepository).delete(column);
+        }
+
+        @Test
+        @DisplayName("lets go of every task before deleting any, so no flush can bring one back")
+        void emptiesTheCollectionBeforeTheLoop() {
+            Column column = new Column();
+            column.setId(4);
+            column.setBoard(BOARD);
+            Task first = new Task();
+            first.setId(8);
+            first.setBoard(BOARD);
+            Task second = new Task();
+            second.setId(9);
+            second.setBoard(BOARD);
+            column.setTasks(new ArrayList<>(List.of(first, second)));
+            when(columnRepository.findById(4)).thenReturn(Optional.of(column));
+            when(historyRepository.findByColumn(column)).thenReturn(List.of());
+            // What the column still holds at the moment each task is deleted. Column.tasks
+            // cascades ALL, so a deleted task left in it is persisted again by the next query's
+            // flush - which made every column with two or more cards a 500.
+            var heldDuringDeletes = new ArrayList<Integer>();
+            org.mockito.Mockito.doAnswer(call -> {
+                heldDuringDeletes.add(column.getTasks().size());
+                return null;
+            }).when(taskService).deleteTask(org.mockito.ArgumentMatchers.eq(CALLER), org.mockito.ArgumentMatchers.anyInt());
+
+            columnService.deleteColumn(CALLER, 4);
+
+            assertThat(heldDuringDeletes).containsExactly(0, 0);
+            verify(taskService).deleteTask(CALLER, 8);
+            verify(taskService).deleteTask(CALLER, 9);
         }
 
         @Test

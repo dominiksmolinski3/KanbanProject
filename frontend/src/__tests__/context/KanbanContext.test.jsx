@@ -356,6 +356,35 @@ describe('KanbanContext Provider', () => {
     expect(api.fetchRows).toHaveBeenCalled();
   });
 
+  test('deletes the row even when a card in it was changed by someone else a moment ago', async () => {
+    // Row 1 holds tasks 1 and 3. Task 1 answers 409 - another screen just moved or deleted it -
+    // which used to abandon the whole delete; the server clears the row off whatever is left.
+    api.updateTaskRow
+      .mockRejectedValueOnce(new Error('409'))
+      .mockResolvedValueOnce({ success: true });
+    api.deleteRow.mockResolvedValueOnce({ success: true });
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      render(
+        <KanbanProvider>
+          <TestComponent />
+        </KanbanProvider>
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Delete Row'));
+    });
+
+    expect(api.updateTaskRow).toHaveBeenCalledTimes(2);
+    expect(api.deleteRow).toHaveBeenCalledWith('row1');
+    console.error.mockRestore();
+  });
+
   test('moves a task successfully', async () => {
     api.updateTaskColumn.mockResolvedValueOnce({ success: true });
     api.updateTaskRow.mockResolvedValueOnce({ success: true });
