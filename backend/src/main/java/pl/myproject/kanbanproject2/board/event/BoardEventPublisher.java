@@ -70,6 +70,14 @@ public class BoardEventPublisher {
         publish(board, BoardEventType.COMMENTS);
     }
 
+    public void subtasksChanged(Board board) {
+        publish(board, BoardEventType.SUBTASKS);
+    }
+
+    public void attachmentsChanged(Board board) {
+        publish(board, BoardEventType.ATTACHMENTS);
+    }
+
     private void publish(Board board, BoardEventType type) {
         if (board == null || board.getId() == null) {
             return;

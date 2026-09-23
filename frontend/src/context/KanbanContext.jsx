@@ -554,15 +554,24 @@ export function KanbanProvider({ children }) {
     let wanted = null;
 
     events.watch(activeBoardId, ({ type }) => {
-      // A comment changes no card, so it takes no board read: the open task panel re-reads its own
-      // thread instead, through the same window-event channel `subtask-updated` already uses.
+      // A comment or a file changes no card, so neither takes a board read: the open task panel
+      // re-reads its own thread or list instead, through a window event it listens for.
       if (type === 'COMMENTS') {
         window.dispatchEvent(new CustomEvent('task-comments-changed'));
         return;
       }
+      if (type === 'ATTACHMENTS') {
+        window.dispatchEvent(new CustomEvent('task-attachments-changed'));
+        return;
+      }
+      // A subtask does change the card - it carries its open-subtask count - so it is a task read
+      // like TASKS, and the open panel re-reads its list as well, which no task read reaches.
+      if (type === 'SUBTASKS') {
+        window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
+      }
       // COLUMNS and ROWS both take the wider read: deleting a column takes its cards with it, so
       // a layout change is a task change as well and refreshBoard is the call that covers both.
-      wanted = wanted === 'board' || type !== 'TASKS' ? 'board' : 'tasks';
+      wanted = wanted === 'board' || (type !== 'TASKS' && type !== 'SUBTASKS') ? 'board' : 'tasks';
       if (pending) {
         return;
       }

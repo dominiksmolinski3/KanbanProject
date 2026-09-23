@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.BoardTasksDeleting;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
@@ -76,6 +77,7 @@ public class TaskAttachmentService {
     private final TaskAttachmentMapper mapper;
     private final BlobStore blobStore;
     private final BoardService boardService;
+    private final BoardEventPublisher boardEvents;
     private final Clock clock;
 
     /**
@@ -107,10 +109,11 @@ public class TaskAttachmentService {
                                  TaskAttachmentMapper mapper,
                                  BlobStore blobStore,
                                  BoardService boardService,
+                                 BoardEventPublisher boardEvents,
                                  BlobStorageProperties storageProperties,
                                  MeterRegistry meterRegistry) {
-        this(attachments, tasks, mapper, blobStore, boardService, storageProperties, Clock.systemUTC(),
-                meterRegistry);
+        this(attachments, tasks, mapper, blobStore, boardService, boardEvents, storageProperties,
+                Clock.systemUTC(), meterRegistry);
     }
 
     TaskAttachmentService(TaskAttachmentRepository attachments,
@@ -118,6 +121,7 @@ public class TaskAttachmentService {
                           TaskAttachmentMapper mapper,
                           BlobStore blobStore,
                           BoardService boardService,
+                          BoardEventPublisher boardEvents,
                           BlobStorageProperties storageProperties,
                           Clock clock,
                           MeterRegistry meterRegistry) {
@@ -126,6 +130,7 @@ public class TaskAttachmentService {
         this.mapper = mapper;
         this.blobStore = blobStore;
         this.boardService = boardService;
+        this.boardEvents = boardEvents;
         this.clock = clock;
         this.transferPermits = new Semaphore(Math.max(1,
                 storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
@@ -187,7 +192,10 @@ public class TaskAttachmentService {
         attachment.setUploadedBy(caller);
         attachment.setUploadedAt(clock.instant());
 
-        return mapper.apply(attachments.save(attachment));
+        var saved = attachments.save(attachment);
+        // Held by the publisher until the commit, so another viewer's re-read cannot beat the row.
+        boardEvents.attachmentsChanged(task.getBoard());
+        return mapper.apply(saved);
     }
 
     /**
@@ -273,6 +281,7 @@ public class TaskAttachmentService {
         boardService.requireWritable(caller, attachment.getTask().getBoard());
         attachments.delete(attachment);
         removeAfterCommit(attachment.getBlobName());
+        boardEvents.attachmentsChanged(attachment.getTask().getBoard());
     }
 
     /**

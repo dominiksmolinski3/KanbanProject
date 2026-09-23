@@ -117,6 +117,41 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       positionPanel();
     }
   }, [loading]);
+
+  /*
+   * Somebody else's change to this card's subtasks or files (SYNC-01). The board frame carries no
+   * task id, so this re-reads whichever card is open - one request, and only while a panel is. The
+   * subtask list is re-read on its own rather than through loadTaskData, which would flash the whole
+   * panel into its loading state for one ticked box.
+   */
+  useEffect(() => {
+    const onSubtasksChanged = async () => {
+      try {
+        const subtasksData = await fetchSubTasksByTaskId(task.id);
+        setSubtasks(subtasksData || []);
+      } catch (error) {
+        console.error('Error refreshing subtasks:', error);
+      }
+    };
+    // Inlined rather than calling loadAttachments, which is redefined on every render; same
+    // swallow-and-empty rule, since a panel on a deployment with no storage must not break here.
+    const onAttachmentsChanged = async () => {
+      try {
+        const files = await fetchTaskAttachments(task.id);
+        setAttachments(Array.isArray(files) ? files : []);
+      } catch (error) {
+        console.error('Error fetching task attachments:', error);
+        setAttachments([]);
+      }
+    };
+
+    window.addEventListener('task-subtasks-changed', onSubtasksChanged);
+    window.addEventListener('task-attachments-changed', onAttachmentsChanged);
+    return () => {
+      window.removeEventListener('task-subtasks-changed', onSubtasksChanged);
+      window.removeEventListener('task-attachments-changed', onAttachmentsChanged);
+    };
+  }, [task.id]);
   
   const loadTaskData = async () => {
     try {
@@ -504,8 +539,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         onSubtaskUpdate();
       }
       
-      window.dispatchEvent(new CustomEvent('subtask-updated', { detail: { taskId: task.id } }));
-      
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -534,8 +567,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         onSubtaskUpdate();
       }
       
-      window.dispatchEvent(new CustomEvent('subtask-updated', { detail: { taskId: task.id } }));
-      
     } catch (error) {
       console.error('Error toggling subtask completion:', error);
       toast.error(t('notifications.subtaskToggleError'));
@@ -559,8 +590,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       if (onSubtaskUpdate) {
         onSubtaskUpdate();
       }
-      
-      window.dispatchEvent(new CustomEvent('subtask-updated', { detail: { taskId: task.id } }));
       
       setSuccess(true);
       setTimeout(() => {

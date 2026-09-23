@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <em>somebody else's</em> browser sitting on a board that is quietly wrong — which no unit test
  * can see, since there is no second browser in one.
  *
- * <p>So the three services funnel every save-and-map through a private {@code saveAndAnnounce}, and
+ * <p>So the four services funnel every save-and-map through a private {@code saveAndAnnounce}, and
  * this reads their source and fails when a save-and-map appears outside it — the same
  * rule-in-two-places shape as {@code DeadLetterAlertTest} and {@code ClientRoutesExistTest}.
  *
@@ -36,7 +36,10 @@ class BoardEventCoverageTest {
     private static final Map<String, Pattern> UNANNOUNCED = Map.of(
             "task/TaskService.java", Pattern.compile("taskMapper\\.apply\\(\\s*taskRepository\\.save\\("),
             "layout/column/ColumnService.java", Pattern.compile("columnMapper\\.apply\\(\\s*columnRepository\\.save\\("),
-            "layout/row/RowService.java", Pattern.compile("rowMapper\\.apply\\(\\s*rowRepository\\.save\\("));
+            "layout/row/RowService.java", Pattern.compile("rowMapper\\.apply\\(\\s*rowRepository\\.save\\("),
+            // SYNC-01: a card carries its open-subtask count, so a subtask write is a card write.
+            "task/subtask/SubTaskService.java",
+            Pattern.compile("subTaskMapper\\.toDto\\(\\s*subTaskRepository\\.save\\("));
 
     @Test
     @DisplayName("no service maps a saved entity without announcing the board it belongs to")
@@ -74,7 +77,8 @@ class BoardEventCoverageTest {
     void deletesAnnounce() throws IOException {
         // A delete maps nothing, so it is invisible to the pattern above and is named here instead.
         List<String> deleting = List.of(
-                "task/TaskService.java", "layout/column/ColumnService.java", "layout/row/RowService.java");
+                "task/TaskService.java", "layout/column/ColumnService.java", "layout/row/RowService.java",
+                "task/subtask/SubTaskService.java");
 
         for (String file : deleting) {
             String body = read(file);
@@ -84,6 +88,23 @@ class BoardEventCoverageTest {
             assertThat(body.substring(delete, Math.min(body.length(), delete + 400)))
                     .as("%s removes a row without telling the board's other viewers", file)
                     .contains("boardEvents.");
+        }
+    }
+
+    @Test
+    @DisplayName("attaching and removing a file announce it, for the task panel another viewer has open")
+    void attachmentWritesAnnounce() throws IOException {
+        // Not the save-and-map shape above: an upload writes a blob before it saves, and the panel
+        // is the only screen that shows attachments, so the check is on the two writes by name.
+        String body = read("task/attachment/TaskAttachmentService.java");
+
+        for (String write : List.of("attachments.save(", "attachments.delete(attachment)")) {
+            int at = body.indexOf(write);
+            assertThat(at).as("TaskAttachmentService no longer calls %s; this check has gone stale", write)
+                    .isPositive();
+            assertThat(body.substring(at, Math.min(body.length(), at + 400)))
+                    .as("TaskAttachmentService's %s does not tell the board's other viewers", write)
+                    .contains("boardEvents.attachmentsChanged(");
         }
     }
 
