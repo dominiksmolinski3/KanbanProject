@@ -167,6 +167,28 @@ jobs:
         VITE_RECAPTCHA_SITE_KEY=
         EOF
 
+    # setup-node caches ~/.npm, not the Cypress binary, which npm ci would otherwise download
+    # (~10s) and the first `cypress run` would then verify (~15s, "first time using Cypress").
+    # The verified state is written into this directory, so a hit skips both. Keyed on the
+    # lockfile, which pins the Cypress version the binary has to match.
+    - name: Cache the Cypress binary
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/Cypress
+        key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+    # Before the stack rather than after it, so the one-time cost of a freshly restored binary is
+    # paid while Docker builds: the first `cypress run` on a runner spent ~30s opening where the
+    # second, on the same machine, took under three. A background verify starts the same binary
+    # and warms it. Nothing waits on it and a failure changes nothing - the real run verifies for
+    # itself if it has to. node_modules is in frontend/.dockerignore, so installing first adds
+    # nothing to the web image's build context.
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: |
+        npm ci --legacy-peer-deps
+        nohup npx cypress verify > "$RUNNER_TEMP/cypress-verify.log" 2>&1 &
+
     # --profile replicas, so the stack runs two API replicas rather than one. Everything below is
     # unchanged by it - nginx's upstream is the `app` service and has never heard of `app2` - but
     # cross-replica-sync.cy.js has no second process to address without it, and "a board event
@@ -247,20 +269,6 @@ jobs:
           401|403) ;;
           *) echo "/api is not reaching the API container" >&2; exit 1 ;;
         esac
-
-    # setup-node caches ~/.npm, not the Cypress binary, which npm ci would otherwise download
-    # (~10s) and the first `cypress run` would then verify (~15s, "first time using Cypress").
-    # The verified state is written into this directory, so a hit skips both. Keyed on the
-    # lockfile, which pins the Cypress version the binary has to match.
-    - name: Cache the Cypress binary
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/.cache/Cypress
-        key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-    - name: Install frontend dependencies
-      working-directory: frontend
-      run: npm ci --legacy-peer-deps
 
     - name: Seed the Cypress test account
       working-directory: frontend
