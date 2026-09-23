@@ -899,6 +899,14 @@ person scanning the list is checking). **Which row is "this device" is answered 
 it — marking it server-side would mean the access token carrying its chain, a filter change and a
 lookup on every request, for a fact the client was already handed.
 
+**A sign-in replaces the account's live sessions from the same user agent and address.** A browser
+that signs in again has already lost its old token (an incognito window, cleared storage, a client
+path that forgets without calling `/logout`), so that row could never be renewed or ended from there
+and only piled up in the list. It keys on the pair rather than a per-browser id because an id kept
+in `localStorage` is lost in exactly those cases. It depends on `ClientIpResolver` answering the
+caller's address: at a proxy's address every Chrome on Windows signing in to one account would
+replace the others. Renewals replace nothing.
+
 **The refresh token has two deadlines (`V8`).** `expires_at` slides — each rotation issues a
 replacement `refresh-expiration-time` (30 days) out, so an account in regular use is never signed
 out by it — and `absolute_expires_at` does not: it is stamped at the login that starts the chain
