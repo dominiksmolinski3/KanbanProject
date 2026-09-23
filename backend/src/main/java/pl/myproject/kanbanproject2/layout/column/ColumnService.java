@@ -101,11 +101,17 @@ public class ColumnService {
         var column = findColumn(caller, id);
         boardService.requireWritable(caller, column.getBoard());
 
+        // Emptied before the loop, not after it. Column.tasks cascades ALL, and deleting each task
+        // runs queries that flush first - so a task deleted in one iteration, still sitting in this
+        // collection, was persisted straight back by the next iteration's flush, and the commit then
+        // failed on a live task pointing at the deleted column. A column with two or more cards
+        // could not be deleted at all: 500, every time, measured.
         if (column.getTasks() != null) {
-            for (Task task : List.copyOf(column.getTasks())) {
+            var tasks = List.copyOf(column.getTasks());
+            column.getTasks().clear();
+            for (Task task : tasks) {
                 taskService.deleteTask(caller, task.getId());
             }
-            column.getTasks().clear();
         }
 
         var strandedHistory = taskColumnHistoryRepository.findByColumn(column);
