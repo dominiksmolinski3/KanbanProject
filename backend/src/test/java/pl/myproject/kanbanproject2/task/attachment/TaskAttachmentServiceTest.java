@@ -115,6 +115,7 @@ class TaskAttachmentServiceTest {
                 tasks,
                 new TaskAttachmentMapper(),
                 blobStore,
+                tenant.boardService(),
                 storageProperties,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 meterRegistry);
@@ -475,6 +476,52 @@ class TaskAttachmentServiceTest {
 
             verify(attachments, never()).delete(any());
             verify(blobStore, never()).remove(anyString());
+        }
+    }
+
+    /**
+     * FEAT-08 left attachments out of the write check: a viewer could upload onto a card and delete
+     * somebody else's file. Downloading and listing stay open to them - that is what looking is.
+     */
+    @Nested
+    @DisplayName("a viewer")
+    class Viewer {
+
+        private final GlobalException readOnly = new GlobalException(ExceptionIdentifier.VIEWER_READ_ONLY);
+
+        @BeforeEach
+        void refuseWrites() {
+            doThrow(readOnly).when(tenant.boardService()).requireWritable(any(User.class), any(Board.class));
+        }
+
+        @Test
+        @DisplayName("cannot upload, and no blob is written")
+        void cannotUpload() {
+            var file = upload("notes.txt", "text/plain", CONTENT);
+
+            assertThatThrownBy(() -> service.upload(caller, 42, file)).isSameAs(readOnly);
+
+            verify(blobStore, never()).put(anyString(), anyString(), any(InputStream.class), anyLong());
+            verify(attachments, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("cannot delete, and nothing is removed")
+        void cannotDelete() {
+            when(attachments.findById(1L)).thenReturn(Optional.of(stored(task, 1L)));
+
+            assertThatThrownBy(() -> service.delete(caller, 42, 1L)).isSameAs(readOnly);
+
+            verify(attachments, never()).delete(any());
+            verify(blobStore, never()).remove(anyString());
+        }
+
+        @Test
+        @DisplayName("can still list what is attached")
+        void canList() {
+            when(attachments.findByTaskOrderByUploadedAtAscIdAsc(task)).thenReturn(List.of(stored(task, 1L)));
+
+            assertThat(service.list(caller, 42)).hasSize(1);
         }
     }
 
