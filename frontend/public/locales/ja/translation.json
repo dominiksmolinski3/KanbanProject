@@ -561,7 +561,12 @@
       "finishedOn": "完了日時",
       "card": "カード",
       "throughput": "スループット",
-      "throughputCaption": "日ごとに完了したカード。"
+      "throughputCaption": "日ごとに完了したカード。",
+      "asTheBoardDefines": "ボードの定義どおり（{{name}}）",
+      "saveDefinition": "これをボードの定義にする",
+      "resetDefinition": "既定に戻す",
+      "definitionSaved": "ボードの開始と完了の定義を保存しました。",
+      "definitionFailed": "ボードの定義を保存できませんでした。"
     },
     "taskComments": {
       "heading": "コメント",

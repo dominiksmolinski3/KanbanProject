@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../context/KanbanContext';
-import { fetchFlowMetrics } from '../services/flowApi';
+import { toast } from 'react-toastify';
+import { defineFlow, fetchFlowMetrics } from '../services/flowApi';
 import '../styles/components/FlowMetrics.css';
 
 /** The windows offered; all inside the server's 180-day limit, which it refuses rather than clamps. */
@@ -56,7 +57,7 @@ const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefi
  * light surface, and a table is the relief that makes the numbers readable without the colour.
  */
 function FlowMetrics() {
-  const { activeBoardId } = useKanban();
+  const { activeBoardId, activeBoard } = useKanban();
   const { t } = useTranslation();
   const duration = useDuration();
 
@@ -66,6 +67,8 @@ function FlowMetrics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  // Bumped after the board's definition changes, so the same choices are asked for again.
+  const [revision, setRevision] = useState(0);
 
   // Only the newest request may draw. Changing two controls quickly sends two requests, and the
   // older one arriving last would otherwise show numbers for a choice nobody can see any more -
@@ -101,7 +104,7 @@ function FlowMetrics() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, revision]);
 
   // A column id means nothing on another board, and the server would refuse it with a 400. Only a
   // real switch clears the choice: the board resolving for the first time is not one, and treating
@@ -116,6 +119,38 @@ function FlowMetrics() {
   }, [activeBoardId]);
 
   const columns = data?.columns || [];
+  const nameOf = (id) => columns.find(column => column.id === id)?.name;
+  const definedStart = nameOf(data?.definedStartColumnId);
+  const definedDone = nameOf(data?.definedDoneColumnId);
+
+  // FLOW-02: the board's own definition is what the screen opens on, so everyone reads one answer.
+  // The owner may make what they are looking at the board's; everyone else can still look through
+  // other columns, which changes nothing for anybody but them.
+  const [saving, setSaving] = useState(false);
+  // Offered once somebody has picked a column and the answer no longer matches the board's - not
+  // on opening, where saving would only write the default down under another name.
+  const differsFromBoard = data !== null && (start !== '' || done !== '')
+    && (data.startColumnId !== data.definedStartColumnId || data.doneColumnId !== data.definedDoneColumnId);
+  const hasDefinition = data !== null
+    && (data.definedStartColumnId !== null || data.definedDoneColumnId !== null);
+
+  const saveDefinition = async (definition) => {
+    setSaving(true);
+    try {
+      await defineFlow({ boardId: activeBoardId, ...definition });
+      toast.success(t('flow.definitionSaved'));
+      // The board now says what the selects were saying, so they go back to "as the board defines",
+      // and the revision asks again even when they already were.
+      setStart('');
+      setDone('');
+      setRevision(value => value + 1);
+    } catch (error) {
+      console.error('Error saving the flow definition:', error);
+      toast.error(t('flow.definitionFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="flow-metrics viz-root">
@@ -136,7 +171,9 @@ function FlowMetrics() {
         <label>
           <span>{t('flow.startsAt')}</span>
           <select value={start} onChange={(event) => setStart(event.target.value)}>
-            <option value="">{t('flow.arrivalOnBoard')}</option>
+            <option value="">
+              {definedStart ? t('flow.asTheBoardDefines', { name: definedStart }) : t('flow.arrivalOnBoard')}
+            </option>
             {columns.map(column => (
               <option key={column.id} value={column.id}>{column.name}</option>
             ))}
@@ -145,12 +182,38 @@ function FlowMetrics() {
         <label>
           <span>{t('flow.doneAt')}</span>
           <select value={done} onChange={(event) => setDone(event.target.value)}>
-            <option value="">{t('flow.lastColumn')}</option>
+            <option value="">
+              {definedDone ? t('flow.asTheBoardDefines', { name: definedDone }) : t('flow.lastColumn')}
+            </option>
             {columns.map(column => (
               <option key={column.id} value={column.id}>{column.name}</option>
             ))}
           </select>
         </label>
+        {activeBoard?.owned && data && (
+          <div className="flow-definition">
+            {differsFromBoard && (
+              <button
+                type="button"
+                className="flow-definition-save"
+                disabled={saving}
+                onClick={() => saveDefinition({ start: data.startColumnId, done: data.doneColumnId })}
+              >
+                {t('flow.saveDefinition')}
+              </button>
+            )}
+            {hasDefinition && (
+              <button
+                type="button"
+                className="flow-definition-reset"
+                disabled={saving}
+                onClick={() => saveDefinition({ start: null, done: null })}
+              >
+                {t('flow.resetDefinition')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {loading && <p className="flow-empty">{t('flow.loading')}</p>}

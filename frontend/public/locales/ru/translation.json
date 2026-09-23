@@ -561,7 +561,12 @@
       "finishedOn": "Завершено",
       "card": "Карточка",
       "throughput": "Пропускная способность",
-      "throughputCaption": "Карточки, завершённые за каждый день."
+      "throughputCaption": "Карточки, завершённые за каждый день.",
+      "asTheBoardDefines": "Как определено на доске ({{name}})",
+      "saveDefinition": "Сделать определением доски",
+      "resetDefinition": "Вернуть по умолчанию",
+      "definitionSaved": "Определение начала и завершения работы для доски сохранено.",
+      "definitionFailed": "Не удалось сохранить определение доски."
     },
     "taskComments": {
       "heading": "Комментарии",

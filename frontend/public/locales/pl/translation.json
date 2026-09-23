@@ -561,7 +561,12 @@
     "finishedOn": "Ukończono",
     "card": "Karta",
     "throughput": "Przepustowość",
-    "throughputCaption": "Karty ukończone każdego dnia."
+    "throughputCaption": "Karty ukończone każdego dnia.",
+    "asTheBoardDefines": "Według definicji tablicy ({{name}})",
+    "saveDefinition": "Ustaw jako definicję tablicy",
+    "resetDefinition": "Przywróć domyślne",
+    "definitionSaved": "Definicja początku i końca pracy dla tablicy została zapisana.",
+    "definitionFailed": "Nie udało się zapisać definicji tablicy."
   },
   "taskComments": {
     "heading": "Komentarze",

@@ -112,6 +112,10 @@ public class ColumnService {
         strandedHistory.forEach(entry -> entry.setColumn(null));
         taskColumnHistoryRepository.saveAll(strandedHistory);
 
+        // V23's ON DELETE SET NULL does the same in the database; clearing it here as well stops a
+        // board already loaded in this transaction from flushing the deleted id back over it.
+        column.getBoard().forgetFlowColumn(column);
+
         columnRepository.delete(column);
         boardEvents.columnsChanged(column.getBoard());
     }

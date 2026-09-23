@@ -561,7 +561,12 @@
       "finishedOn": "Terminée",
       "card": "Carte",
       "throughput": "Débit",
-      "throughputCaption": "Cartes terminées chaque jour."
+      "throughputCaption": "Cartes terminées chaque jour.",
+      "asTheBoardDefines": "Selon la définition du tableau ({{name}})",
+      "saveDefinition": "En faire la définition du tableau",
+      "resetDefinition": "Revenir à la valeur par défaut",
+      "definitionSaved": "La définition du début et de la fin du tableau est enregistrée.",
+      "definitionFailed": "La définition du tableau n'a pas pu être enregistrée."
     },
     "taskComments": {
       "heading": "Commentaires",

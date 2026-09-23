@@ -45,16 +45,24 @@ public class BoardService {
      * starting stages seeded here instead; V3 keeps its job for the one board that predates this code.
      */
     private static final List<DefaultColumn> DEFAULT_COLUMNS = List.of(
-            new DefaultColumn("New Issues", 1, 0),
-            new DefaultColumn("Icebox", 2, 0),
-            new DefaultColumn("Product Backlog", 3, 0),
-            new DefaultColumn("Sprint Backlog", 4, 10),
-            new DefaultColumn("In Progress", 5, 5),
-            new DefaultColumn("QA/Review", 6, 0),
-            new DefaultColumn("Done", 7, 0),
-            new DefaultColumn("Closed", 8, 0));
+            new DefaultColumn("New Issues", 1, 0, null),
+            new DefaultColumn("Icebox", 2, 0, null),
+            new DefaultColumn("Product Backlog", 3, 0, null),
+            new DefaultColumn("Sprint Backlog", 4, 10, null),
+            new DefaultColumn("In Progress", 5, 5, FlowRole.START),
+            new DefaultColumn("QA/Review", 6, 0, null),
+            new DefaultColumn("Done", 7, 0, FlowRole.DONE),
+            new DefaultColumn("Closed", 8, 0, null));
 
-    private record DefaultColumn(String name, int position, int wipLimit) {
+    /**
+     * Which seeded stage the flow screen measures from and to (FLOW-02). Set only here, where this
+     * code wrote the stages and so knows which one it meant by done - the default board ends
+     * {@code Done, Closed}, and without this a team stopping at Done opened the flow screen on
+     * "0 finished". Boards that predate V23 are not given one by name; see the migration.
+     */
+    private enum FlowRole { START, DONE }
+
+    private record DefaultColumn(String name, int position, int wipLimit, FlowRole flowRole) {
     }
 
     /** Language-neutral on purpose: the UI is translated into nine locales, this string is not. */
@@ -209,7 +217,12 @@ public class BoardService {
             column.setPosition(seed.position());
             column.setWipLimit(seed.wipLimit());
             column.setBoard(board);
-            columnRepository.save(column);
+            var saved = columnRepository.save(column);
+            if (seed.flowRole() == FlowRole.START) {
+                board.setFlowStartColumn(saved);
+            } else if (seed.flowRole() == FlowRole.DONE) {
+                board.setFlowDoneColumn(saved);
+            }
         }
     }
 
@@ -263,6 +276,11 @@ public class BoardService {
             taskRepository.deleteAll(tasks);
         }
 
+        // The board points back at two of its own columns (V23). Cleared first, so the flush updates
+        // the board before it deletes what it pointed at, rather than relying on the database's
+        // ON DELETE SET NULL racing a board row Hibernate still holds.
+        board.setFlowStartColumn(null);
+        board.setFlowDoneColumn(null);
         columnRepository.deleteAll(columnRepository.findByBoardOrderByPositionAsc(board));
         rowRepository.deleteAll(rowRepository.findByBoardOrderByPositionAsc(board));
         // Nothing cascades to either of these, and a leftover invitation would render on the

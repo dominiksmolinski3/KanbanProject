@@ -88,6 +88,29 @@
   font: inherit;
 }
 
+.flow-definition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.flow-definition button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--viz-grid);
+  background: var(--viz-surface);
+  color: var(--viz-text);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.flow-definition button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .flow-empty {
   padding: 1.5rem;
   text-align: center;
