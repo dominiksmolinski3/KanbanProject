@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -13,6 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.BoardTasksDeleting;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
@@ -280,7 +282,25 @@ public class TaskAttachmentService {
      * caller parameter: already checked by the task lookup that found the task being deleted.
      */
     public void deleteAllFor(Task task) {
-        var toDelete = attachments.findByTask(task);
+        removeAll(attachments.findByTask(task));
+    }
+
+    /**
+     * Everything attached anywhere on a board being deleted. Without it
+     * {@code BoardService.deleteBoard} removed the tasks with their attachment rows still pointing
+     * at them, {@code fk_task_attachments_task} refused, and a board with a single file on a single
+     * card answered {@code 500} to its owner forever. Same order as {@link #deleteAllFor}: rows now,
+     * blobs after the commit, so a rollback leaves the bytes where the rows still name them.
+     */
+    @EventListener
+    public void onBoardTasksDeleting(BoardTasksDeleting event) {
+        if (event.tasks() == null || event.tasks().isEmpty()) {
+            return;
+        }
+        removeAll(attachments.findByTaskIn(event.tasks()));
+    }
+
+    private void removeAll(List<TaskAttachment> toDelete) {
         if (toDelete.isEmpty()) {
             return;
         }

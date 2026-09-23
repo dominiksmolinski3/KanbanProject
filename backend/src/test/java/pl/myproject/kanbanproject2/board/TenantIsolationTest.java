@@ -106,7 +106,8 @@ class TenantIsolationTest {
                 mock(pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository.class),
                 mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRepository.class),
                 mock(pl.myproject.kanbanproject2.chat.ChatRepository.class),
-                boardMapper);
+                boardMapper,
+                mock(org.springframework.context.ApplicationEventPublisher.class));
 
         var taskMapper = new TaskMapper();
         userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService);
