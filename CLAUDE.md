@@ -1124,11 +1124,23 @@ Six decisions carry it, and none of them is visible from the destination name:
   hour later would otherwise retry with a dead token every five seconds forever.
 
 **A mutation that forgets to announce is silent**: the row is written, the response is right, every
-unit test passes, and only somebody *else's* screen is wrong. So `TaskService`, `ColumnService` and
-`RowService` each funnel their save-and-map through a private `saveAndAnnounce`, and
-`BoardEventCoverageTest` reads their source and fails the build when a save-and-map appears outside
-it - turning "somebody forgot a line" into "somebody wrote a different method call", which is a
-thing a check can see. Deletes map nothing, so they are named in that guard separately.
+unit test passes, and only somebody *else's* screen is wrong. So `TaskService`, `ColumnService`,
+`RowService` and `SubTaskService` each funnel their save-and-map through a private
+`saveAndAnnounce`, and `BoardEventCoverageTest` reads their source and fails the build when a
+save-and-map appears outside it - turning "somebody forgot a line" into "somebody wrote a different
+method call", which is a thing a check can see. Deletes map nothing, so they are named in that guard
+separately, and so are `TaskAttachmentService`'s upload and delete, which are not that shape.
+
+**A subtask is a card change, and that is why `TaskDto` carries `openSubtasks`.** `SubTaskService`
+was the one writer left out of the list above (SYNC-01): each card worked out its "unfinished
+subtasks" warning with a fetch of its own on mount and never again, so somebody else ticking the
+last subtask left the warning on every other screen until a reload. The count now rides on the task
+listing, a subtask write announces `SUBTASKS`, and the client answers that with the same
+`refreshTasks()` a `TASKS` frame gets - which also retired one request per card on every board load.
+Attachments are the other shape: only the open task panel shows them, so `ATTACHMENTS` takes no
+board read at all and becomes a window event the panel re-reads on, exactly as `COMMENTS` does. A
+subtask frame fires that panel event too (`task-subtasks-changed`), because the panel's own subtask
+list is not something any task read reaches.
 
 **The cross-replica half is tested by a spec that needs two replicas to exist.**
 `cypress/replicas/cross-replica-sync.cy.js` opens the board through nginx — whose upstream is the

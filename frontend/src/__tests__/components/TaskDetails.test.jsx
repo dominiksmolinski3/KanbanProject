@@ -804,26 +804,27 @@ describe('TaskDetails Component', () => {
     expect(screen.queryByText('Detailed description')).not.toBeInTheDocument();
   });
   
-  test('handles notification dispatching for subtask updates', async () => {
-    const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
-    
+  test('re-reads its subtasks and its files when another screen changes them (SYNC-01)', async () => {
     renderTaskDetails();
-    
+
     await waitFor(() => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
-    
-    const checkbox = await screen.findByLabelText('Subtask 1');
-    fireEvent.click(checkbox);
-    
-    await waitFor(() => {
-      expect(dispatchEventSpy).toHaveBeenCalled();
+    api.fetchSubTasksByTaskId.mockClear();
+    api.fetchTaskAttachments.mockClear();
+    api.fetchTask.mockClear();
+    api.fetchSubTasksByTaskId.mockResolvedValue([{ ...mockSubtasks[0], title: 'Ticked elsewhere' }]);
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
+      window.dispatchEvent(new CustomEvent('task-attachments-changed'));
     });
-    
-    expect(dispatchEventSpy).toHaveBeenCalled();
-    expect(dispatchEventSpy.mock.calls[0][0].type).toBe('subtask-updated');
-    
-    dispatchEventSpy.mockRestore();
+
+    expect(api.fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
+    expect(api.fetchTaskAttachments).toHaveBeenCalledWith(mockTask.id);
+    expect(await screen.findByText('Ticked elsewhere')).toBeInTheDocument();
+    // Neither goes back through loadTaskData, which would re-read the task itself and flash the panel.
+    expect(api.fetchTask).not.toHaveBeenCalled();
   });
 
   test('handles escape key press to close panel', async () => {
