@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>So the four services funnel every save-and-map through a private {@code saveAndAnnounce}, and
  * this reads their source and fails when a save-and-map appears outside it — the same
- * rule-in-two-places shape as {@code DeadLetterAlertTest} and {@code ClientRoutesExistTest}.
+ * rule-in-two-places shape as {@code MetricAlertsMatchTheMetersTest} and {@code ClientRoutesExistTest}.
  *
  * <p><b>What it cannot see:</b> a mutation that neither saves nor maps (a delete, or a write through
  * a different repository) has to call the publisher by hand, and this only checks that such a file

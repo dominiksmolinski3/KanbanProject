@@ -19,8 +19,8 @@ import java.util.List;
 /**
  * The worker on the other side of the outbox: it reads due rows and posts them, so the HTTPS call,
  * retry and give-up decision happen here instead of on the request thread. A {@code FAILED} row is
- * the dead letter, watched by {@link MailHealthIndicator} and by the {@link #DEAD_LETTER_MARKER}
- * log line a Log Analytics rule matches.
+ * the dead letter, watched by {@link MailHealthIndicator} and by the alert on
+ * {@link #DEAD_LETTER_COUNTER}.
  *
  * <p>Sending is not transactional — wrapping the loop would hold a connection across up to fifty
  * HTTPS calls and roll back forty-nine successful sends over one refusal. Claiming is transactional
@@ -59,20 +59,17 @@ public class OutboxRelay {
     static final Duration CLAIM_LEASE = Duration.ofMinutes(10);
 
     /**
-     * The token the give-up line carries so something outside this process can find it. The Log
-     * Analytics rule in {@code terraform/modules/diagnostics/main.tf} matches this string in
-     * console logs and mails the alert address. A marker rather than a phrase from the sentence,
-     * because reworded prose is an alert that silently stops firing - {@code DeadLetterAlertTest}
-     * keeps the two in sync.
+     * The token the give-up line carries, for a person searching the logs. It used to be what the
+     * dead-letter alert matched; the alert reads {@link #DEAD_LETTER_COUNTER} now, so nothing
+     * depends on this string any more and it is free to change.
      */
     static final String DEAD_LETTER_MARKER = "MAIL_DEAD_LETTER";
 
     /**
-     * Counts every row that reaches {@code FAILED} - the same event the {@link #DEAD_LETTER_MARKER}
-     * log line marks, kept rather than replaced: {@code DeadLetterAlertTest} and the Log Analytics
-     * rule in {@code terraform/modules/diagnostics/main.tf} still depend on the token being written,
-     * since there is no export pipeline from this counter to Log Analytics. This is the in-process
-     * trend line the log line alone could never give - a WARN is one instant, not a rate.
+     * Counts every row that reaches {@code FAILED}. The Application Insights agent exports it as
+     * {@code kanban_mail_outbox_dead_letters}, and the dead-letter alert in
+     * {@code terraform/modules/diagnostics/main.tf} fires on any increase across the fleet;
+     * {@code MetricAlertsMatchTheMetersTest} holds that name to this one.
      */
     static final String DEAD_LETTER_COUNTER = "kanban.mail.outbox.dead_letters";
 

@@ -279,22 +279,37 @@ resource "azurerm_monitor_metric_alert" "postgres_connections" {
   }
 }
 
-# The one alert here that reads a log line rather than a metric - the failure it watches has no
-# metric. A message refused 5 times becomes an `email_outbox` row with status = 'FAILED' (before the
-# outbox this was a 500 on /api/auth/register, which http_5xx already covers); moving the send off
-# the request thread moved that signal with it.
+# The alerts below read the API's own meters, which the Application Insights agent in the backend
+# image exports into this workspace's AppMetrics table (see azurerm_application_insights in the root
+# module). Three things about that table decide how every query here is written:
 #
-# Matches OutboxRelay.DEAD_LETTER_MARKER (MAIL_DEAD_LETTER), a token rather than a log phrase so a
-# reworded sentence can't silently stop the match. DeadLetterAlertTest pins the two strings together.
+# - Names arrive with dots turned into underscores: OutboxRelay's kanban.mail.outbox.dead_letters is
+#   kanban_mail_outbox_dead_letters here. MetricAlertsMatchTheMetersTest reads every name these
+#   queries use and fails the build when one is not a meter the code registers - the same guard
+#   DeadLetterAlertTest was for the log marker, now over a name the compiler at least sees once.
+# - A counter arrives as its increase over each export interval, one row per replica per series,
+#   so sum(Sum) over a window is how many happened in it across the fleet.
+# - A gauge arrives as its current value from every replica, and the outbox gauge counts the same
+#   table from each of them, so it is read with max() rather than summed.
 #
-# ContainerAppConsoleLogs_CL is the app's own stdout, shipped here by the diagnostic setting below.
+# They replace two log alerts. The dead-letter rule matched the text MAIL_DEAD_LETTER in the console
+# log; the bounce rule repeated the list of undelivered statuses in KQL. Both couplings are gone:
+# which statuses count is decided in MailDeliveryStatuses alone, and a reworded log line cannot
+# silence anything.
+locals {
+  metric_alert_scope = [var.log_analytics_workspace_id]
+}
+
+# A message refused five times becomes a FAILED outbox row, and before the outbox that was a 500 on
+# signup the http_5xx rule already covered. Any one is worth a page: it is somebody's verification
+# code that is never coming.
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
   count               = var.alert_email != "" ? 1 : 0
   tags                = var.tags
   name                = "kanban-${var.env}-mail-dead-letters"
   resource_group_name = var.resource_group_name
   location            = var.location
-  scopes              = [var.log_analytics_workspace_id]
+  scopes              = local.metric_alert_scope
   description         = "The mail relay gave up on a message. Nobody is being told their verification code."
   severity            = 1
   enabled             = true
@@ -304,10 +319,12 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
 
   criteria {
     query                   = <<-KQL
-      ContainerAppConsoleLogs_CL
-      | where Log_s contains "MAIL_DEAD_LETTER"
+      AppMetrics
+      | where Name == "kanban_mail_outbox_dead_letters"
+      | summarize DeadLetters = sum(Sum)
     KQL
-    time_aggregation_method = "Count"
+    time_aggregation_method = "Total"
+    metric_measure_column   = "DeadLetters"
     threshold               = 0
     operator                = "GreaterThan"
 
@@ -320,11 +337,110 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
   action {
     action_groups = [azurerm_monitor_action_group.main[0].id]
   }
+}
 
-  # ContainerAppConsoleLogs_CL is a custom log table Azure Monitor creates only after the app has
-  # shipped a log line through the diagnostic setting - so this depends on that setting, and a
-  # genuinely first-ever apply may still need a re-apply once the table exists.
-  depends_on = [azurerm_monitor_diagnostic_setting.container_app]
+# What no log line could say: mail piling up before anything has dead-lettered. The relay drains
+# fifty rows a minute, so a healthy queue touches zero between signups. One refused message is not
+# enough to fire this - its retries (1, 2, 4, 8, then 16 minutes apart) keep it PENDING for about half
+# an hour and the dead-letter rule above is what answers it - so the window is an hour, and the
+# rule fires only when not one 5-minute bin in it reached an empty queue.
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_backlog" {
+  count               = var.alert_email != "" ? 1 : 0
+  tags                = var.tags
+  name                = "kanban-${var.env}-mail-backlog"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  scopes              = local.metric_alert_scope
+  description         = "Outbound mail has been waiting for an hour without the queue emptying once. The relay is stuck or the provider is refusing everything."
+  severity            = 2
+  enabled             = true
+
+  evaluation_frequency = "PT15M"
+  window_duration      = "PT1H"
+
+  criteria {
+    query                   = <<-KQL
+      AppMetrics
+      | where Name == "kanban_mail_outbox_pending"
+      | summarize Pending = max(Max) by bin(TimeGenerated, 5m)
+    KQL
+    time_aggregation_method = "Minimum"
+    metric_measure_column   = "Pending"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.main[0].id]
+  }
+}
+
+# Rates rather than events: each of these happens in ordinary use, and a page per occurrence would
+# be a page nobody reads. Severity 3, and a threshold per rule for what "not ordinary" means.
+locals {
+  refusal_alerts = {
+    auth-rate-limit = {
+      metric      = "kanban_auth_ratelimit_refused"
+      threshold   = 50
+      description = "Over 50 sign-in, signup or reset attempts refused by the rate limiter in 15 minutes - somebody is hammering the credential routes, or a client is retrying in a loop."
+    }
+    edit-conflicts = {
+      metric      = "kanban_task_optimistic_lock_conflicts"
+      threshold   = 20
+      description = "Over 20 edits refused as conflicting in 15 minutes. Two people racing on one card is normal; this many is a client re-sending stale versions."
+    }
+    board-subscriptions-dropped = {
+      metric      = "kanban_board_subscription_dropped"
+      threshold   = 20
+      description = "Over 20 board subscriptions dropped in 15 minutes. Either live sync is misconfigured and every screen has quietly stopped updating, or somebody is subscribing to boards that are not theirs."
+    }
+    attachment-transfers-busy = {
+      metric      = "kanban_attachment_transfer_refused"
+      threshold   = 10
+      description = "Over 10 attachment transfers refused as busy in 15 minutes. The fleet-wide transfer cap is too low for the traffic."
+    }
+  }
+}
+
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "refusals" {
+  for_each            = var.alert_email != "" ? local.refusal_alerts : {}
+  tags                = var.tags
+  name                = "kanban-${var.env}-${each.key}"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  scopes              = local.metric_alert_scope
+  description         = each.value.description
+  severity            = 3
+  enabled             = true
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT15M"
+
+  criteria {
+    query                   = <<-KQL
+      AppMetrics
+      | where Name == "${each.value.metric}"
+      | summarize Refused = sum(Sum)
+    KQL
+    time_aggregation_method = "Total"
+    metric_measure_column   = "Refused"
+    threshold               = each.value.threshold
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.main[0].id]
+  }
 }
 
 data "azurerm_monitor_diagnostic_categories" "acs" {
@@ -353,13 +469,16 @@ resource "azurerm_monitor_diagnostic_setting" "acs" {
   }
 }
 
+# A message ACS accepted and then could not deliver, as the delivery-report webhook tells the API.
+# It needs that webhook, so it is gated on the same key the Event Grid subscription below is: with no
+# reports flowing, the counter never moves and the rule would only ever say "fine".
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
-  count               = var.alert_email != "" && var.acs_communication_service_id != "" ? 1 : 0
+  count               = var.alert_email != "" && var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
   tags                = var.tags
   name                = "kanban-${var.env}-mail-bounces"
   resource_group_name = var.resource_group_name
   location            = var.location
-  scopes              = [var.log_analytics_workspace_id]
+  scopes              = local.metric_alert_scope
   description         = "ACS is reporting a message it accepted did not reach a recipient - a hard bounce, a spam rejection, or an address that does not exist. The application never learns this on its own."
   severity            = 2
   enabled             = true
@@ -369,10 +488,12 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
 
   criteria {
     query                   = <<-KQL
-      ACSEmailStatusUpdateOperational
-      | where DeliveryStatus in ("Bounced", "Failed", "Quarantined", "FilteredSpam", "Suppressed")
+      AppMetrics
+      | where Name == "kanban_mail_delivery_undelivered"
+      | summarize Undelivered = sum(Sum)
     KQL
-    time_aggregation_method = "Count"
+    time_aggregation_method = "Total"
+    metric_measure_column   = "Undelivered"
     threshold               = 0
     operator                = "GreaterThan"
 
@@ -385,8 +506,6 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
   action {
     action_groups = [azurerm_monitor_action_group.main[0].id]
   }
-
-  depends_on = [azurerm_monitor_diagnostic_setting.acs]
 }
 
 # Delivery reports: closes the gap where email_outbox only ever knew "the provider took it" (V10),
