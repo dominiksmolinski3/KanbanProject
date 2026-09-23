@@ -14,13 +14,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-/**
- * {@code UserControllerOwnershipTest}'s rule, for the routes that moved here: upload and delete are
- * refused before the service is ever asked, since there is no role model and "authenticated" alone
- * is not "the account's own".
- */
 class UserAvatarControllerOwnershipTest {
-
     private static final Integer OWNER_ID = 1;
     private static final Integer VICTIM_ID = 2;
 

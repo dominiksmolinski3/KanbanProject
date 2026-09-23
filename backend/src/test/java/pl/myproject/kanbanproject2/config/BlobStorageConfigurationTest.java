@@ -7,21 +7,7 @@ import pl.myproject.kanbanproject2.storage.DisabledBlobStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Which store a given configuration produces, decided without an Azure account. The credential
- * choice has no compiler on either side: a deployment naming a user-assigned identity but getting
- * {@code DefaultAzureCredential} instead fails only at the first upload, on a container already
- * running. The one case that reaches the network - the container check on startup - is pointed at
- * a closed port on purpose, asserting that an unreachable account costs uploads, not the ability
- * to start.
- */
 class BlobStorageConfigurationTest {
-
-    /**
-     * Azurite's published development credentials, with the endpoint moved to a port nothing is
-     * listening on. The key is a documented constant rather than a secret; the point of it here is
-     * only that the SDK will parse the string.
-     */
     private static final String UNREACHABLE_CONNECTION_STRING =
             "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
                     + "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6"

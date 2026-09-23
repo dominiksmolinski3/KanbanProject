@@ -25,9 +25,6 @@ resource "azurerm_storage_account" "attachments" {
   sftp_enabled                    = false
   default_to_oauth_authentication = true
 
-  # Closed to the internet. The application reaches it over the private endpoint below and is the
-  # only thing that ever does - a download is streamed through the app rather than fetched by the
-  # browser, which is what makes this possible. See terraform/README.md, Attachment storage.
   public_network_access_enabled = false
 
   network_rules {
@@ -36,8 +33,6 @@ resource "azurerm_storage_account" "attachments" {
   }
 
   blob_properties {
-    # Long enough to notice a deletion and undo it - and, more importantly, long enough that the
-    # database and the blobs can be restored to the same instant. See var.retention_days.
     delete_retention_policy {
       days = var.retention_days
     }
@@ -47,22 +42,16 @@ resource "azurerm_storage_account" "attachments" {
     }
   }
 
-  # An hour is longer than any link this application signs - the app asks for five minutes - so this
-  # is a ceiling on anything else that ever signs one here, and a record when something does.
   sas_policy {
     expiration_period = "0.01:00:00"
     expiration_action = "Log"
   }
 
   lifecycle {
-    # The name carries a random suffix, so a replacement is a new account and every attachment in
-    # the old one becomes unreachable while its rows stay in the database.
     prevent_destroy = true
   }
 }
 
-# The app reaches the account over this endpoint; the browser reaches it over the internet, on the
-# same hostname. See terraform/README.md, Attachment storage, for how one name resolves to both.
 resource "azurerm_private_dns_zone" "blob" {
   tags                = var.tags
   name                = "privatelink.blob.core.windows.net"

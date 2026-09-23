@@ -5,60 +5,27 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.time.Duration;
 
-/**
- * Tuning knobs for the {@link AuthRateLimitFilter}. The limits are a burst of free attempts
- * followed by a cooldown that doubles each time it is spent (15s, 30s, 60s, ... to a ceiling),
- * replacing a fixed quota per window whose worst refusal fell on whoever had just made an honest
- * mistake rather than on an attacker, who spends the wait cheaply.
- *
- * <p>The escalation lives in Redis, not process memory - every replica of the API reads and writes
- * the same key, so the burst and the cooldown mean what their numbers say regardless of which pod a
- * caller's next attempt lands on. The four {@code redis*} fields point at it; {@code redisHost}
- * defaults to {@code localhost} so a fresh clone with no Redis running still starts (the filter
- * fails open on a connection it cannot reach - see {@link AuthRateLimiter}), and docker-compose and
- * the deployment each set their own.
- */
 @ConfigurationProperties(prefix = "security.rate-limit")
 public record AuthRateLimitProperties(
 
-        /* Turns the filter off entirely. Kept so a limit that misfires can be dropped without a rollback. */
         @DefaultValue("true") boolean enabled,
 
-        /*
-         * How many reverse proxies sit in front of the app, counted from the app outwards. 0 (the
-         * default) ignores X-Forwarded-For and keys on the socket address; Container Apps ingress
-         * is one hop, so a deployment behind it sets 1. Deliberately the restrictive default: an
-         * over-high count would let a client forge its own key and walk away from the limiter.
-         */
         @DefaultValue("0") int trustedProxyCount,
 
-        /* Upper bound on live keys, so attacker-chosen ones cannot exhaust the 0.5Gi heap. */
         @DefaultValue("20000") long maxTrackedKeys,
 
-        /*
-         * Guessing attacks against /auth/login, /auth/verify, /auth/reset-password and the two
-         * session routes. Fifteen attempts per address and five per account before the first wait
-         * - enough for a mistyped password or a household behind one address.
-         */
         @DefaultValue("15") long credentialAttemptsPerIp,
         @DefaultValue("5") long credentialAttemptsPerAccount,
         @DefaultValue("15s") Duration credentialBaseCooldown,
         @DefaultValue("5m") Duration credentialMaxCooldown,
         @DefaultValue("15m") Duration credentialWindow,
 
-        /*
-         * Outbound-mail amplification through /auth/signup, /auth/resend and /auth/forgot-password.
-         * Tighter than credentials because each attempt costs a message against a shared mail
-         * quota and the domain's sender reputation.
-         */
         @DefaultValue("5") long emailRequestsPerIp,
         @DefaultValue("3") long emailRequestsPerAccount,
         @DefaultValue("15s") Duration emailBaseCooldown,
         @DefaultValue("15m") Duration emailMaxCooldown,
         @DefaultValue("1h") Duration emailWindow,
 
-        /* Where the escalation lives. Never blank in a deployment; blank locally means "no Redis
-         * configured", which the filter treats as a reason to allow rather than to refuse startup. */
         @DefaultValue("localhost") String redisHost,
         @DefaultValue("6379") int redisPort,
         @DefaultValue("") String redisPassword,
@@ -86,19 +53,10 @@ public record AuthRateLimitProperties(
         }
     }
 
-    /**
-     * The longest a key can matter for. Past this it is either quiet enough to have been forgiven
-     * or out of cooldown, so evicting it is indistinguishable from keeping it.
-     */
     Duration longestWindow() {
         return credentialWindow.compareTo(emailWindow) >= 0 ? credentialWindow : emailWindow;
     }
 
-    /**
-     * A window shorter than the ceiling would forgive a key while it is still serving a cooldown,
-     * handing back the whole burst to anyone who simply waits out the longest wait they have
-     * earned - which is the one thing the escalation is for.
-     */
     private static void requireEscalation(Duration base, Duration max, Duration window, String prefix) {
         requirePositive(base, prefix + "-base-cooldown");
         requirePositive(max, prefix + "-max-cooldown");

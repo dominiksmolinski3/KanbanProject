@@ -54,7 +54,6 @@ function Chat() {
       return 'system-message';
     }
 
-    // The server stamps every message with the JWT subject, which is the account's email.
     if (msg.sender === user?.email) {
       return 'own-message';
     }
@@ -83,8 +82,6 @@ function Chat() {
                 className="message-type-select"
                 aria-label={t('chat.conversationKind')}
               >
-                {/* The board replaced a "public" option that was genuinely public - one global
-                    room every account on the deployment was on. */}
                 <option value="board">{t('chat.board')}</option>
                 <option value="private">{t('chat.private')}</option>
               </select>

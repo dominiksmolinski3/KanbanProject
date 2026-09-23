@@ -41,22 +41,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The download response, which is the whole reason the storage account can be shut off.
- * {@code TaskAttachmentServiceTest} proves who may reach an attachment; this proves what the
- * response looks like once they may — serving bytes from this origin means a rendered HTML or SVG
- * upload would be same-origin with the board and every token in it, so
- * {@code Content-Disposition: attachment} is a security control here, asserted rather than assumed.
- */
 class TaskAttachmentControllerHttpTest {
-
     private static final byte[] CONTENT = "a small attachment".getBytes(StandardCharsets.UTF_8);
 
     private TaskAttachmentService attachmentService;
     private MockMvc mvc;
     private User caller;
 
-    /** Stands in for {@code @AuthenticationPrincipal}, which the standalone setup does not wire. */
     private class PrincipalResolver implements HandlerMethodArgumentResolver {
         @Override
         public boolean supportsParameter(MethodParameter parameter) {
@@ -76,8 +67,6 @@ class TaskAttachmentControllerHttpTest {
         caller = new User();
         caller.setId(1);
 
-        // The content route answers a Resource, so that converter has to be listed alongside
-        // Jackson - overriding the converters drops the defaults entirely.
         mvc = MockMvcBuilders.standaloneSetup(new TaskAttachmentController(attachmentService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
@@ -98,7 +87,6 @@ class TaskAttachmentControllerHttpTest {
                 CONTENT.length);
     }
 
-    /** The tail of {@link #CONTENT} from {@code start}, as the service would hand it back. */
     private static TaskAttachmentContent partFrom(int start) {
         return TaskAttachmentContent.part(
                 new ByteArrayInputStream(CONTENT, start, CONTENT.length - start),

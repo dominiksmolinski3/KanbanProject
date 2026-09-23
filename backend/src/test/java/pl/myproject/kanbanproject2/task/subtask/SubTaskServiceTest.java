@@ -27,15 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * {@code task/subtask} had no test at all, which held the per-package JaCoCo floor at zero. The
- * two behaviours worth pinning are position scoping — the next position comes from the parent
- * task's own subtasks, not a count of the whole table — and the tri-state patch, where "absent"
- * and "explicitly null" must stay distinguishable or a body of {@code {"description": ...}}
- * silently un-ticks the subtask.
- */
 class SubTaskServiceTest {
-
     private SubTaskRepository subTaskRepository;
     private TaskRepository taskRepository;
     private SubTaskService service;
@@ -67,7 +59,6 @@ class SubTaskServiceTest {
         return task;
     }
 
-    /** Every subtask hangs off a task on the board, because that is where its board comes from. */
     private SubTask subTask(Integer id, String title, Integer position) {
         var subTask = new SubTask();
         subTask.setId(id);
@@ -280,8 +271,6 @@ class SubTaskServiceTest {
             existing.setTask(task(7));
             when(subTaskRepository.findById(1)).thenReturn(Optional.of(existing));
 
-            // Detaching used to be allowed and produced a subtask on no board at all: invisible to
-            // its own author and to everyone else, with no route that could reattach it.
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(null, null, null, null, JsonNullable.of(null))))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -354,8 +343,6 @@ class SubTaskServiceTest {
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.SUBTASK_NOT_FOUND);
-            // Reading it first is what makes the board check possible at all - existsById cannot
-            // tell you whose board the subtask is on.
             verify(subTaskRepository, never()).delete(null);
         }
 
@@ -420,11 +407,6 @@ class SubTaskServiceTest {
         }
     }
 
-    /**
-     * FEAT-08 left this service out: a viewer could see a card and still add, tick, reorder, move
-     * or delete its subtasks, because every lookup here checked visibility and nothing checked the
-     * role. Each write now asks {@code requireWritable}; the reads still do not.
-     */
     @Nested
     @DisplayName("a viewer")
     class Viewer {
@@ -471,11 +453,6 @@ class SubTaskServiceTest {
         }
     }
 
-    /**
-     * SYNC-01: a card carries its open-subtask count, so every subtask write has to tell the board's
-     * other viewers or their "unfinished subtasks" warning sits wrong until a reload. The publisher
-     * holds the frame until the commit, so announcing inside the service is not announcing early.
-     */
     @Nested
     @DisplayName("announcing")
     class Announcing {

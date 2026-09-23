@@ -22,28 +22,11 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-/**
- * Who may see which board, and everything that changes one. Every other service asks this one the
- * same two questions — {@link #resolve} for "which board is this about" and {@link #requireVisible}
- * for "may this caller touch it" — and the dependency runs one way only, feature services depending
- * on this and this on repositories, so a check can't be short-circuited by a service that has
- * already run one.
- *
- * <p><b>The leak profile is deliberate.</b> A board, column, row or task on someone else's board
- * answers exactly as one that does not exist — 404, never 403 — so a caller can't learn the shape of
- * a board they can't see by walking ids. 403 is reserved for a caller who can already see the object
- * and simply doesn't own it.
- */
 @RequiredArgsConstructor
 @Transactional
 @Service
 public class BoardService {
 
-    /**
-     * The stages a new board starts with, matching {@code V3__seed_default_columns.sql}. The seed
-     * migration only ever fills an empty database once, so a board created afterward needs its
-     * starting stages seeded here instead; V3 keeps its job for the one board that predates this code.
-     */
     private static final List<DefaultColumn> DEFAULT_COLUMNS = List.of(
             new DefaultColumn("New Issues", 1, 0, null),
             new DefaultColumn("Icebox", 2, 0, null),
@@ -54,18 +37,11 @@ public class BoardService {
             new DefaultColumn("Done", 7, 0, FlowRole.DONE),
             new DefaultColumn("Closed", 8, 0, null));
 
-    /**
-     * Which seeded stage the flow screen measures from and to (FLOW-02). Set only here, where this
-     * code wrote the stages and so knows which one it meant by done - the default board ends
-     * {@code Done, Closed}, and without this a team stopping at Done opened the flow screen on
-     * "0 finished". Boards that predate V23 are not given one by name; see the migration.
-     */
     private enum FlowRole { START, DONE }
 
     private record DefaultColumn(String name, int position, int wipLimit, FlowRole flowRole) {
     }
 
-    /** Language-neutral on purpose: the UI is translated into nine locales, this string is not. */
     static final String DEFAULT_BOARD_NAME = "Kanban";
 
     private final BoardRepository boardRepository;
@@ -80,12 +56,6 @@ public class BoardService {
     private final BoardMapper boardMapper;
     private final ApplicationEventPublisher events;
 
-    // ------------------------------------------------------------------ access ---
-
-    /**
-     * The board a request without a target object is about. {@code boardId} may be null, meaning
-     * "the caller's own board" — which is what lets the pre-boards screens keep working unchanged.
-     */
     public Board resolve(User caller, Integer boardId) {
         return boardId == null ? defaultFor(caller) : requireVisible(caller, boardId);
     }
@@ -94,7 +64,6 @@ public class BoardService {
         return requireVisible(caller, boardRepository.findWithMembersById(boardId).orElse(null));
     }
 
-    /** @throws GlobalException 404 if the board is absent or belongs to somebody else. */
     public Board requireVisible(User caller, Board board) {
         if (board == null || !board.isVisibleTo(caller)) {
             throw new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND);
@@ -110,13 +79,6 @@ public class BoardService {
         return board;
     }
 
-    /**
-     * The caller's role on a board they can already see. The owner is not a row {@code board_members}
-     * has to answer for - owning is checked separately - so this reads no role for them at all and
-     * answers {@link BoardRole#MEMBER}, which is the write access an owner always has. A caller who
-     * is visible but has no row (should not happen past {@code V21}'s backfill, but a defensive
-     * default all the same) reads the same way, since {@code MEMBER} was every existing row's role.
-     */
     public BoardRole roleOf(User caller, Board board) {
         if (board == null || caller == null || caller.getId() == null) {
             return BoardRole.MEMBER;
@@ -129,16 +91,10 @@ public class BoardService {
                 .orElse(BoardRole.MEMBER);
     }
 
-    /** {@link Board#isWritableBy}, with the role resolved here rather than left to the caller. */
     public boolean isWritable(User caller, Board board) {
         return board != null && board.isWritableBy(caller, roleOf(caller, board));
     }
 
-    /**
-     * {@link #requireVisible} plus the write check: a viewer reaches {@link ExceptionIdentifier#VIEWER_READ_ONLY}
-     * (403) rather than {@code BOARD_NOT_FOUND}, because they can already see the board - the
-     * 404-not-403 rule reserves 403 for exactly this caller.
-     */
     public Board requireWritable(User caller, Board board) {
         var visible = requireVisible(caller, board);
         if (!isWritable(caller, visible)) {
@@ -151,10 +107,6 @@ public class BoardService {
         return requireWritable(caller, boardRepository.findWithMembersById(boardId).orElse(null));
     }
 
-    /**
-     * Fails unless both objects sit on the same board. Without this, a caller on two boards could
-     * move a task onto a column on the other one, splitting a board across two tenancies.
-     */
     public void requireSameBoard(Board expected, Board actual) {
         if (expected == null || actual == null || !expected.getId().equals(actual.getId())) {
             throw new GlobalException(ExceptionIdentifier.BOARD_MISMATCH);
@@ -168,12 +120,6 @@ public class BoardService {
         return boardRepository.findVisibleTo(caller);
     }
 
-    /**
-     * The caller's own board, created if they have none. This is the only place a board is
-     * provisioned, which is why it sits on the read path rather than in signup: accounts that
-     * predate boards have none, and an owner who deletes their last one has none again — a GET that
-     * writes is unusual, but the alternative is a screen with no way to render.
-     */
     public Board defaultFor(User caller) {
         if (caller == null || caller.getId() == null) {
             throw new GlobalException(ExceptionIdentifier.BOARD_NOT_FOUND);
@@ -189,13 +135,6 @@ public class BoardService {
         return provisionFor(caller);
     }
 
-    // ------------------------------------------------------------ provisioning ---
-
-    /**
-     * Gives a new account a board to work on. If the migration's unclaimed board is still sitting
-     * there, the first account to open a board adopts it rather than getting a second, identical
-     * set of stages beside the one {@code V3__seed_default_columns.sql} already seeded.
-     */
     public Board provisionFor(User user) {
         var unclaimed = boardRepository.findFirstByOwnerIsNullOrderByIdAsc();
         if (unclaimed.isPresent()) {
@@ -226,8 +165,6 @@ public class BoardService {
         }
     }
 
-    // -------------------------------------------------------------------- CRUD ---
-
     public List<BoardDto> myBoards(User caller) {
         return visibleTo(caller).stream().map(board -> boardMapper.apply(board, caller)).toList();
     }
@@ -252,13 +189,6 @@ public class BoardService {
         return boardMapper.apply(boardRepository.save(board), caller);
     }
 
-    /**
-     * Removes the board and everything on it. The unwinding is spelled out here rather than
-     * delegated to {@code ColumnService}/{@code TaskService}, since both depend on this service for
-     * their access checks and calling back into them would create a dependency cycle. It still has
-     * to honor their rules: {@code task_column_history.task_id} is not nullable and nothing cascades
-     * to it, and a parent task can't be deleted while a child still points at it.
-     */
     public void deleteBoard(User caller, Integer id) {
         var board = requireOwned(caller, id);
 
@@ -270,54 +200,26 @@ public class BoardService {
             }
             taskRepository.saveAll(tasks);
             taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskIn(tasks));
-            // Whatever a feature hangs off a task goes first, removed by the feature that owns it -
-            // see BoardTasksDeleting for why this is an event and not one more line here.
             events.publishEvent(new BoardTasksDeleting(board, tasks));
             taskRepository.deleteAll(tasks);
         }
 
-        // The board points back at two of its own columns (V23). Cleared first, so the flush updates
-        // the board before it deletes what it pointed at, rather than relying on the database's
-        // ON DELETE SET NULL racing a board row Hibernate still holds.
         board.setFlowStartColumn(null);
         board.setFlowDoneColumn(null);
         columnRepository.deleteAll(columnRepository.findByBoardOrderByPositionAsc(board));
         rowRepository.deleteAll(rowRepository.findByBoardOrderByPositionAsc(board));
-        // Nothing cascades to either of these, and a leftover invitation would render on the
-        // invitee's screen as a board with no name.
         invitationRepository.deleteAll(invitationRepository.findByBoard(board));
         activityRepository.deleteAll(activityRepository.findByBoard(board));
-        // Chat joined this list in V18. A message is board-scoped now, and the foreign key it
-        // gained is one the board could not be deleted around.
         chatRepository.deleteAll(chatRepository.findByBoard(board));
 
         board.getMembers().clear();
         boardRepository.delete(board);
     }
 
-    // ----------------------------------------------------------------- members ---
-
-    /**
-     * Puts an accepted invitee on the board — the only way onto a member list, since
-     * {@code board/invitation} replaced an owner directly adding an address (which let an owner
-     * diff the member list to learn whether that address had an account here). No access check of
-     * its own: the caller is the person joining, and the check that matters — that the invitation is
-     * pending and addressed to them — belongs to {@code board/invitation}, where it's made.
-     *
-     * <p>Kept for callers with no opinion on role, joining as a {@link BoardRole#MEMBER} - every
-     * caller before invitations carried one did, and it is {@code board_members.role}'s own default.
-     */
     public Board addAcceptedMember(Board board, User user) {
         return addAcceptedMember(board, user, BoardRole.MEMBER);
     }
 
-    /**
-     * The same join, at the role the invitation offered. The membership row has to exist before its
-     * role can be set, so this flushes the {@code @ManyToMany} insert before running the role update
-     * — {@code saveAndFlush} rather than {@code save}, since a plain {@code save} makes no promise
-     * about when Hibernate actually sends the insert, and the native {@code UPDATE} below runs
-     * against whatever is already committed to the connection, not the persistence context.
-     */
     public Board addAcceptedMember(Board board, User user, BoardRole role) {
         board.addMember(user);
         var saved = boardRepository.saveAndFlush(board);
@@ -325,12 +227,6 @@ public class BoardService {
         return saved;
     }
 
-    /**
-     * Takes somebody off the board — the owner removing a member, or a member removing themselves.
-     *
-     * <p>The owner cannot be removed, including by themselves: the board would be left with nobody
-     * able to rename, share or delete it, and no route anywhere could put an owner back.
-     */
     public BoardDto removeMember(User caller, Integer id, Integer userId) {
         var board = requireVisible(caller, id);
         boolean leaving = caller.getId().equals(userId);
@@ -349,10 +245,6 @@ public class BoardService {
         return boardMapper.apply(boardRepository.save(board), caller);
     }
 
-    /**
-     * Takes the departing member off the board's tasks on the way out, or a stale assignment would
-     * keep their name on a board they can no longer open and count against their WIP limit.
-     */
     private void unassignFromBoardTasks(Board board, User member) {
         var assigned = taskRepository.findByBoardOrderByIdAsc(board).stream()
                 .filter(task -> task.getUsers() != null && task.getUsers().stream()
@@ -364,12 +256,6 @@ public class BoardService {
         taskRepository.saveAll(assigned);
     }
 
-    /**
-     * Every account that shares at least one board with {@code caller}, one entry per account.
-     * Keyed on id rather than collected into a {@code Set<User>}, because {@link User} does not
-     * define equality and the same account reached through two boards is two distinct objects —
-     * which is how the caller once came back listed twice.
-     */
     public Collection<User> peersOf(User caller) {
         var peers = new LinkedHashMap<Integer, User>();
         for (Board board : visibleTo(caller)) {

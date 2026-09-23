@@ -9,8 +9,6 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
 function TaskDetails({ task, onClose, onSubtaskUpdate }) {
-  // A viewer sees the whole panel and changes none of it (FEAT-08). The server refuses every write
-  // here regardless; hiding the controls is what stops the panel offering edits that can only fail.
   const { refreshTasks, readOnly } = useKanban();
   const [users, setUsers] = useState([]);
   const [assignedUsers, setAssignedUsers] = useState([]);
@@ -48,8 +46,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   const [deadlineValue, setDeadlineValue] = useState('');
   const [originalDeadline, setOriginalDeadline] = useState('');
   const [columnHistory, setColumnHistory] = useState([]);
-  // The task's @Version as it was when this panel loaded it. Sent back on every save so the server
-  // can refuse a write built on a copy someone else has since changed; refreshed from each response.
   const [taskVersion, setTaskVersion] = useState(null);
   const [currentView, setCurrentView] = useState('main');
   const [columnHistoryPage, setColumnHistoryPage] = useState(0);
@@ -118,12 +114,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   }, [loading]);
 
-  /*
-   * Somebody else's change to this card's subtasks or files (SYNC-01). The board frame carries no
-   * task id, so this re-reads whichever card is open - one request, and only while a panel is. The
-   * subtask list is re-read on its own rather than through loadTaskData, which would flash the whole
-   * panel into its loading state for one ticked box.
-   */
   useEffect(() => {
     const onSubtasksChanged = async () => {
       try {
@@ -133,8 +123,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         console.error('Error refreshing subtasks:', error);
       }
     };
-    // Inlined rather than calling loadAttachments, which is redefined on every render; same
-    // swallow-and-empty rule, since a panel on a deployment with no storage must not break here.
     const onAttachmentsChanged = async () => {
       try {
         const files = await fetchTaskAttachments(task.id);
@@ -153,13 +141,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     };
   }, [task.id]);
   
-  /*
-   * Only the first load of a card has nothing to show yet. Every edit here re-reads the task
-   * through this function, and blanking the panel for each one - the whole form swapped for a
-   * loading line after adding one subtask or one assignee - was a flash for the person using it
-   * and a race for anything typing into it next: the input the next keystroke went to was already
-   * on its way out. Board.jsx makes the same distinction for the board's own refreshes.
-   */
   const loadedTaskId = useRef(null);
 
   const loadTaskData = async () => {
@@ -247,7 +228,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       setOriginalTaskTitle(taskData.title);
       setTaskLabels(taskData.labels || []);
       
-      // load avatars
       if (assignedData.length > 0) {
         const avatarPromises = assignedData.map(async user => {
           try {
@@ -278,12 +258,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   };
 
-  /**
-   * The attachment list, kept out of loadTaskData's error handling on purpose: a deployment with
-   * no storage configured should only lose its attachment list, not the whole panel, so this
-   * swallows rather than throws. The empty-array fallback also covers a mocked api module, where
-   * every call answers undefined.
-   */
   const loadAttachments = async () => {
     try {
       const files = await fetchTaskAttachments(task.id);
@@ -294,13 +268,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   };
 
-  /**
-   * Uploads one file at a time and reloads the list.
-   *
-   * One at a time rather than in parallel because the limit is per file and the panel has one
-   * progress state: two failures at once would leave the person unable to tell which file the
-   * message was about.
-   */
   const handleAttachmentUpload = async (files) => {
     const chosen = Array.from(files || []);
     if (chosen.length === 0) {
@@ -322,10 +289,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   };
 
-  /**
-   * Which refusal it was decides what the person can do about it, so they are not one message.
-   * A file over the limit is theirs to fix; storage not being configured is not.
-   */
   const reportAttachmentError = (error, fileName) => {
     if (error instanceof AttachmentUploadError && error.reason === 'tooLarge') {
       toast.error(t('taskActions.attachmentTooLarge', {
@@ -344,8 +307,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
   const handleAttachmentInputChange = (event) => {
     handleAttachmentUpload(event.target.files);
-    // Clearing it is what lets the same file be picked twice in a row; without this the input
-    // holds the old value and the change event never fires again.
+    // Reset so picking the same file again still fires a change event.
     event.target.value = '';
   };
 
@@ -356,11 +318,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
   const handleAttachmentDragLeave = () => setDraggingFileOver(false);
 
-  /**
-   * The board's own drag-and-drop moves cards through typed `dataTransfer` payloads, so a drop
-   * carrying files is unambiguous - but the event still has to be stopped here, or it bubbles up
-   * to the board's handler and to the browser, which would navigate away to the dropped file.
-   */
   const handleAttachmentDrop = (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -397,7 +354,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     }
   };
 
-  /** Bytes are what the API stores; nobody reads them. Binary units, so 10 MB is the 10 MB limit. */
   const formatFileSize = (bytes) => {
     if (!Number.isFinite(bytes) || bytes < 0) {
       return '';
@@ -415,11 +371,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     return `${size < 10 ? size.toFixed(1) : Math.round(size)} ${units[unit]}`;
   };
 
-  /**
-   * Every save from this panel goes through here so the write carries the version the panel loaded
-   * with. The server answers 409 - surfaced as a ConcurrentModificationError - when the task has
-   * changed since, and each successful response carries the new version to send next time.
-   */
   const persistTaskFields = async (fields) => {
     const payload = typeof taskVersion === 'number' ? { ...fields, version: taskVersion } : fields;
     const updated = await updateTask(task.id, payload);
@@ -429,10 +380,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     return updated;
   };
 
-  /**
-   * A stale save is not a failure to report - nothing is broken, the panel is just behind - so it
-   * says what happened and reloads. Anything else keeps the existing error toast.
-   */
   const reportSaveError = (error, logLabel) => {
     if (error instanceof ConcurrentModificationError) {
       toast.info(t('notifications.taskChangedElsewhere'));
@@ -838,8 +785,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   
   const saveDeadline = async () => {
     try {
-      // An emptied field means "remove the deadline". The API distinguishes an explicit null from an
-      // omitted field, so send null rather than '' — which is not a date and would be rejected.
       await persistTaskFields({ deadline: deadlineValue || null });
 
       setOriginalDeadline(deadlineValue);
@@ -933,7 +878,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         }}
       />
       <div className="task-details-panel" ref={panelRef}>
-      {/* Header */}
       <div className="panel-header">
         {editingTaskTitle ? (
           <div className="title-edit-form">
@@ -1011,7 +955,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       <div className="task-details-main">
         {currentView === 'main' ? (
           <>
-            {/* Task Description Section */}
             <div className="task-description-section">
               <div className="description-header">
                 <h4>{t('taskActions.description')}:</h4>
@@ -1064,7 +1007,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
               )}
             </div>
 
-            {/* Subtasks Section */}
             <div className="subtasks-section">
               <h4>{t('taskActions.subtasks')}</h4>
               
@@ -1190,7 +1132,6 @@ id={`subtask-${subtask.id}`}
               )}
             </div>
 
-            {/* Attachments Section */}
             <div
               className={`attachments-section${draggingFileOver ? ' drop-target' : ''}`}
               onDragOver={readOnly ? undefined : handleAttachmentDragOver}
@@ -1263,9 +1204,7 @@ id={`subtask-${subtask.id}`}
 
           </>
         ) : currentView === 'relationships' ? (
-          /* Parent & Child Tasks Management View */
           <div className="relationships-view">
-            {/* User Assignment Section */}
             <div className="user-assignment-section">
               <div className="section-header">
                 <span className="assignment-icon">
@@ -1330,7 +1269,6 @@ id={`subtask-${subtask.id}`}
               )}
             </div>
 
-            {/* Parent Task Section */}
             <div className="parent-task-section">
               <div className="section-header">
                 <span className="parent-icon">
@@ -1408,7 +1346,6 @@ id={`subtask-${subtask.id}`}
               )}
             </div>
 
-            {/* Child Tasks Section */}
             <div className="child-tasks-section">
               <div className="section-header">
                 <span className="child-icon">
@@ -1443,9 +1380,7 @@ id={`subtask-${subtask.id}`}
             </div>
           </div>
         ) : (
-          /* History & Timeline View */
           <div className="history-timeline-view">
-            {/* Deadline Section */}
             <div className="task-deadline-section">
               <div className="deadline-header">
                 <span className="deadline-icon">
@@ -1515,7 +1450,6 @@ id={`subtask-${subtask.id}`}
               )}
             </div>
 
-            {/* Column History Section */}
             <div className="column-history-section">
               <div className="section-header">
                 <h4>{t('taskActions.columnHistory')}</h4>
@@ -1523,7 +1457,6 @@ id={`subtask-${subtask.id}`}
               <div className="column-history-content">
                 {columnHistory && columnHistory.length > 0 ? (
                   <>
-                    {/* Timeline Visualization */}
                     <div className="timeline-container">
                       <div className="timeline-line"></div>
                       {columnHistory
@@ -1565,7 +1498,6 @@ id={`subtask-${subtask.id}`}
                         })}
                     </div>
 
-                    {/* Progress Bar */}
                     <div className="history-progress">
                       <div className="progress-bar">
                         <div 
@@ -1584,7 +1516,6 @@ id={`subtask-${subtask.id}`}
                       </div>
                     </div>
 
-                    {/* Navigation */}
                     <div className="history-navigation">
                       <button 
                         className="nav-btn nav-btn-prev"
@@ -1690,7 +1621,6 @@ id={`subtask-${subtask.id}`}
                       </button>
                     </div>
 
-                    {/* Time Statistics with Charts */}
                     <div className="column-time-stats">
                       <h5>{t('taskDetails.timeSpentAnalysis')}</h5>
                       {isLoadingTimeSpent ? (
@@ -1747,7 +1677,6 @@ id={`subtask-${subtask.id}`}
           </div>
         )}
 
-        {/* Delete subtask confirmation dialog */}
         {showDeleteConfirmation && subtaskToDelete && (
           <div 
           className="delete-confirmation-overlay"
@@ -1774,9 +1703,6 @@ id={`subtask-${subtask.id}`}
           </div>
         )}
         
-        {/* Delete attachment confirmation dialog
-            A deletion here takes the row and the blob, and nothing brings the file back from the
-            panel - so it asks, the way removing a subtask or an assignee does. */}
         {attachmentToDelete && (
           <div
             className="delete-confirmation-overlay"
@@ -1803,7 +1729,6 @@ id={`subtask-${subtask.id}`}
           </div>
         )}
 
-        {/* Delete user confirmation dialog */}
         {showUserDeleteConfirmation && userToDelete && (
           <div
            className="delete-confirmation-overlay"
@@ -1840,7 +1765,6 @@ id={`subtask-${subtask.id}`}
         />
         </div>
 
-        {/* Assigned users section */}
         {assignedUsers.length > 0 && (
           <div className="assigned-users-bar">
             <span>{t('taskActions.assigned')}:</span>

@@ -68,7 +68,6 @@
   height: 200px;
 }
 
-/* Header styling */
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -136,7 +135,6 @@
   transform: scale(1.1);
 }
 
-/* User assignment dropdown */
 .assign-user-dropdown {
   background-color: var(--bg-accent);
   border-bottom: var(--border-thin) solid var(--gray-500);
@@ -226,7 +224,6 @@
   box-shadow: none;
 }
 
-/* Assigned users bar */
 .assigned-users-bar {
   display: flex;
   align-items: center;
@@ -299,7 +296,6 @@
   object-fit: cover;
 }
 
-/* Subtasks section */
 .subtasks-section {
   padding: var(--spacing-xl);
 }
@@ -459,7 +455,6 @@
   transform: scale(1.1);
 }
 
-/* Styling for subtask description */
 .subtask-description-container {
   margin-top: var(--spacing-sm);
   padding-top: var(--spacing-sm);
@@ -538,7 +533,6 @@
   color: var(--text-muted);
 }
 
-/* Description editing form */
 .description-edit-form {
   display: flex;
   flex-direction: column;
@@ -638,7 +632,6 @@
   }
 }
 
-/* Delete confirmation dialog */
 .delete-confirmation-overlay {
   position: fixed;
   top: 0;
@@ -739,12 +732,10 @@
   box-shadow: 0 4px 8px var(--shadow-color-light);
 }
 
-/* New styling for expanded subtask items */
 .subtask-item.expanded {
   background-color: var(--bg-accent-hover);
 }
 
-/* Additional styling for subtasks list scrollbar */
 .subtasks-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -873,7 +864,6 @@
   max-height: calc(85vh - 100px);
 }
 
-/* Title editing */
 .title-edit-form {
   display: flex;
   flex-direction: column;
@@ -972,7 +962,6 @@
   height: 18px;
 }
 
-/* Task description section */
 .task-description-section .description-header {
   display: flex;
   justify-content: center;
@@ -991,7 +980,6 @@
   right: 0;
 }
 
-/* Task parent section */
 .task-parent-section {
   margin-top: 20px;
   padding: 15px;
@@ -1119,7 +1107,6 @@
   font-size: var(--text-xs);
 }
 
-/* Task deadline section */
 .task-deadline-section {
   padding: var(--spacing-lg) var(--spacing-xl);
   border-bottom: var(--border-thin) solid var(--gray-500);
@@ -1185,7 +1172,6 @@
   margin-left: var(--spacing-xs);
 }
 
-/* Column history section */
 .column-history-section {
   margin-top: 15px;
   padding-top: 15px;
@@ -1289,7 +1275,6 @@
   font-weight: bold;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
   .task-details-panel {
     width: 95%;
@@ -1330,7 +1315,6 @@
   }
 }
 
-/* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .history-nav-btn {
     background-color: #2a2a2a;
@@ -1347,7 +1331,6 @@
   }
 }
 
-/* Common styles for headings and labels */
 h3, h4 {
   color: var(--text-dark);
 }
@@ -1550,7 +1533,6 @@ label {
   display: inline-block;
 }
 
-/* Progress Bar */
 .history-progress {
   margin: 20px 0;
   text-align: center;
@@ -1577,7 +1559,6 @@ label {
   color: #666;
 }
 
-/* Enhanced Navigation */
 .history-navigation {
   display: flex;
   justify-content: space-between;
@@ -1642,7 +1623,6 @@ label {
   transform: scale(1.2);
 }
 
-/* Enhanced Time Statistics */
 .column-time-stats {
   margin-top: 30px;
   padding: 24px;
@@ -1739,7 +1719,6 @@ label {
   to { transform: scaleX(1); }
 }
 
-/* No Data States */
 .no-history, .no-stats {
   display: flex;
   flex-direction: column;
@@ -1765,7 +1744,6 @@ label {
   opacity: 0.7;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .timeline-container {
     padding: 16px 0;
@@ -1829,7 +1807,6 @@ label {
   height: 18px;
 }
 
-/* Relationships View Styles */
 .relationships-view {
   padding: var(--spacing-xl);
 }
@@ -1854,7 +1831,6 @@ label {
   color: var(--text-dark);
 }
 
-/* User Assignment Section */
 .user-assignment-section {
   margin-bottom: var(--spacing-xl);
   padding: var(--spacing-lg);
@@ -1987,7 +1963,6 @@ label {
   box-shadow: none;
 }
 
-/* Parent Task Section */
 .parent-task-section {
   margin-bottom: var(--spacing-xl);
   padding: var(--spacing-lg);
@@ -2128,7 +2103,6 @@ label {
   background-color: var(--bg-accent);
 }
 
-/* Child Tasks Section */
 .child-tasks-section {
   padding: var(--spacing-lg);
   background-color: var(--primary-transparent);
@@ -2192,7 +2166,6 @@ label {
   color: #22c55e;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .assignment-controls {
     flex-direction: column;
@@ -2217,15 +2190,8 @@ label {
     gap: var(--spacing-sm);
   }
 }
-/* ==========================================================================
-   Attachments
-   The list of files on a task. The bytes live in Azure Blob Storage; a click
-   on a name asks the API for a signed link and the browser follows it there.
-   ========================================================================== */
 
 .attachments-section {
-  /* Positioned so the visually-hidden file input below is contained by this section rather than
-     escaping to whichever ancestor happens to be positioned. */
   position: relative;
   padding: var(--spacing-xl);
   border-radius: var(--radius-md);
@@ -2233,7 +2199,6 @@ label {
   transition: all var(--transition-fast);
 }
 
-/* The whole section is a drop zone, so a file dragged anywhere over it lands. */
 .attachments-section.drop-target {
   border-color: var(--border-color-focus);
   background-color: var(--bg-accent);
@@ -2254,9 +2219,6 @@ label {
   margin-bottom: var(--spacing-xl);
 }
 
-/* The real input is replaced by the button beside it, which is the only way to
-   style a file picker consistently across browsers. It stays in the DOM and
-   focusable rather than display:none, so keyboard and screen readers keep it. */
 .attachment-file-input {
   position: absolute;
   width: 1px;
@@ -2333,8 +2295,6 @@ label {
   text-decoration: underline;
 }
 
-/* A file name is arbitrary length and must not push the size and the delete
-   button off the panel, so it is the one thing that truncates. */
 .attachment-file-name {
   overflow: hidden;
   text-overflow: ellipsis;

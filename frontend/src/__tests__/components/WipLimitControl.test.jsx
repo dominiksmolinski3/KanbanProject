@@ -136,7 +136,6 @@ describe('WipLimitControl Component', () => {
             </KanbanContext.Provider>
         );
         
-        // form is rendered inside a portal (document.body) by FormModal, so query the document as a fallback
         const form = container.querySelector('form') || document.querySelector('form');
     
             expect(form).not.toBeNull();

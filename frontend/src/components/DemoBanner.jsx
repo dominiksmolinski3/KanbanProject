@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../styles/DemoBanner.css';
 
-// Cosmetic-only marker: this banner exists to tell visitors to the public demo
-// deployment (kanbanproject.pl) that it is a test site, and to hand them a
-// working login. It has nothing to do with authentication or access control.
 const DEMO_HOSTNAME_MARKER = 'kanbanproject';
 
 const TEST_ACCOUNTS = [

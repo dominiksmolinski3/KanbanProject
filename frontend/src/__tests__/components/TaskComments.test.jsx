@@ -43,11 +43,6 @@ const page = (comments, totalEntries = comments.length) => ({
   comments, page: 0, size: 25, totalEntries, totalPages: 1
 });
 
-/**
- * A card's thread as each kind of caller sees it. The server decides the same three things again -
- * viewer, author, owner - so every control asserted absent here would be refused anyway; what this
- * suite pins is that the panel does not offer an action that can only fail.
- */
 describe('TaskComments', () => {
   beforeEach(() => {
     jest.clearAllMocks();

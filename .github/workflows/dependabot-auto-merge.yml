@@ -19,8 +19,6 @@ jobs:
       with:
         github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-    # Majors are left for manual review; this only clears the routine patch/minor
-    # bumps that ecosystems npm/maven/docker/github-actions generate every week.
     - name: Enable auto-merge for patch and minor updates
       if: |
         steps.metadata.outputs.update-type == 'version-update:semver-patch' ||

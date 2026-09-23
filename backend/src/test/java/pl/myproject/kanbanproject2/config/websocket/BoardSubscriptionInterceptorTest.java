@@ -28,13 +28,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * The broker does not authorise a destination, so this is the whole of what stops a
- * subscriber holding any valid token from sitting on any board's topic.
- *
- * <p>A refusal is a dropped frame, not an exception: throwing closes the whole session, which
- * turns a member removed from a board into a reconnect loop and tells a caller the board is real.
- */
 @ExtendWith(MockitoExtension.class)
 class BoardSubscriptionInterceptorTest {
 

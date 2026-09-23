@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.1.1</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
     <groupId>pl.myproject</groupId>
     <artifactId>KanbanProject2</artifactId>
@@ -37,12 +37,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <!--
-              The Azure SDK ships azure-core, the Email client and the HTTP transport as separate
-              artifacts on separate release trains, and only the combinations the BOM names are
-              tested together. Picking versions by hand is how you end up with a NoSuchMethodError
-              between azure-core and a transport built against a different one.
-            -->
             <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-sdk-bom</artifactId>
@@ -67,17 +61,6 @@
             <artifactId>dotenv-java</artifactId>
             <version>3.2.0</version>
         </dependency>
-        <!--
-          Mail goes out over the Azure Communication Services REST API, not SMTP, so there is no
-          spring-boot-starter-mail here and no jakarta.mail on the classpath.
-
-          The client defaults to the Netty transport, which drags Netty and Reactor Netty into a
-          Tomcat application that has no other use for them. Excluding it and putting
-          azure-core-http-jdk-httpclient on the classpath instead leaves the SDK to find the JDK's
-          own HttpClient through the ServiceLoader - AcsEmailSenderTest exercises the whole
-          pipeline against a stub server, so a mis-wired transport fails the build rather than
-          the first signup.
-        -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-communication-email</artifactId>
@@ -92,18 +75,6 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-core-http-jdk-httpclient</artifactId>
         </dependency>
-        <!--
-          Task attachments live in Azure Blob Storage, not in Postgres.
-
-          The two artifacts are separate on purpose. azure-storage-blob puts the bytes there;
-          azure-identity is what signs the download links without an account key existing at all -
-          the container app authenticates as its managed identity, asks the service for a user
-          delegation key, and signs a five-minute read SAS with it. See AzureBlobStore.
-
-          Both exclude Netty for the reason the Email client does: AzureTransportTest asserts it is
-          not on the classpath, so one artifact dragging it back in fails the build rather than
-          quietly deciding the transport lookup.
-        -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-storage-blob</artifactId>
@@ -129,16 +100,6 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!--
-          AuthRateLimiter's escalation lives in Redis so every replica reads and writes the same
-          key (see RedisEscalationStore) rather than each pod keeping its own count.
-
-          Jedis rather than the starter's default Lettuce: Lettuce is built on Netty, and this is a
-          synchronous Tomcat application making one blocking call per request - the same reasoning
-          that keeps Netty off the Azure SDK's transport (see the exclusions above and
-          AzureTransportTest) applies here too, and Jedis's blocking client needs no event loop for
-          a single command per filter invocation.
-        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -163,15 +124,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
-        <!--
-          WebSocketConfig.enableStompBrokerRelay's TCP client to the STOMP broker
-          (ReactorNettyTcpClient) is the one place Netty is not excluded on purpose - unlike Lettuce
-          above and azure-core-http-netty, Spring Framework has no non-Netty implementation of the
-          relay's TcpOperations, and writing one would mean reimplementing part of
-          spring-messaging's own TCP layer for a synchronous-app codebase that otherwise avoids Netty
-          on principle. The footprint stays scoped to this one relay client rather than the whole
-          servlet stack moving to WebFlux.
-        -->
         <dependency>
             <groupId>io.projectreactor.netty</groupId>
             <artifactId>reactor-netty</artifactId>
@@ -198,29 +150,16 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!--
-          Boot 4 defaults its auto-configured ObjectMapper to Jackson 3 (tools.jackson) instead of
-          classic com.fasterxml.jackson.databind. This app's DTOs, mappers and the JsonNullableModule
-          that gives PATCH bodies their present/null/absent distinction are all built on the classic
-          API, so this module opts back into the Jackson 2 autoconfiguration Boot 3.5 always had,
-          rather than migrating the whole app to Jackson 3 as a side effect of a parent bump.
-        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
-        <!-- Validation API (jakarta) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!--
-            Jackson maps both an absent property and an explicit JSON null onto the same Java null,
-            which is why every PATCH here used to mean "leave unchanged" and nothing could be
-            cleared. JsonNullable keeps the two apart: undefined() for absent, of(null) for null.
-        -->
         <dependency>
             <groupId>org.openapitools</groupId>
             <artifactId>jackson-databind-nullable</artifactId>
@@ -232,11 +171,6 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!--
-          Flyway owns the schema now; Hibernate only validates against it. flyway-database-postgresql
-          is a separate artifact from Flyway 10 onwards - without it the core library refuses to run
-          against Postgres at all rather than falling back to something generic.
-        -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -246,16 +180,10 @@
             <artifactId>flyway-database-postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!--
-          Boot 4 split FlywayAutoConfiguration into its own module rather than pulling it in with
-          flyway-core; without it Hibernate validates against whatever the database already has
-          (nothing, on a fresh one) instead of migrating first.
-        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-flyway</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -263,17 +191,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!--
-          The published contract for the ~60 routes under /api, served as /v3/api-docs.
-
-          The -api artifact, not -ui: this is the starter without Swagger UI, so no HTML console
-          is ever on the classpath to be exposed. A machine-readable contract is what the client,
-          a generator and ClientRoutesExistTest all want; a console on a deployed origin is a
-          second attack surface and the thing dast.yml's ZAP scan would flag first. Anyone who
-          wants to browse can point Redoc or Swagger UI at the JSON locally.
-
-          3.x is the line built for Spring Boot 4; 2.x is the Boot 3 one and does not resolve here.
-        -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
@@ -359,13 +276,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  mail is new this branch and measures 93.6 over 94 lines. A new
-                                  package with no rule of its own lands on the 0.15 catch-all,
-                                  which is the pressure that makes one get written; 0.85 is a
-                                  shade under with room for the relay to grow a branch, and the
-                                  same ratio config.security.captcha carries at a similar size.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -379,18 +289,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  storage and task.attachment arrive together with this branch and
-                                  measure 100 over 36 lines and 94.3 over 140. storage is small
-                                  because closing the storage account deleted the SAS machinery -
-                                  delegation keys, signed response headers, the public-endpoint
-                                  rewrite - so the floor stays at 0.90 rather than a shade under
-                                  100: at 36 lines a 0.95 floor is two lines from a tripwire, which
-                                  is the same reasoning the file rule below states. What
-                                  task.attachment still does not cover is the after-commit branch
-                                  of the transaction hook, which needs a real transaction manager
-                                  to reach.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -456,24 +354,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  board.invitation arrives with this branch and measures 89.5 over
-                                  95 lines. 0.80 rather than a shade under, because at 95 lines a
-                                  tight floor is a tripwire on the next honest refactor rather than
-                                  a gate on untested code - the same trade task/attachment and
-                                  storage were given. It needs a rule of its own at all because a
-                                  new package otherwise lands on the 0.15 catch-all and hides
-                                  there, which is the failure the ratchet has already had once.
-                                -->
-                                <!--
-                                  board.event arrives with the live-sync branch. It needs a rule of
-                                  its own for the reason board.invitation did: a new package with no
-                                  rule lands on the 0.15 catch-all and hides there, which is a
-                                  failure this ratchet has already had once. 0.85 rather than a
-                                  shade under where it measures - the package is three files, and a
-                                  tight floor on a package that small is a tripwire rather than a
-                                  gate.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -509,11 +389,6 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!-- 0.80, up from 0.70: measures 83.8, having been 73.5
-                                                 for four rounds. SupportedLocales arrived with a
-                                                 suite of its own and the locale patch added cases
-                                                 to a service that had none, so the package got
-                                                 larger in the tested direction. -->
                                             <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
@@ -540,31 +415,10 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!--
-                                                Measures 75.1 (289/385) with the search on it, up
-                                                from 72.1: TaskSearchCriteria and the paged lookup
-                                                arrived with suites of their own. 0.70 rather than
-                                                a shade under 75, because 385 lines is large enough
-                                                that a tight floor is a tripwire on the next honest
-                                                refactor rather than a gate on untested code.
-
-                                                0.75 with the activity feed on it: the package
-                                                measures 81.4 (328/403), up from 75.6, because the
-                                                recording calls arrived with a suite asserting each
-                                                one - and a recording call is exactly the kind of
-                                                line a floor has to hold, since deleting one breaks
-                                                no test and changes no response.
-                                            -->
                                             <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  task.activity arrives with this branch and measures 87.3 over 71
-                                  lines. 0.80 rather than a shade under, for the size reason above.
-                                  It needs a rule at all because a new package otherwise lands on
-                                  the 0.15 catch-all and hides there.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -591,19 +445,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  service measures 77.5, up from 59.7 and from the low forties
-                                  before that: EmailService lost the MimeMessage assembly to the
-                                  Azure client, then lost the message bodies to MailTemplates,
-                                  which arrived with a test per message. It shared the 0.45 rule
-                                  with config.security, which measures 83 and was held back by it;
-                                  splitting them is what let this one start moving at all.
-
-                                  0.70 rather than a shade under 77.5, because the package is 111
-                                  lines and the two smallest packages get the same kind of slack
-                                  for the same reason - at this size a floor set three lines away
-                                  is a tripwire, not a ratchet.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -613,25 +454,10 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!-- 0.75, up from 0.70: measures 81.2, having been 77.7
-                                                 last round. The nine bundles are exercised through
-                                                 MailTemplates rather than read, so every message in
-                                                 every language is rendered by a test. Not 0.80: at
-                                                 133 lines a floor that close is a tripwire. -->
                                             <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  task.history measures 100, up from the high thirties. The floor is
-                                  0.90 rather than a shade under, because it is 17 lines and at that
-                                  size a 0.95 floor is one uncovered line away from failing, which
-                                  turns the ratchet into a tripwire. `file` carried this rule too
-                                  until FEAT-09 removed the package outright (avatars moved to
-                                  BlobStore and /api/files was unused) - gone rather than left as a
-                                  dead include, the same call V18 and V19 made for tables and
-                                  columns a migration dropped.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -645,16 +471,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  user.avatar arrives with FEAT-09, replacing the avatar half of the
-                                  old `service` and `file` packages. Measures 88.3 (128/145). 0.85 is
-                                  a shade under rather than tight against it, the same floor
-                                  task.attachment carries for the same reason: what is left uncovered
-                                  is the after-commit branch of the transaction-synchronization hook,
-                                  which needs a real transaction manager to reach, plus one path
-                                  through the transfer-permit's FilterInputStream that only a failed
-                                  release exercises.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -668,12 +484,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  The two layout packages were the least covered code in the
-                                  project at 27.5 and 28.2; they measure 77.5 and 78.3 now. What is
-                                  left uncovered in each is the controller, which has no slice test
-                                  yet - that is the next thing to raise this.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -688,14 +498,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  config/websocket has been the lowest row in the report for nine
-                                  revisions at 27.8 over 72 lines. BoardSubscriptionInterceptor and
-                                  its suite take it to 48.0 over 100 - the floor moves to 0.40 and
-                                  not to a shade under, because half the package is still the two
-                                  configuration classes and the event listener, none of which has a
-                                  test and all of which a refactor moves lines around in.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -709,14 +511,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  config measures 84.7 over 118 lines, up from 74.6 over 63 - the
-                                  OpenAPI document and its customizer arrived with a suite that
-                                  covers all of them. 0.80 rather than a shade under 84.7: the
-                                  package is still small enough that a tight floor is a tripwire on
-                                  the next honest refactor, and the two uncovered stretches are
-                                  Azure client construction that cannot run without an account.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
@@ -730,12 +524,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  The catch-all, and the reason a brand-new package cannot hide:
-                                  anything not named above starts at 0% and fails the build, so the
-                                  way out is a test or an explicit rule rather than a lower number.
-                                  Nothing sits on it today - every package in the build is named.
-                                -->
                                 <rule>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -746,11 +534,6 @@
                                         </limit>
                                     </limits>
                                 </rule>
-                                <!--
-                                  The bundle rule catches what per-package floors cannot: a large
-                                  untested addition inside a package that is already well covered.
-                                  81.3 measured, so 0.80.
-                                -->
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>

@@ -41,11 +41,7 @@ function Board() {
     };
   }, [columns.length, rows.length]);
 
-  // Only the very first load has nothing to show yet: a background refresh sets the same
-  // `loading` flag, and gating the whole tree on it would unmount every open Task - and any
-  // TaskDetails panel someone has open - mid-edit for no reason a background sync needs. Once
-  // there is board structure to show, `loading` only means "a refresh is in flight," already
-  // communicated by the existing toasts and optimistic updates.
+  // Only the first load gates the tree; a background refresh must not unmount an open task panel.
   if (loading && columns.length === 0 && rows.length === 0 && tasks.length === 0) {
     return (
       <div className="board-loading">
@@ -149,8 +145,6 @@ function Board() {
         <div className="toast-buttons">
           <button 
             onClick={() => {
-              // The context has already toasted a failure; catching here keeps it from also
-              // surfacing as an unhandled rejection from a click handler.
               deleteRow(rowId).catch(() => {});
               toast.dismiss(toastId);
             }}
@@ -386,13 +380,6 @@ function Board() {
 
   return (
     <div className="board-grid" onDragOver={onBoardDragOver}>
-      {/*
-        The two halves of keyboard move that live outside the card: the help text every card points
-        its aria-describedby at, so the keys are discoverable once a card has focus, and the live
-        region that narrates the move, since the card itself does not move until the drop. The
-        announcement is a key and its values rather than a sentence - the same rule the activity
-        feed follows, because JavaScript-composed text can't be translated by the other bundles.
-      */}
       <p id="board-keyboard-move-help" className="visually-hidden">
         {t('board.keyboardMove.help')}
       </p>

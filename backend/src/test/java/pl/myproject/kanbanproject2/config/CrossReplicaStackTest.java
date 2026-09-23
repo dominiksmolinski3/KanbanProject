@@ -13,35 +13,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The guard over the one claim this repository could not make until there were two API replicas to
- * make it about: that a board event published by one of them reaches a browser whose WebSocket is
- * held by another.
- *
- * {@code cross-replica-sync.cy.js} is the spec, and three separate things have to stay true for it
- * to mean anything - none of which any compiler, linter or runtime can see:
- *
- * <ul>
- *   <li><b>Two replicas have to exist.</b> {@code docker-compose.yml}'s {@code app2} service is
- *       the second one, and it is behind the {@code replicas} profile so the ordinary stack is
- *       unchanged.</li>
- *   <li><b>The spec has to address the replica the browser is <i>not</i> on.</b> nginx proxies to
- *       {@code app}, which publishes 8081; {@code app2} publishes 8082, one digit away. If those
- *       two ever name the same port the spec still passes - faster - while proving exactly what
- *       {@code live-sync.cy.js} already proves. That is the failure this class exists for, and
- *       nothing at runtime can distinguish it from success.</li>
- *   <li><b>Something has to run it.</b> The spec is deliberately outside Cypress's default
- *       {@code specPattern}, so the ordinary suite does not fail for everybody running a
- *       single-replica stack. The price of that is a spec nothing runs by default, and the only
- *       thing that runs it is a named step in {@code kanban-ci.yml}'s e2e job.</li>
- * </ul>
- *
- * Same shape as {@link SweepAlarmCoverageTest} and {@code MetricAlertsMatchTheMetersTest}: a rule that has to
- * live in several files, checked in one.
- */
 class CrossReplicaStackTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path REPO = Path.of("..");
 
     private static final Path COMPOSE = REPO.resolve("docker-compose.yml");
@@ -51,10 +23,8 @@ class CrossReplicaStackTest {
     private static final Path SPEC =
             REPO.resolve(Path.of("frontend", "cypress", "replicas", "cross-replica-sync.cy.js"));
 
-    /** The npm script that is the only thing that runs the spec. */
     private static final String SCRIPT = "cypress:run:replicas";
 
-    /** The compose profile the second replica sits behind. */
     private static final String PROFILE = "replicas";
 
     @Test
@@ -136,7 +106,6 @@ class CrossReplicaStackTest {
                 .contains("npm run " + SCRIPT);
     }
 
-    /** The {@code services:} entry, with the shared anchor already merged in by the YAML parser. */
     @SuppressWarnings("unchecked")
     private static Map<String, Object> service(String name) throws IOException {
         assertThat(COMPOSE).as("the compose file has moved or gone").isRegularFile();
@@ -154,7 +123,6 @@ class CrossReplicaStackTest {
         return service;
     }
 
-    /** The host port of the service's single published mapping, {@code "127.0.0.1:8081:8080"}. */
     @SuppressWarnings("unchecked")
     private static String publishedPort(Map<String, Object> service) {
         List<String> ports = (List<String>) service.get("ports");

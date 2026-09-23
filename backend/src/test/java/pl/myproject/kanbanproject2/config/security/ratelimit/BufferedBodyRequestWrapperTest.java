@@ -14,16 +14,9 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The wrapper stands between an unauthenticated request and the controller that binds it, and every
- * method here is one a real servlet container may call even though {@code MockHttpServletRequest}
- * never does. A mistake in any of them is a 500 on a login attempt, so they are pinned directly.
- */
 class BufferedBodyRequestWrapperTest {
-
     private static final String BODY = "{\"email\":\"a@example.com\",\"password\":\"correct horse\"}";
 
-    /** Split so that half the body is replayed from the prefix and half comes off the live stream. */
     private static final int SPLIT = 20;
 
     @Test
@@ -101,7 +94,6 @@ class BufferedBodyRequestWrapperTest {
         assertThat(stream.isReady()).isTrue();
         assertThat(stream.isFinished()).isFalse();
 
-        // Still inside the prefix, so the stream behind it has not even been touched yet.
         stream.readNBytes(SPLIT - 1);
         assertThat(stream.isFinished()).isFalse();
 
@@ -181,9 +173,7 @@ class BufferedBodyRequestWrapperTest {
         return new BufferedBodyRequestWrapper(request, prefix, remainder);
     }
 
-    /** A stand-in for the container's stream, with the contract methods defined unambiguously. */
     private static final class RecordingServletInputStream extends ServletInputStream {
-
         private final ByteArrayInputStream source;
         private ReadListener readListener;
         private boolean finished;

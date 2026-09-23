@@ -44,8 +44,6 @@ describe('boardApi', () => {
     expect(url).toBe('/api/boards/3/invitations');
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual({ email: 'colleague@example.com' });
-    // No member list comes back, which is the whole point: the old route answered with one, so an
-    // owner could diff it and learn whether that address had an account here.
     expect(invitation.members).toBeUndefined();
   });
 

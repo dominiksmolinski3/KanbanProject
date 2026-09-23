@@ -18,37 +18,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Every foreign key in this schema has an index leading with its own column.
- *
- * <p>Postgres, unlike MySQL, creates no index for a foreign key constraint - it indexes the side
- * the key points at and leaves the referencing column bare. So each unindexed one is a sequential
- * scan on "which rows point at this", and a scan of the whole child table every time a referenced
- * row is deleted or updated. None of that is visible on a seeded board, no query fails, and
- * nothing in the application's own suite can see it: the entities are mapped correctly either way
- * and {@code FlywayMigrationsMatchEntitiesTest} compares columns, not access paths.
- *
- * <p>This is therefore the {@code MetricAlertsMatchTheMetersTest} shape applied to the schema - a rule that
- * lives in the migrations and is checked nowhere else. What it buys is not the twelve-odd indexes
- * {@code V19} added, which are a one-off, but the next foreign key: adding one now means adding
- * its index in the same migration or failing the build, rather than discovering it on a board with
- * data on it.
- *
- * <p>Two parsing rules are load-bearing and neither is obvious:
- *
- * <ul>
- *   <li><b>Only the leading column of an index counts.</b> A composite index on
- *       {@code (board_id, user_id)} - which is what {@code board_members}' primary key is - serves
- *       lookups by {@code board_id} and cannot serve lookups by {@code user_id}. Reading a
- *       composite index as covering every column in it is precisely the mistake that left the
- *       membership check unindexed.</li>
- *   <li><b>A partial index covers nothing.</b> {@code ux_board_invitations_pending} is on
- *       {@code (board_id, email) WHERE status = 'PENDING'}, so it cannot answer a lookup by board
- *       that ignores status - which is the one {@code BoardService.deleteBoard} makes.</li>
- * </ul>
- */
 class ForeignKeysAreIndexedTest {
-
     private static final Path MIGRATIONS = Path.of("src", "main", "resources", "db", "migration");
 
     @Test
@@ -68,10 +38,6 @@ class ForeignKeysAreIndexedTest {
     void theParserSeesTheSchema() {
         Schema schema = Schema.of(migrationsInOrder());
 
-        // A parser that has quietly stopped matching reports no foreign keys and therefore no
-        // uncovered ones, which is indistinguishable from a schema with none. These are three
-        // shapes the corpus actually contains: an ALTER ... ADD CONSTRAINT (V1), an inline
-        // column-level REFERENCES (V15) and an ADD COLUMN ... REFERENCES (V18).
         assertThat(schema.foreignKeys())
                 .contains(new Column("task", "column_id"),
                           new Column("task_activity", "actor_id"),
@@ -79,16 +45,14 @@ class ForeignKeysAreIndexedTest {
                 .hasSizeGreaterThan(15);
 
         assertThat(schema.indexedLeadingColumns())
-                .contains(new Column("board_members", "board_id"),  // the composite primary key
-                          new Column("users", "email"),             // a column-level UNIQUE
-                          new Column("task", "board_id"));          // a plain CREATE INDEX
+                .contains(new Column("board_members", "board_id"),
+                          new Column("users", "email"),
+                          new Column("task", "board_id"));
     }
 
     @Test
     @DisplayName("the check fails on an unindexed foreign key, a composite that leads elsewhere, and a partial index")
     void theCheckFires() {
-        // The control. A guard that cannot fire is indistinguishable from a schema with nothing to
-        // find, and the three cases below are the three this one exists to tell apart.
         assertThat(Schema.of(List.of("""
                 create table parent (id integer primary key);
                 create table child (id integer primary key, parent_id integer references parent (id));
@@ -121,11 +85,7 @@ class ForeignKeysAreIndexedTest {
                 .isEmpty();
     }
 
-    // ------------------------------------------------------------------------------- the schema
-
-    /** One column of one table. Identifiers are folded to lower case, as Postgres folds them. */
     private record Column(String table, String name) implements Comparable<Column> {
-
         @Override
         public String toString() {
             return table + " (" + name + ")";
@@ -137,14 +97,7 @@ class ForeignKeysAreIndexedTest {
         }
     }
 
-    /**
-     * What the migrations declare, replayed in order: which columns carry a foreign key, and which
-     * columns an index leads with. Not a SQL implementation - it understands exactly the statement
-     * shapes this corpus uses, and an unrecognised one contributes nothing rather than failing,
-     * which is what {@link #theParserSeesTheSchema()} exists to catch.
-     */
     private record Schema(Set<Column> foreignKeys, Set<Column> indexedLeadingColumns) {
-
         private static final Pattern CREATE_TABLE =
                 Pattern.compile("^create table (?:if not exists )?(\\w+) ?\\(");
         private static final Pattern ADD_FOREIGN_KEY =
@@ -175,7 +128,6 @@ class ForeignKeysAreIndexedTest {
             return new Schema(foreignKeys, indexed);
         }
 
-        /** The foreign keys no index leads with, which is the whole point of the class. */
         Set<Column> uncoveredForeignKeys() {
             Set<Column> uncovered = new TreeSet<>(foreignKeys);
             uncovered.removeAll(indexedLeadingColumns);
@@ -223,8 +175,6 @@ class ForeignKeysAreIndexedTest {
             }
 
             Matcher createIndex = CREATE_INDEX.matcher(statement);
-            // " where " in a CREATE INDEX can only be the predicate of a partial index, and a
-            // partial index answers no lookup that does not carry the predicate too.
             if (createIndex.find() && !statement.contains(" where ")) {
                 indexed.add(new Column(createIndex.group(1), createIndex.group(2)));
             }
@@ -234,7 +184,6 @@ class ForeignKeysAreIndexedTest {
             for (String item : splitTopLevel(body)) {
                 Matcher keyList = KEY_LIST.matcher(item);
                 if (keyList.find()) {
-                    // A table-level PRIMARY KEY (a, b) or UNIQUE (a, b): an index leading with a.
                     indexed.add(new Column(table, keyList.group(1)));
                     continue;
                 }
@@ -249,27 +198,23 @@ class ForeignKeysAreIndexedTest {
             }
         }
 
-        /** A single column's definition: its type and whatever modifiers follow it. */
         private static void readColumnDefinition(String table, String name, String rest,
                                                  Set<Column> foreignKeys, Set<Column> indexed) {
             Column column = new Column(table, name);
             if (REFERENCES.matcher(rest).find()) {
                 foreignKeys.add(column);
             }
-            // Either one creates a unique index on the column by itself.
             if (OWN_INDEX.matcher(rest).find()) {
                 indexed.add(column);
             }
         }
 
-        /** Everything between a CREATE TABLE's outermost parentheses. */
         private static String body(String statement) {
             int open = statement.indexOf('(');
             int close = statement.lastIndexOf(')');
             return open >= 0 && close > open ? statement.substring(open + 1, close).trim() : "";
         }
 
-        /** Split on the commas that separate a table's items, not the ones inside {@code varchar(255)}. */
         private static List<String> splitTopLevel(String body) {
             List<String> items = new ArrayList<>();
             StringBuilder current = new StringBuilder();
@@ -295,11 +240,6 @@ class ForeignKeysAreIndexedTest {
             return items;
         }
 
-        /**
-         * One SQL document as a list of statements, comments removed, whitespace collapsed and
-         * identifiers folded to lower case - so a statement split across five lines reads the same
-         * as one written on a single line.
-         */
         private static List<String> statements(String sql) {
             String stripped = sql.replaceAll("--[^\\n]*", " ")
                     .replaceAll("\\s+", " ")
@@ -315,7 +255,6 @@ class ForeignKeysAreIndexedTest {
         }
     }
 
-    /** The migration files, in the order Flyway would apply them. */
     private static List<String> migrationsInOrder() {
         Pattern version = Pattern.compile("V(\\d+)__");
         try (var files = Files.list(MIGRATIONS)) {

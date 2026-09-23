@@ -11,13 +11,7 @@ import pl.myproject.kanbanproject2.config.JsonNullableConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The whole point of the request records is that these three bodies mean three different things.
- * Before, the first two were indistinguishable and both read as "leave the row alone", which is why
- * the frontend's row-delete workaround — {@code updateTaskRow(id, null)} — never detached anything.
- */
 class PatchTaskRequestJsonTest {
-
     private final ObjectMapper mapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .addModule(new org.openapitools.jackson.nullable.JsonNullableModule())
@@ -62,8 +56,6 @@ class PatchTaskRequestJsonTest {
     @Test
     @DisplayName("Boot's ObjectMapper picks the module up, so this holds for real requests too")
     void theApplicationMapperUnderstandsJsonNullable() {
-        // Boot does not load Jackson modules off the service loader by default, so the module has to
-        // be a bean — without JsonNullableConfiguration every field above would deserialize to null.
         new ApplicationContextRunner()
                 .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations
                         .of(Jackson2AutoConfiguration.class))

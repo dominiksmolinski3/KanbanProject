@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
-/** Entity to DTO, the shape every other feature package here uses. */
 @Component
 public class TaskAttachmentMapper implements Function<TaskAttachment, TaskAttachmentDto> {
 

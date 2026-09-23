@@ -6,7 +6,7 @@ function EditableText({
   onUpdate,
   className = "",
   inputClassName = "",
-  type = "default", // 'column', 'row', 'task', or 'default'
+  type = "default",
   disabled = false
 }) {
   const [isEditing, setIsEditing] = useState(false);

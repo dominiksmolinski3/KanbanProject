@@ -154,7 +154,6 @@
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Base styles */
 * {
   margin: 0;
   padding: 0;
@@ -222,7 +221,6 @@ button:focus-visible {
   outline: 3px solid rgba(134, 214, 255, 0.3);
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   h1 {
     font-size: 1.8rem;
@@ -239,7 +237,6 @@ button:focus-visible {
   }
 }
 
-/* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   :root {
     --surface-light: #121825;

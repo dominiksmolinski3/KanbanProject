@@ -28,18 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The SDK is driven for real, against a fake transport rather than a mocked {@link EmailClient}.
- * Mocking the client would only assert that this class calls a method; substituting the HTTP
- * client instead leaves the real risks in the test - message assembly, authentication, retry
- * behaviour, and above all the claim {@link AcsEmailSender} rests on, that {@code beginSend} has
- * already posted by the time it hands back a poller nobody keeps - and takes out only the network.
- * A stub HTTP <em>server</em> cannot work here: the key credential policy refuses any endpoint
- * that is not HTTPS.
- */
 class AcsEmailSenderTest {
-
-    /** The credential policy only requires that the access key is decodable base64. */
     private static final String CONNECTION_STRING = "endpoint=https://stub.communication.azure.com/;accesskey="
             + Base64.getEncoder().encodeToString("stub-access-key-for-tests-only!!".getBytes(StandardCharsets.UTF_8));
 
@@ -48,7 +37,6 @@ class AcsEmailSenderTest {
 
     private final List<Recorded> requests = new CopyOnWriteArrayList<>();
 
-    /** Answers every request with {@code status}, so a persistent failure stays persistent. */
     private HttpClient transportAnswering(int status) {
         return request -> {
             requests.add(new Recorded(request.getHttpMethod().name(), request.getUrl().toString(),
@@ -128,8 +116,6 @@ class AcsEmailSenderTest {
         senderOver(transportAnswering(202), 1)
                 .send(new EmailMessage("someone@example.test", "Account Verification", "<p>123456</p>", "123456"));
 
-        // The send is the first request out; the second is the operation lookup that reads the
-        // message id back, and is counted in its own test rather than here.
         Recorded posted = requests.get(0);
         assertThat(posted.method()).isEqualTo("POST");
         assertThat(posted.url()).contains("emails");
@@ -138,9 +124,6 @@ class AcsEmailSenderTest {
                 .contains("someone@example.test")
                 .contains("Account Verification")
                 .contains("<p>123456</p>")
-                // The alternative part is a field on the provider's message, so the only way to
-                // know it left is to read it off the wire. A message that reaches Azure with an
-                // html body and no plain one renders correctly everywhere anybody would notice.
                 .contains("plainText");
     }
 
@@ -155,8 +138,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("beginSend posts before it returns - the message is gone by the time anything is polled")
     void theSendHappensWithoutWaitingForIt() {
-        // The claim AcsEmailSender rests on: activation runs inside the SyncPoller's constructor.
-        // The POST being *first* is what proves it - the id lookup below could not have caused it.
         senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests.get(0).method()).isEqualTo("POST");
@@ -166,9 +147,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("the id is read with exactly one poll - not none, and not a walk to completion")
     void theOperationIdCostsOneExtraRequest() {
-        // Two requests: the send, and one GET on the operation Azure opened for it - a sender that
-        // stopped reading the id would leave every row unmatchable, and one that waited for the
-        // operation to finish would sit on the relay thread until Azure actually delivered the mail.
         String id = senderOver(transportAnswering(202), 1).send(message());
 
         assertThat(requests).hasSize(2);
@@ -179,8 +157,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("an id that cannot be read is null rather than a failed send - the message has already gone")
     void anUnreadableIdIsNotASendFailure() {
-        // The message is with Azure before this lookup happens, so a failure here must not surface
-        // as a refusal: the relay would mark the row for retry and post the same mail twice.
         HttpClient acceptsThenRefusesTheLookup = request -> {
             requests.add(new Recorded(request.getHttpMethod().name(), request.getUrl().toString(), null, ""));
             return Mono.just(response(request, "POST".equals(request.getHttpMethod().name()) ? 202 : 400));
@@ -205,8 +181,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("a rejection is not replayed - one 400 is one request, however many retries are allowed")
     void aRejectionIsNotRetried() {
-        // Retries are for failures that might go away. A 400 replayed is three identical
-        // rejections, and on a provider that answers 5xx after accepting, three copies of the mail.
         assertThatThrownBy(() -> senderOver(transportAnswering(400), 3)
                 .send(message()))
                 .isInstanceOf(EmailDeliveryException.class);
@@ -217,8 +191,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("a transient failure is retried, and the retries are bounded by the configured number")
     void aTransientFailureIsRetriedAndBounded() {
-        // Two retries on top of the first attempt. Bounded matters more than the number: every
-        // attempt is time a signup spends waiting, which is the argument for the queue.
         assertThatThrownBy(() -> senderOver(transportAnswering(503), 2)
                 .send(message()))
                 .isInstanceOf(EmailDeliveryException.class);
@@ -250,9 +222,6 @@ class AcsEmailSenderTest {
     @Test
     @DisplayName("only the real transport says it delivers - the disabled one is what the relay asks about")
     void onlyTheRealTransportClaimsToDeliver() {
-        // The relay reads this to decide between posting a row and marking it DROPPED, so a
-        // disabled sender that answered true would fill the outbox with rows claiming to have been
-        // sent by an account that does not exist.
         assertThat(new DisabledEmailSender().deliversMessages()).isFalse();
         assertThat(senderOver(transportAnswering(202), 1).deliversMessages()).isTrue();
     }

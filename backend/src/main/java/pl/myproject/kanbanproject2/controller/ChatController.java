@@ -19,32 +19,7 @@ import pl.myproject.kanbanproject2.user.User;
 import java.security.Principal;
 import java.time.LocalDateTime;
 
-/**
- * Chat, scoped to a board like everything else here.
- *
- * <p>It was not, and that was the one place the boards-with-members model never reached: the
- * destination was built out of a {@code roomId} the client supplied, so any string named a topic
- * and an empty one named {@code /topic/public} - a single global room every signed-in account
- * subscribed to on connect, where a member of one board read the messages of every other board's
- * members. A direct message had the matching hole from the other side, addressing any
- * {@code recipientId} at all and walking straight past the peer scoping {@code GET /api/users}
- * exists to enforce.
- *
- * <p>Two rules hold the rewrite, and both are this repository's own, kept one channel over:
- *
- * <ul>
- *   <li><b>Nothing here throws.</b> An exception on the inbound channel becomes a STOMP ERROR
- *       frame and a <em>closed session</em>, so a paste over the length limit did not bounce the
- *       message - it dropped the connection, and the client reconnected into a room it had to
- *       rejoin. {@code BoardSubscriptionInterceptor} already wrote this reasoning down for
- *       SUBSCRIBE; a refusal here is a dropped frame plus a WARN, and nothing else.</li>
- *   <li><b>A refusal the sender already knows about is answered; one that turns on who they are is
- *       not.</b> Blank and over-long come back on the sender's own error queue, because they are
- *       looking at the message that caused them. A board they may not post to is silence, or the
- *       refusal would confirm the board is real - the 404-not-403 rule in the form STOMP allows.
- *       </li>
- * </ul>
- */
+// Handlers never throw: an exception on the inbound channel closes the client's STOMP session.
 @Controller
 @RequiredArgsConstructor
 @Slf4j
@@ -52,7 +27,6 @@ public class ChatController {
 
     private static final int MAX_MESSAGE_LENGTH = 2000;
 
-    /** Which board this session announced itself on, for the LEAVE the disconnect listener sends. */
     public static final String BOARD_SESSION_ATTRIBUTE = "boardId";
 
     private final ChatService chatService;
@@ -68,10 +42,6 @@ public class ChatController {
         if (board == null) {
             return;
         }
-        // Read-only means read-only consistently: a viewer can watch the board's conversation
-        // (BoardSubscriptionInterceptor asks only requireVisible) but not add to it. Answered rather
-        // than dropped, unlike a board the caller cannot see at all - the sender already knows their
-        // own role, so silence here would read as a delivery failure rather than a refusal.
         if (!boardService.isWritable(sender, board)) {
             log.warn("Dropped an attempt by {} to send a message on read-only board {}",
                     sender.getUsername(), board.getId());
@@ -85,11 +55,6 @@ public class ChatController {
         chatService.sendBoardMessage(board, chatMessage);
     }
 
-    /**
-     * A direct message reaches a peer - somebody the sender shares at least one board with - and
-     * nobody else. The check is {@code BoardService.peersOf}, the same collection
-     * {@code GET /api/users} is built from, so the two cannot disagree about who is reachable.
-     */
     @MessageMapping("/chat.sendPrivateMessage")
     public void sendPrivateMessage(@Payload ChatMessage chatMessage, Principal principal) {
         User sender = callerOr(principal, "send a direct message");
@@ -109,10 +74,6 @@ public class ChatController {
         chatService.sendPrivateMessage(recipient, sender.getUsername(), chatMessage);
     }
 
-    /**
-     * Presence on a board. Sent, never stored - see {@code ChatService.announcePresence}. The board
-     * goes on the session so the disconnect listener knows where to say the person went.
-     */
     @MessageMapping("/chat.join")
     public void join(@Payload ChatMessage chatMessage,
                      Principal principal,
@@ -160,10 +121,6 @@ public class ChatController {
                 .build();
     }
 
-    /**
-     * Stamps the server's own view of sender, type and time over whatever the client sent, and
-     * answers the sender when their own content is why nothing was sent. False means "do not send".
-     */
     private boolean prepare(ChatMessage chatMessage, User sender, MessageType type) {
         String content = chatMessage.getContent();
         if (content == null || content.isBlank()) {
@@ -191,7 +148,6 @@ public class ChatController {
         return caller;
     }
 
-    /** Null when the frame names no board, or none this caller may see. Silence either way. */
     private Board visibleBoardOr(User caller, ChatMessage chatMessage, String attempted) {
         Integer boardId = chatMessage == null ? null : chatMessage.getBoardId();
         if (boardId == null) {

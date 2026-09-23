@@ -102,8 +102,6 @@ describe('the completion checkbox', () => {
   });
 
   test('does not open the details panel behind it', async () => {
-    // The card opens the panel on any click it does not recognise, and the two new controls
-    // sit inside the card.
     await renderTask(openTask, contextValue());
 
     await act(async () => {

@@ -20,13 +20,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-/**
- * What the verifier does with each answer the provider can give, including the answers that are not
- * an answer. The provider is stubbed rather than called: the point under test is the decision this
- * class makes, and a test that reached Google would fail on an aeroplane and pass on a bad secret.
- */
 class CaptchaVerifierTest {
-
     private static final String VERIFY_URL = "https://captcha.example/siteverify";
 
     private static CaptchaProperties properties(boolean enabled, String secret) {
@@ -125,7 +119,6 @@ class CaptchaVerifierTest {
             assertCaptchaFailed(() -> fixture.verifier().verify(new CaptchaDto(null), "1.2.3.4"));
             assertCaptchaFailed(() -> fixture.verifier().verify(new CaptchaDto("  "), "1.2.3.4"));
 
-            // Nothing was asked of the provider, so nothing can have been waved through by it.
             fixture.server().verify();
         }
 

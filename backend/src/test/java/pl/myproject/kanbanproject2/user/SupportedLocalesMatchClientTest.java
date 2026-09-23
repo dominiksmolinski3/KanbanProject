@@ -12,18 +12,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over two lists of languages that have to be the same list: {@code frontend/public/locales}
- * is what the client loads at runtime, and {@link SupportedLocales#TAGS} is what an account may be
- * set to and what the mail bundles answer for. Nothing connects a new client directory to Java, so
- * without this a tenth language would show on screen, be unsettable on an account, and mail in
- * English forever — the same rule-in-two-places shape as {@code SessionRoutesTest}. It does not skip
- * when the directory is missing, since a guard that turns itself off leaves the build green either
- * way.
- */
 class SupportedLocalesMatchClientTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path CLIENT_LOCALES = Path.of("..", "frontend", "public", "locales");
 
     @Test

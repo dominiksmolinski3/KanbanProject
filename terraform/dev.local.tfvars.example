@@ -1,47 +1,8 @@
-# Copy this file to dev.local.tfvars (excluded by .gitignore) and set your current public IP.
-# ./tf.sh passes it after dev.tfvars, so it overrides that file without committing any secrets.
-#
-# One file per environment, and the name matters: these used to be called <env>.local.auto.tfvars,
-# and Terraform loads every *.auto.tfvars in this directory on EVERY run, whatever -var-file is
-# passed. The committed var-file wins for anything it sets, so nothing looked wrong - but the
-# values below have no committed counterpart, which means a prod plan run on a machine holding this
-# file took dev's ACS connection string, dev's captcha secret, dev's alert address and a
-# developer's home IP straight into prod. Dropping `.auto.` is what makes a file for an
-# environment you are not running simply not read; tf.sh refuses to run while a `.auto.` one is
-# still lying around.
-#
-# For prod, copy this to prod.local.tfvars. acs_email_connection_string and
-# acs_email_sender_address are not optional there - a prod plan refuses with both empty, because
-# mail off in production is a signup nobody can complete (MAIL-02).
+key_vault_allowed_ips = ["203.0.113.42"]
 
-# Optional: set this if Terraform cannot determine the subscription from Azure CLI.
-# subscription_id = "00000000-0000-0000-0000-000000000000"
-
-# Terraform writes secrets to Key Vault over its data plane, and the vault denies public
-# traffic by default. Applying from a workstation therefore needs your own public IP here;
-# nothing looks it up for you, on purpose -- see terraform/README.md#key-vault-network-access.
-# Find it with: (Invoke-RestMethod https://api.ipify.org)
-key_vault_allowed_ips = ["203.0.113.42"]  # replace with your IP
-# allowed_ingress_cidrs = ["203.0.113.42/32"]  # optional; locks Container App ingress to these IPv4 CIDRs. Empty = open to the internet.
-# key_vault_allow_azure_services_bypass = true  # optional override
-
-acs_email_connection_string   = ""   # Azure Communication Services -> Keys. Empty turns mail off.
-acs_email_sender_address      = ""   # e.g. DoNotReply@<guid>.azurecomm.net on a linked domain
-acs_communication_service_id  = ""   # same resource's JSON view -> id. Empty skips the bounce alert (MAIL-03).
+acs_email_connection_string   = ""
+acs_email_sender_address      = ""
+acs_communication_service_id  = ""
 captcha_enabled = true
-captcha_secret  = ""        # reCAPTCHA server-side secret
-# app_image_tag = "latest"  # optional; defaults to "latest". Pin to a git SHA for reproducible deploys.
+captcha_secret  = ""
 alert_email = "you@example.com"
-
-# Turns on the delivery-report webhook: Azure Event Grid calls this deployment when it learns what
-# became of a message it accepted, and MailDeliveryReportService writes the answer back onto the
-# email_outbox row. Empty - the default - means the route answers 404 and no Event Grid
-# subscription is created, which is the right state until you want it.
-#
-# Generate one:  openssl rand -hex 32
-#
-# Two things to know before setting it. It needs acs_communication_service_id set as well, since
-# the subscription is created on that resource. And Event Grid validates the endpoint by calling it
-# at creation time, so the application has to be deployed and serving before this can apply - it is
-# the one resource here that depends on the app rather than only on other Terraform.
-# mail_delivery_report_key = ""

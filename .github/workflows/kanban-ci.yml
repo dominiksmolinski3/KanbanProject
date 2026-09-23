@@ -5,12 +5,6 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  # A push made with the default GITHUB_TOKEN does not start a workflow run. Dependabot's
-  # auto-merge job merges with exactly that token, so the merge commits it produces reach main
-  # with no CI behind them - which is how react and react-dom ended up on different versions and
-  # the trunk's entire frontend suite stopped starting, unnoticed until it broke somebody else's
-  # pull request an hour later. The `push` trigger above is not wrong; it is simply never reached
-  # on that path. This sweep is what reaches it.
   schedule:
     - cron: '17 5 * * *'
   workflow_dispatch:
@@ -37,9 +31,6 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-      # AuthRateLimiter's escalation lives here now (RedisEscalationStoreIntegrationTest runs the
-      # real Lua script against it), the same reason postgres is a service container above rather
-      # than mocked: nothing but a real Redis checks this string.
       redis:
         image: redis:7-alpine
         ports:
@@ -73,10 +64,6 @@ jobs:
       working-directory: backend
       run: ./mvnw --batch-mode clean verify
 
-    # Informational only, not a gate: dependency:analyze can false-positive on
-    # annotation-processor-only or reflection-based dependencies, so a real unused dependency
-    # (like the caffeine one this cleanup removed) is something a human reads off this log rather
-    # than something that blocks a PR on a tool's guess.
     - name: Analyze dependencies (informational)
       working-directory: backend
       continue-on-error: true
@@ -125,13 +112,6 @@ jobs:
         name: frontend-test-coverage
         path: frontend/coverage
 
-  # Sharded three ways, each leg with a whole stack of its own - two API replicas, the broker,
-  # Redis, Postgres, nginx - so no leg runs against less than the unsharded job did. Run end to
-  # end, the thirteen specs were three and a half minutes of a seven-minute job, and they share
-  # nothing but the seeded account, which every leg seeds for itself. Which leg runs which spec is
-  # derived from cypress.config.js by cypress/shard.js rather than listed here, so a new spec
-  # cannot land in no leg. The matrix aggregates into one `needs.e2e.result`, which is why
-  # trunk-alarm and SweepAlarmCoverageTest need nothing new.
   e2e:
     runs-on: ubuntu-latest
     strategy:
@@ -167,37 +147,18 @@ jobs:
         VITE_RECAPTCHA_SITE_KEY=
         EOF
 
-    # setup-node caches ~/.npm, not the Cypress binary, which npm ci would otherwise download
-    # (~10s) and the first `cypress run` would then verify (~15s, "first time using Cypress").
-    # The verified state is written into this directory, so a hit skips both. Keyed on the
-    # lockfile, which pins the Cypress version the binary has to match.
     - name: Cache the Cypress binary
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/Cypress
         key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
 
-    # Before the stack rather than after it, so the one-time cost of a freshly restored binary is
-    # paid while Docker builds: the first `cypress run` on a runner spent ~30s opening where the
-    # second, on the same machine, took under three. A background verify starts the same binary
-    # and warms it. Nothing waits on it and a failure changes nothing - the real run verifies for
-    # itself if it has to. node_modules is in frontend/.dockerignore, so installing first adds
-    # nothing to the web image's build context.
     - name: Install frontend dependencies
       working-directory: frontend
       run: |
         npm ci --legacy-peer-deps
         nohup npx cypress verify > "$RUNNER_TEMP/cypress-verify.log" 2>&1 &
 
-    # --profile replicas, so the stack runs two API replicas rather than one. Everything below is
-    # unchanged by it - nginx's upstream is the `app` service and has never heard of `app2` - but
-    # cross-replica-sync.cy.js has no second process to address without it, and "a board event
-    # crosses replicas" is the one claim a single-replica stack cannot make. It is also the first
-    # time anything here has run the outbox claim, the deadline sweep claim and the Redis
-    # escalation with a genuine competitor on the other side of them.
-    # Retried because a base-image pull is the one step here at the mercy of a registry that
-    # is not ours - a transient 503 from the pinned dhi.io node digest has failed this exact
-    # command while every run around it, against the same digest, built fine.
     - name: Build and start the stack
       run: |
         for i in 1 2 3; do
@@ -208,8 +169,6 @@ jobs:
           sleep 15
         done
 
-    # :8081 is the API container's own port. The edge deliberately does not proxy /actuator, so
-    # asking :8080 for it would be asking nginx a question it is built to refuse.
     - name: Wait for the backend to become healthy
       run: |
         for i in $(seq 1 60); do
@@ -223,9 +182,6 @@ jobs:
         docker compose logs app
         exit 1
 
-    # The second replica, on its own port - and then the thing that would otherwise be assumed:
-    # that :8081 and :8082 are two containers. One container answering both would make
-    # cross-replica-sync.cy.js a slower copy of live-sync.cy.js, passing and proving nothing.
     - name: Wait for the second replica, and confirm it is a second one
       run: |
         for i in $(seq 1 60); do
@@ -246,9 +202,6 @@ jobs:
           exit 1
         }
 
-    # The other half, and the reason this job is worth more than it was: everything below goes
-    # through nginx on :8080, so a broken proxy rule, a missing header or a body size limit fails
-    # here rather than on the deployment.
     - name: Check that the edge is serving the bundle and proxying the API
       run: |
         for i in $(seq 1 30); do
@@ -259,12 +212,8 @@ jobs:
         curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
         curl -fsS -o /dev/null http://localhost:8080/board
         curl -fsS http://localhost:8080/v3/api-docs | grep -q '"openapi"'
-        # The shell must carry the policy nginx adds, not nothing - add_header does not inherit
-        # into a location that sets one of its own, which is the trap this catches.
         curl -fsSI http://localhost:8080/ | grep -qi '^content-security-policy:'
-        # And the API app must not be reachable through the edge on anything but /api and /ws.
         test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health)" = "404"
-        # A refusal rather than a 404: the request reached Spring, which turned it away.
         case "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/columns)" in
           401|403) ;;
           *) echo "/api is not reaching the API container" >&2; exit 1 ;;
@@ -292,11 +241,6 @@ jobs:
         echo "shard $SHARD of $SHARDS: $specs"
         npm run cypress:run -- --spec "$specs"
 
-    # Not in the default spec pattern, and not skipped either - see cypress.config.js. A step
-    # rather than a job, so "did it run" is answered by this job's own log rather than by a
-    # `needs` list somebody has to remember to grow; CrossReplicaStackTest fails the build if this
-    # step stops naming the script. It runs on one leg, the one cypress/shard.js deals the fewest
-    # seconds of specs to - every leg has the second replica, so any of them could.
     - name: Run the cross-replica board-sync spec
       if: matrix.shard == 1
       working-directory: frontend
@@ -317,25 +261,10 @@ jobs:
           frontend/cypress/videos
         if-no-files-found: ignore
 
-    # In place of a `compose down`, which spent thirteen seconds tidying a runner that is thrown
-    # away when the job ends. What a red leg needs instead is what the containers said.
     - name: Show the stack's logs
       if: failure()
       run: docker compose --profile replicas logs --no-color --timestamps app app2 web
 
-  # kanban-cd.yml's Trivy gate only ever runs on push to main, after a PR has already merged - so
-  # a base image that picks up a fresh HIGH between when a PR was opened and when it merges goes
-  # red on `main`, not on the PR that would have carried the fix or at least the warning. #160
-  # (fix/web-image-base-cves) was exactly that shape: the gate caught it, but only after the merge,
-  # and `promote` correctly withheld `:latest` until it was fixed on a second PR. Building and
-  # scanning here does not remove that CD gate - the SHA-tagged image CD builds still gets its own
-  # scan before promotion - it just gives the same answer earlier, while an author is still looking
-  # at the PR instead of a day later on a cron.
-  #
-  # Same matrix shape as kanban-cd.yml's build-and-push, and for the same reason: a second job here
-  # would be a second place for SweepAlarmCoverageTest's `needs`/`results` coupling to drift.
-  # Nothing is pushed to GHCR - `load: true` keeps the image in the local daemon, which is all a
-  # scan needs and avoids requiring registry write access on a pull_request run.
   image-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -371,8 +300,6 @@ jobs:
           VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
         tags: ${{ matrix.image }}:pr-${{ github.sha }}
 
-    # Same severity set, same ignore-unfixed, same exit-code as the post-merge scan in
-    # kanban-cd.yml - a PR either passes both or neither, it never sees a looser gate than main.
     - name: Scan image for vulnerabilities
       id: scan
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -392,41 +319,6 @@ jobs:
         sarif_file: trivy-results.sarif
         category: trivy-pr-${{ matrix.image }}
 
-  # ---------------------------------------------------------------------------------------------
-  # The half that tells somebody.
-  #
-  # A red run in the Actions tab answers whoever goes and looks; this exists for the far commoner
-  # case of nobody looking, which is the shape `MailHealthIndicator` and the dead-letter alert
-  # already have. It fires on the sweep and not on a pull request or a push: a pull request that
-  # goes red already has an author staring at it, and a push that goes red was pushed by somebody.
-  #
-  # `workflow_dispatch` counts as the sweep, and that is a correction rather than a widening. The
-  # trigger was added so that confirming a fix need not wait a day for the cron - but this
-  # condition named `schedule` alone, so a manual run executed the suite and skipped this job.
-  # The whole alarm was therefore unreachable except by a cron that happened to be red, which is
-  # not a path anybody can exercise on purpose: `gh issue create`, the `issues: write` grant and
-  # the label creation below were all code nothing had ever run. An alarm that cannot be tested is
-  # an alarm nobody should believe, and a dispatch has the same subject a cron does - somebody
-  # asked for a sweep of this ref, rather than pushing a commit and watching it.
-  #
-  # What a dispatch does change is that the run may be on a branch, and the issue then has to say
-  # which ref it is about. The title carries `github.ref_name` for that reason, and the lookup
-  # below matches on that title rather than on the label alone - otherwise a sweep dispatched on a
-  # green feature branch would close the issue saying `main` is broken, which is a worse failure
-  # than the one this job exists to prevent.
-  #
-  # It closes the issue again when the sweep comes back green, for the reason the mail indicator
-  # windows its DOWN to a day - a status that cannot clear is one people stop reading.
-  #
-  # `needs` has to name every other job in this workflow, and the `results` string below has to
-  # name every job in `needs`. Nothing in YAML enforces either, and a job left out of one of the
-  # two lists fails without this one noticing, so SweepAlarmCoverageTest reads this file and fails
-  # the build when they disagree. That same test reads the trigger block against the condition
-  # below, because the first gap here was precisely that coupling: a trigger meant for this job
-  # that this job did not answer to.
-  #
-  # The script itself now lives in `sweep-alarm.yml`, because three other unattended workflows
-  # needed the same thing and four copies of one shell script is four chances to fix a bug once.
   trunk-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ backend, frontend, e2e, image-scan ]

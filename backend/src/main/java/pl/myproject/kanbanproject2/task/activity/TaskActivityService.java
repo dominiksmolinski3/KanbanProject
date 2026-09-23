@@ -9,13 +9,6 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
-/**
- * The read side of the feed: one board, newest first, paged for the reason the search route is
- * and the board listing is not — a feed only grows, unlike a board bounded by what a team puts on
- * it. Same numbers and refusal as search: 25 by default, {@link #MAX_PAGE_SIZE} at most, and
- * asking for more is a {@code 400} rather than a silent clamp, since a caller can't tell that from
- * a short last page.
- */
 @RequiredArgsConstructor
 @Transactional
 @Service

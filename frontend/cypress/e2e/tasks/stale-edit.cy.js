@@ -1,17 +1,11 @@
 beforeEach(() => {
   cy.loginAsTestUser();
   cy.wait(300);
-  // Own the board before creating a column named "Backlog" - two of the default seeded columns
-  // ("Product Backlog", "Sprint Backlog") also contain that word, and an unclean board makes
-  // `th:contains("Backlog")` ambiguous. See task-creation.cy.js for the full story.
   cy.get('th', { timeout: 30000 }).should('exist');
   cy.deleteTasks();
   cy.deleteColumns();
-  // Rows are left alone and topped up rather than cleared - see cy.ensureRowExists in
-  // commands.js - because a task with no row of its own renders nowhere once the board has zero.
   cy.ensureRowExists();
 
-  // cy.createTask needs a column to exist on the board.
   cy.createColumn('Backlog', 0);
 });
 
@@ -25,12 +19,6 @@ afterEach(() => {
   cy.deleteRows();
 });
 
-/**
- * The @Version column already stops two overlapping transactions from clobbering each other. This
- * covers the slower race it cannot see: a task opened in the detail panel, changed by someone else,
- * and then saved from the still-open panel. The panel sends the version it loaded with, so the
- * server refuses the write with a 409 and the panel reloads rather than overwriting silently.
- */
 describe('Editing a task that changed underneath you', () => {
   const bump = (title, changes) =>
     cy.window().then((win) =>
@@ -57,12 +45,10 @@ describe('Editing a task that changed underneath you', () => {
     cy.get('.edit-description-btn').first().click();
     cy.get('.description-textarea').type('my slow edit');
 
-    // Someone else saves first, which moves the version on.
     bump('Race Me', { title: 'Race Me (theirs)' });
 
     cy.get('.save-description-btn').click();
 
-    // A conflict is reported, and nothing is broken - the panel shows the value that won.
     cy.get('.Toastify__toast').should('exist');
     cy.contains('Race Me (theirs)').should('exist');
     cy.contains('my slow edit').should('not.exist');

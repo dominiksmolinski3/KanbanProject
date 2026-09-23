@@ -33,14 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * What an invitation has to do, and the two things it exists not to do: an invite for an address
- * with an account and one without must be indistinguishable in the response, or invitations are the
- * same membership oracle {@code addMember} was with an extra table; and nothing may reach a member
- * list until the invitee has acted.
- */
 class BoardInvitationServiceTest {
-
     private BoardInvitationRepository invitationRepository;
     private BoardService boardService;
     private UserRepository userRepository;
@@ -98,7 +91,6 @@ class BoardInvitationServiceTest {
             var known = service.invite(owner, 10, new InviteRequest("known@example.test"));
             var unknown = service.invite(owner, 10, new InviteRequest("unknown@example.test"));
 
-            // Everything except the address itself, which the caller supplied.
             assertThat(known.boardId()).isEqualTo(unknown.boardId());
             assertThat(known.boardName()).isEqualTo(unknown.boardName());
             assertThat(known.status()).isEqualTo(unknown.status());

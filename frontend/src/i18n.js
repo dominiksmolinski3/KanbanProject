@@ -11,7 +11,7 @@ i18n
     fallbackLng: 'en',
     debug: import.meta.env.DEV,
     interpolation: {
-      escapeValue: false, // React already escapes values
+      escapeValue: false,
     },
     detection: {
       order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],

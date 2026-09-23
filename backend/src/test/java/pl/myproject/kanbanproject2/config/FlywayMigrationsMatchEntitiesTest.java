@@ -16,24 +16,13 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * With {@code ddl-auto=validate}, a mismatch between entities and schema is a startup failure - the
- * right behaviour and the wrong moment to find out, since a failed start on Container Apps is a
- * revision that never becomes healthy. So the same comparison runs here: the DDL Hibernate would
- * emit is regenerated from the entity mappings and checked against what the migrations create,
- * catching a missing migration at build time instead. Types, nullability and constraints are
- * deliberately not checked - comparing DDL text for those would fail on formatting, not substance.
- */
 class FlywayMigrationsMatchEntitiesTest {
-
     private static final Path MIGRATIONS = Path.of("src", "main", "resources", "db", "migration");
 
-    /** Columns a migration adds after the baseline, e.g. {@code ALTER TABLE x ADD COLUMN y}. */
     private static final Pattern ADDED_COLUMN = Pattern.compile(
             "alter\\s+table\\s+(?:if\\s+exists\\s+)?(\\S+?)\\s+add\\s+(?:column\\s+)?(?!constraint\\b)(\\S+)",
             Pattern.CASE_INSENSITIVE);
 
-    /** Tables a migration drops, so they stop being expected. */
     private static final Pattern DROPPED_TABLE = Pattern.compile(
             "drop\\s+table\\s+(?:if\\s+exists\\s+)?(\\S+?)\\s*[;\\s]", Pattern.CASE_INSENSITIVE);
 

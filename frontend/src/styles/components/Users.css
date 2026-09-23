@@ -197,7 +197,6 @@ input:focus, input[type="password"]:focus {
   }
 }
 
-/* Dark mode */
 @media (prefers-color-scheme: dark) {
   .users-container {
     background-color: var(--surface-dark);

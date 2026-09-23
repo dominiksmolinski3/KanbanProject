@@ -17,29 +17,13 @@ import java.util.function.Predicate;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    /** The package the prefix applies to — this application's own controllers and nothing else. */
     static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
-    /**
-     * Puts every REST endpoint under {@code /api} from one place, so no controller carries the
-     * prefix itself. This keeps the API off the paths React Router owns — before the prefix,
-     * {@code /users} resolved to {@link pl.myproject.kanbanproject2.user.UserController} instead of
-     * the page. Scoped to {@link #PRODUCTION_PACKAGE} as well as {@code @RestController}, or an
-     * unscoped predicate would quietly move springdoc's own {@code @RestController} contract from
-     * {@code /v3/api-docs} to {@code /api/v3/api-docs}.
-     */
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix("/api", prefixedControllers());
     }
 
-    /**
-     * Package-visible so {@code ApiPathPrefixTest} can ask it about a class directly. Composed with
-     * {@code and} rather than built from one {@link HandlerTypePredicate}, because that builder's
-     * selectors are <em>alternatives</em>: {@code .annotation(X).basePackage(Y)} means X
-     * <strong>or</strong> Y, which would prefix {@code ChatController} and rewrite the STOMP
-     * destinations the browser subscribes to.
-     */
     static Predicate<Class<?>> prefixedControllers() {
         return HandlerTypePredicate.forAnnotation(RestController.class)
                 .and(HandlerTypePredicate.forBasePackage(PRODUCTION_PACKAGE));

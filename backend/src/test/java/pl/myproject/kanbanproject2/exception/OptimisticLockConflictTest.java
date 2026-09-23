@@ -16,18 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The board is edited by every member at once and the client sends one position PATCH per card in
- * a reordered cell, so two people dragging in the same column race by construction. The
- * {@code @Version} columns make the losing write fail its {@code UPDATE ... WHERE version = ?};
- * Hibernate raises that as an {@link ObjectOptimisticLockingFailureException}, handed to the advice
- * as a {@code DataAccessException}.
- *
- * <p>Without a handler it reaches the catch-all as a 500, logged and alerted on for what is really a
- * stale copy; this pins it to 409, as {@link ClientErrorStatusTest} pins the request mistakes.
- */
 class OptimisticLockConflictTest {
-
     @RestController
     @RequestMapping("/probe")
     static class ProbeController {

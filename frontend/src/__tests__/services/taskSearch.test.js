@@ -1,15 +1,5 @@
 import * as api from '../../services/api';
 
-/**
- * The query string this builds, which is the whole of what the client contributes to a search.
- *
- * Two things here are easy to get wrong in a way no test above this level would catch. Collections
- * have to be *repeated* parameters — `?label=bug&label=ux` — because that is what binding to a
- * `Set<String>` on the server expects; a comma-joined value arrives as one label literally named
- * "bug,ux" and quietly matches nothing. And an unset filter has to be *absent* rather than sent
- * empty, because the server reads an absent parameter as "not a filter" and an empty one as a
- * filter that matches nothing.
- */
 describe('searching tasks', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({

@@ -8,16 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * The one thing that tells an operator attachments are switched off.
- *
- * <p>{@code OUT_OF_SERVICE} rather than {@code DOWN} is the assertion that matters: nothing is
- * broken when no account is configured, and a red light for a deliberate state is a light people
- * stop reading. The other is that this reports at all - an unconfigured store is otherwise silent
- * until somebody tries to upload something.
- */
 class StorageHealthIndicatorTest {
-
     @Test
     @DisplayName("an unconfigured store is out of service, with the reason attached")
     void reportsAnUnconfiguredStore() {

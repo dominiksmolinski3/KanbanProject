@@ -3,13 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useKanban } from '../context/KanbanContext';
 import '../styles/components/BoardMembers.css';
 
-/**
- * The boards somebody has been asked to join, and their answer - the invitee's half of the
- * membership model, replacing an owner simply adding an address to the board with a decision the
- * invitee makes. Renders nothing when there is nothing outstanding, deliberately: an empty panel
- * on every visit is noise, and the badge on the board switcher is what says there is something
- * here to look at.
- */
 function Invitations() {
   const { myInvitations, acceptInvitation, declineInvitation } = useKanban();
   const { t } = useTranslation();
@@ -30,9 +23,6 @@ function Invitations() {
         {myInvitations.map(invitation => (
           <li key={invitation.id} className="board-invitation">
             <span className="board-member-name">{invitation.boardName}</span>
-            {/* The inviter's name is the only thing said about them, and it is what makes the
-                offer legible - "a board" from nobody in particular is not something anybody can
-                sensibly accept. */}
             <span className="board-member-email">
               {t('boards.invitations.from', { name: invitation.invitedByName })}
             </span>

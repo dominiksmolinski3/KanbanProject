@@ -37,11 +37,6 @@ jest.mock('../../services/api', () => ({
   setActiveBoardId: jest.fn(),
 }));
 
-/*
- * The context resolves which board it is looking at before it fetches anything, so every suite
- * that renders it has to answer that question first. One board, owned by the caller, which is the
- * shape a single-tenant install has had all along.
- */
 jest.mock('../../services/boardApi', () => ({
   fetchBoards: jest.fn(() => Promise.resolve([
     { id: 1, name: 'Kanban', ownerId: 1, owned: true, members: [] }
@@ -357,8 +352,6 @@ describe('KanbanContext Provider', () => {
   });
 
   test('deletes the row even when a card in it was changed by someone else a moment ago', async () => {
-    // Row 1 holds tasks 1 and 3. Task 1 answers 409 - another screen just moved or deleted it -
-    // which used to abandon the whole delete; the server clears the row off whatever is left.
     api.updateTaskRow
       .mockRejectedValueOnce(new Error('409'))
       .mockResolvedValueOnce({ success: true });
@@ -1043,8 +1036,6 @@ describe('KanbanContext Provider', () => {
       expect(screen.getByTestId('current-rows')).toHaveTextContent('Bugs,Features');
     });
 
-    // One call, not one per swimlane: the whole order goes in a single transaction so a
-    // conflict cannot leave half of it applied.
     expect(api.reorderRows).toHaveBeenCalledTimes(1);
     expect(api.reorderRows).toHaveBeenCalledWith(['row2', 'row1']);
   });
@@ -1319,9 +1310,6 @@ describe('KanbanContext Provider', () => {
           <button
             data-testid="add-task-empty-columns"
             onClick={() => {
-              // addTask is async and rejects here; a synchronous try/catch around an
-              // unawaited call never sees that rejection, which otherwise surfaces as an
-              // unhandled rejection blamed on whichever test happens to run next.
               addTask('New Task').catch(() => {});
             }}
           >
@@ -1362,13 +1350,6 @@ describe('KanbanContext Provider', () => {
       boardApi.fetchCurrentBoard.mockResolvedValue(viewerBoard);
     });
 
-    /*
-     * Several write handlers throw so a caller that awaits them can tell the write did not
-     * happen; a plain `fireEvent.click` on an async onClick cannot observe that rejection, and
-     * leaving it unhandled here would surface as a spurious failure on whichever test runs next.
-     * Every button below catches its own promise for exactly that reason - the file's own
-     * `TaskReorderTester` a few tests up does the same.
-     */
     const ViewerWriteAttempts = () => {
       const context = useKanban();
       const guarded = (call) => () => { call(context).catch(() => {}); };
@@ -1507,8 +1488,6 @@ describe('KanbanContext Provider', () => {
         fireEvent.click(screen.getByTestId('grab'));
       });
 
-      // A no-op grab never sets "held", so nothing calls moveTask - and moveTask is what would
-      // have called the write API a drop reaches.
       expect(screen.getByTestId('held')).toHaveTextContent('not held');
       expect(api.updateTaskColumn).not.toHaveBeenCalled();
       expect(api.updateTaskRow).not.toHaveBeenCalled();

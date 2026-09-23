@@ -13,8 +13,6 @@ jest.mock('react-i18next', () => ({
 jest.mock('../components/HomePage', () => () => <div>HomePage</div>);
 jest.mock('../components/NotFound', () => () => <div>NotFound</div>);
 jest.mock('../components/PageLoading', () => () => <div>PageLoading</div>);
-// Renders its Outlet, so each protected route's own lazy boundary is actually crossed - a layout
-// mock that swallowed its children proved the route existed and never that it rendered anything.
 jest.mock('../components/ProtectedLayout', () => {
   const { Outlet } = jest.requireActual('react-router-dom');
   return () => <div>ProtectedLayout<Outlet /></div>;

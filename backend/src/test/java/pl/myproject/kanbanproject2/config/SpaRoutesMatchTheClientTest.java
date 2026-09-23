@@ -14,19 +14,9 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Fails the build when {@link SpaRoutes} and {@code App.jsx} stop naming the same client routes.
- * The list used to have a natural enforcer - Spring permitted exactly these paths, so a route
- * forgotten here answered 403 on a refresh - but nginx now answers every path with the shell
- * regardless, leaving the array's only consumer (the deployed-contract sweep) with no way to tell
- * it has quietly fallen behind. Reads the client rather than the other way round, since the client
- * is where a route is really declared and this array is the copy.
- */
 class SpaRoutesMatchTheClientTest {
-
     private static final Path APP_JSX = Path.of("..", "frontend", "src", "App.jsx");
 
-    /** {@code <Route path="/board"} — the only form App.jsx uses, and a mismatch must not be silent. */
     private static final Pattern ROUTE_PATH =
             Pattern.compile("<Route\\b[^>]*?\\bpath\\s*=\\s*\"([^\"]*)\"", Pattern.DOTALL);
 
@@ -40,12 +30,8 @@ class SpaRoutesMatchTheClientTest {
                         + "rather than because the two lists agree")
                 .isNotEmpty();
 
-        // `/` is the shell's own address rather than a client route the server has to know about,
-        // and SpaRoutes has always said so in as many words.
         declared.remove("/");
 
-        // `*` is React Router's catch-all for a path nothing else matched, not a route the
-        // deployed-contract sweep can fetch - there is no URL that means "anything".
         declared.remove("*");
 
         assertThat(SpaRoutes.ALL)

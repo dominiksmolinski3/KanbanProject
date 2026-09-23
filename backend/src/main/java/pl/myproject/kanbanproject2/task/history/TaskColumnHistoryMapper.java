@@ -9,8 +9,6 @@ public class TaskColumnHistoryMapper {
         dto.setId(history.getId());
         dto.setTaskId(history.getTask().getId());
         dto.setTaskTitle(history.getTask().getTitle());
-        // Null once the column has been deleted: V17 detaches these rows rather than deleting
-        // them, and dereferencing it here turned every such task's history panel into a 500.
         dto.setColumnId(history.getColumn() != null ? history.getColumn().getId() : null);
         dto.setColumnName(history.getColumnName());
         dto.setChangedAt(history.getChangedAt());

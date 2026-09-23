@@ -19,12 +19,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * What a delivery report does to the row it names, and - more of these cases than the other kind -
- * what it does when it names nothing this application sent.
- */
 class MailDeliveryReportServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-09-12T10:00:00Z");
 
     private OutboxEmailRepository outbox;
@@ -63,8 +58,6 @@ class MailDeliveryReportServiceTest {
         verify(outbox).save(row);
         assertThat(row.getDeliveryStatus()).isEqualTo("Delivered");
         assertThat(row.getDeliveryReportedAt()).isEqualTo(NOW);
-        // Still SENT. The two facts are different: SENT is what this application did, Delivered is
-        // what the provider says happened afterwards, and collapsing them would lose the first.
         assertThat(row.getStatus()).isEqualTo(OutboxStatus.SENT);
     }
 
@@ -115,8 +108,6 @@ class MailDeliveryReportServiceTest {
     @Test
     @DisplayName("a report about a message this deployment never sent is ignored, not an error")
     void anUnknownMessageIsIgnored() {
-        // Ordinary rather than exceptional: every row queued before V16 has no id, and a
-        // subscription pointed at a second environment reports on its messages too.
         when(outbox.findByProviderMessageId("op-unknown")).thenReturn(Optional.empty());
 
         assertThat(service.record(report("op-unknown", "Delivered", NOW, null))).isFalse();
@@ -137,8 +128,6 @@ class MailDeliveryReportServiceTest {
     @Test
     @DisplayName("an older report cannot overwrite a newer one, whichever arrives first")
     void reportsAreOrderedByTheProvidersClockRatherThanByArrival() {
-        // A retry can overtake the report it's retrying; taking the last to arrive would let
-        // OutForDelivery land on top of Delivered.
         OutboxEmail row = sentMessage("op-3");
         when(outbox.findByProviderMessageId("op-3")).thenReturn(Optional.of(row));
 
@@ -175,9 +164,6 @@ class MailDeliveryReportServiceTest {
     @Test
     @DisplayName("an unrecognised status is stored rather than refused")
     void anUnknownStatusIsStillRecorded() {
-        // A provider that adds an eighth value must not make this endpoint start throwing reports
-        // away - the column is the provider's vocabulary and the set in MailDeliveryStatuses only
-        // decides what gets counted as a failure.
         OutboxEmail row = sentMessage("op-6");
         when(outbox.findByProviderMessageId("op-6")).thenReturn(Optional.of(row));
 
@@ -190,8 +176,6 @@ class MailDeliveryReportServiceTest {
     @Test
     @DisplayName("the undelivered set is matched without regard to case")
     void statusMatchingIsCaseInsensitive() {
-        // The most dangerous shape a bug in this class could take: a provider sending "bounced"
-        // one day would take the count of undelivered mail to zero and nothing would look wrong.
         assertThat(MailDeliveryStatuses.isUndelivered("bounced")).isTrue();
         assertThat(MailDeliveryStatuses.isUndelivered("FILTEREDSPAM")).isTrue();
         assertThat(MailDeliveryStatuses.isUndelivered(MailDeliveryStatuses.DELIVERED)).isFalse();

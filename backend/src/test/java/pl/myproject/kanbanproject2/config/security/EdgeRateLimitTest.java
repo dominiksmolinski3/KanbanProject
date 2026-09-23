@@ -13,24 +13,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The edge's request limits, read out of the nginx template. Nothing local can exercise the part
- * that matters most - the deployment's ingress is what appends the client's address to
- * X-Forwarded-For, and compose has no ingress - so, like {@link EdgeUpstreamTest}, this is a text
- * assertion over the directives rather than a behavioural test.
- *
- * <p>Four claims, each one a way the limit could silently stop limiting:
- * <ul>
- *   <li>every location that proxies to the API is limited, or a new one is an unlimited way in;</li>
- *   <li>the key is the <em>last</em> X-Forwarded-For entry - the first is the client's own text,
- *       and keying on it lets a flood choose a fresh bucket per request;</li>
- *   <li>the 429 carries the security headers, since nginx generates it and Spring never sees it;</li>
- *   <li>the edge's API rate is above the application's per-account rate, so a signed-in person
- *       meets the per-account limit - with its Retry-After and fleet-wide accounting - first.</li>
- * </ul>
- */
 class EdgeRateLimitTest {
-
     private static final Path TEMPLATE = Path.of("..", "frontend", "nginx", "default.conf.template");
 
     private static final Pattern LOCATION = Pattern.compile("location\\s+([^{]+)\\{([^}]*)}");
@@ -62,7 +45,6 @@ class EdgeRateLimitTest {
         String edge = template();
 
         assertThat(edge).contains("map $http_x_forwarded_for $edge_client");
-        // Anchored at the end of the header: the entry after the last comma.
         assertThat(edge).containsPattern("\"~\\(\\?:\\^\\|,\\)[^\"]*\\$\"");
         assertThat(edge).containsPattern("default\\s+\\$remote_addr;");
         assertThat(edge).doesNotContain("limit_req_zone $binary_remote_addr")
@@ -94,8 +76,6 @@ class EdgeRateLimitTest {
         assertThat(zone.find()).as("the edge_api zone is gone").isTrue();
         int edgeRate = Integer.parseInt(zone.group(1));
 
-        // Read off the record's @DefaultValue, which is the rate the application runs with unless an
-        // environment overrides it - and none does.
         int accountRate = Integer.parseInt(ApiRateLimitProperties.class
                 .getDeclaredConstructor(boolean.class, int.class, int.class)
                 .getParameters()[1].getAnnotation(DefaultValue.class).value()[0]);

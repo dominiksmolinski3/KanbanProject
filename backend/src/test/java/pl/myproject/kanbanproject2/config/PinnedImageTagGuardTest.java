@@ -10,39 +10,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The guard over the check that stops an apply deploying a commit nobody looked at.
- *
- * {@code app_image_tag} is required and must be an immutable commit SHA, because the tag is the
- * only part of the container template that changes between releases - a mutable one renders an
- * identical template, computes no diff, and rolls no revision, so the environment reports itself
- * converged while serving whatever it served before. That much was already written down.
- *
- * What was not caught is the failure that actually happened: the pin was set correctly, once, and
- * then nobody moved it. It sat on one commit while roughly 25 pull requests merged, and the apply
- * meant to ship a broker relay rolled its Terraform faithfully onto a container running week-old
- * code. Nothing was wrong with the tag, the plan, the apply or the revision, and every instrument
- * here agreed the environment matched its configuration - because it did.
- *
- * {@code tf.sh} refuses that apply now, and three things about the refusal are invisible to
- * everything else:
- *
- * <ul>
- *   <li><b>It has to run on {@code apply} and nothing else.</b> A {@code plan} changes nothing and
- *       a {@code destroy} has no image to be stale.</li>
- *   <li><b>It has to run before {@code terraform init}</b>, which reaches the remote backend.
- *       A refusal after a round trip to Azure is slower and no more correct.</li>
- *   <li><b>Its escape hatch has to be this script's flag, not Terraform's.</b> Passed through,
- *       {@code --allow-stale-image} stops {@code terraform apply} with an unrecognised argument -
- *       which reads as the tool being broken rather than as an acknowledgement being offered.</li>
- * </ul>
- *
- * Same shape as {@link LocalTfvarsAreIgnoredTest}, which reads the same script for the same kind of
- * reason.
- */
 class PinnedImageTagGuardTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path REPO = Path.of("..");
 
     private static final Path TF_SH = REPO.resolve(Path.of("terraform", "tf.sh"));

@@ -8,8 +8,6 @@ import Header from './Header';
 import Footer from './Footer';
 import Chat from './Chat';
 
-// The shell every authenticated screen shares - one copy instead of one per route, so a change
-// here is one edit rather than four. `Outlet` is where the matched child route renders.
 function ProtectedLayout() {
   const { token, isLoading } = useAuth();
   const { t } = useTranslation();

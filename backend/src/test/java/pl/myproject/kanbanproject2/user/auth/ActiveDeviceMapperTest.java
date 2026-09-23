@@ -8,14 +8,7 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The wall between the row and the browser: the digest must never appear in what is handed out, and
- * the two instants must not collapse into one — a chain rotates on every renewal, so reporting the
- * row's own {@code issuedAt} as the sign-in would tell somebody every session started fifteen
- * minutes ago.
- */
 class ActiveDeviceMapperTest {
-
     private static final Instant SIGNED_IN = Instant.parse("2026-08-01T09:00:00Z");
     private static final Instant RENEWED = Instant.parse("2026-09-02T11:30:00Z");
 

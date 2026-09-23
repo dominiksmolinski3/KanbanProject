@@ -33,12 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * What this suite is really about: <b>nothing in here throws, and nothing in here sends anywhere
- * the caller has not been let onto.</b> Both were true of neither the controller this replaced.
- */
 class ChatControllerTest {
-
     private static final int BOARD_ID = 7;
 
     private ChatService chatService;
@@ -59,7 +54,6 @@ class ChatControllerTest {
         board = new Board();
         board.setId(BOARD_ID);
         when(boardService.requireVisible(any(User.class), eq(BOARD_ID))).thenReturn(board);
-        // Write-allowed by default; the read-only refusal is its own test below.
         when(boardService.isWritable(any(User.class), any(Board.class))).thenReturn(true);
     }
 
@@ -125,10 +119,6 @@ class ChatControllerTest {
             assertThat(sentToBoard().getContent()).isEqualTo("hello");
         }
 
-        /*
-         * The finding, as an assertion. A board the caller is not a member of used to be a room
-         * name like any other, and the message went out on it.
-         */
         @Test
         @DisplayName("a message to a board the caller cannot see is dropped, in silence")
         void invisibleBoardIsDropped() {
@@ -164,11 +154,6 @@ class ChatControllerTest {
             verifyNoInteractions(boardService);
         }
 
-        /*
-         * FEAT-08: read-only means read-only consistently, so a viewer's own board - one they can
-         * see, unlike the invisibleBoardIsDropped case above - refuses the send rather than
-         * dropping it in silence. The sender already knows their own role.
-         */
         @Test
         @DisplayName("a viewer cannot post to the board's conversation, and is told so")
         void viewerIsRefusedNotDropped() {
@@ -255,10 +240,6 @@ class ChatControllerTest {
                     .isNull();
         }
 
-        /*
-         * The other half of CHAT-01: the route addressed any recipientId it was handed, which walked
-         * straight past the peer scoping GET /api/users exists to enforce.
-         */
         @Test
         @DisplayName("a direct message to somebody sharing no board is dropped")
         void strangerIsDropped() {

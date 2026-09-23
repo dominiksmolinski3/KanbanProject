@@ -13,31 +13,13 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The guard over the one mistake this feature makes easy, and it is a silent one: a mutation that
- * forgets to announce still works, every existing test passes, and the only symptom is
- * <em>somebody else's</em> browser sitting on a board that is quietly wrong — which no unit test
- * can see, since there is no second browser in one.
- *
- * <p>So the four services funnel every save-and-map through a private {@code saveAndAnnounce}, and
- * this reads their source and fails when a save-and-map appears outside it — the same
- * rule-in-two-places shape as {@code MetricAlertsMatchTheMetersTest} and {@code ClientRoutesExistTest}.
- *
- * <p><b>What it cannot see:</b> a mutation that neither saves nor maps (a delete, or a write through
- * a different repository) has to call the publisher by hand, and this only checks that such a file
- * calls it at all, not that every branch does. A tripwire on the common shape, not a proof.
- */
 class BoardEventCoverageTest {
-
-    /** Tests run with {@code backend/} as the working directory. */
     private static final Path SOURCE = Path.of("src", "main", "java", "pl", "myproject", "kanbanproject2");
 
-    /** Each service, and the save-and-map it must not perform outside {@code saveAndAnnounce}. */
     private static final Map<String, Pattern> UNANNOUNCED = Map.of(
             "task/TaskService.java", Pattern.compile("taskMapper\\.apply\\(\\s*taskRepository\\.save\\("),
             "layout/column/ColumnService.java", Pattern.compile("columnMapper\\.apply\\(\\s*columnRepository\\.save\\("),
             "layout/row/RowService.java", Pattern.compile("rowMapper\\.apply\\(\\s*rowRepository\\.save\\("),
-            // SYNC-01: a card carries its open-subtask count, so a subtask write is a card write.
             "task/subtask/SubTaskService.java",
             Pattern.compile("subTaskMapper\\.toDto\\(\\s*subTaskRepository\\.save\\("));
 
@@ -75,7 +57,6 @@ class BoardEventCoverageTest {
     @Test
     @DisplayName("the delete paths announce too, which no save-and-map check can reach")
     void deletesAnnounce() throws IOException {
-        // A delete maps nothing, so it is invisible to the pattern above and is named here instead.
         List<String> deleting = List.of(
                 "task/TaskService.java", "layout/column/ColumnService.java", "layout/row/RowService.java",
                 "task/subtask/SubTaskService.java");
@@ -94,8 +75,6 @@ class BoardEventCoverageTest {
     @Test
     @DisplayName("attaching and removing a file announce it, for the task panel another viewer has open")
     void attachmentWritesAnnounce() throws IOException {
-        // Not the save-and-map shape above: an upload writes a blob before it saves, and the panel
-        // is the only screen that shows attachments, so the check is on the two writes by name.
         String body = read("task/attachment/TaskAttachmentService.java");
 
         for (String write : List.of("attachments.save(", "attachments.delete(attachment)")) {

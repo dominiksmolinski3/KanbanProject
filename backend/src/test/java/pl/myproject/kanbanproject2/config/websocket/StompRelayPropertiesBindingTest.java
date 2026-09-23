@@ -12,15 +12,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The deployed app is configured entirely through environment variables, and a name that does not
- * bind fails silently - {@code WebSocketConfig} would keep relaying to {@code localhost} and every
- * board update would fail to reach anyone. These tests pin the names {@code terraform/modules/api_app}
- * and {@code terraform/modules/broker} set, the same shape {@code AuthRateLimitPropertiesBindingTest}
- * already pins for Redis.
- */
 class StompRelayPropertiesBindingTest {
-
     @Test
     @DisplayName("with nothing configured the relay points at a plain local broker")
     void defaultsAreLocal() {

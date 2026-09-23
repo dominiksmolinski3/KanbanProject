@@ -3,12 +3,6 @@ import { readFileSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 
-// The budget the sign-in screen's own download graph must stay under, gzipped. Measured right
-// after FE-01 split the four protected routes and vendor-react out of the entry chunk: ~116 KB.
-// This is a ceiling rather than a floor, so the margin goes the other way from the JaCoCo floors:
-// the old, unsplit bundle shipped 224 KB gzipped (203 KB JS + 21 KB CSS) before anyone painted a
-// sign-in form, and this budget stays well under that so a regression back toward one big chunk
-// fails the build instead of quietly creeping back up to the old number.
 const BUDGET_BYTES = 150 * 1024;
 
 const distDir = path.resolve(import.meta.dirname, '..', 'dist');
@@ -26,9 +20,6 @@ if (!entryKey) {
   process.exit(1);
 }
 
-// Walk only the *static* import graph. A `dynamicImports` edge is a lazy route (React.lazy in
-// App.jsx) - following it would defeat the point of the budget, which exists to catch code that
-// reaches the sign-in screen before it should, not the code the split deliberately defers.
 const files = new Set();
 const visited = new Set();
 

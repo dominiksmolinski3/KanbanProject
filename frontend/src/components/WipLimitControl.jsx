@@ -10,7 +10,7 @@ function WipLimitControl({ onClose }) {
   const [wipLimit, setWipLimit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('column'); // 'column' or 'row'
+  const [activeTab, setActiveTab] = useState('column');
   const { t } = useTranslation();
   
   const handleItemChange = (e) => {

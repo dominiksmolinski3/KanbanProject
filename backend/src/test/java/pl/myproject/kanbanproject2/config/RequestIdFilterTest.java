@@ -47,8 +47,6 @@ class RequestIdFilterTest {
     @Test
     @DisplayName("a request that arrives without one is given one")
     void inventsAnIdWhenThereIsNone() throws Exception {
-        // The API container is reachable directly - 127.0.0.1:8081 locally, and the platform's own
-        // probes in the deployment - so "nginx always sets it" is not something this can assume.
         AtomicReference<String> seenByTheChain = new AtomicReference<>();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -64,15 +62,12 @@ class RequestIdFilterTest {
     @Test
     @DisplayName("an id that does not look like one is replaced rather than logged")
     void refusesAnUnacceptableInboundId() throws Exception {
-        // Whatever arrives here ends up in every log line for the request, so an unbounded or
-        // punctuated value is a log entry of the caller's choosing. nginx applies the same pattern;
-        // this is not trusting it to have done so.
         for (String hostile : new String[]{
-                "short",                             // under the floor
-                "x".repeat(65),                      // over the ceiling
-                "abcdefgh\ninjected=line",           // a newline, the classic
-                "abcdefgh\"quoted\"",                // breaks a JSON field
-                " 0123456789abcdef0123456789abcd"}) { // leading space: matches() must be total
+                "short",
+                "x".repeat(65),
+                "abcdefgh\ninjected=line",
+                "abcdefgh\"quoted\"",
+                " 0123456789abcdef0123456789abcd"}) {
 
             MockHttpServletRequest request = new MockHttpServletRequest();
             request.addHeader(RequestIdFilter.HEADER, hostile);
@@ -90,8 +85,6 @@ class RequestIdFilterTest {
     @Test
     @DisplayName("an acceptable id is passed through whatever its shape")
     void acceptsAnyIdInsideTheBounds() throws Exception {
-        // Trusting an inbound id at all is the deliberate half: it is what lets a load test or a
-        // future client correlate its own request with both halves of this deployment.
         String theirs = "load-test_run-42";
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader(RequestIdFilter.HEADER, theirs);
@@ -105,8 +98,6 @@ class RequestIdFilterTest {
     @Test
     @DisplayName("the MDC is cleared even when the request blows up")
     void clearsTheMdcOnTheWayOut() {
-        // Servlet threads are pooled and the MDC is a thread local, so a leak here stamps the next
-        // request on this thread with the previous one's id - which reads as true and is not.
         MockHttpServletRequest request = new MockHttpServletRequest();
 
         assertThatThrownBy(() -> filter.doFilter(request, new MockHttpServletResponse(),
@@ -126,7 +117,6 @@ class RequestIdFilterTest {
         assertThat(MDC.get(RequestIdFilter.MDC_KEY)).isNull();
     }
 
-    /** A chain that reports what the MDC held while it ran, which is the only moment that matters. */
     private static FilterChain recording(AtomicReference<String> seen) {
         return (request, response) -> seen.set(MDC.get(RequestIdFilter.MDC_KEY));
     }

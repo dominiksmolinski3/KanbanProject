@@ -14,28 +14,14 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Fails the build when the edge stops sending what {@link SecurityHeaders} declares. nginx serves
- * {@code index.html} from its own container now, so a CSP Spring writes reaches nobody on the
- * document - the policy is one rule living in two files, and this class stops them disagreeing.
- *
- * <p>Two assertions here are about nginx rather than the policy itself: {@code add_header} does
- * not inherit into a location that sets a header of its own (both file-serving locations add a
- * {@code Cache-Control}), which would silently serve the shell with no policy at all unless every
- * such location includes the snippet; and without {@code always}, a header is written on 2xx/3xx
- * only, leaving a 404 or 502 from the edge unprotected.
- */
 class SecurityHeadersMatchTheEdgeTest {
-
     private static final Path SNIPPET = Path.of("..", "frontend", "nginx", "security-headers.conf");
     private static final Path TEMPLATE = Path.of("..", "frontend", "nginx", "default.conf.template");
     private static final String INCLUDE = "include /etc/nginx/snippets/security-headers.conf;";
 
-    /** {@code add_header Name "value" always;}, which is the only form the snippet uses. */
     private static final Pattern ADD_HEADER =
             Pattern.compile("^\\s*add_header\\s+(\\S+)\\s+\"([^\"]*)\"(\\s+always)?\\s*;", Pattern.MULTILINE);
 
-    /** The opening line of each {@code location} block, so a block can be asked what it contains. */
     private static final Pattern LOCATION =
             Pattern.compile("^ {4}location\\s+([^{]+)\\{", Pattern.MULTILINE);
 
@@ -88,8 +74,6 @@ class SecurityHeadersMatchTheEdgeTest {
     @Test
     @DisplayName("Cross-Origin-Embedder-Policy is declined at the edge too")
     void declinesEmbedderPolicy() throws IOException {
-        // SecurityHeadersTest asserts the same absence on the Spring side. Both are deliberate:
-        // require-corp breaks the reCAPTCHA frame, which carries no CORP header of its own.
         assertThat(snippetHeaders()).doesNotContainKey("Cross-Origin-Embedder-Policy");
     }
 

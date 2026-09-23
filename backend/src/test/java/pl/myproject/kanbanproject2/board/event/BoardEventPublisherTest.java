@@ -40,11 +40,6 @@ class BoardEventPublisherTest {
         board.setId(7);
     }
 
-    /**
-     * Both halves matter: {@code clearSynchronization} drops the registered callbacks, but the
-     * resource the publisher binds against the thread survives it, and a leftover one would make
-     * the next test collect into a set whose synchronization has already run.
-     */
     @AfterEach
     void clearAnyTransaction() {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -69,8 +64,6 @@ class BoardEventPublisherTest {
 
         publisher.tasksChanged(board);
 
-        // The whole point of the class: a frame sent before the commit could reach a subscriber
-        // whose re-read beats the commit and reads stale state permanently.
         verifyNoInteractions(messagingTemplate);
 
         commit();
@@ -93,7 +86,6 @@ class BoardEventPublisherTest {
     void coalescesWithinATransaction() {
         TransactionSynchronizationManager.initSynchronization();
 
-        // A reorder of a twelve-card cell saves twelve tasks and needs exactly one re-read.
         for (int i = 0; i < 12; i++) {
             publisher.tasksChanged(board);
         }
@@ -127,8 +119,6 @@ class BoardEventPublisherTest {
         commit();
         TransactionSynchronizationManager.clearSynchronization();
 
-        // A set left bound to a pooled thread would collect the next request's events into a
-        // synchronization that has already run, and they would never be sent at all.
         TransactionSynchronizationManager.initSynchronization();
         publisher.rowsChanged(board);
         commit();
@@ -165,10 +155,6 @@ class BoardEventPublisherTest {
                 .convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
     }
 
-    /**
-     * A real commit runs both halves in this order; the second is what lets the thread be reused,
-     * so a test running only {@code afterCommit} would simulate a transaction that never finishes.
-     */
     private static void commit() {
         var registered = synchronizations();
         registered.forEach(TransactionSynchronization::afterCommit);

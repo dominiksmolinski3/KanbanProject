@@ -4,13 +4,6 @@ import jakarta.validation.Valid;
 import org.openapitools.jackson.nullable.JsonNullable;
 import pl.myproject.kanbanproject2.task.IdRef;
 
-/**
- * A partial update of a subtask.
- *
- * <p>The tri-state matters most for {@code completed}: the old signature read it off an entity, so
- * a body that never mentioned it still arrived as {@code false} and silently un-ticked the subtask.
- * The only caller in the frontend sends {@code {"description": …}} alone, and did exactly that.
- */
 public record PatchSubTaskRequest(
         JsonNullable<String> title,
         JsonNullable<String> description,

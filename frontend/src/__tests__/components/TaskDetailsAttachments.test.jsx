@@ -23,13 +23,6 @@ jest.mock('react-toastify', () => ({
 
 jest.mock('../../services/api');
 
-/**
- * The attachment section of the task panel: pick a file, see it listed, click it to download, and
- * be asked before one is deleted - deletion takes the blob as well as the row, with nothing in
- * this panel to bring it back. The refusals are covered too, since `AttachmentUploadError` carries
- * a reason precisely because "too large" is something the person can act on and "storage is not
- * configured" is not.
- */
 describe('TaskDetails attachments', () => {
   const task = { id: 1, title: 'Test Task', description: 'A task', labels: [] };
 
@@ -114,7 +107,6 @@ describe('TaskDetails attachments', () => {
     });
 
     await waitFor(() => expect(api.uploadTaskAttachment).toHaveBeenCalledWith(task.id, expect.any(File)));
-    // Twice: once on load, once after the upload - the row the server wrote is the one shown.
     await waitFor(() => expect(api.fetchTaskAttachments).toHaveBeenCalledTimes(2));
   });
 
@@ -124,7 +116,6 @@ describe('TaskDetails attachments', () => {
     renderPanel();
     await waitForPanel();
 
-    // The panel renders through a portal, so it is in the document rather than in the container.
     fireEvent.drop(document.querySelector('.attachments-section'), {
       dataTransfer: { files: [fileNamed('dropped.pdf')] }
     });

@@ -1,8 +1,4 @@
 
-# Every subnet id output waits on its NSG association, not just the subnet: the association briefly
-# puts the subnet in "Updating", and a private-endpoint resource created against it then fails with
-# SubnetsNotProvisioned. This is an output-level depends_on (rather than module-level) so it doesn't
-# pull in unrelated churn, like the container app environment's workload profile.
 output "backend_subnet_id" {
   value      = azurerm_subnet.backend.id
   depends_on = [azurerm_subnet_network_security_group_association.backend]

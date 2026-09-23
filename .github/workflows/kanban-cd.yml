@@ -3,19 +3,8 @@ name: Kanban CD
 on:
   push:
     branches: [ main ]
-  # The same hole `kanban-ci.yml` sweeps, and it was still open here after that one was closed: a
-  # push made with the default GITHUB_TOKEN starts no workflow run, and `dependabot-auto-merge.yml`
-  # merges with exactly that token. Measured on 12 Sep 2026 - five consecutive merge commits
-  # (974b764, f8817f7, b5c8f11, ed9d463, 549e343) reached `main` with no CI, no CodeQL and no CD
-  # behind any of them. For CI that meant an untested trunk, which the sweep there now catches.
-  # Here it means something quieter: no image was built for those commits at all, so `:latest`
-  # stopped tracking the tip of `main` and nothing said so. A daily rebuild of the tip is what
-  # makes `:latest` converge again, whoever did the merging.
-  #
-  # Half an hour after the CI sweep, so that the tree this builds has just been swept.
   schedule:
     - cron: '47 5 * * *'
-  # Optional: Run manually from GitHub UI
   workflow_dispatch:
 
 concurrency:
@@ -23,17 +12,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Two images since the container split, built as a matrix rather than as two jobs.
-  #
-  # That is not only tidiness. `cd-alarm` below has to name every job in `needs` *and* in the
-  # `results` string it passes, and SweepAlarmCoverageTest fails the build when those two disagree
-  # - so a second build job would be a third place to remember. A matrix leg is not a job by that
-  # reckoning: `needs.build-and-push.result` aggregates every leg, and a leg that fails fails the
-  # whole reference. One name, whatever the matrix grows to.
-  #
-  # `fail-fast: false` so that a Trivy finding in one image still tells you about the other; and
-  # `promote` needs both legs green either way, because `needs` on a matrix job waits for all of
-  # them.
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -67,8 +45,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    # The site key is only read by the frontend build; passing it to the backend context is
-    # harmless (that Dockerfile declares no such ARG) and keeps the matrix leg uniform.
     - name: Build and Push Docker Image
       id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -100,9 +76,6 @@ jobs:
         ignore-unfixed: true
         exit-code: '1'
 
-    # A category per image. Uploading both under one category makes the second leg's results
-    # replace the first's, so the Security tab would show whichever leg happened to finish last
-    # and report the other image as having no findings at all.
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''
       uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
@@ -117,8 +90,6 @@ jobs:
         format: cyclonedx
         output: sbom.cdx.json
 
-    # Named per image for the same reason: two legs uploading one artifact name is an error, and
-    # an SBOM that does not say which image it describes is not an SBOM.
     - name: Upload SBOM artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
@@ -129,11 +100,6 @@ jobs:
     - name: Install cosign
       uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
-    # Keyless signing: cosign gets a short-lived certificate from Sigstore's Fulcio CA
-    # bound to this workflow's GitHub OIDC identity, so there is no signing key to
-    # store or rotate. Both the signature and the SBOM attestation are pushed
-    # alongside the image in GHCR, addressed by the digest so they cannot drift onto
-    # a different build the way a tag-addressed reference could.
     - name: Sign the image (keyless)
       run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}"
 
@@ -148,12 +114,6 @@ jobs:
       packages: write
 
     steps:
-    # Two questions, and only the second one was ever asked. `:latest` means "the tip of the default
-    # branch", so promoting requires both that this ref *is* that branch and that this commit is
-    # still its tip. The ref half was missing, and `workflow_dispatch` has been on this workflow all
-    # along - so dispatching CD on a feature branch tagged that branch's build `:latest`, because
-    # the commit is perfectly well the tip of the ref it names. Nothing had ever done it. Adding a
-    # schedule is a reason to make sure nothing can.
     - name: Check that this is the tip of the default branch
       id: tip
       env:
@@ -182,16 +142,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    # Both or neither, and by tag rather than by digest.
-    #
-    # A matrix job's outputs are whichever leg wrote them last, so there is no per-image digest to
-    # read here any more - `imagetools create` resolves the SHA tag instead, which is the same
-    # artifact this run built and pushed. The tag is immutable in practice because every run tags
-    # by commit.
-    #
-    # The two must move together. Terraform feeds one app_image_tag to both container apps, and the
-    # bundle disagreeing with the API it calls is the failure the split introduced - a `:latest`
-    # that is half of one commit and half of another is exactly that, with nothing to say so.
     - name: Promote the scanned images to :latest
       if: steps.tip.outputs.is_tip == 'true'
       run: |
@@ -211,10 +161,6 @@ jobs:
           echo "::warning::main moved to $tip while this job was promoting; :latest on both images may point at the older ${{ github.sha }} and need promoting by hand."
         fi
 
-  # A sweep has nobody watching it, which is the whole argument in `sweep-alarm.yml`. It matters
-  # more here than on CI: a red CI sweep at least leaves a red tick against `main`, while a CD
-  # sweep that fails leaves `:latest` pointing at an older commit, which looks exactly like a
-  # deployment nobody has made yet.
   cd-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ build-and-push, promote ]

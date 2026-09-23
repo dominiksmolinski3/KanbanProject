@@ -18,13 +18,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The enqueue half. What matters is that it writes the message whole and that it is quick to say
- * so - the row is what the relay has to work from, and anything missing from it is a message that
- * can never be rebuilt.
- */
 class OutboxEmailSenderTest {
-
     private static final Instant NOW = Instant.parse("2026-09-02T12:00:00Z");
 
     private final OutboxEmailRepository outbox = mock(OutboxEmailRepository.class);
@@ -63,8 +57,6 @@ class OutboxEmailSenderTest {
     @Test
     @DisplayName("a database that will not take the row is reported as a delivery failure, not swallowed")
     void anUnwritableRowIsReported() {
-        // The one case where a caller still sees EMAIL_SEND_FAILED. It is the honest answer: the
-        // account may exist, and nothing is going to tell anybody the code.
         when(outbox.save(any(OutboxEmail.class)))
                 .thenThrow(new DataIntegrityViolationException("no room at the inn"));
 
@@ -76,8 +68,6 @@ class OutboxEmailSenderTest {
     @Test
     @DisplayName("the queue sender delivers nothing itself, and does not claim to")
     void theQueueSenderIsNotATransport() {
-        // deliversMessages() is the relay's question about the transport behind it. This class is
-        // not that transport, but it does accept messages for sending, so the default holds.
         assertThat(sender.deliversMessages()).isTrue();
     }
 }

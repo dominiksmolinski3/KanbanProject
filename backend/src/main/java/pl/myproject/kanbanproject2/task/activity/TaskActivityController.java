@@ -9,11 +9,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
 
-/**
- * What has happened on a board. Its own path rather than {@code /tasks/{id}/activity}, since the
- * feed's subject is the board — a task-scoped listing is a different screen the column-history
- * route already half serves. {@code ?boardId=} is optional and means the caller's own board.
- */
 @RestController
 @RequestMapping("/activity")
 @RequiredArgsConstructor

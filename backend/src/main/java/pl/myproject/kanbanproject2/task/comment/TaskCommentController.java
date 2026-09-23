@@ -16,11 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
 
-/**
- * A card's thread, addressed under the task that owns it, like attachments: a comment has no
- * visibility of its own, and an id from another board is a 404 because the task in the path is
- * checked before the comment is looked at.
- */
 @RestController
 @RequestMapping("/tasks/{taskId}/comments")
 @RequiredArgsConstructor

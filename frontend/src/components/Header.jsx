@@ -9,7 +9,7 @@ import BoardSwitcher from './BoardSwitcher';
 import { useAuth } from '../context/AuthContext';
 
 function Header() {
-  const [activeForm, setActiveForm] = useState(null); // 'task', 'boardItem', or 'wip'
+  const [activeForm, setActiveForm] = useState(null);
   const [isSticky, setIsSticky] = useState(false);
   const { logout } = useAuth();
   const { t } = useTranslation();

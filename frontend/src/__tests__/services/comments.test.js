@@ -1,11 +1,5 @@
 import * as api from '../../services/api';
 
-/**
- * The comment client. Each call is addressed under the task, like attachments, and each failure
- * rejects rather than answering something empty - an empty thread and a thread that would not load
- * are different things to show. A delete that finds the comment already gone is success: somebody
- * else removed it first, and the thread re-reads either way.
- */
 describe('task comments', () => {
   beforeEach(() => {
     global.fetch = jest.fn();

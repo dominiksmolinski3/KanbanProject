@@ -16,21 +16,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over the way a Content-Security-Policy actually fails: not on the day it's written, but
- * later, when somebody adds a font or a widget and a browser silently refuses one request on a
- * screen nobody in CI visits. Jest cannot see it (jsdom enforces no CSP) and the backend suite
- * cannot either (the new host lives in a stylesheet in another tree), so this reads that tree:
- * every {@code https://host} the client mentions has to be a host
- * {@link SecurityHeaders#CONTENT_SECURITY_POLICY} names.
- *
- * <p><b>What it cannot see:</b> a host reached only at runtime by somebody else's script leaves no
- * literal to find - {@code www.gstatic.com} is in the policy only because reCAPTCHA's own
- * {@code api.js} fetches from there. The ZAP baseline sweep and a browser console catch that kind.
- */
 class CspMatchesTheClientTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the client is up and over. */
     private static final Path CLIENT_SOURCE = Path.of("..", "frontend", "src");
     private static final Path CLIENT_SHELL = Path.of("..", "frontend", "index.html");
 
@@ -56,8 +42,6 @@ class CspMatchesTheClientTest {
     @Test
     @DisplayName("the scan finds the hosts it is meant to be watching")
     void theScanFindsSomething() throws IOException {
-        // A silent zero passes the assertion above for the wrong reason, which is the one failure
-        // mode this kind of guard has and the one it cannot report on its own.
         assertThat(hostsTheClientNames())
                 .as("no external host found in the client at all - the scan has stopped reading")
                 .contains("fonts.googleapis.com", "www.google.com");
@@ -66,9 +50,6 @@ class CspMatchesTheClientTest {
     @Test
     @DisplayName("script-src does not allow inline script, which is the half of a CSP worth having")
     void inlineScriptStaysRefused() {
-        // Everything else in the policy is a list of hosts and can be argued about. This one is the
-        // control: a CSP with 'unsafe-inline' in script-src stops an injected <script> from
-        // nothing at all, and it is the single easiest thing to add while "fixing" a broken screen.
         String scriptSrc = directive("script-src");
 
         assertThat(scriptSrc).doesNotContain("'unsafe-inline'");

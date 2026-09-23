@@ -3,9 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-// Named with the `mock` prefix so Jest hoists this declaration alongside the `jest.mock` call that
-// closes over it. Without the prefix the factory is hoisted above the declaration and the object
-// is built from `undefined`.
 const mockI18n = { language: 'en', changeLanguage: jest.fn() };
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ i18n: mockI18n })
@@ -42,9 +39,6 @@ describe('LanguageSwitcher', () => {
     expect(mockI18n.changeLanguage).toHaveBeenCalledWith('ja');
   });
 
-  // The screen is not the only place the language matters. A verification code is composed by a
-  // route and an overdue notice by a scheduler, so neither has a browser to ask - the account has
-  // to carry the answer, and this control is where somebody says it.
   it('stores the choice on the account, so the mail follows the screen', async () => {
     render(<LanguageSwitcher />);
 
@@ -63,9 +57,6 @@ describe('LanguageSwitcher', () => {
     expect(updateUserLocale).not.toHaveBeenCalled();
   });
 
-  // What the person asked for has already happened by the time the request goes out, so a failure
-  // has nothing to tell them and no toast to raise. It is retried the next time they use the
-  // control, which is the only moment the preference is worth anything.
   it('leaves the screen alone when the account cannot be updated', async () => {
     const complaint = jest.spyOn(console, 'error').mockImplementation(() => {});
     updateUserLocale.mockRejectedValue(new Error('nope'));

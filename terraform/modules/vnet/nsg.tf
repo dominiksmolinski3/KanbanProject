@@ -130,8 +130,6 @@ resource "azurerm_network_security_group" "private_endpoints" {
   }
 }
 
-# Only the app reaches the blob private endpoint. The browser reaches the same account by its
-# public address, which no rule here touches.
 resource "azurerm_network_security_group" "storage" {
   tags                = var.tags
   name                = "nsg-storage-${var.env}"

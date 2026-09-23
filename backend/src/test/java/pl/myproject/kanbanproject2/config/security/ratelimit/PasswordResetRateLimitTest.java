@@ -8,14 +8,7 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The password reset routes are unauthenticated and one of them sends mail on demand, which is the
- * exact shape the limiter exists for. A public endpoint that mails on request and is <em>not</em>
- * limited is a way to burn a shared Gmail quota and a sender reputation from a script - and the
- * limiter is opt-in by path, so a new route is unprotected until someone lists it.
- */
 class PasswordResetRateLimitTest {
-
     @Test
     @DisplayName("asking for a reset is on the EMAIL limit, like signup and resend")
     void forgotPasswordIsRateLimitedAsEmail() {

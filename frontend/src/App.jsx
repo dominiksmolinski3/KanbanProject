@@ -7,9 +7,6 @@ import NotFound from './components/NotFound';
 import PageLoading from './components/PageLoading';
 import './styles/App.css';
 
-// Everything below is behind the sign-in form, so none of it should be in the chunk that paints
-// it: the chat panel (SockJS, the STOMP client), react-xarrows, and the task detail view all wait
-// until a route that needs them is actually visited.
 const ProtectedLayout = lazy(() => import('./components/ProtectedLayout'));
 const BoardPage = lazy(() => import('./components/BoardPage'));
 const UsersManagement = lazy(() => import('./components/UsersManagement'));

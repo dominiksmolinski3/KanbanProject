@@ -20,16 +20,7 @@ jest.mock('../../services/authService', () => ({
   }
 }));
 
-/**
- * The two properties that make refresh tokens safe to hold in a browser: two concurrent renewals
- * would present the same one-use token twice, which the server reads as theft and withdraws every
- * session for - and a board load firing a dozen requests at once makes "concurrent" the normal
- * case, not the edge one. A renewal that fails has to leave nothing behind, or a stored token the
- * server keeps rejecting only delays the sign-in screen.
- */
 describe('session', () => {
-  // expiresIn is milliseconds — jwtService.getExpirationTime() passed straight through, the same
-  // 900_000 every /auth test on the server asserts.
   const session = { token: 'access', expiresIn: 900_000, refreshToken: 'rotated' };
 
   beforeEach(() => {
@@ -44,8 +35,6 @@ describe('session', () => {
 
     expect(localStorage.getItem(TOKEN_KEY)).toBe('a');
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('r');
-    // Fifteen minutes, not fifteen thousand: reading expiresIn as seconds put this ten days out
-    // and left isAccessTokenExpired permanently false.
     const stored = Number(localStorage.getItem(TOKEN_EXPIRY_KEY));
     expect(stored).toBeGreaterThanOrEqual(before + 900_000);
     expect(stored).toBeLessThanOrEqual(Date.now() + 900_000);
@@ -103,8 +92,6 @@ describe('session', () => {
   test('a token inside the skew window counts as expired already', () => {
     localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + 3_000));
 
-    // Three seconds is long enough to send a request and short enough that it can arrive after
-    // the token has lapsed. Treating it as gone costs one early renewal.
     expect(isAccessTokenExpired()).toBe(true);
   });
 
@@ -130,8 +117,6 @@ describe('session', () => {
 
     const results = await Promise.all(Array.from({ length: 10 }, () => refreshSession()));
 
-    // The whole point: a second call would present a token the first has already spent, and the
-    // server would read that as a stolen chain and sign the account out everywhere.
     expect(authService.refresh).toHaveBeenCalledTimes(1);
     expect(results).toEqual(Array(10).fill('access'));
   });

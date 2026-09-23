@@ -46,12 +46,8 @@ public class TaskMapper implements Function<Task, TaskDto> {
                     .collect(Collectors.toSet());
         }
 
-        // Copied, not handed over: getLabels() returns Hibernate's own collection, and returning it
-        // directly let it escape the transaction into Jackson with no session left to initialize
-        // it (open-in-view=false), which made every GET /api/tasks answer 500.
         Set<String> labels = task.getLabels() == null ? null : new HashSet<>(task.getLabels());
 
-        // @BatchSize on the collection makes this one query per fifty cards, not one per card.
         int openSubtasks = task.getSubTasks() == null ? 0 : (int) task.getSubTasks().stream()
                 .filter(subTask -> !subTask.isCompleted())
                 .count();

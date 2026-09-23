@@ -30,14 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The HTTP half of the subtask routes: the statuses, and the point where a partial body becomes a
- * {@link PatchSubTaskRequest} whose absent fields stay distinguishable from explicitly-null ones —
- * only observable through real deserialisation, so it's asserted here rather than in the service
- * test.
- */
 class SubTaskControllerHttpTest {
-
     private SubTaskService subTaskService;
     private MockMvc mvc;
     private pl.myproject.kanbanproject2.user.User caller;

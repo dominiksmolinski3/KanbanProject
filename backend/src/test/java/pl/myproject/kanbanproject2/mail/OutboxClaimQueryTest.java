@@ -12,25 +12,7 @@ import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The three things that make the outbox safe at more than one replica, none of which any other test
- * in this suite can see: every other suite mocks {@link OutboxEmailRepository}, and
- * {@code QueryStringsResolveTest} skips native queries deliberately, so this query text runs for the
- * first time in a real deployment. Losing any of the three is silent at one replica:
- *
- * <ul>
- *   <li><b>{@code FOR UPDATE SKIP LOCKED}.</b> Without the lock, two relays select the same rows and
- *       every message goes out twice; without {@code SKIP LOCKED}, the second relay blocks behind
- *       the first instead of working, draining at one replica's speed however many are running.</li>
- *   <li><b>A transaction around the claim.</b> The lock releases at transaction end, so splitting
- *       the select and the mark into two transactions leaves a window where both relays see
- *       {@code PENDING} - the lock does nothing.</li>
- *   <li><b>Public methods.</b> Spring's {@code AnnotationTransactionAttributeSource} considers
- *       public methods only; {@code @Transactional} on a package-private one is silently ignored.</li>
- * </ul>
- */
 class OutboxClaimQueryTest {
-
     @Test
     @DisplayName("the claim query still locks the rows it takes, and still skips locked ones")
     void theClaimStillSkipsLockedRows() {

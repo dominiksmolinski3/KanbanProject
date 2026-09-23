@@ -1,6 +1,5 @@
 import ChatApi from '../../services/chatApi';
 
-// Each of these stood between the chat feature and a single working connection.
 jest.mock('sockjs-client', () => jest.fn().mockImplementation((url) => ({ url })));
 
 const clientInstances = [];
@@ -56,16 +55,9 @@ describe('ChatApi', () => {
 
     client.webSocketFactory();
 
-    // The deployed app is not on localhost:8080, and in dev Vite proxies /ws to it.
     expect(SockJS).toHaveBeenCalledWith(`${window.location.origin}/ws`);
   });
 
-  /*
-   * The subscribing form of a user destination carries no name: Spring reads the account off the
-   * session it authenticated at CONNECT. Naming it - which is the *sending* form, and what this
-   * file used to do - binds the subscription to a queue nothing publishes to, which is why no
-   * direct message had been delivered since the STOMP relay replaced enableSimpleBroker.
-   */
   it('subscribes to the private queue without naming the account', async () => {
     const { client } = await connect();
 
@@ -73,10 +65,6 @@ describe('ChatApi', () => {
     expect(client.subscriptions.some((d) => d.includes('@'))).toBe(false);
   });
 
-  /*
-   * The finding, as an assertion: connecting used to put every account on one global topic, so a
-   * member of one board read the messages of every other board's members.
-   */
   it('subscribes to no topic on connect - there is no global room to join', async () => {
     const { client } = await connect();
 
@@ -112,7 +100,6 @@ describe('ChatApi', () => {
   it('connects without an Authorization header when there is no token to send', async () => {
     const { client } = await connect(undefined);
 
-    // Better a refused CONNECT than a malformed "Bearer undefined".
     expect(client.connectHeaders).toEqual({});
   });
 
@@ -122,7 +109,6 @@ describe('ChatApi', () => {
 
       api.joinBoard(7);
 
-      // A dot, not a slash: everything after /topic/ is one AMQP routing key.
       expect(client.subscriptions).toContain('/topic/boards.7.chat');
       expect(client.published).toContainEqual({
         destination: '/app/chat.join',

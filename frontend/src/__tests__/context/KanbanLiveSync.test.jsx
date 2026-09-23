@@ -4,11 +4,6 @@ import '@testing-library/jest-dom';
 import { KanbanProvider, useKanban } from '../../context/KanbanContext';
 import * as api from '../../services/api';
 
-/*
- * The service is replaced rather than the STOMP client, because what this suite is about is the
- * context's half of the contract: which re-read answers which kind of event, and how many
- * re-reads a burst costs. `boardEvents.test.js` covers the connection itself.
- */
 const watchers = [];
 jest.mock('../../services/boardEvents', () => jest.fn().mockImplementation(function BoardEvents() {
   this.watch = jest.fn((boardId, onEvent) => {
@@ -70,8 +65,6 @@ describe('KanbanContext live board sync', () => {
     events.forEach((type) => watchers[0].onEvent({ type, boardId: 1 }));
   });
 
-  // `refreshBoard` awaits two fetches, so advancing the clock is only the first half of letting
-  // the re-read happen; the microtasks behind it have to run too.
   const settle = async () => {
     await act(async () => {
       jest.advanceTimersByTime(300);
@@ -81,8 +74,6 @@ describe('KanbanContext live board sync', () => {
   };
 
   it('watches the board it resolved on load', () => {
-    // Read off the instance rather than the call record: the harness clears mock calls once the
-    // provider has settled, and the subscription happens during that setup.
     expect(watchers[0].boardId).toBe(1);
     expect(typeof watchers[0].onEvent).toBe('function');
   });
@@ -165,7 +156,6 @@ describe('KanbanContext live board sync', () => {
   });
 
   it('a burst of events costs one re-read, which is the point of the window', async () => {
-    // What a single drag produces: the task moved, and its cell renumbered.
     emit('TASKS', 'TASKS', 'TASKS', 'TASKS');
     await settle();
 
@@ -176,8 +166,6 @@ describe('KanbanContext live board sync', () => {
     emit('TASKS', 'ROWS');
     await settle();
 
-    // The wider read is the one that covers both; taking the first event's answer would leave a
-    // deleted swimlane on screen.
     expect(api.fetchRows).toHaveBeenCalledTimes(1);
   });
 

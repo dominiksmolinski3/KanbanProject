@@ -12,27 +12,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pl.myproject.kanbanproject2.config.security.PublicPaths;
 
-/**
- * The published contract for the routes under {@code /api}, served as JSON at
- * {@code /v3/api-docs}. springdoc derives shapes from the mappings and DTO records, so nothing
- * here annotates a controller.
- *
- * <p>What springdoc cannot derive is <strong>which routes need a token</strong>, and that is the
- * whole of this class: rather than declaring it here, where marking every operation authenticated
- * would be wrong about login and marking none would be wrong about everything else, it is read
- * from {@link PublicPaths} - the same list {@code SecurityConfiguration} builds the filter chain
- * from - so the spec says what the chain does because both read one list.
- */
 @Configuration
 public class OpenApiConfiguration {
 
-    /** The name the requirement and the scheme agree on; it appears in the JSON and nowhere else. */
     static final String BEARER_SCHEME = "bearer-jwt";
 
-    /**
-     * The version of the <em>contract</em>, not of the jar - deliberately not the Maven version,
-     * or every build would claim a compatibility break on every commit.
-     */
     static final String API_VERSION = "v1";
 
     @Bean
@@ -59,14 +43,6 @@ public class OpenApiConfiguration {
                         .description("The access token from a login, verify or refresh response.")));
     }
 
-    /**
-     * Marks every operation that is not on a public path as needing the bearer token.
-     *
-     * <p>Applied per operation rather than as one document-level requirement, because the document
-     * level cannot be switched off for an individual path without annotating that path - and the
-     * routes that would need the annotation are exactly the unauthenticated ones, which is where a
-     * mistake costs the most.
-     */
     @Bean
     public OpenApiCustomizer bearerTokenOnAuthenticatedRoutes() {
         return openApi -> {
@@ -84,12 +60,6 @@ public class OpenApiConfiguration {
         };
     }
 
-    /**
-     * The operations actually declared on a path.
-     *
-     * <p>{@link PathItem#readOperations()} returns only the verbs that are present, which is what
-     * keeps this from inventing a secured DELETE on a path that has none.
-     */
     private static Iterable<Operation> operationsOf(PathItem pathItem) {
         return pathItem.readOperations();
     }

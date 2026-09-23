@@ -33,13 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The REST surface and the SockJS handshake need the same origins, and used to hold a copy each.
- * What is worth locking down is that there is now one list and that both sides read it — the drift
- * between the two copies is the bug this replaced, not a typo in either of them.
- */
 class AllowedOriginsTest {
-
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
             .withUserConfiguration(Enable.class);

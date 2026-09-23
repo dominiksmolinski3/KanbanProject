@@ -197,7 +197,6 @@ describe('Task Component', () => {
             );
         });
 
-        // A board of forty cards used to be forty subtask requests on every load, and none after.
         expect(fetchSubTasksByTaskId).not.toHaveBeenCalled();
     });
 
@@ -520,7 +519,6 @@ describe('Task Component', () => {
             ));
         });
 
-        // What a SUBTASKS frame from somebody else's screen amounts to: the same card, re-read.
         await act(async () => {
             rerender(
                 <KanbanContext.Provider value={mockContextValue}>

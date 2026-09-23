@@ -44,13 +44,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
     }
   }
 
-  # Azure only rejects these two combinations once it has the create request, by
-  # which point the vnet, the vault and its secrets already exist. Fail the plan.
   lifecycle {
-    # This is the only copy of the data. Several attributes here force replacement when they
-    # change — zone and delegated_subnet_id among them — so without this, a stray edit to a
-    # tfvars file plans a destroy that reads like an ordinary diff. Tearing an environment down
-    # on purpose means deleting these two lines first, which is the friction being bought.
     prevent_destroy = true
 
     precondition {
@@ -101,43 +95,16 @@ resource "azurerm_key_vault_secret" "postgres_password" {
   key_vault_id = var.key_vault_id
 }
 
-# sslmode=verify-full authenticates the server, not just encrypts the link - which needs sslfactory
-# too: pgjdbc's default verifying factory (LibPQFactory) reads ~/.postgresql/root.crt off disk and
-# never falls back to the JDK trust store, so with no such file it refuses to connect ("Could not
-# open SSL root certificate file"), as measured on dev's first revision using this URL.
-# DefaultJavaSSLFactory points the driver at the JDK trust store instead, where Azure's roots
-# (DigiCert Global Root G2, Microsoft RSA Root CA 2017) already live - so no certificate needs
-# bundling, mounting or rotating.
 resource "azurerm_key_vault_secret" "postgres_connection_string" {
-  tags         = var.tags
-  name         = "POSTGRES-CONNECTION-STRING"
+  tags = var.tags
+  name = "POSTGRES-CONNECTION-STRING"
+  # sslfactory is required: pgjdbc's default reads ~/.postgresql/root.crt and never falls back to the JDK trust store.
   value        = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
   content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }
 
-# ---------------------------------------------------------------------------------------------
-# How many connections this server actually has, so something other than a live outage can answer
-# it.
-#
-# Azure sizes max_connections from the SKU and does not expose it as an attribute of the resource,
-# so it has to be written down. These two numbers were measured against the dev server rather than
-# read off a documentation page:
-#
-#   az postgres flexible-server parameter show -g kanban-dev-rg -s psql-dev-g1tuv \
-#      -n max_connections                 -> 50
-#      -n superuser_reserved_connections  -> 10
-#
-# The reserve is the half that is easy to miss and it is a fifth of this SKU: those ten are held
-# for superuser logins, so an application that plans against 50 plans against ten it cannot have.
-# usable_connections is what is left, and the root module checks the API's budget against it.
-#
-# An unlisted SKU is a plan failure rather than a guess. Getting this number wrong in the
-# optimistic direction is exactly the outage it exists to prevent, and a lookup() default would
-# make that silent.
 locals {
-  # Azure PostgreSQL Flexible Server's default max_connections, by SKU. Add a SKU here before
-  # using it in a tfvars file; DatabasePoolBudgetTest reads this map and will say so if you do not.
   max_connections_by_sku = {
     "B_Standard_B1ms"     = 50
     "B_Standard_B2s"      = 429

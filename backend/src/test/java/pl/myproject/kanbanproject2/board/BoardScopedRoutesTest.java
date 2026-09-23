@@ -23,20 +23,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The rule that makes the ownership model hard to forget: <b>every REST handler either takes the
- * caller, or is on a path served without a token.</b> The caller is a parameter, so a route that
- * does not ask for one is either public or a hole — and this test decides which, from
- * {@link PublicPaths}, rather than from a list somebody remembered to update.
- *
- * <p>It runs by reflection over the compiled classes rather than by booting a context, so it costs
- * nothing and cannot be skipped for want of a database.
- */
 class BoardScopedRoutesTest {
-
     private static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
-    /** {@code WebConfig} applies this to every {@code @RestController}; ApiPathPrefixTest pins it. */
     private static final String API_PREFIX = "/api";
 
     private static final List<Class<? extends Annotation>> MAPPINGS = List.of(
@@ -84,14 +73,6 @@ class BoardScopedRoutesTest {
                 .sorted()
                 .toList();
 
-        /*
-         * Two groups, named here rather than waved through, since this assertion is what stands
-         * between "deliberately public" and "a board route lost its token check": the
-         * pre-authentication auth routes, and the delivery-report webhook, whose caller is Azure
-         * Event Grid rather than a person. The webhook is the only unauthenticated *write* here;
-         * what makes it safe (a shared key, a 404 when unconfigured) is asserted separately in
-         * MailDeliveryReportControllerHttpTest. Anything else appearing here is a mistake.
-         */
         assertThat(publicRoutes).allMatch(path ->
                 path.startsWith("/api/auth/") || Arrays.asList(PublicPaths.WEBHOOK_ENDPOINTS).contains(path));
         assertThat(publicRoutes)
@@ -117,10 +98,6 @@ class BoardScopedRoutesTest {
         return routes;
     }
 
-    /**
-     * The scan sees the test classpath too, and the suites here declare their own probe
-     * controllers to assert the {@code /api} prefix with. Those are fixtures, not routes.
-     */
     private static boolean isProductionClass(Class<?> type) {
         var source = type.getProtectionDomain().getCodeSource();
         return source != null && !source.getLocation().getPath().contains("test-classes");
@@ -136,7 +113,6 @@ class BoardScopedRoutesTest {
         return java.util.Optional.empty();
     }
 
-    /** {@code @GetMapping("/x")} and {@code @GetMapping(value = "/x")} are the same annotation. */
     private static String firstPath(Annotation mapping) {
         if (mapping == null) {
             return "";

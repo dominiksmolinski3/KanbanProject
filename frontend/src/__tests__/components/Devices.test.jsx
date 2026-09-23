@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Devices from '../../components/Devices';
 
-// `t` and `i18n` are stable references in react-i18next, and the component's loader depends on
-// `t` — a fresh function per render here would re-fire the effect on every state change.
 const translation = { t: (key) => key, i18n: { language: 'en' } };
 jest.mock('react-i18next', () => ({
   useTranslation: () => translation

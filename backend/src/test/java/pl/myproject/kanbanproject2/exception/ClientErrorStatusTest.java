@@ -32,19 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Everything the catch-all used to answer 500 for that is actually the caller's mistake.
- * {@code GlobalExceptionHandler} doesn't extend {@code ResponseEntityExceptionHandler}, so its
- * catch-all caught Spring MVC's own request exceptions too and reported each as a server fault -
- * which matters because a 500 is what the error-rate alert fires on, so a client sending bad JSON in
- * a loop read as an outage. This asserts statuses rather than handler methods, since that's the part
- * a client and a dashboard both see.
- *
- * <p>The routes below are a stand-in: the behaviour under test is the advice, and pinning it to a
- * real production route would make this test move whenever that route did.
- */
 class ClientErrorStatusTest {
-
     record Body(String name, int size) {
     }
 
@@ -153,10 +141,6 @@ class ClientErrorStatusTest {
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
     }
 
-    /**
-     * Raised by the resource handler rather than by dispatch, so it cannot be provoked through
-     * standalone MockMvc - the handler is called directly instead of dropping the case.
-     */
     @Test
     @DisplayName("an unmapped API path is 404")
     void noResourceIs404() {
@@ -167,11 +151,6 @@ class ClientErrorStatusTest {
         assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
     }
 
-    /**
-     * The filter can't parse an expired or tampered token, so it hands the exception to the advice;
-     * without a mapping this landed on the catch-all as a 500 for a token reaching its own expiry
-     * with the tab left open.
-     */
     @Test
     @DisplayName("an expired bearer token is 401, not the catch-all 500")
     void expiredJwtIs401() {

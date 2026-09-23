@@ -1,7 +1,4 @@
 .language-switcher-container {
-  /* The sign-in screen's corner placement. It lived in Board.css, which the sign-in screen stopped
-     loading when the routes were split into lazy chunks (FE-01), so the switcher fell into the page
-     flow beside the form. Kept here because this file is imported by the switcher itself. */
   position: absolute;
   top: 20px;
   right: 20px;
@@ -105,7 +102,6 @@
   color: #86d6ff;
 }
 
-/* Add some CSS to support header layout */
 .header-left {
   display: flex;
   align-items: center;
@@ -116,7 +112,6 @@
   align-items: center;
 }
 
-/* Mobile styles */
 @media (max-width: 768px) {
   .language-switcher {
     margin-right: 10px;
@@ -134,7 +129,6 @@
     right: -20px;
   }
   
-  /* For very small screens, make dropdown a grid */
   @media (max-width: 480px) {
     .language-dropdown {
       width: 240px;
@@ -144,7 +138,6 @@
   }
 }
 
-/* Dark Mode Styles */
 @media (prefers-color-scheme: dark) {
   .language-switcher-button {
     color: var(--gray-300);

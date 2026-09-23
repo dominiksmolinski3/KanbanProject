@@ -18,14 +18,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Setting the language on an account, the one place the tag is a choice rather than a guess, and
- * therefore the one place an unsupported one is refused rather than quietly replaced — unlike
- * signup, which reads an unchosen browser header and would rather guess wrong than refuse an account
- * over it.
- */
 class UserServiceLocaleTest {
-
     private static final Integer USER_ID = 7;
 
     private UserRepository userRepository;

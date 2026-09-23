@@ -6,8 +6,6 @@ jest.mock('../../services/authService', () => ({
   authService: { refresh: jest.fn(), logout: jest.fn() }
 }));
 
-// jsdom (21+) makes `window.location` unforgeable, the same as a real browser, so it can no
-// longer stand in for itself in a test - `redirectToSignIn` is the seam that's doubled instead.
 jest.mock('../../services/session', () => ({
   ...jest.requireActual('../../services/session'),
   redirectToSignIn: jest.fn()
@@ -60,8 +58,6 @@ describe('apiInterceptor', () => {
 
     await window.fetch('/api/auth/devices');
 
-    // The blanket `/auth/` skip this replaced sent these out bare, which the server answered with
-    // a 401 that looked like an expired session rather than a missing header.
     expect(originalFetch).toHaveBeenCalledWith('/api/auth/devices', {
       headers: expect.objectContaining({ Authorization: 'Bearer jwt' })
     });
@@ -135,8 +131,6 @@ describe('apiInterceptor', () => {
 
     await window.fetch('/api/tasks');
 
-    // The old behaviour here was a redirect to the sign-in screen every fifteen minutes, which is
-    // what made a short access token unaffordable in the first place.
     expect(redirectToSignIn).not.toHaveBeenCalled();
     expect(originalFetch.mock.calls[0][1].headers.Authorization).toBe('Bearer fresh-jwt');
   });

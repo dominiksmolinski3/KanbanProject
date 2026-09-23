@@ -12,12 +12,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two variable names are the ones docker-compose, Terraform and Key Vault already use. A name
- * that does not bind fails silently - the app keeps the default of "off" with nothing to say so.
- */
 class CaptchaPropertiesBindingTest {
-
     @Test
     @DisplayName("with nothing configured verification is off")
     void defaultsToOff() {

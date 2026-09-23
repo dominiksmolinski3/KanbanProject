@@ -16,14 +16,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit coverage for the two branches {@code RedisEscalationStoreIntegrationTest} cannot reach
- * without breaking the Redis it runs against: a malformed script result and a connection that
- * fails outright. Both are simulated against a mocked {@link StringRedisTemplate}; the script's own
- * correctness is that integration test's job, and {@link AuthRateLimitScriptTest}'s.
- */
 class RedisEscalationStoreTest {
-
     private static final EscalationStore.Limit LIMIT = new EscalationStore.Limit(
             4, Duration.ofSeconds(15).toMillis(), Duration.ofMinutes(5).toMillis(), Duration.ofMinutes(15).toMillis());
 
@@ -97,12 +90,6 @@ class RedisEscalationStoreTest {
         return redis;
     }
 
-    /**
-     * {@code execute}'s last parameter is {@code Object... args}, and {@link RedisEscalationStore}
-     * always passes exactly five - now, freeAttempts, base, max and window - so the stub names five
-     * positions rather than one {@code any()}, which Mockito would otherwise match against a single
-     * vararg element and silently leave the real five-argument call unstubbed.
-     */
     @SuppressWarnings("unchecked")
     private static org.mockito.stubbing.OngoingStubbing<List> stub(StringRedisTemplate redis) {
         return when(redis.<List>execute(any(RedisScript.class), anyList(), any(), any(), any(), any(), any()));

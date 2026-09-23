@@ -24,13 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The parts of the storage adapter nothing else can see: neither direction holds a whole file (an
- * upload streams what it was handed, a read returns the store's own stream), and the Azure client's
- * exceptions stop here rather than leaking an SDK type into callers.
- */
 class AzureBlobStoreTest {
-
     private BlobContainerClient container;
     private BlobClient blob;
     private AzureBlobStore store;

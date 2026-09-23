@@ -47,11 +47,6 @@ describe('locale files', () => {
 });
 
 describe('user-facing strings', () => {
-  /**
-   * A toast argument is fine when every word in it comes from an interpolation — `${t('key')}`
-   * or `${error.message}`. What is not fine is prose sitting in the source, which no locale file
-   * can translate. Strip the interpolations and fail on whatever letters are left.
-   */
   const TOAST_LITERAL = /toast\.\w+\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*)\1/g;
 
   test('no toast is raised with a hardcoded string', () => {
@@ -71,26 +66,7 @@ describe('user-facing strings', () => {
   });
 });
 
-/**
- * The half the toast check could not see.
- *
- * Nine locales with 391 identical keys, parity asserted and holding — and three Polish strings in
- * a card popover that every non-Polish reader saw, an English literal on ten screens in the task
- * panel, and a `title="row.delete"` rendering the translation key itself. All of them lived where
- * the assertion above never looked: in JSX text nodes and in `title` / `aria-label` / `placeholder`
- * / `alt` attributes.
- *
- * <p>This reads the JSX with Babel's own parser rather than with a regex, because the shapes that
- * matter cannot be told apart by one: `{isOpen ? 'Hide' : 'Show'}` is prose and
- * `className={isOpen ? 'open' : ''}` is not, and both are a string literal in a conditional. The
- * parser makes the distinction the obvious one — an expression that is a child of an element is on
- * screen, and an expression that is an attribute value mostly is not.
- *
- * A repository that catches a reworded log line with `DeadLetterAlertTest` should not be blind to
- * Polish prose in a default-English screen.
- */
 describe('nothing on screen bypasses t()', () => {
-  /** Attributes a person reads or hears. `className`, `type` and the rest are not prose. */
   const SPOKEN_ATTRIBUTES = new Set([
     'title', 'aria-label', 'aria-description', 'placeholder', 'alt',
   ]);
@@ -111,12 +87,6 @@ describe('nothing on screen bypasses t()', () => {
     }
   }
 
-  /**
-   * The strings an expression can put on screen. A conditional shows either branch; `a || b` shows
-   * `b` when `a` is falsy, which is how a dead `t('key') || 'fallback'` hides a missing key. A
-   * template literal is prose only in the parts outside its interpolations, so `${a} - ${b}` is
-   * not one and `Page ${n}` is.
-   */
   function displayed(expression, found) {
     if (!expression) return;
     if (expression.type === 'StringLiteral') {
@@ -162,7 +132,6 @@ describe('nothing on screen bypasses t()', () => {
           }
         }
 
-        // A child expression is on screen; an attribute value is the parser's own distinction.
         if (node.type === 'JSXExpressionContainer' && parent && parent.type !== 'JSXAttribute') {
           const found = [];
           displayed(node.expression, found);
@@ -183,7 +152,6 @@ describe('nothing on screen bypasses t()', () => {
   });
 
   test('the scan reads the components - a silent zero would pass the assertion above', () => {
-    // If the parse ever stops finding JSX, the check above passes by seeing nothing at all.
     expect(sourceFiles(SOURCE_DIR).filter((file) => file.endsWith('.jsx')).length)
       .toBeGreaterThan(20);
   });

@@ -47,21 +47,12 @@ public class RowService {
         return rowMapper.toResponseDto(created);
     }
 
-    /**
-     * Saves a row, tells the board's other viewers, and maps it. See
-     * {@code TaskService.saveAndAnnounce} - same reason, and the same build guard over it.
-     */
     private RowDto saveAndAnnounce(Row row) {
         var saved = rowRepository.save(row);
         boardEvents.rowsChanged(saved.getBoard());
         return rowMapper.apply(saved);
     }
 
-    /**
-     * The next free position on this board, taken from the highest one in use rather than from a
-     * row count, since a count drops after any delete and two concurrent creates would read the
-     * same one.
-     */
     private int nextPosition(Board board) {
         return rowRepository.findMaxPosition(board).orElse(0) + 1;
     }
@@ -82,21 +73,10 @@ public class RowService {
         return saveAndAnnounce(existingRow);
     }
 
-    /**
-     * Takes every task out of the swimlane before removing it.
-     *
-     * <p>{@code Row.tasks} cascades PERSIST and MERGE only, so nothing in the mapping clears
-     * {@code row_id} — the delete used to fail on the foreign key whenever the swimlane still held a
-     * task. A task outlives its swimlane: the column is what puts it on the board.
-     */
     public void deleteRow(User caller, Integer id) {
         var row = findRow(caller, id);
         boardService.requireWritable(caller, row.getBoard());
 
-        // One statement rather than a save per task - see TaskRepository.detachFromRow for the 409
-        // the per-task saves produced against a concurrent column delete. The loaded tasks are left
-        // as they are on purpose: changing them here would make Hibernate write each one back with
-        // the version check this avoids. The collection is emptied so the row goes with nothing in it.
         taskRepository.detachFromRow(row);
         if (row.getTasks() != null) {
             row.getTasks().clear();
@@ -117,11 +97,6 @@ public class RowService {
         return saveAndAnnounce(row);
     }
 
-    /**
-     * Renumbers a board's swimlanes in one transaction. Same reasoning as
-     * {@code ColumnService.reorderColumns}: one PATCH per swimlane could leave half of a drag
-     * applied once a stale write became a 409 instead of a silent overwrite.
-     */
     public List<RowDto> reorderRows(User caller, List<Integer> orderedIds) {
         if (orderedIds.size() != Set.copyOf(orderedIds).size()) {
             throw new GlobalException(ExceptionIdentifier.INVALID_REORDER,
@@ -141,7 +116,6 @@ public class RowService {
         return reordered;
     }
 
-    /** A swimlane on somebody else's board answers as one that is not there. See ColumnService. */
     private Row findRow(User caller, Integer id) {
         var row = rowRepository.findById(id).orElseThrow(() -> rowNotFound(id));
         if (!row.getBoard().isVisibleTo(caller)) {

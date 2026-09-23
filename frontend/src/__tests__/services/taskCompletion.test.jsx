@@ -43,8 +43,6 @@ describe('task completion', () => {
   });
 
   test('any other failure stays a plain error', async () => {
-    // The WIP-status route had the opposite bug: every failure was reported as the one
-    // recoverable refusal, which sent people looking at the wrong thing.
     fetch.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ code: 'TASK_NOT_FOUND' }) });
 
     const failure = updateTaskCompletion(7, true);

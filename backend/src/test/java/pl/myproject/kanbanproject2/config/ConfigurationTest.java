@@ -24,25 +24,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over the environment variables this application reads and the places that are supposed
- * to supply them. A property the application requires and no environment sets is a container that
- * will not start; a secret an environment supplies and nothing reads is a lie that survives every
- * build, because there is no compiler on either side of the gap - this project had that happen
- * twice, with two Key Vault mail secrets outliving the code that read them (MAIL-02) and
- * {@code CAPTCHA_SECRET} reaching a verifier that did not exist (SEC-06), both found by hand.
- *
- * <p>Six sources are read and compared: {@code application.properties}'s {@code ${VAR}}
- * placeholders (and whether each carries a default); the {@code @ConfigurationProperties} records,
- * since relaxed binding lets a variable reach a property with no placeholder at all; and
- * {@code docker-compose.yml} against both {@code terraform/modules/api_app/main.tf} and
- * {@code terraform/modules/web_app/main.tf} plus {@code frontend/nginx/default.conf.template} for
- * the edge, whose one variable is exactly why it still needs checking - nothing there is read by
- * any Java at all.
- */
 class ConfigurationTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path REPO = Path.of("..");
     private static final Path APP_PROPERTIES = Path.of("src", "main", "resources", "application.properties");
     private static final Path COMPOSE = REPO.resolve("docker-compose.yml");
@@ -52,21 +34,8 @@ class ConfigurationTest {
     private static final Path EDGE_TEMPLATE = REPO.resolve(Path.of("frontend", "nginx", "default.conf.template"));
     private static final Path EDGE_DOCKERFILE = REPO.resolve(Path.of("frontend", "Dockerfile"));
 
-    /**
-     * The one placeholder in the edge template that no deployment supplies, because the image
-     * does: {@code NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1} in {@code frontend/Dockerfile} makes the
-     * stock nginx entrypoint export it from {@code /etc/resolv.conf} before {@code envsubst} runs.
-     * Drop that line and the substitution produces {@code resolver ;}, which nginx refuses to
-     * start on - {@link #theEdgeImageEnablesTheResolverEntrypoint()} asserts it.
-     */
     private static final Set<String> EDGE_ENTRYPOINT_PROVIDED = Set.of("NGINX_LOCAL_RESOLVERS");
 
-    /**
-     * Variables the Application Insights agent reads rather than Spring, so no placeholder or record
-     * names them. Exempt from "passes nothing unread" only while the backend image still attaches
-     * the agent - {@link #theApiImageAttachesTheAgentItsVariablesAreFor()} - or the exemption would
-     * outlive the thing it exempts, which is exactly MAIL-02's dead configuration.
-     */
     private static final Set<String> AGENT_READ = Set.of(
             "APPLICATIONINSIGHTS_CONNECTION_STRING",
             "APPLICATIONINSIGHTS_AUTHENTICATION_STRING",
@@ -74,10 +43,6 @@ class ConfigurationTest {
 
     private static final Path API_DOCKERFILE = Path.of("Dockerfile");
 
-    /**
-     * The records Spring binds, named rather than discovered by scanning - a classpath scan that
-     * silently finds one fewer class next time would report a real variable as dead configuration.
-     */
     private static final List<Class<?>> BOUND_PROPERTIES = List.of(
             AcsMailProperties.class,
             AllowedOriginsProperties.class,
@@ -85,14 +50,10 @@ class ConfigurationTest {
             AuthRateLimitProperties.class,
             StompRelayProperties.class);
 
-    /** {@code ${VAR}} or {@code ${VAR:default}} - the default may be empty, which still counts as one. */
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]*)(:[^}]*)?}");
 
-    /** An {@code env { ... }} block in a container-app module. These never nest, so this is enough. */
     private static final Pattern TERRAFORM_ENV_BLOCK = Pattern.compile("\\benv\\s*\\{([^}]*)}");
     private static final Pattern TERRAFORM_ENV_NAME = Pattern.compile("name\\s*=\\s*\"([A-Z][A-Z0-9_]*)\"");
-
-    // ---------------------------------------------------------------- what the application reads
 
     @Test
     @DisplayName("every variable the application cannot start without is supplied by docker-compose")
@@ -109,8 +70,6 @@ class ConfigurationTest {
                 .as("a variable with no default that Terraform never sets - the revision would never go healthy")
                 .isSubsetOf(terraformContainerAppEnvironment());
     }
-
-    // ---------------------------------------------------------------- what the environments supply
 
     @Test
     @DisplayName("the container app passes nothing the application does not read")
@@ -138,12 +97,6 @@ class ConfigurationTest {
                 .as("the container app no longer sets what attaches the agent, so no metric reaches an alert")
                 .contains("APPLICATIONINSIGHTS_CONNECTION_STRING", "APPLICATIONINSIGHTS_AUTHENTICATION_STRING");
     }
-
-    // ------------------------------------------------------------------------------- the edge
-    //
-    // The same audit, for the container with no Java in it. There is one variable, and one variable
-    // is the case this is most needed for rather than least: nothing here is bound by a record, so
-    // a rename on either side compiles, applies, and produces a 502 on every API call.
 
     @Test
     @DisplayName("the web module supplies every variable the edge template substitutes")
@@ -205,8 +158,6 @@ class ConfigurationTest {
                 .isEmpty();
     }
 
-    // ---------------------------------------------------------------- the template
-
     @Test
     @DisplayName(".env.example names every variable docker-compose interpolates")
     void theTemplateNamesEveryVariableComposeNeeds() throws IOException {
@@ -228,13 +179,6 @@ class ConfigurationTest {
                 .isEmpty();
     }
 
-    // ---------------------------------------------------------------- sources
-
-    /**
-     * Every environment variable the application can read: the placeholders in
-     * {@code application.properties}, plus the relaxed-binding name of every component of every
-     * bound {@code @ConfigurationProperties} record.
-     */
     private static Set<String> readable() throws IOException {
         Set<String> readable = new TreeSet<>(placeholders().keySet());
         for (Class<?> type : BOUND_PROPERTIES) {
@@ -249,7 +193,6 @@ class ConfigurationTest {
         return readable;
     }
 
-    /** The placeholders with no default - the application refuses to start without these. */
     private static Set<String> required() throws IOException {
         Set<String> required = new TreeSet<>();
         placeholders().forEach((name, hasDefault) -> {
@@ -264,21 +207,15 @@ class ConfigurationTest {
         return required;
     }
 
-    /** Placeholder name to whether it carries a default. */
     private static Map<String, Boolean> placeholders() throws IOException {
         Map<String, Boolean> placeholders = new LinkedHashMap<>();
         Matcher matcher = PLACEHOLDER.matcher(read(APP_PROPERTIES));
         while (matcher.find()) {
-            // A name used twice, once with a default and once without, is required.
             placeholders.merge(matcher.group(1), matcher.group(2) != null, (a, b) -> a && b);
         }
         return placeholders;
     }
 
-    /**
-     * Spring's relaxed binding, in the direction this test needs it:
-     * {@code security.rate-limit.trustedProxyCount} to {@code SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT}.
-     */
     private static String environmentNameOf(String property) {
         StringBuilder name = new StringBuilder(property.length() + 8);
         for (char character : property.toCharArray()) {
@@ -293,12 +230,10 @@ class ConfigurationTest {
         return name.toString();
     }
 
-    /** The {@code environment:} mapping on the compose file's {@code app} service. */
     private static Map<String, String> composeAppEnvironment() throws IOException {
         return composeServiceEnvironment("app");
     }
 
-    /** The same, for the {@code web} service the split added. */
     private static Map<String, String> composeWebEnvironment() throws IOException {
         return composeServiceEnvironment("web");
     }
@@ -324,7 +259,6 @@ class ConfigurationTest {
         if (environment instanceof Map<?, ?> mapping) {
             mapping.forEach((key, value) -> variables.put(String.valueOf(key), String.valueOf(value)));
         } else if (environment instanceof List<?> entries) {
-            // The other form the compose spec allows: a list of `KEY=value` strings.
             for (Object entry : entries) {
                 String[] halves = String.valueOf(entry).split("=", 2);
                 variables.put(halves[0], halves.length > 1 ? halves[1] : "");
@@ -333,7 +267,6 @@ class ConfigurationTest {
         return variables;
     }
 
-    /** Every {@code ${VAR}} anywhere in the compose file, environment and build args alike. */
     private static Set<String> interpolatedByCompose() throws IOException {
         Set<String> interpolated = new TreeSet<>();
         Matcher matcher = PLACEHOLDER.matcher(read(COMPOSE));
@@ -343,12 +276,10 @@ class ConfigurationTest {
         return interpolated;
     }
 
-    /** The names in the API module's {@code env} blocks, and not its Key Vault secret names. */
     private static Set<String> terraformContainerAppEnvironment() throws IOException {
         return terraformEnvironment(API_APP, "the API module");
     }
 
-    /** The same, for the edge. One entry today, and the point is that it is checked at all. */
     private static Set<String> terraformWebAppEnvironment() throws IOException {
         return terraformEnvironment(WEB_APP, "the web module");
     }
@@ -372,7 +303,6 @@ class ConfigurationTest {
         return names;
     }
 
-    /** Every placeholder the nginx entrypoint's envsubst will replace in the edge config. */
     private static Set<String> edgeTemplatePlaceholders() throws IOException {
         Set<String> names = new TreeSet<>();
         Matcher matcher = PLACEHOLDER.matcher(read(EDGE_TEMPLATE));
@@ -387,7 +317,6 @@ class ConfigurationTest {
         return names;
     }
 
-    /** The keys {@code .env.example} asks somebody to fill in, comments and blanks aside. */
     private static Set<String> templateKeys() throws IOException {
         assertThat(ENV_EXAMPLE).as("the env template has moved or gone").isRegularFile();
 

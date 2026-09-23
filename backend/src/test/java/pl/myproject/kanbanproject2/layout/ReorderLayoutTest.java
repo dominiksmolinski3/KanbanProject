@@ -38,20 +38,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Dragging a stage or a swimlane, as one call rather than one call per item.
- *
- * <p>The layout reorders have the same defect the task one does and are easier to hit, because a
- * board has few columns and moving one renumbers every single one of them: with a {@code @Version}
- * on the entity, one stale write turns a drag into a partially applied order that neither person
- * asked for. What these pin is that the batch refuses anything it cannot apply as a whole.
- */
 class ReorderLayoutTest {
-
     private static final TenancyFixtures.Tenant TENANT = TenancyFixtures.tenant();
     private static final Board BOARD = TENANT.board();
     private static final User CALLER = TENANT.caller();
-    /** A different id and a different owner, so nothing on it is visible to CALLER. */
     private static final Board OTHER_BOARD = TenancyFixtures.board(99, TenancyFixtures.user(2));
 
     @Nested

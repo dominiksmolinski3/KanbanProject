@@ -30,11 +30,6 @@ public class TaskController {
     private final TaskService taskService;
 
 
-    /**
-     * {@code boardId} is optional and means "the board I work on" when it is left out. The routes
-     * below that name a task take its board from the task, so only the two listings and the create
-     * need it at all.
-     */
     @GetMapping
     public ResponseEntity<List<TaskDto>> getAllTasks(
             @RequestParam(required = false) Integer boardId,
@@ -42,13 +37,6 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getAllTasks(currentUser, boardId));
     }
 
-    /**
-     * Finding a task, rather than reading a board. Sits above {@code /{id}} in this file because a
-     * literal segment beats a template one — the same arrangement {@code /daily-focus} and
-     * {@code /get/all/labels} rely on. {@code boardId} means the caller's own board when absent;
-     * the rest are optional, repeatable facets, and paging is this route's alone (see
-     * {@code TaskService.searchTasks}).
-     */
     @GetMapping("/search")
     public ResponseEntity<TaskSearchResults> searchTasks(
             @RequestParam(required = false) Integer boardId,
@@ -118,11 +106,6 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateTaskPosition(currentUser, id, position));
     }
 
-    /**
-     * Reorders one cell in a single call. Dragging sends one PATCH per card, and with a
-     * {@code @Version} on the task, one card moved elsewhere turns a PATCH into a 409 while earlier
-     * ones stay applied; this is one transaction, so the whole order takes or none of it does.
-     */
     @PatchMapping("/positions")
     public ResponseEntity<List<TaskDto>> reorderTasks(
             @Valid @RequestBody ReorderTasksRequest request,

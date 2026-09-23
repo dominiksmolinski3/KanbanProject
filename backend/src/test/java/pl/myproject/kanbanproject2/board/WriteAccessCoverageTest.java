@@ -12,26 +12,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * FEAT-08's other half of {@code BoardEventCoverageTest}'s shape: a mutation that forgets to
- * announce is silent, and a mutation that forgets the <em>write</em> check is worse - a viewer gets
- * full access rather than a stale screen, and every existing unit test still passes because they all
- * hand a caller who already owns the board. So this reads the same three services'
- * source - and, since they were missed the first time, the subtask and attachment services - and
- * fails the build when a known mutation entry point's body has no call to
- * {@code BoardService.requireWritable}, plus {@code ChatController}'s board-send path, which asks
- * {@code isWritable} directly since a refusal there is answered rather than thrown.
- *
- * <p><b>What it cannot see:</b> like its sibling, this is a tripwire on the methods named below, not
- * a proof that every future mutation remembers the check - a wholly new method has to be added to
- * the map here as well as to the service, which is the same trade {@code BoardEventCoverageTest}
- * makes and states for the same reason.
- */
 class WriteAccessCoverageTest {
-
     private static final Path SOURCE = Path.of("src", "main", "java", "pl", "myproject", "kanbanproject2");
 
-    /** Every mutation entry point, keyed by the file it lives in and its unique signature prefix. */
     private static final Map<String, List<String>> MUTATIONS = Map.of(
             "task/TaskService.java", List.of(
                     "public TaskDto addTask(",
@@ -60,9 +43,6 @@ class WriteAccessCoverageTest {
                     "public void deleteRow(",
                     "public RowDto updateRowPosition(",
                     "public List<RowDto> reorderRows("),
-            // Neither was on this list when FEAT-08 shipped, and neither checked the role: a viewer
-            // could tick a subtask or delete somebody's file. A card's contents are the board's
-            // contents - anything hanging off a task writes through the task's board.
             "task/subtask/SubTaskService.java", List.of(
                     "public SubTaskDto addSubTask(",
                     "public void deleteSubTask(",
@@ -73,7 +53,6 @@ class WriteAccessCoverageTest {
             "task/attachment/TaskAttachmentService.java", List.of(
                     "public TaskAttachmentDto upload(",
                     "public void delete("),
-            // FEAT-06: a viewer reads a card's thread and writes none of it.
             "task/comment/TaskCommentService.java", List.of(
                     "public TaskCommentDto add(",
                     "public TaskCommentDto edit(",
@@ -109,12 +88,6 @@ class WriteAccessCoverageTest {
                 .contains("READ_ONLY_BOARD");
     }
 
-    /**
-     * The brace-balanced body of the method whose signature starts with {@code signature} - found by
-     * locating the signature, then the first {@code {} that follows it (nothing before a method body
-     * opens can contain one: annotations and parameter lists use parentheses only), then counting
-     * braces until they close.
-     */
     private static String methodBody(String source, String signature, String file) {
         int start = source.indexOf(signature);
         assertThat(start).as("%s has no method starting with '%s'", file, signature).isNotNegative();

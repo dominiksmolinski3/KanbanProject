@@ -3,9 +3,6 @@ import { render, act, waitFor } from '@testing-library/react';
 import SafeReCAPTCHA from '../../components/SafeReCAPTCHA';
 import { resetRecaptchaLoader } from '../../services/recaptchaLoader';
 
-// Stands in for Google's global. render() injects a wrapper holding an iframe, as
-// the real one does, and hands back a widget id. The iframe matters: the checkbox
-// is painted by its document, after render() has already returned.
 function installGrecaptcha() {
   let nextId = 0;
   window.grecaptcha = {
@@ -25,7 +22,6 @@ function installGrecaptcha() {
 
 const widgets = (container) => container.querySelectorAll('.g-recaptcha-widget').length;
 
-// The widget's iframe finishes loading and paints its checkbox.
 function paintWidget(container) {
   container.querySelectorAll('.g-recaptcha-widget iframe').forEach((iframe) => {
     iframe.dispatchEvent(new Event('load'));
@@ -71,7 +67,6 @@ test('re-renders the widget after leaving and returning to the view', async () =
   );
   await waitFor(() => expect(widgets(container)).toBe(1));
 
-  // the password-reset view takes over, then the login form comes back
   rerender(
     <React.StrictMode>
       <Host show={false} />
@@ -86,12 +81,6 @@ test('re-renders the widget after leaving and returning to the view', async () =
   await waitFor(() => expect(widgets(container)).toBe(1));
 });
 
-/**
- * The reload bug. A cached api.js runs its `?onload=` callback during its own
- * execution, before the browser dispatches `load` on the script element - so a
- * loader that arms itself in the load handler never learns the API arrived. This
- * asserts the widget shows up whatever order those two events come in.
- */
 test('renders when the API arrives before the script load event (cached api.js)', async () => {
   const { container } = render(
     <React.StrictMode>
@@ -139,11 +128,6 @@ test('injects api.js only once across mounts', async () => {
   expect(apiScripts()).toHaveLength(1);
 });
 
-/**
- * The placeholder the caller shows has to stay up until there is something to
- * look at. Readiness at render() time is too early - the box is still blank then,
- * which on a remount (api.js already cached) is the whole visible delay.
- */
 test('does not signal ready until the widget iframe has painted', async () => {
   const onReady = jest.fn();
   installGrecaptcha();
@@ -171,7 +155,6 @@ test('signals ready only once the widget is actually in the DOM', async () => {
     />,
   );
 
-  // nothing to show yet, so nothing has been announced
   expect(onReady).not.toHaveBeenCalled();
 
   await act(async () => {
@@ -217,9 +200,6 @@ test('stops waiting for the paint when it unmounts mid-load', async () => {
   expect(onReady).not.toHaveBeenCalled();
 });
 
-// What the "retry" link in the login form does: drop the failed attempt, then
-// remount the widget. Without the drop the remount would just re-await the
-// rejection that is already cached.
 test('a reset lets the next mount start a fresh attempt', async () => {
   const onLoadError = jest.fn();
   const { container, rerender } = render(<Host show onLoadError={onLoadError} />);

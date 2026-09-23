@@ -1,7 +1,3 @@
-// API endpoints
-// Every backend route is served under /api: Spring applies the prefix centrally, which is what
-// keeps the API off /board and /users, the paths React Router owns. In dev, one Vite proxy entry
-// covers all of it.
 const API_ENDPOINTS = {
   BOARDS: '/api/boards',
   COLUMNS: '/api/columns',
@@ -11,11 +7,6 @@ const API_ENDPOINTS = {
   SUBTASKS: '/api/subtasks'
 };
 
-// Which board this session is looking at. Only listings and creates need it explicitly - every
-// route that names a column, task or row takes the board from that object - and it is ambient
-// like the token because it is a session property, not a per-call one; the server does not trust
-// it, since a board the caller isn't a member of answers 404 either way. Survives a reload so
-// switching the user's board on them without asking doesn't happen.
 const ACTIVE_BOARD_KEY = 'activeBoardId';
 
 export const getActiveBoardId = () => {
@@ -31,7 +22,6 @@ export const setActiveBoardId = (boardId) => {
   }
 };
 
-/** Appends the active board, if there is one. Absent means "whichever board is mine". */
 const onActiveBoard = (path) => {
   const boardId = getActiveBoardId();
   if (!boardId) {
@@ -40,7 +30,6 @@ const onActiveBoard = (path) => {
   return `${path}${path.includes('?') ? '&' : '?'}boardId=${boardId}`;
 };
 
-// ====== COLUMN OPERATIONS ======
 export const fetchColumns = async (retries = 3) => {
   while (retries > 0) {
     try {
@@ -171,7 +160,6 @@ export const updateColumnName = async (id, name) => {
   }
 };
 
-// ====== TASK OPERATIONS ======
 export const fetchTasks = async () => {
   try {
     const response = await fetch(onActiveBoard(API_ENDPOINTS.TASKS));
@@ -235,9 +223,6 @@ export const updateTask = async (taskId, taskData) => {
       body: JSON.stringify(taskData)
     });
 
-    // A `version` in the body means "apply this only if the task has not changed since I read it".
-    // The server answers 409 when it has - nothing is broken, the caller is holding a stale copy -
-    // so it is its own type, reloaded rather than reported as a failure.
     if (response.status === 409) {
       throw new ConcurrentModificationError('task');
     }
@@ -309,14 +294,6 @@ export const updateTaskPosition = async (taskId, position) => {
   }
 };
 
-/**
- * Raised when the server refuses a write because somebody else changed the same thing first.
- *
- * The tasks, columns, rows and subtasks carry a `@Version`, so a stale write fails at the database
- * and comes back as 409 rather than silently overwriting the other person's change. It is not an
- * error in the usual sense - nothing is broken and nothing needs reporting - so it is its own type,
- * and the caller answers it by reloading rather than by showing a failure.
- */
 export class ConcurrentModificationError extends Error {
   constructor(what = 'item') {
     super(`The ${what} was changed by someone else`);
@@ -324,14 +301,6 @@ export class ConcurrentModificationError extends Error {
   }
 }
 
-/**
- * One call for a whole cell, replacing one PATCH per card.
- *
- * Position is the index in the list, and the server applies the lot in a single transaction: either
- * the order takes or none of it does. That is the point rather than a nicety - with the version
- * column in place, the old loop could get a 409 on its fourth call and leave three cards renumbered
- * against a board nobody had asked to change.
- */
 const reorder = async (endpoint, orderedIds, what) => {
   const response = await fetch(`${endpoint}/positions`, {
     method: 'PATCH',
@@ -355,11 +324,6 @@ export const reorderTasks = (orderedIds) => reorder(API_ENDPOINTS.TASKS, ordered
 export const reorderColumns = (orderedIds) => reorder(API_ENDPOINTS.COLUMNS, orderedIds, 'column');
 export const reorderRows = (orderedIds) => reorder(API_ENDPOINTS.ROWS, orderedIds, 'swimlane');
 
-/**
- * Raised only when the server refuses an assignment because the user is at their WIP limit, or
- * when the pre-flight status says the same. Carries the status so the caller can name the limit
- * in its own language instead of reading a message written here.
- */
 export class WipLimitExceededError extends Error {
   constructor(status) {
     super(`WIP limit reached for user ${status?.userId}`);
@@ -385,9 +349,6 @@ export const assignUserToTask = async (taskId, userId) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
 
-    // Only this one answer means the limit. Everything else — a 404, a 500, a dropped
-    // connection — used to be reported as a WIP limit too, which sent people looking at
-    // the wrong thing.
     if (response.status === 400 && errorData.code === 'USER_WIP_LIMIT_EXCEEDED') {
       throw new WipLimitExceededError(wipStatus);
     }
@@ -398,11 +359,6 @@ export const assignUserToTask = async (taskId, userId) => {
   return await response.json();
 };
 
-/**
- * Returns { userId, wipLimit, assignedCount, withinLimit }. The route used to answer a bare
- * boolean, and the caller read a `willExceedLimit` field that was never on it — always undefined,
- * so the pre-flight check never fired.
- */
 export async function getUserWipStatus(userId) {
   try {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/wip-status`);
@@ -439,11 +395,6 @@ export async function updateUserWipLimit(userId, wipLimit) {
   }
 }
 
-/**
- * Stores the language this account is mailed in. Deliberately quiet about failing: it runs after
- * the screen has already changed language, so a toast about a preference the person didn't know
- * they were setting would be noise, and the switcher just tries again next time it's used.
- */
 export async function updateUserLocale(userId, locale) {
   const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
     method: 'PATCH',
@@ -554,19 +505,10 @@ export const getAllLabels = async () => {
   }
 };
 
-/** Matches TaskSearchCriteria.MAX_PAGE_SIZE, so an over-large page is refused here first. */
 export const MAX_SEARCH_PAGE_SIZE = 100;
 
-/** Matches TaskSearchCriteria.DEFAULT_PAGE_SIZE. */
 export const SEARCH_PAGE_SIZE = 25;
 
-/**
- * Finds tasks on the active board; an absent filter is not a filter, so calling this with nothing
- * set pages through the whole board. Facets are repeated parameters (`?label=bug&label=ux`), which
- * is what `Set<String>` binding on the server expects rather than a comma-joined string. The
- * server's page-size ceiling is mirrored here so an over-large page is refused locally instead of
- * failing as a request.
- */
 export const searchTasks = async (filters = {}) => {
   const {
     q = '',
@@ -655,7 +597,6 @@ export const updateTaskRow = async (taskId, rowId) => {
       } catch (parseError) {
         console.warn("Failed to parse error response:", parseError.message);
         
-        // In case of JSON parsing error, check test expectations
         if (response.status === 404) {
           throw new Error(`Error updating task row: ${response.status} - Row not found`, { cause: parseError });
         } else {
@@ -710,8 +651,6 @@ export const getTaskColumnTimeSpentSummary = async (taskId) => {
       return [];
     }
 
-    // Each history row already carries the column's name as it was at the move, so this does not
-    // need a second call to fetchColumns() (which pulls the whole board) just to label the bars.
     const timeSpentByColumn = {};
 
     const sortedHistory = [...columnHistory].sort((a, b) =>
@@ -777,7 +716,6 @@ export const getTaskColumnTimeSpentSummary = async (taskId) => {
   }
 };
 
-// ====== ROW OPERATIONS ======
 export const fetchRows = async (retries = 3) => {
   while (retries > 0) {
     try {
@@ -908,7 +846,6 @@ export const updateRowName = async (id, name) => {
   }
 };
 
-// ====== USER OPERATIONS ======
 export const fetchUsers = async () => {
   try {
     const response = await fetch(API_ENDPOINTS.USERS);
@@ -1078,11 +1015,6 @@ export const canTaskBeCompleted = async (taskId) => {
   }
 };
 
-/**
- * The server refuses to complete a task whose parent is still open. That is the one refusal a
- * caller can do something about, so it gets its own type — everything else stays a plain Error,
- * the way assignUserToTask distinguishes a WIP limit from a dropped connection.
- */
 export class ParentTaskNotCompletedError extends Error {
   constructor(taskId) {
     super(`Task ${taskId} has a parent that is still open`);
@@ -1158,7 +1090,6 @@ export const getTaskColumnHistory = async (taskId) => {
   }
 };
 
-// ====== SUBTASK OPERATIONS ======
 export const fetchSubTask = async (subTaskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}`);
@@ -1270,24 +1201,10 @@ export const deleteSubTask = async (subTaskId) => {
   }
 };
 
-// ====== TASK ATTACHMENTS ======
-//
-// Both directions go through this API rather than the storage account directly, which is what lets
-// the account stay closed to the internet: uploads are checked here before anything is written,
-// and downloads are streamed back through the app.
-
 const attachmentsOf = (taskId) => `${API_ENDPOINTS.TASKS}/${taskId}/attachments`;
 
-/** Matches TaskAttachmentService.MAX_ATTACHMENT_SIZE, so the refusal is instant and local. */
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
-/**
- * Raised when the server will not take a file, carrying which of the reasons it was.
- *
- * The caller needs to tell them apart because only one of them is the person's fault: a file that
- * is too big is something they can act on, and storage not being configured is something only an
- * operator can. A single "upload failed" would send them to retry the one that will never work.
- */
 export class AttachmentUploadError extends Error {
   constructor(reason, status) {
     super(`Attachment upload failed: ${reason}`);
@@ -1315,8 +1232,6 @@ export const uploadTaskAttachment = async (taskId, file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  // No Content-Type header: the browser has to set it, because only the browser knows the
-  // multipart boundary it is about to write.
   const response = await fetch(attachmentsOf(taskId), {
     method: 'POST',
     body: formData
@@ -1337,21 +1252,8 @@ export const uploadTaskAttachment = async (taskId, file) => {
   return await response.json();
 };
 
-/**
- * How many times a download that died part-way may pick up where it stopped.
- *
- * Small on purpose. This is for a connection that dropped, not for a server that is refusing: an
- * HTTP error is fatal on the first answer, and only a broken transfer is resumed at all.
- */
 const DOWNLOAD_RESUME_ATTEMPTS = 3;
 
-/**
- * Reads one response body into `state`, resuming rather than restarting where the server allows
- * it. Uses the streaming reader rather than `response.blob()` because a failed `blob()` yields
- * nothing to resume from; `state.received` tracks what arrived so the next request's `Range` can
- * be built from it. Falls back to `blob()` where there is no reader (jsdom, old browsers), and the
- * download is then simply not resumable.
- */
 const collectInto = async (url, state) => {
   const response = state.received > 0
     ? await fetch(url, { headers: { Range: `bytes=${state.received}-` } })
@@ -1363,8 +1265,6 @@ const collectInto = async (url, state) => {
     throw error;
   }
 
-  // Asked to resume and handed the whole file back: the server ignored the Range, so what is
-  // already held is a prefix of what is arriving now and has to be dropped rather than prepended.
   if (state.received > 0 && response.status !== 206) {
     state.chunks = [];
     state.received = 0;
@@ -1388,14 +1288,6 @@ const collectInto = async (url, state) => {
   }
 };
 
-/**
- * Fetches the bytes and hands them to the browser as a download rather than an `<a href>`, because
- * the route is authenticated and a link click carries no `Authorization` header. Because the fetch
- * happens here, the browser's own resume machinery never applies - a dead `fetch()` throws away
- * whatever it had already moved - so this resumes manually via `Range`/`206`, which is the whole
- * reason the server's range support exists. The object URL is revoked right after the click, since
- * the browser has already taken the blob and leaving it unrevoked pins the file in memory.
- */
 export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => {
   const url = `${attachmentsOf(taskId)}/${attachmentId}/content`;
   const state = { chunks: [], received: 0 };
@@ -1405,15 +1297,12 @@ export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => 
       await collectInto(url, state);
       break;
     } catch (error) {
-      // A refusal is an answer and will be the same answer next time; a broken transfer with
-      // nothing to show for it is a first request that failed, which is not a resume either.
       if (error.fatal || state.received === 0 || attempt >= DOWNLOAD_RESUME_ATTEMPTS) {
         throw error;
       }
     }
   }
 
-  // One Blob straight through when that is all there is, rather than copying it into another.
   const blob = state.chunks.length === 1 && state.chunks[0] instanceof Blob
     ? state.chunks[0]
     : new Blob(state.chunks);
@@ -1442,14 +1331,8 @@ export const deleteTaskAttachment = async (taskId, attachmentId) => {
   return true;
 };
 
-// ====== TASK COMMENTS ======
-//
-// A card's own thread, addressed under the task the way attachments are, so the task decides who
-// may read it. Paged newest first like the activity feed and chat: a thread is bounded by nothing.
-
 const commentsOf = (taskId) => `${API_ENDPOINTS.TASKS}/${taskId}/comments`;
 
-/** Matches TaskCommentRequest.MAX_LENGTH, so an over-long comment is refused before it is sent. */
 export const MAX_COMMENT_LENGTH = 2000;
 
 export const COMMENT_PAGE_SIZE = 25;
@@ -1490,7 +1373,6 @@ export const editTaskComment = async (taskId, commentId, body) => {
   return response.json();
 };
 
-/** A 404 is success: somebody else removed it first, and the thread re-reads either way. */
 export const deleteTaskComment = async (taskId, commentId) => {
   const response = await fetch(`${commentsOf(taskId)}/${commentId}`, {
     method: 'DELETE'

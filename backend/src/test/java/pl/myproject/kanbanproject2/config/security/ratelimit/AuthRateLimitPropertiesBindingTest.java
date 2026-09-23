@@ -12,22 +12,13 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The deployed app is configured entirely through environment variables, and a name that does not
- * bind fails silently — the limiter would keep the default and nothing would say so. These tests
- * pin the names, including the one
- * {@code terraform/modules/container_app/main.tf} sets.
- */
 class AuthRateLimitPropertiesBindingTest {
-
     @Test
     @DisplayName("with nothing configured the limiter is on and trusts no proxy")
     void defaultsAreSafe() {
         AuthRateLimitProperties properties = bind(Map.of());
 
         assertThat(properties.enabled()).isTrue();
-        // Trusting a proxy that is not there would let a caller pick their own bucket by sending
-        // their own X-Forwarded-For, so this has to default off and be turned on per deployment.
         assertThat(properties.trustedProxyCount()).isZero();
     }
 
@@ -101,8 +92,6 @@ class AuthRateLimitPropertiesBindingTest {
     void defaultsAreTheEscalation() {
         AuthRateLimitProperties properties = bind(Map.of());
 
-        // The numbers a deployment gets without saying anything: a burst, then fifteen seconds,
-        // then thirty, and so on to a ceiling.
         assertThat(properties.credentialBaseCooldown()).isEqualTo(Duration.ofSeconds(15));
         assertThat(properties.emailBaseCooldown()).isEqualTo(Duration.ofSeconds(15));
         assertThat(properties.credentialMaxCooldown()).isEqualTo(Duration.ofMinutes(5));

@@ -19,15 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The only unauthenticated write in the application, driven over real HTTP with the payloads Azure
- * actually posts. What matters isn't a service being called, but what an unauthenticated caller can
- * do: nothing without the key, nothing with no key configured, and a handshake answered in the body
- * rather than a status code, since an empty 200 would create a subscription that silently never
- * delivers.
- */
 class MailDeliveryReportControllerHttpTest {
-
     private static final String KEY = "a-shared-webhook-key";
 
     private static final String DELIVERY_REPORT = """
@@ -87,9 +79,6 @@ class MailDeliveryReportControllerHttpTest {
     @Test
     @DisplayName("the payload is parsed as Azure sends it, unknown envelope fields and all")
     void thePayloadAzureSendsIsUnderstood() throws Exception {
-        // The fixture includes envelope fields (topic, subject, dataVersion, ...) not on the
-        // record; refusing a payload for an unknown field would break recording the day Azure
-        // adds one.
         var captor = org.mockito.ArgumentCaptor.forClass(EventGridNotification.Data.class);
 
         mvcWithKey(KEY).perform(post("/mail/delivery-reports").param("key", KEY)
@@ -108,8 +97,6 @@ class MailDeliveryReportControllerHttpTest {
     @Test
     @DisplayName("the handshake is answered in the body, which is what Azure reads")
     void theValidationHandshakeIsEchoed() throws Exception {
-        // Answering 200 with nothing here creates a subscription that exists in the portal and
-        // never delivers anything, which is indistinguishable from a feature nobody is using.
         mvcWithKey(KEY).perform(post("/mail/delivery-reports").param("key", KEY)
                         .contentType(MediaType.APPLICATION_JSON).content(VALIDATION))
                 .andExpect(status().isOk())
@@ -141,8 +128,6 @@ class MailDeliveryReportControllerHttpTest {
     @Test
     @DisplayName("with no key configured the endpoint does not exist, whatever is presented")
     void unconfiguredMeansClosed() throws Exception {
-        // The state of every fresh clone and every CI run. An empty presented key must not match
-        // empty configuration, which is why blankness is checked before the comparison.
         MockMvc unconfigured = mvcWithKey("");
 
         unconfigured.perform(post("/mail/delivery-reports").param("key", "")
@@ -158,8 +143,6 @@ class MailDeliveryReportControllerHttpTest {
     @Test
     @DisplayName("an event type this endpoint was not subscribed for is ignored rather than refused")
     void anUnrelatedEventTypeIsIgnored() throws Exception {
-        // A subscription filter is something somebody edits in Azure. An application that answered
-        // non-2xx to the result would turn that edit into a retry storm of its own.
         String unrelated = """
                 [{"id":"u1","eventType":"Microsoft.Communication.SMSDeliveryReportReceived","data":{}}]""";
 

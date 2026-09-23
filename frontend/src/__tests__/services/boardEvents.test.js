@@ -15,7 +15,6 @@ jest.mock('@stomp/stompjs', () => ({
     this.subscriptions = [];
     this.activate = jest.fn();
     this.deactivate = jest.fn();
-    // What SockJS does for real once the CONNECT frame is accepted, and again after a reconnect.
     this.completeConnect = async () => {
       await this.beforeConnect();
       this.connected = true;
@@ -79,8 +78,6 @@ describe('BoardEvents', () => {
     const { client } = await watch();
     expect(client.connectHeaders).toEqual({ Authorization: 'Bearer jwt-fresh' });
 
-    // A socket that drops after the fifteen-minute token lapses: without beforeConnect renewing,
-    // every reconnect would present the dead token and be refused, forever.
     session.expired = true;
     client.connected = false;
     await client.completeConnect();

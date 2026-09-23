@@ -48,17 +48,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * Who may attach a file, who may read one back, and what happens to the bytes when a row goes.
- * The task is the only thing that grants access — an attachment has no board of its own, so an
- * attachment id from another board, presented under a task the caller does own, must be a 404 or
- * the task in the path is decoration. The blob and the row are two systems whose write order
- * chooses which failure is possible: an orphaned blob, never a row whose bytes are gone. An
- * unconfigured store — the state CI and a fresh clone run in — refuses with a clear 503 rather
- * than pretending.
- */
 class TaskAttachmentServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-04-01T10:15:30Z");
     private static final byte[] CONTENT = "a small attachment".getBytes();
 
@@ -98,7 +88,6 @@ class TaskAttachmentServiceTest {
         service = serviceWith(properties(8, 500, 1_073_741_824L));
     }
 
-    /** Defaults generous enough that no existing test trips the concurrency cap or the quota. */
     private static BlobStorageProperties properties(int maxConcurrentTransfers,
                                                      long maxAttachmentsPerBoard,
                                                      long maxTotalBytesPerBoard) {
@@ -175,7 +164,6 @@ class TaskAttachmentServiceTest {
             assertThat(dto.taskId()).isEqualTo(42);
             assertThat(dto.uploadedById()).isEqualTo(caller.getId());
             assertThat(dto.uploadedAt()).isEqualTo(NOW);
-            // SYNC-01: somebody else with this card open re-reads its attachment list.
             verify(boardEvents).attachmentsChanged(tenant.board());
         }
 
@@ -488,10 +476,6 @@ class TaskAttachmentServiceTest {
         }
     }
 
-    /**
-     * FEAT-08 left attachments out of the write check: a viewer could upload onto a card and delete
-     * somebody else's file. Downloading and listing stay open to them - that is what looking is.
-     */
     @Nested
     @DisplayName("a viewer")
     class Viewer {
@@ -586,11 +570,6 @@ class TaskAttachmentServiceTest {
             verify(attachments, never()).findByTaskIn(any());
         }
 
-        /**
-         * The listener has to run inside deleteBoard's transaction, before the tasks' DELETE is
-         * flushed. A @TransactionalEventListener - the obvious-looking upgrade - runs after the
-         * commit, by which point the foreign key has already refused and the board is a 500 again.
-         */
         @Test
         @DisplayName("the listener is synchronous, not after-commit")
         void listenerRunsInTheTransaction() throws NoSuchMethodException {
@@ -692,7 +671,6 @@ class TaskAttachmentServiceTest {
             assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L, null))
                     .isInstanceOf(GlobalException.class);
 
-            // Nothing was handed a stream to close, so the permit must already be free.
             var content = singleSlot.content(caller, 42, 1L, null);
             assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
         }
@@ -700,7 +678,6 @@ class TaskAttachmentServiceTest {
         @Test
         @DisplayName("the configured total is divided by the replica count hint, not applied per replica")
         void dividesTheConfiguredTotalByTheReplicaCountHint() throws Exception {
-            // 4 configured, 4 replicas -> 1 permit per JVM, the same shape as properties(1, ...).
             var divided = serviceWith(properties(4, 4, 500, 1_073_741_824L));
 
             CountDownLatch uploadStarted = new CountDownLatch(1);
@@ -731,7 +708,6 @@ class TaskAttachmentServiceTest {
         @Test
         @DisplayName("a replica count hint higher than the configured total still leaves at least one permit")
         void neverDividesDownToZeroPermits() {
-            // 1 configured, 8 replicas -> floor of 1 rather than a Semaphore that can never be acquired.
             var flooredAtOne = serviceWith(properties(1, 8, 500, 1_073_741_824L));
 
             flooredAtOne.upload(caller, 42, upload("a.txt", "text/plain", CONTENT));
@@ -830,7 +806,6 @@ class TaskAttachmentServiceTest {
             assertThatThrownBy(() -> singleSlot.content(caller, 42, 1L, HttpRange.createByteRange(900)))
                     .isInstanceOf(UnsatisfiableRangeException.class);
 
-            // The one slot is still free, which it would not be if the range were checked after it.
             var content = singleSlot.content(caller, 42, 1L, HttpRange.createByteRange(0));
             assertThat(content.stream().readAllBytes()).isEqualTo(CONTENT);
             verify(blobStore, never()).read(anyString());

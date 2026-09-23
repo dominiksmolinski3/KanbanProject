@@ -28,14 +28,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .withSockJS();
     }
 
-    /**
-     * A real broker rather than {@code enableSimpleBroker}, which held every subscription in this
-     * JVM's own memory - a board event or a chat message published on one API replica never reached
-     * a subscriber connected to another, and nothing errored to say so. Every replica now relays to
-     * the same external broker instead, the same shape moving AuthRateLimiter's escalation to Redis
-     * already used: the shared state lives where every replica can see it, not in the process that
-     * happens to have handled a given request.
-     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
 
@@ -50,13 +42,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.setUserDestinationPrefix("/user");
     }
 
-    /**
-     * Order is load-bearing: the authentication interceptor is what puts the principal on the
-     * session, so a subscription check running ahead of it would read every SUBSCRIBE frame as
-     * anonymous and refuse the lot.
-     */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
+        // Order matters: authentication puts the principal on the session that the subscription check reads.
         registration.interceptors(webSocketAuthInterceptor, boardSubscriptionInterceptor);
     }
 }

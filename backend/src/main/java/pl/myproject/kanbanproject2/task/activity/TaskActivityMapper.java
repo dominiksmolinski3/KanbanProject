@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Function;
 
-/** The usual shape: a {@code @Component} implementing {@code Function}, called as a method ref. */
 @Component
 public class TaskActivityMapper implements Function<TaskActivity, TaskActivityDto> {
 

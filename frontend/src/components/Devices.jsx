@@ -6,13 +6,6 @@ import { getSessionId } from '../services/session';
 import { useAuth } from '../context/AuthContext';
 import '../styles/components/Devices.css';
 
-/**
- * Every session the account can still use, and a button that ends one — the gap logging out (ends
- * the current session) and a password change (ends all of them) left, for a laptop you no longer
- * have but a session you'd rather keep. "This device" is decided here rather than by the server:
- * the id came back with the session and is replaced on every rotation, so `getSessionId()` stays
- * current even after another tab renews, without the access token needing to carry it.
- */
 function Devices() {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,11 +33,6 @@ function Devices() {
     load();
   }, [load]);
 
-  /**
-   * Ending the session you are sitting in is allowed, and it is a sign-out rather than a row
-   * disappearing from a list. Refusing it would be the wrong call — it is exactly what somebody
-   * does when they have just realised they are on a machine they should not stay signed in to.
-   */
   const endSession = async (session) => {
     const isCurrent = isCurrentSession(session);
     if (!window.confirm(isCurrent ? t('devices.messages.endCurrentConfirm') : t('devices.messages.endConfirm'))) {

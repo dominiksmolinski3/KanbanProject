@@ -34,12 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-/**
- * Covers what the request records changed: which fields a client can reach, and what an explicitly
- * null one now does.
- */
 class TaskServiceRequestBindingTest {
-
     private TaskRepository taskRepository;
     private ColumnRepository columnRepository;
     private RowRepository rowRepository;
@@ -142,11 +137,8 @@ class TaskServiceRequestBindingTest {
         TaskDto created = taskService.addTask(caller, null, new CreateTaskRequest(
                 "new task", null, null, null, Set.of("bug"), new IdRef(2), null));
 
-        // CreateTaskRequest has no id and no completed component, so neither can arrive off the wire.
         assertThat(created.id()).isNull();
         assertThat(created.completed()).isFalse();
-        // Where the position comes from is BoardDataIntegrityTest's subject; that it is set at all
-        // matters here, because getAllTasks sorts on it.
         assertThat(created.position()).isEqualTo(1);
         assertThat(created.columnId()).isEqualTo(2);
         assertThat(created.labels()).containsExactly("bug");
@@ -214,7 +206,6 @@ class TaskServiceRequestBindingTest {
         return row;
     }
 
-    /** Keeps the tests readable: every component defaults to undefined, the test names the one it sets. */
     private static PatchTaskRequest patch(java.util.function.Consumer<PatchBuilder> customiser) {
         PatchBuilder builder = new PatchBuilder();
         customiser.accept(builder);

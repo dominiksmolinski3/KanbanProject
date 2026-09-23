@@ -81,11 +81,6 @@ const Probe = () => {
     <div>
       <div data-testid="columns">{context.columns.map(c => c.name).join(',')}</div>
       <div data-testid="rows">{context.rows.map(r => r.name).join(',')}</div>
-      {/*
-        * Each handler rethrows after reporting, so a caller can react to a failure as well as see
-        * the toast. This probe is a caller that has nothing to add, and swallowing keeps a
-        * deliberate rejection from being reported as an unhandled one.
-        */}
       <button onClick={() => context.moveColumn(3, 1).catch(() => {})}>Move column</button>
       <button onClick={() => context.moveRow(11, 10).catch(() => {})}>Move row</button>
       <button onClick={() => context.dragAndDrop.handleTaskReorder(102, 100).catch(() => {})}>
@@ -102,14 +97,6 @@ async function renderProvider() {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 }
 
-/**
- * A drag is one call now, not one per item.
- *
- * The loop it replaces sent a PATCH per card and swallowed each failure separately. That was merely
- * wasteful while a lost update was silent; since the entities gained a version, one of those calls
- * can come back 409 and the ones before it stay applied - a board half in the old order and half in
- * the new, which is the one arrangement neither person asked for.
- */
 describe('reordering through the context', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -172,8 +159,6 @@ describe('reordering through the context', () => {
       fireEvent.click(screen.getByText('Reorder tasks'));
     });
 
-    // Nothing is broken: the whole batch rolled back, so the honest response is to say what
-    // happened and show the order the board actually has.
     expect(toast.info).toHaveBeenCalledWith('notifications.changedBySomeoneElse');
     expect(toast.error).not.toHaveBeenCalled();
     expect(api.fetchTasks).toHaveBeenCalled();

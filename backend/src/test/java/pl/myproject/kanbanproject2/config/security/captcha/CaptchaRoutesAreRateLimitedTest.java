@@ -15,15 +15,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Verifying a captcha makes an outbound HTTP call, so an unthrottled route that verifies one spends
- * somebody else's budget - a siteverify round trip against the provider's quota, holding a request
- * thread for up to the {@link CaptchaProperties} read timeout. {@code AuthRateLimitFilter} caps
- * that only for routes listed in {@link AuthRateLimitRule}, and a captcha route added without a
- * limit looks exactly like one added with it - hence this: the two lists have to agree.
- */
 class CaptchaRoutesAreRateLimitedTest {
-
     @Test
     @DisplayName("every route that verifies a captcha is throttled before it can call the provider")
     void captchaRoutesAreThrottled() {
@@ -44,11 +36,6 @@ class CaptchaRoutesAreRateLimitedTest {
                 .containsExactlyInAnyOrder("/api/auth/login", "/api/auth/signup");
     }
 
-    /**
-     * The paths as the filter sees them: {@code WebConfig} adds {@code /api} to every
-     * {@code @RestController}, so a mapping declared as {@code /auth/login} is served — and
-     * throttled — at {@code /api/auth/login}.
-     */
     private static List<String> captchaRoutePaths() {
         String base = AuthenticationController.class.getAnnotation(RequestMapping.class).value()[0];
         return Arrays.stream(AuthenticationController.class.getDeclaredMethods())

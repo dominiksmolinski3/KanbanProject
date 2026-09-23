@@ -33,15 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * {@code UserControllerOwnershipTest} calls the controller methods directly, so it proves the
- * refusal but not the status the client sees. These go through the dispatcher: the ownership
- * refusal has to arrive as a 403 carrying {@code NOT_ACCOUNT_OWNER}. The avatar routes moved to
- * {@code UserAvatarControllerHttpTest} along with {@code AvatarService} - see that suite for the
- * response headers that stop user-supplied bytes rendering as a document on the app's origin.
- */
 class UserControllerHttpTest {
-
     private static final Integer CALLER_ID = 1;
     private static final Integer OTHER_ID = 2;
 
@@ -51,7 +43,6 @@ class UserControllerHttpTest {
     private MockMvc mvc;
     private User caller;
 
-    /** Stands in for {@code @AuthenticationPrincipal}, which the standalone setup does not wire. */
     private class PrincipalResolver implements HandlerMethodArgumentResolver {
         @Override
         public boolean supportsParameter(MethodParameter parameter) {

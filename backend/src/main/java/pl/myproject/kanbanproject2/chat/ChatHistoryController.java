@@ -9,14 +9,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
 
-/**
- * Scroll-back. Two reads, because there are two kinds of message and one page holding both would
- * answer neither question: a board's conversation, and the thread with one peer.
- *
- * <p>{@code ?boardId=} is optional and means the caller's own board, the convention every other
- * listing here uses. Named {@code ChatHistoryController} rather than {@code ChatController},
- * which is the STOMP one in {@code controller/} and maps no HTTP route at all.
- */
 @RestController
 @RequestMapping("/chat")
 @RequiredArgsConstructor

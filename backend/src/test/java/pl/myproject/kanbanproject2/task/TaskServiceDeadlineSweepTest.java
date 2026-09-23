@@ -25,16 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The deadline sweep flips {@code expired} on both crossings; only the crossing into expired
- * should notify, and only after the flag is saved. Since the sweep now claims its rows rather than
- * reading them all, the database decides which tasks are candidates; these tests check what the
- * sweep does with one — direction, save-before-notify order, and that an unclaimed task is never
- * mailed. The claim itself, that {@code SKIP LOCKED} keeps two replicas off the same row, is
- * {@code DeadlineSweepClaimTest}'s to pin.
- */
 class TaskServiceDeadlineSweepTest {
-
     private TaskRepository taskRepository;
     private DeadlineNotifier deadlineNotifier;
     private TaskService taskService;
@@ -69,7 +60,6 @@ class TaskServiceDeadlineSweepTest {
         return task;
     }
 
-    /** What the claim would have taken: the ids, and then the rows behind them. */
     private void claimed(Task task) {
         when(taskRepository.claimTasksCrossingDeadline(any())).thenReturn(List.of(task.getId()));
         when(taskRepository.findByIdIn(List.of(task.getId()))).thenReturn(List.of(task));
@@ -108,8 +98,6 @@ class TaskServiceDeadlineSweepTest {
 
         taskService.checkAllTasksDeadlines();
 
-        // The steady state is now the database's answer rather than a comparison in Java, and the
-        // sweep should not so much as load a row for it - which is the point of moving it.
         verify(taskRepository, never()).findByIdIn(any());
         verify(taskRepository, never()).save(any());
         verify(deadlineNotifier, never()).notifyExpired(any());
@@ -123,8 +111,6 @@ class TaskServiceDeadlineSweepTest {
 
         taskService.checkAllTasksDeadlines();
 
-        // A second replica sweeping at the same instant holds the rows this one skipped; asking for
-        // anything but the claimed ids is how it would mail somebody else's task a second time.
         verify(taskRepository).findByIdIn(List.of(mine.getId()));
     }
 }

@@ -13,9 +13,7 @@ public interface BoardInvitationRepository extends JpaRepository<BoardInvitation
     Optional<BoardInvitation> findByBoardAndEmailAndStatus(Board board, String email,
                                                            InvitationStatus status);
 
-    /** The invitee's own listing, which is the only query that does not start from a board. */
     List<BoardInvitation> findByEmailAndStatusOrderByIdAsc(String email, InvitationStatus status);
 
-    /** Board deletion: nothing cascades to these rows, so the board service clears them by hand. */
     List<BoardInvitation> findByBoard(Board board);
 }

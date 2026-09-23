@@ -37,13 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The three ways the board could hand back data that is wrong rather than missing: positions that
- * collide, a column-history report whose numbers depend on how a tie sorts, and a task graph that
- * a single bad row turns into a {@link StackOverflowError}.
- */
 class BoardDataIntegrityTest {
-
     private TaskRepository taskRepository;
     private ColumnRepository columnRepository;
     private RowRepository rowRepository;
@@ -63,8 +57,6 @@ class BoardDataIntegrityTest {
         historyRepository = Mockito.mock(TaskColumnHistoryRepository.class);
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
-        // The next position is a MAX aggregate rather than a fold over fetched rows, keyed by ids
-        // since a null cell needs a null id the query can test for - see TaskRepository.findMaxPosition.
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
 
@@ -114,8 +106,6 @@ class BoardDataIntegrityTest {
                     new CreateTaskRequest("First here", null, null, null, null, new IdRef(3), null));
 
             assertThat(created.position()).isEqualTo(1);
-            // The old count()-based number let a delete anywhere on the board collide with the next
-            // create; the cell's own list isn't fetched either, since the database answers the max.
             verify(taskRepository, never()).count();
             verify(taskRepository, never()).findByBoardAndColumnAndRow(any(), any(), any());
         }
@@ -125,7 +115,6 @@ class BoardDataIntegrityTest {
         void doesNotReuseAPositionAfterADelete() {
             Column column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
-            // Positions 1 and 2 were deleted; 3 is still in use. count() would answer 2.
             when(taskRepository.findMaxPosition(board.getId(), 3, null)).thenReturn(Optional.of(3));
 
             TaskDto created = taskService.addTask(caller, null,
@@ -245,12 +234,8 @@ class BoardDataIntegrityTest {
     @Test
     @DisplayName("the scoped queries the positions are read from resolve against the entities")
     void derivedQueriesResolve() {
-        // Nothing else in the suite boots a JPA context, so a property that stopped existing would
-        // otherwise surface at runtime. PartTree is the same parser Spring Data derives them with.
         assertThat(new PartTree("findByBoardAndColumnAndRow", Task.class).getParts()).hasSize(3);
         assertThat(new PartTree("findByBoardOrderByIdAsc", Task.class).getParts()).hasSize(1);
-        // findByTask is gone: the subtask position is a MAX aggregate now, and it was that
-        // method's only caller. The aggregate is guarded by QueryStringsResolveTest instead.
         assertThat(new PartTree("findByTaskBoardOrderByIdAsc", SubTask.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByBoardOrderByPositionAsc", Column.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByBoardOrderByPositionAsc", Row.class).getParts()).hasSize(1);

@@ -51,11 +51,6 @@ describe('Invitations', () => {
     await waitFor(() => expect(mockKanban.declineInvitation).toHaveBeenCalledWith(7));
   });
 
-  /*
-   * The panel is on a page people visit for other reasons, so an empty one would be a heading
-   * about invitations on every visit. The badge on the board switcher is what says there is
-   * something here; this renders only when there is.
-   */
   test('nothing is rendered when there is nothing outstanding', () => {
     mockKanban.myInvitations = [];
     const { container } = render(<Invitations />);

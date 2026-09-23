@@ -42,10 +42,6 @@ const board = (overrides = {}) => ({
   ...overrides
 });
 
-/*
- * The panel loads its own pending-invitation list in an effect, so every render settles a promise.
- * Rendering through this keeps that inside act() instead of leaving each test to remember.
- */
 const renderPanel = async () => {
   await act(async () => {
     render(<BoardMembers />);
@@ -82,8 +78,6 @@ describe('BoardMembers', () => {
 
     await waitFor(() =>
       expect(mockKanban.inviteToBoard).toHaveBeenCalledWith(3, 'new@example.com', 'MEMBER'));
-    // The member list is what it was: an invitation is an offer, and the list only changes when
-    // the other person accepts.
     expect(screen.getAllByText(/example\.com/).map(node => node.textContent))
       .toEqual(['owner@example.com', 'member@example.com']);
   });
@@ -114,8 +108,6 @@ describe('BoardMembers', () => {
   test('the form says the answer does not reveal who has an account', async () => {
     await renderPanel();
 
-    // The server answers identically for a known and an unknown address, and the UI has to say
-    // so - otherwise a blank result reads as a bug rather than as the point.
     expect(screen.getByText('boards.invitations.inviteNote')).toBeInTheDocument();
   });
 
@@ -142,8 +134,6 @@ describe('BoardMembers', () => {
   test('the owner cannot be removed, by anyone', async () => {
     await renderPanel();
 
-    // One remove button, and it is the member's - nothing can appoint a new owner, so a board
-    // without one could never be renamed, shared or deleted again.
     const removals = screen.getAllByRole('button', { name: '×' });
     expect(removals).toHaveLength(1);
 

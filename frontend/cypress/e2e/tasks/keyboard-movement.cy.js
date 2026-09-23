@@ -12,18 +12,6 @@ afterEach(() => {
   cy.deleteRows();
 });
 
-/**
- * The same move as task-movement.cy.js, driven by keys instead of a pointer.
- *
- * This is the one behaviour in the suite that nothing else can assert. The Jest tests stub the
- * context, so they cover the bindings and never that a real card in a real board ends up in
- * another cell; `cy.drag` passing while this failed would mean the keyboard path had drifted from
- * the dragged one, which is what building it on handleMoveTask is meant to prevent.
- *
- * Both tests read the card's own `data-column-id` rather than naming a column, because which
- * column is "one to the right" depends on board order and the point is only that the card moved,
- * or did not.
- */
 describe('Moving a task with the keyboard', () => {
   const columnOf = (title) => cy.contains('.task', title).invoke('attr', 'data-column-id');
 
@@ -35,8 +23,6 @@ describe('Moving a task with the keyboard', () => {
     cy.contains('.task', 'Keyboard Movable Task').should('be.visible');
 
     columnOf('Keyboard Movable Task').then((before) => {
-      // Focus rather than click: a click opens the details panel, and the whole point is that the
-      // card is reachable and operable with no pointer at all.
       cy.contains('.task', 'Keyboard Movable Task').focus();
       cy.focused().should('have.class', 'task');
 

@@ -33,19 +33,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The numbers the flow screen draws, worked out by hand on a board small enough to check. Three
- * columns, A then B then C, "now" at noon on 10 September, and a window of the 8th to the 10th:
- *
- * <pre>
- *   card 1  A 7th 09:00   B 8th 10:00   C 9th 10:00          (in C now)
- *   card 2  A 8th 08:00   B 10th 08:00                        (in B now)
- *   card 3  A 7th 00:00                                        (taken off the board since)
- *   card 4  A 1st 00:00   C 5th 00:00                         (finished before the window)
- * </pre>
- */
 class FlowMetricsServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-09-10T12:00:00Z");
     private static final LocalDate FROM = LocalDate.of(2026, 9, 8);
     private static final LocalDate TO = LocalDate.of(2026, 9, 10);
@@ -136,11 +124,8 @@ class FlowMetricsServiceTest {
 
             assertThat(flow).extracting(FlowMetricsDto.CumulativeFlowDay::date)
                     .containsExactly(FROM, FROM.plusDays(1), TO);
-            // End of the 8th: card 1 in B, card 2 in A, card 4 in C; card 3 is off the board.
             assertThat(flow.get(0).counts()).containsExactly(1, 1, 1);
-            // End of the 9th: card 1 has reached C.
             assertThat(flow.get(1).counts()).containsExactly(1, 0, 2);
-            // "Today" is read at now, not at midnight: card 2 reached B at 08:00.
             assertThat(flow.get(2).counts()).containsExactly(0, 1, 2);
         }
 
@@ -171,7 +156,6 @@ class FlowMetricsServiceTest {
         void defaultIsLeadTime() {
             var result = metrics(null, null);
 
-            // Card 1: 7th 09:00 to 9th 10:00 is 49 hours. Card 4 finished before the window.
             assertThat(result.doneColumnId()).isEqualTo(12);
             assertThat(result.startColumnId()).isNull();
             assertThat(result.samples()).extracting(FlowMetricsDto.CycleTimeSample::taskId).containsExactly(1);
@@ -199,8 +183,6 @@ class FlowMetricsServiceTest {
         void atOrPastCounts() {
             var result = metrics(null, b.getId());
 
-            // Card 1 reached B on the 8th; card 2 on the 10th; card 4 skipped B for C on the 5th,
-            // which is before the window.
             assertThat(result.samples()).extracting(FlowMetricsDto.CycleTimeSample::taskId).containsExactly(1, 2);
             assertThat(result.throughput()).extracting(FlowMetricsDto.ThroughputDay::count)
                     .containsExactly(1, 0, 1);
@@ -329,11 +311,6 @@ class FlowMetricsServiceTest {
         assertThat(result.cycleTime().count()).isZero();
     }
 
-    /**
-     * FLOW-02: the board carries its own definition of start and done, so the screen opens on one
-     * shared answer. With done = B, cards 1 and 2 both finish inside the window; with FEAT-07's
-     * default (the last column, C) only card 1 does, which is what tells the two apart below.
-     */
     @Nested
     @DisplayName("the board's own definition")
     class Definition {
@@ -376,12 +353,10 @@ class FlowMetricsServiceTest {
         @Test
         @DisplayName("a stored start that no longer fits gives way rather than refusing the screen")
         void storedStartGivesWay() {
-            // What a reorder after saving looks like: start now sits after done.
             board.setFlowStartColumn(c);
             board.setFlowDoneColumn(b);
 
             assertThat(metrics(null, null).startColumnId()).isNull();
-            // And against a done column picked in the request.
             assertThat(metrics(null, a.getId()).startColumnId()).isNull();
         }
 
@@ -442,7 +417,6 @@ class FlowMetricsServiceTest {
             assertThatThrownBy(() -> service.define(caller, null, new FlowDefinitionRequest(c.getId(), a.getId())))
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.INVALID_FLOW_REQUEST);
-            // A start with no done is measured to the last column, so it cannot be after it.
             service.define(caller, null, new FlowDefinitionRequest(c.getId(), null));
             assertThat(board.getFlowStartColumn()).isSameAs(c);
         }

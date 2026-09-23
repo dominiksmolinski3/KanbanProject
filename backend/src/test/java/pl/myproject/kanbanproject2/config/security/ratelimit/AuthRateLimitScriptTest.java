@@ -10,14 +10,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The text guard for {@code redis/auth-rate-limit.lua}, in the same spirit as
- * {@code OutboxClaimQueryTest}: nothing but Redis executes this string, so nothing but a text
- * assertion can pin the properties a unit test cannot reach without a live Redis - see
- * {@code RedisEscalationStoreIntegrationTest} for the behavioural half, run against a real one.
- */
 class AuthRateLimitScriptTest {
-
     private static final Path SCRIPT =
             Path.of("src", "main", "resources", "redis", "auth-rate-limit.lua");
 
@@ -26,8 +19,6 @@ class AuthRateLimitScriptTest {
     void readsDecidesAndWritesInOneScript() {
         String script = read();
 
-        // One HMGET reads the prior state; both branches HSET the new one and PEXPIRE the key, so
-        // neither refusing nor allowing an attempt ever leaves the key without a fresh TTL.
         assertThat(countOccurrences(script, "HMGET")).isEqualTo(1);
         assertThat(countOccurrences(script, "HSET")).isEqualTo(2);
         assertThat(countOccurrences(script, "PEXPIRE")).isEqualTo(2);
@@ -38,8 +29,6 @@ class AuthRateLimitScriptTest {
     void theClockIsSuppliedNotRead() {
         String script = read();
 
-        // TIME would make two replicas agree with Redis but not necessarily with each other's
-        // request, and would make the script impossible to drive from a test without waiting.
         assertThat(script).doesNotContain("redis.call('TIME')").doesNotContain("redis.call(\"TIME\")");
         assertThat(script).contains("ARGV[1]");
     }

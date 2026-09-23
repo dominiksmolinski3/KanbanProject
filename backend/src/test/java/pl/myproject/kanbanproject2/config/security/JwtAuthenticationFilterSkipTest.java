@@ -23,14 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * The untested half of the public-path problem {@link PublicChainPathsTest} covers on the
- * authorize side. This filter kept its own copy of the list, and both halves of that copy were
- * wrong: {@code /auth/} moved under {@code /api} when the prefix landed, and the extension regex
- * matched the end of any path, not just static assets.
- */
 class JwtAuthenticationFilterSkipTest {
-
     private JwtService jwtService;
     private UserDetailsService userDetailsService;
     private JwtAuthenticationFilter filter;
@@ -50,8 +43,6 @@ class JwtAuthenticationFilterSkipTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            // The bug this fixes: a label is free text, so any of the fourteen extensions in the
-            // old regex made a real API route unusable.
             "/api/tasks/5/label/build.js",
             "/api/tasks/5/label/notes.json",
             "/api/tasks/5/label/design.svg",
@@ -96,8 +87,6 @@ class JwtAuthenticationFilterSkipTest {
     })
     @DisplayName("a path that used to be the bundle is now just a path, and reads a token like any other")
     void noLongerSkipsStaticPaths(String path) throws Exception {
-        // These skipped the filter while the jar served the bundle; nginx serves it now. Asserted
-        // rather than deleted, since the skip coming back would otherwise be silent.
         var chain = authenticatedRequestTo(path);
 
         verify(jwtService).extractUsername("token");
@@ -116,8 +105,6 @@ class JwtAuthenticationFilterSkipTest {
     void actuatorPathsStillEstablishAnIdentity(String path) throws Exception {
         var chain = authenticatedRequestTo(path);
 
-        // These used to sit in the skip list above: `show-details=when_authorized` reads the
-        // principal this filter was declining to establish, so it behaved as `never`.
         verify(jwtService).extractUsername("token");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         verify(chain).doFilter(any(), any());
@@ -132,8 +119,6 @@ class JwtAuthenticationFilterSkipTest {
 
         filter.doFilterInternal(request, new MockHttpServletResponse(), chain);
 
-        // Every container probe addresses one of these two paths with no Authorization header, so
-        // it takes the null-header branch and is unaffected.
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verifyNoInteractions(jwtService, userDetailsService);
         verify(chain).doFilter(any(), any());
@@ -181,7 +166,6 @@ class JwtAuthenticationFilterSkipTest {
         verify(chain).doFilter(any(), any());
     }
 
-    /** Issues a GET to {@code path} carrying a bearer token that resolves to a valid user. */
     private FilterChain authenticatedRequestTo(String path) throws Exception {
         var principal = mock(UserDetails.class);
         when(jwtService.extractUsername("token")).thenReturn("user@example.com");

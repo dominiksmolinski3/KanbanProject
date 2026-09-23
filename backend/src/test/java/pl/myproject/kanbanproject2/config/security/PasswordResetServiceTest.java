@@ -30,14 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * These pin the three properties that make the recovery path worth having rather than a second way
- * in: the code is stored hashed, it is single-use and time-bounded, and asking for one tells the
- * caller nothing about whether the address has an account. A real {@link BCryptPasswordEncoder} is
- * used rather than a mock, since only a real encoder can demonstrate the stored value isn't the code.
- */
 class PasswordResetServiceTest {
-
     private static final String KNOWN = "known@example.test";
     private static final String UNKNOWN = "unknown@example.test";
     private static final Pattern SIX_DIGITS = Pattern.compile("\\d{6}");
@@ -66,7 +59,6 @@ class PasswordResetServiceTest {
         return user;
     }
 
-    /** The plaintext code as it went out by mail. */
     private String mailedCode() {
         var code = ArgumentCaptor.forClass(String.class);
         verify(emailService).sendPasswordResetCode(any(), code.capture(), anyLong(), any());
@@ -294,9 +286,6 @@ class PasswordResetServiceTest {
 
             service.changePassword(existing, new ChangePasswordRequest("old-password", "a-new-password"));
 
-            // The reason someone changes a password they have not forgotten is that somebody else
-            // knows it. Leaving that person's sessions running would mean the change did nothing
-            // to the thing it was for.
             verify(refreshTokenService).revokeAllFor(existing);
         }
 

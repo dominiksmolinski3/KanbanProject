@@ -10,13 +10,8 @@ import java.util.List;
 
 public interface TaskActivityRepository extends JpaRepository<TaskActivity, Integer> {
 
-    /**
-     * The feed. Ordered by instant then id, since a batch written in one transaction ties on the
-     * instant and any tie makes paging skip or repeat rows, silently.
-     */
     Page<TaskActivity> findByBoardOrderByOccurredAtDescIdDesc(Board board, Pageable pageable);
 
-    /** Deleting a task detaches its entries rather than taking them; deleting a board takes them. */
     List<TaskActivity> findByTask(Task task);
 
     List<TaskActivity> findByBoard(Board board);

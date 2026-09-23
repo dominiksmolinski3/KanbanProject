@@ -1,9 +1,3 @@
-/*
- * The device list borrows the card and grid shapes Users.css already uses; what is specific to it
- * is the current-session row, which has to be distinguishable at a glance because it is the one
- * whose "sign out" button also signs you out of the page you are looking at.
- */
-
 .devices-intro {
   color: var(--text-muted, #5b6b8c);
   margin: 0 0 1.5rem;

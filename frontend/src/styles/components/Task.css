@@ -1,4 +1,3 @@
-/* ====== TASK CARD BASICS ====== */
 .task {
   background-color: var(--surface-light);
   border-radius: var(--radius-lg);
@@ -40,7 +39,6 @@
   transform: scale(1.03);
 }
 
-/* Task gradient effect */
 .task::before {
   content: '';
   position: absolute;
@@ -60,7 +58,6 @@
   background: linear-gradient(to left, var(--primary-light) 0%, transparent 100%);
 }
 
-/* ====== TASK CONTENT ====== */
 .task-content {
   display: flex;
   align-items: center;
@@ -77,7 +74,6 @@
   max-width: 100%;
 }
 
-/* ====== DELETE BUTTON ====== */
 .task .delete-btn {
   background: none;
   border: none;
@@ -106,7 +102,6 @@
   background-color: var(--primary-transparent);
 }
 
-/* ====== TASK INFO SECTION ====== */
 .task-info-container {
   display: flex;
   align-items: center;
@@ -116,7 +111,6 @@
   flex-shrink: 0;
 }
 
-/* ====== AVATAR STYLES ====== */
 .task-avatar {
   position: relative;
   min-width: 32px;
@@ -150,7 +144,6 @@
   font-weight: bold;
 }
 
-/* ====== LABELS PREVIEW ====== */
 .task-labels-preview {
   display: flex;
   flex-direction: column;
@@ -186,7 +179,6 @@
   text-align: center;
 }
 
-/* ====== DEADLINE INDICATORS ====== */
 .task.deadline-expired {
   border-left: var(--border-thick) solid var(--task-border-expired);
 }
@@ -219,7 +211,6 @@
   margin-right: var(--spacing-xs);
 }
 
-/* ====== TASK FOOTER ====== */
 .task-footer {
   position: relative;
   width: 100%;
@@ -245,7 +236,6 @@
   background-color: var(--primary-light);
 }
 
-/* ====== WARNING MESSAGES ====== */
 .assignment-error {
   position: absolute;
   background-color: rgba(248, 215, 218, 1);
@@ -284,7 +274,6 @@
   align-items: center;
 }
 
-/* ====== DELETE MODAL ====== */
 .delete-modal-overlay {
   position: fixed;
   top: 0;
@@ -351,7 +340,6 @@
   transform: translateY(-1px);
 }
 
-/* ====== DESCRIPTION POPOVER ====== */
 .description-popover {
   position: absolute;
   z-index: var(--z-modal);
@@ -442,7 +430,6 @@
   font-size: var(--text-xs);
 }
 
-/* ====== ANIMATIONS ====== */
 @keyframes taskAppear {
   from {
     opacity: 0;
@@ -475,7 +462,6 @@
   }
 }
 
-/* ====== TASK RELATIONSHIPS ====== */
 .showing-task-relationships .task {
   position: relative !important;
   z-index: 100 !important; 
@@ -508,7 +494,6 @@
   }
 }
 
-/* ====== DARK MODE STYLES ====== */
 @media (prefers-color-scheme: dark) {
   .task {
     background-color: var(--surface-dark);
@@ -597,10 +582,6 @@
     color: #ffab40;
   }
 }
-/* ====== COMPLETION AND DAILY FOCUS ====== */
-/* The header now carries three things: the completion checkbox, the title block, and the
-   actions. The delete button used to be the only action and positioned itself; it is laid out
-   by the actions row now, so its own absolute placement is reset below rather than duplicated. */
 .task-header {
   display: flex;
   align-items: center;
@@ -658,7 +639,6 @@
   color: var(--accent-dark);
 }
 
-/* Two buttons sit in the corner now, not one. */
 .task .task-info-container {
   margin-right: 40px;
 }
@@ -677,15 +657,11 @@
   box-shadow: var(--shadow-sm), inset 3px 0 0 var(--accent-light);
 }
 
-/* A card is reachable by Tab now, so it needs a focus ring that is actually visible - the default
-   one is drawn over by the card's own background in several of the card states. */
 .task:focus-visible {
   outline: 3px solid var(--accent-color, #4a90d9);
   outline-offset: 2px;
 }
 
-/* Held by the keyboard: the same "this one is moving" signal `.dragging` gives a pointer user,
-   without the opacity, because the card stays where it is and has to stay readable. */
 .task.keyboard-held {
   box-shadow: 0 0 0 3px var(--accent-color, #4a90d9), 0 6px 16px rgba(0, 0, 0, 0.25);
   cursor: grabbing;

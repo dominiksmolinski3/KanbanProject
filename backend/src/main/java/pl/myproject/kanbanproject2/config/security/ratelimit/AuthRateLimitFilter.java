@@ -22,27 +22,13 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 
-/**
- * Throttles the unauthenticated {@code /api/auth/**} endpoints. Every request is charged twice,
- * once against the caller's address and once against the email it targets, and either bucket
- * running dry ends the request with {@code 429} and a {@code Retry-After}; the address bucket is
- * checked first so a flooding caller is turned away before the body is read. Runs just after the
- * CORS filter so a rejection still carries the CORS headers a cross-origin caller needs.
- */
 @Slf4j
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    /**
-     * How much of the body is kept to find the target account in. The largest body these endpoints
-     * accept is a signup — a 255-character email, a 72-character password and a 50-character
-     * username — so 4 KiB is far more than a real request needs, and a body that pushes its email
-     * past this limit is simply charged to its address alone.
-     */
     static final int MAX_BUFFERED_BODY_BYTES = 4096;
 
     private static final String EMAIL_FIELD = "email";
 
-    /** The longest address RFC 5321 permits, so a padded value cannot become an oversized key. */
     private static final int MAX_ACCOUNT_KEY_LENGTH = 320;
 
     private final AuthRateLimiter rateLimiter;
@@ -81,8 +67,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Reading the body replaces the request for everything downstream, so the wrapper has to be
-        // what the rest of the chain sees.
         HttpServletRequest downstream = request;
         String account = null;
 
@@ -117,9 +101,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             AuthRateLimitDecision decision
     ) throws IOException {
 
-        // The key itself is caller-supplied and stays out of the log line: an attacker choosing what
-        // gets written into it is how log injection starts, and the dimension is the part that says
-        // which limit fired.
         log.warn("Rate limit hit: {} {} on {} limit, retry in {}s",
                 request.getMethod(), path, rule + "/" + dimension, decision.retryAfterSeconds());
 
@@ -160,10 +141,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         return read == buffer.length ? buffer : Arrays.copyOf(buffer, read);
     }
 
-    /**
-     * A body too large to fit the prefix arrives here truncated and fails to parse, which costs the
-     * request its account bucket but never its address one.
-     */
     private String readEmail(byte[] body) {
         if (body.length == 0) {
             return null;
@@ -181,7 +158,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** Lower-cased so rotating the capitalisation of an address does not buy a fresh bucket. */
     private static String normaliseAccount(String account) {
         if (account == null) {
             return null;

@@ -25,39 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The standard Kanban instrument panel, read out of rows this application has been writing all
- * along (FEAT-07). {@code task_column_history} is an interval series - one row per arrival in a
- * column - kept apart from the activity feed because it answers a different question, and until
- * now it answered it for one card at a time in the task panel. Aggregated per board, the same rows
- * are a cumulative flow diagram, a cycle-time distribution and a throughput count. No new table
- * and no new write path.
- *
- * <p>Four decisions are worth knowing before changing any number this produces:
- * <ul>
- *   <li><b>A window, not paging.</b> The answer is an aggregate, so there is nothing to page; what
- *       grows is the span of days. It defaults to the last {@link #DEFAULT_DAYS} and refuses more
- *       than {@link #MAX_DAYS} with {@code 400 INVALID_FLOW_REQUEST} rather than a silent clamp -
- *       the same refusal the search, the feed and chat make, for the same reason.</li>
- *   <li><b>"Done" is a column, and "at or past it" counts.</b> A card that skips from In Progress
- *       straight to Closed has finished, so arriving in any column positioned at or after the done
- *       column is the finish; the same rule marks the start. Positions are today's, because a
- *       history row points at a column and a column has only its current position. The defaults
- *       are the board's last column for done and arrival on the board for start, which makes the
- *       default cycle time a lead time; the screen lets people choose.</li>
- *   <li><b>The first finish is the finish.</b> A card reopened and finished again counts once, at
- *       its first arrival - otherwise one card bounced between Review and Done would read as
- *       throughput.</li>
- *   <li><b>What the history cannot say, this does not guess.</b> A deleted card takes its history
- *       with it, so it is in no count. A card taken off the board (no column) has an open last
- *       interval with no recorded end, so from that point it is in no column. A deleted column's
- *       rows keep their place as interval boundaries but draw no band.</li>
- * </ul>
- *
- * <p>Days are the server's calendar days, the same zone the history rows are written in by
- * {@code LocalDateTime.now()} - so the clock here is the system default zone, not UTC, or a card
- * moved just before midnight would land on the wrong day.
- */
 @Transactional
 @Service
 public class FlowMetricsService {
@@ -104,8 +71,6 @@ public class FlowMetricsService {
         }
         var definedStart = storedOn(columns, board.getFlowStartColumn());
         var definedDone = storedOn(columns, board.getFlowDoneColumn());
-        // A choice made in the request wins over the board's definition, which wins over FEAT-07's
-        // rule: the last column is done, and a card starts when it arrives on the board.
         var done = doneColumnId != null ? columnOn(columns, doneColumnId)
                 : definedDone != null ? definedDone : columns.getLast();
         var start = startColumnId != null ? columnOn(columns, startColumnId) : definedStart;
@@ -113,9 +78,6 @@ public class FlowMetricsService {
             if (startColumnId != null && doneColumnId != null) {
                 throw invalid("work cannot start in a column after the one it is done in");
             }
-            // One half came from the board and no longer fits the other - a reorder since it was
-            // saved, or a request choosing only one end. The board's half gives way rather than
-            // refusing a screen nobody asked to be refused.
             if (startColumnId == null) {
                 start = null;
             } else {
@@ -182,9 +144,6 @@ public class FlowMetricsService {
                         .map(e -> new FlowMetricsDto.ThroughputDay(e.getKey(), e.getValue())).toList());
     }
 
-    // ------------------------------------------------------------------ intervals ---
-
-    /** Each task's arrivals in order; the repository sorts, so this only has to group. */
     private static Map<Task, List<TaskColumnHistory>> byTask(List<TaskColumnHistory> rows) {
         var grouped = new LinkedHashMap<Integer, List<TaskColumnHistory>>();
         var tasks = new HashMap<Integer, Task>();
@@ -198,12 +157,6 @@ public class FlowMetricsService {
         return result;
     }
 
-    /**
-     * The column a task was in at {@code at}: the last arrival strictly before it, since {@code at}
-     * is the midnight that begins the next day and a move at 00:00 belongs to that day. The last interval
-     * is open only while the task is still in that column - a task since taken off the board has an
-     * end nobody recorded, and counting it forever would inflate every later day.
-     */
     private static Column columnAt(Task task, List<TaskColumnHistory> rows, LocalDateTime at) {
         TaskColumnHistory current = null;
         int i = 0;
@@ -241,9 +194,6 @@ public class FlowMetricsService {
         return column.getPosition() == null ? Integer.MAX_VALUE : column.getPosition();
     }
 
-    // ------------------------------------------------------------------ statistics ---
-
-    /** Nearest-rank percentiles: every reported number is a cycle time some card actually had. */
     static FlowMetricsDto.CycleTimeSummary summarise(List<FlowMetricsDto.CycleTimeSample> samples) {
         if (samples.isEmpty()) {
             return new FlowMetricsDto.CycleTimeSummary(0, null, null, null);
@@ -267,23 +217,6 @@ public class FlowMetricsService {
         return Math.round(value * 10) / 10.0;
     }
 
-    // ------------------------------------------------------------------ edges ---
-
-    /**
-     * A column id that is not on this board is a 400, the same answer whether it exists elsewhere
-     * or not at all - it names nothing the caller could not already see, so it discloses nothing.
-     */
-    // ---------------------------------------------------------------- definition ---
-
-    /**
-     * Stores the board's own definition of start and done (FLOW-02), so the screen opens on one
-     * shared answer rather than on whatever each viewer last picked. The owner's to set, as the name
-     * is: a member who disagrees can still look at the board through other columns, they just cannot
-     * move everyone's definition. Nulls put either end back on the default.
-     *
-     * <p>{@code resolve} before {@code requireOwned}, so a board the caller cannot see is the 404
-     * every tenancy miss is, and only a board they can see and do not own is the 403.
-     */
     public FlowDefinitionDto define(User caller, Integer boardId, FlowDefinitionRequest request) {
         var board = boardService.requireOwned(caller, boardService.resolve(caller, boardId).getId());
         var columns = columnRepository.findByBoardOrderByPositionAsc(board);
@@ -294,13 +227,11 @@ public class FlowMetricsService {
             throw invalid("work cannot start in a column after the one it is done in");
         }
 
-        // A managed entity in this transaction; the flush writes it.
         board.setFlowStartColumn(start);
         board.setFlowDoneColumn(done);
         return new FlowDefinitionDto(board.getId(), idOf(start), idOf(done));
     }
 
-    /** The board's stored column, if it is still one of the board's columns. */
     private static Column storedOn(List<Column> columns, Column stored) {
         if (stored == null || stored.getId() == null) {
             return null;

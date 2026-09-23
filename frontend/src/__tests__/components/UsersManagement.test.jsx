@@ -28,8 +28,6 @@ describe('UsersManagement', () => {
     jest.clearAllMocks();
     global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
     global.URL.revokeObjectURL = jest.fn();
-    // A failed avatar fetch is expected in most of these cases and warns by design (see
-    // fetchUserAvatar); silenced so the suite's output isn't dominated by it.
     jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
 

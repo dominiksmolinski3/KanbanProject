@@ -74,7 +74,7 @@ function UsersManagement() {
   }, [loadUsers]);
   
   const handleAvatarUpload = async (userId, file) => {
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
   
     try {

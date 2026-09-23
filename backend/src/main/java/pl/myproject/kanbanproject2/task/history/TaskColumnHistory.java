@@ -25,11 +25,6 @@ public class TaskColumnHistory {
     @JoinColumn(name = "task_id", nullable = false)
     private Task task;
 
-    /**
-     * Nullable, with {@code columnName} already a copy on the row — the same shape as
-     * {@code task_activity}'s {@code task_id}. Deleting a column must detach entries pointing at it
-     * (see {@code ColumnService.deleteColumn}), since there is no cascade on this column.
-     */
     @ManyToOne
     @JoinColumn(name = "column_id")
     private Column column;

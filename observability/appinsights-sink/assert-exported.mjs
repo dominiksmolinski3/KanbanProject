@@ -1,12 +1,3 @@
-// Asks the sink what the agent sent during a run and fails on what would be wrong in Azure.
-// usage: node assert-exported.mjs <sink origin> [expected replica count]
-//
-// Each check is a claim terraform/modules/diagnostics and backend/applicationinsights.json make
-// about the export, which until now only a hand-run capture had ever tested:
-//   - the meters the alerts read arrive, under the agent's underscore spelling;
-//   - nothing but kanban_* arrives, since the filter is what keeps the bill to a handful of series;
-//   - no /actuator request is recorded, since the probes would otherwise be most of the traffic;
-//   - every replica exports, which is what makes a fleet-wide sum() in an alert mean what it says.
 const [origin, replicas = '1'] = process.argv.slice(2);
 const expectedReplicas = Number(replicas);
 
@@ -18,8 +9,6 @@ if (!response.ok) {
 const summary = await response.json();
 const failures = [];
 
-// Registered at startup and exported every interval whether or not anything happened, so a run
-// long enough to reach one export interval always has them.
 const alwaysExported = ['kanban_mail_outbox_pending', 'kanban_mail_outbox_dead_letters'];
 for (const name of alwaysExported) {
   if (!summary.metrics[name]) {

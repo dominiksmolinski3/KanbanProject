@@ -8,14 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Two of these records are reachable without a token, so bean validation is the only thing between
- * the request body and {@link pl.myproject.kanbanproject2.config.security.PasswordResetService}.
- * The password bounds matter beyond tidiness: BCrypt silently truncates at 72 bytes, so a reset path
- * that accepted what signup refuses would be a way around the rule.
- */
 class PasswordDtoValidationTest {
-
     private static Validator validator;
 
     @BeforeAll
@@ -94,8 +87,6 @@ class PasswordDtoValidationTest {
     @Test
     @DisplayName("the current password is not bounded - it is whatever the account already has")
     void currentPasswordIsNotLengthChecked() {
-        // Someone whose password predates the 8-character minimum still has to be able to replace
-        // it. Bounding the field they are moving away from would lock exactly those people out.
         assertThat(validator.validate(
                 new ChangePasswordRequest("x", "a-new-password"))).isEmpty();
     }

@@ -21,16 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Fetch strategy is a property of the mapping rather than of any one call, so it's asserted on the
- * mapping: {@code @ManyToOne} defaults to {@code EAGER}, so every listing fetched a column and row
- * per task; collections default to {@code LAZY} but {@link TaskMapper} touches {@code users} and
- * {@code childTasks} on every task, needing a batch size; and {@code getAllLabels} used to load
- * the entire task table to fold a set of strings. None of this is observable from a unit test that
- * mocks the repository, so query counts belong to an integration test that doesn't exist yet.
- */
 class TaskFetchingTest {
-
     private static Field field(String name) {
         try {
             return Task.class.getDeclaredField(name);
@@ -86,8 +77,6 @@ class TaskFetchingTest {
         void listingsCarryAnEntityGraph() {
             List<EntityGraph> graphs = List.of(
                     graphOn("findByBoardOrderByIdAsc", pl.myproject.kanbanproject2.board.Board.class),
-                    // The deadline sweep claims ids and then loads them through findByIdIn, so the
-                    // graph it relies on is that one's.
                     graphOn("findByIdIn", java.util.Collection.class),
                     graphOn("findByBoardAndDailyFocusTrue", pl.myproject.kanbanproject2.board.Board.class),
                     graphOn("findByBoardAndColumnAndRow",
@@ -124,9 +113,6 @@ class TaskFetchingTest {
         @Test
         @DisplayName("a column's and a swimlane's tasks are batched - the board renders all of them")
         void containerCollectionsAreBatched() {
-            // ColumnMapper renders every task in every column, so an unbatched collection here is
-            // one query per column; measured against a board of 57 tasks in 8 columns, adding this
-            // took GET /api/columns from 35 queries to 10.
             for (Class<?> type : List.of(
                     pl.myproject.kanbanproject2.layout.column.Column.class,
                     pl.myproject.kanbanproject2.layout.row.Row.class)) {

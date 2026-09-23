@@ -8,15 +8,7 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The three ways refresh tokens could go back to being decorative, checked at build time: a route
- * that is not reachable ({@code /auth/refresh} and {@code /auth/logout} must stay public, or they
- * are useless exactly when needed), a public route with no limit (both present a secret, the shape
- * {@link AuthRateLimitRule#CREDENTIALS} exists for), and the login response quietly dropping its
- * refresh token, which would read as "sessions are short" rather than as a bug.
- */
 class SessionRoutesTest {
-
     private static final String REFRESH = "/api/auth/refresh";
     private static final String LOGOUT = "/api/auth/logout";
     private static final String DEVICES = "/api/auth/devices";

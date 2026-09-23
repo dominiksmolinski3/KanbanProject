@@ -1,24 +1,5 @@
 name: Deployed contract sweep
 
-# What this repository cannot tell you is whether the deployment is running the code in it.
-#
-# Twenty-odd build guards read source and compare it with other source. Checkov reads what
-# Terraform declares. `terraform plan` reads what Terraform declared last time. Every one of
-# those is green on an environment that is eight days stale - which is not hypothetical: an
-# `app_image_tag` pinned to `latest` made the container template byte-identical on every apply,
-# so Terraform computed no diff, created no revision, and reported the environment converged
-# while it served code from eight days and fifteen merges earlier. The only instrument that
-# would have caught it is the one nothing here had: asking the running origin a question whose
-# answer this checkout knows.
-#
-# That is all this does. It reads the claims out of the Java - the CSP, the permissions policy,
-# the client routes - and asks the origin whether it makes them. It does not know which commit
-# is deployed, because nothing public says so; a revision that moves no claim is invisible to
-# it. Narrow, and in the direction nothing else covers.
-#
-# No credentials: it talks to the public hostname like any other visitor, so it needs a URL and
-# nothing else. An unset URL is a failure rather than a skip - see external-scan.yml, which
-# spent its whole life skipping every step and reporting success.
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -61,9 +42,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # A daily cron has nobody watching it, which is the whole reason the alarm exists. This one
-  # matters more than most: the failure it reports is "the deployment is not the trunk", and the
-  # characteristic thing about that failure is that everything else stays green while it is true.
   contract-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ contract ]

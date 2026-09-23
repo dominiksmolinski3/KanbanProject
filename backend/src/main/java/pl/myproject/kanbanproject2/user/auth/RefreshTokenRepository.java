@@ -14,39 +14,16 @@ import java.util.Optional;
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
-    /**
-     * The lookup every rotation makes. The digest is unique, so this is one index hit and the row
-     * it finds is the only place the token's state is written down.
-     */
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    /**
-     * Every session an account can still use, newest renewal first. Live means both halves: not
-     * withdrawn, and not past its expiry — showing either in a device list would offer a "sign out"
-     * button for something already signed out. Exactly one live row per chain, since rotation
-     * withdraws the row it replaces, so this is a list of sessions despite being a query over tokens.
-     */
     List<RefreshToken> findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(
             User user, Instant now);
 
-    /**
-     * Withdraws every live token an account holds, in one statement. A bulk update rather than a
-     * load-and-save loop, since the callers — a password change and chain-reuse detection — want
-     * every session gone regardless of count; {@code clearAutomatically} keeps a caller from reading
-     * a stale copy back in the same transaction.
-     */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE RefreshToken token SET token.revokedAt = :when "
             + "WHERE token.user = :user AND token.revokedAt IS NULL")
     int revokeAllForUser(@Param("user") User user, @Param("when") Instant when);
 
-    /**
-     * Drops rows nobody can present any more.
-     *
-     * <p>A revoked row still earns its keep for as long as the token it stands for could be
-     * replayed; past its own expiry it proves nothing a check on {@code expiresAt} would not
-     * already reject, and this table only ever grows.
-     */
     @Modifying
     @Query("DELETE FROM RefreshToken token WHERE token.expiresAt < :before")
     int deleteExpiredBefore(@Param("before") Instant before);

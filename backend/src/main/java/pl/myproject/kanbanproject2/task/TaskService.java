@@ -35,12 +35,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Every method here takes the caller, and every lookup goes through {@link #findTask(User, Integer)}
- * — the one place that decides whether the caller may see a task at all. Passing the caller in
- * rather than reading it out of the security context is what lets {@code BoardScopedRoutesTest}
- * check by reflection that no route was left without one.
- */
 @RequiredArgsConstructor
 @Transactional
 @Service
@@ -97,18 +91,9 @@ public class TaskService {
                 .toList();
     }
 
-    /**
-     * The tasks on one board that match a search, one page at a time. Unlike the unpaged board
-     * listing above, an empty query here matches the whole board, so this route bounds the answer
-     * itself (PERF-02). It runs as two queries: ids are paged and ordered in SQL, then the matching
-     * rows are fetched by id and put back into that order, since {@code findByIdIn} makes no
-     * ordering promise of its own.
-     */
     public TaskSearchResults searchTasks(User caller, Integer boardId, TaskSearchCriteria criteria) {
         var board = boardService.resolve(caller, boardId);
 
-        // Each filter arrives as "is it off" and "what it is", never as a null - see
-        // TaskRepository.findMatchingIds for the reason, which only a real database can show you.
         var matching = taskRepository.findMatchingIds(
                 board,
                 criteria.text() == null,
@@ -126,9 +111,6 @@ public class TaskService {
                 PageRequest.of(criteria.page(), criteria.size()));
 
         var ids = matching.getContent();
-        // Past the last page, or a board with nothing on it. Asking findByIdIn for an empty list
-        // is a query with an empty IN, which is the one thing the criteria go out of their way to
-        // avoid handing the database elsewhere.
         List<TaskDto> found = ids.isEmpty()
                 ? List.of()
                 : inTheOrderOf(ids, taskRepository.findByIdIn(ids));
@@ -137,36 +119,20 @@ public class TaskService {
                 matching.getTotalElements(), matching.getTotalPages());
     }
 
-    /** Maps the page's rows and puts them back in the order the paged query chose. */
     private List<TaskDto> inTheOrderOf(List<Integer> ids, List<Task> rows) {
         var byId = rows.stream().collect(Collectors.toMap(Task::getId, taskMapper));
         return ids.stream().map(byId::get).filter(Objects::nonNull).toList();
     }
 
-    /**
-     * Rows written before positions were scoped to a cell can still carry a null one, and a task
-     * that cannot be placed is no reason to fail the whole board listing - it sorts last instead.
-     */
     private static final Comparator<TaskDto> POSITION_ORDER =
             Comparator.comparing(TaskDto::position, Comparator.nullsLast(Comparator.naturalOrder()));
 
-    /**
-     * Saves a task, tells the board's other viewers, and maps it. Every mutation routes through
-     * here rather than mapping the repository's return value directly, so a forgotten announcement
-     * becomes a different method call — one {@code BoardEventCoverageTest} catches — instead of a
-     * silently missing line.
-     */
     private TaskDto saveAndAnnounce(Task task) {
         var saved = taskRepository.save(task);
         boardEvents.tasksChanged(saved.getBoard());
         return taskMapper.apply(saved);
     }
 
-    /**
-     * The next free position in one cell of the board, scoped by board, column and row (both
-     * optional) so it means an ordinal within the cell rather than {@code count() + 1} over the
-     * whole table — which collides after a delete and under concurrent creates.
-     */
     private int nextPositionIn(Board board, Column column, Row row) {
         return taskRepository.findMaxPosition(
                 board.getId(),
@@ -178,17 +144,12 @@ public class TaskService {
         var task = findTask(caller, id);
         boardService.requireWritable(caller, task.getBoard());
 
-        // Written before the row goes, then detached from it: the deletion record has to outlive
-        // its subject, and nothing here cascades so a foreign key can't take the record down with it.
         activityRecorder.deleted(caller, task);
         activityRecorder.detachFrom(task);
 
         taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task));
 
-        // A service call rather than a cascade: only this can take the blobs with the rows, and a
-        // foreign-key cascade would leave every blob orphaned with nothing left that knows its name.
         attachmentService.deleteAllFor(task);
-        // The thread goes with the card, by the same hand: task_comments.task_id does not cascade.
         commentService.deleteAllFor(task);
 
         if (task.getChildTasks() != null && !task.getChildTasks().isEmpty()) {
@@ -229,7 +190,6 @@ public class TaskService {
         if (request.position().isPresent()) {
             var position = request.position().get();
             if (position == null) {
-                // getAllTasks sorts on it, so a null position would break the whole board listing.
                 throw new IllegalArgumentException("A task position cannot be cleared");
             }
             existingTask.setPosition(position);
@@ -256,27 +216,12 @@ public class TaskService {
         return saveAndAnnounce(existingTask);
     }
 
-    /**
-     * Refuses a PATCH based on a stale copy of the task. The {@code @Version} column catches
-     * overlapping transactions but not the slower race — an editing form saved after another
-     * member's write has already committed cleanly, so Hibernate sees nothing to object to;
-     * comparing the version the caller last saw closes that gap, while sending no version keeps a
-     * drag (never stale in this sense) untouched. Raises the same exception Hibernate uses for the
-     * transaction-level conflict, so it lands on the existing 409 {@code CONCURRENT_MODIFICATION}
-     * handler.
-     */
     private void requireCurrentVersion(Task task, Integer seenVersion) {
         if (seenVersion != null && !seenVersion.equals(task.getVersion())) {
             throw new ObjectOptimisticLockingFailureException(Task.class, task.getId());
         }
     }
 
-    /**
-     * Records the move for the history report and tolerates a {@code null} column — a task can be
-     * taken off the board, with no arrival to record. Only the arrival is recorded: writing the
-     * departure too would put two rows on the same instant with an arbitrary sort order, corrupting
-     * the per-column time calculation the report derives from the gap between arrivals.
-     */
     private void moveToColumn(User caller, Task task, Column newColumn) {
         var currentColumn = task.getColumn();
         boolean unchanged = currentColumn == null
@@ -289,17 +234,10 @@ public class TaskService {
         task.setColumn(newColumn);
         if (newColumn != null) {
             saveTaskColumnHistory(task, newColumn);
-            // Both records of the same move are written together so they can't drift: the history
-            // row is an interval series with no actor, TaskActivity is the actor log.
             activityRecorder.moved(caller, task, newColumn.getName());
         }
     }
 
-    /**
-     * Keeps {@code expired} consistent with the deadline it describes. The scheduled sweep only
-     * looks at tasks that still have a deadline, so clearing one would otherwise leave the flag
-     * stuck on whatever it was when the deadline was removed.
-     */
     private void applyDeadline(Task task, LocalDateTime deadline) {
         task.setDeadline(deadline);
         task.setExpired(deadline != null && deadline.isBefore(LocalDateTime.now()));
@@ -328,12 +266,6 @@ public class TaskService {
         return getTaskColumnHistory(caller, taskId).stream().map(historyMapper::toDTO).toList();
     }
 
-    /**
-     * Puts a member of the board on one of its tasks. The assignee is checked against the task's
-     * board rather than merely looked up by id — otherwise any account in the deployment could be
-     * pinned to work on a board it cannot see, and counted against its WIP limit. A non-member
-     * answers as not found, per {@link BoardService}.
-     */
     public TaskDto assignUserToTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
@@ -351,10 +283,6 @@ public class TaskService {
         return saveAndAnnounce(task);
     }
 
-    /**
-     * Takes somebody off a task. Deliberately not restricted to current members: a user removed
-     * from the board, or deleted and recreated, still has to be removable from the work.
-     */
     public TaskDto removeUserFromTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
@@ -377,14 +305,6 @@ public class TaskService {
         return saveAndAnnounce(task);
     }
 
-    /**
-     * Renumbers one cell in a single transaction, from the ids in the order they should read.
-     * Reordering used to be one PATCH per card, which merely wasted calls until tasks gained a
-     * {@code @Version}: a card somebody else moved then made one PATCH a 409 while the rest stayed
-     * applied, leaving the board half old and half new. One transaction means a stale write rolls
-     * back the whole batch instead. Positions are the index within exactly the ids given, so a
-     * caller sending part of a cell renumbers only that part.
-     */
     public List<TaskDto> reorderTasks(User caller, List<Integer> orderedIds) {
         requireDistinct(orderedIds, "task");
 
@@ -401,12 +321,6 @@ public class TaskService {
         return reordered;
     }
 
-    /**
-     * Every task in the batch has to sit in the same column and swimlane. Both are nullable, so
-     * this compares ids and treats "no column" as a cell of its own rather than a wildcard —
-     * comparing entities directly would repeat the bug {@code Board.isVisibleTo} had before it
-     * compared ids.
-     */
     private void requireOneCell(List<Task> tasks) {
         var first = tasks.get(0);
         Integer columnId = first.getColumn() == null ? null : first.getColumn().getId();
@@ -468,8 +382,6 @@ public class TaskService {
         var parentTask = taskRepository.findById(parentTaskId)
                 .orElseThrow(() -> parentNotFound(parentTaskId));
 
-        // A cross-board dependency would make one board's progress wait on work its members can't
-        // see, and let the un-completion cascade reach a board the caller may not be on.
         if (!parentTask.getBoard().isVisibleTo(caller)
                 || !parentTask.getBoard().getId().equals(childTask.getBoard().getId())) {
             throw parentNotFound(parentTaskId);
@@ -510,12 +422,6 @@ public class TaskService {
         return taskMapper.apply(task.getParentTask());
     }
 
-    /**
-     * Returns true if making {@code newParent} the parent of {@code child} would form a cycle,
-     * i.e. {@code newParent} is already a descendant of {@code child}. The visited set guards
-     * against a cycle already present in the data turning a later assignment into a
-     * {@link StackOverflowError}.
-     */
     private boolean wouldCreateCycle(Task child, Task newParent) {
         return isDescendantOf(child, newParent, new HashSet<>());
     }
@@ -535,11 +441,6 @@ public class TaskService {
         return canTaskBeCompleted(findTask(caller, taskId));
     }
 
-    /**
-     * The rule itself, over a task already fetched and checked — so a caller like
-     * {@link #updateTaskCompletion} that already paid for the lookup and its access check doesn't
-     * pay twice.
-     */
     private boolean canTaskBeCompleted(Task task) {
         return task.getParentTask() == null || task.getParentTask().isCompleted();
     }
@@ -557,8 +458,6 @@ public class TaskService {
         if (!completed) {
             updateDependentTasksCompletion(task);
         }
-        // Only a real change. Ticking a box that is already ticked is a request, not an event, and
-        // a feed that records it fills with entries nobody performed.
         if (changed) {
             activityRecorder.completionChanged(caller, task, completed);
         }
@@ -569,7 +468,6 @@ public class TaskService {
         updateDependentTasksCompletion(parentTask, new HashSet<>());
     }
 
-    /** Cascades the un-completion downward, visiting each task once. See {@link #wouldCreateCycle}. */
     private void updateDependentTasksCompletion(Task parentTask, Set<Integer> visited) {
         if (!visited.add(parentTask.getId())) {
             return;
@@ -598,19 +496,6 @@ public class TaskService {
         return saveAndAnnounce(task);
     }
 
-    /**
-     * The one method here with no caller — it runs on a timer for the whole deployment rather than
-     * on behalf of a user. Every flag is written before the notification mail goes out, so a slow
-     * or unreachable provider can't leave {@code expired} half-updated; only the crossing into
-     * expired is mailed.
-     *
-     * <p>It claims the rows it's about to change via
-     * {@link TaskRepository#claimTasksCrossingDeadline}'s {@code FOR UPDATE SKIP LOCKED}, so two
-     * schedulers can't both flag and mail the same task. The class-level {@code @Transactional} is
-     * what holds that claim for the sweep's whole duration — remove it and the lock releases before
-     * the claim protects anything. The claim selects only rows whose flag disagrees with their
-     * deadline, which also keeps a half-hourly sweep from reading every deadline in the deployment.
-     */
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
         var now = LocalDateTime.now();
@@ -621,8 +506,6 @@ public class TaskService {
 
         var newlyExpired = new ArrayList<Task>();
         for (Task task : taskRepository.findByIdIn(claimed)) {
-            // The claim already decided this row disagrees with its deadline; the comparison here
-            // is what says in which direction, on the same instant the claim was made with.
             boolean isExpired = task.getDeadline().isBefore(now);
             task.setExpired(isExpired);
             taskRepository.save(task);
@@ -635,11 +518,6 @@ public class TaskService {
         newlyExpired.forEach(deadlineNotifier::notifyExpired);
     }
 
-    /**
-     * Looks a task up and refuses to hand it back unless the caller is on its board. Every public
-     * method funnels through here, since a check that must be remembered at each call site is one
-     * that eventually gets forgotten at one of them.
-     */
     private Task findTask(User caller, Integer id) {
         var task = taskRepository.findById(id).orElseThrow(() -> taskNotFound(id));
         if (!task.getBoard().isVisibleTo(caller)) {

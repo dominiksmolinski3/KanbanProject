@@ -17,12 +17,6 @@ jest.mock('react-i18next', () => ({
   })
 }));
 
-/**
- * The panel's behaviour, and the three things about a search box that are always the bugs: <b>the
- * debounce</b> (a request per keystroke otherwise), <b>the page reset</b> (staying on page three
- * of a replaced result set reads as "nothing found"), and <b>the out-of-order answer</b> (a slow
- * response to an old query landing after a fast one to the current query).
- */
 describe('TaskSearch', () => {
   const context = {
     columns: [{ id: 1, name: 'To Do' }],

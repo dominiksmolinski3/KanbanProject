@@ -5,15 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Locale;
 
-/**
- * Works out which address to bill a request to. Behind a reverse proxy {@code getRemoteAddr()} is
- * the proxy, so keying on it would put the whole internet in one bucket; {@code X-Forwarded-For}
- * carries the client instead, but only the entries a trusted proxy appended can be believed. Each
- * proxy appends to the right-hand end, so the entry to trust is counted from the right, never the
- * left — a client-sent {@code X-Forwarded-For} header ends up to the left of it.
- *
- * @see AuthRateLimitProperties#trustedProxyCount()
- */
 @Component
 public class ClientIpResolver {
 
@@ -21,7 +12,6 @@ public class ClientIpResolver {
 
     private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 
-    /** Long enough for any address form, short enough that a bad header cannot bloat a cache key. */
     private static final int MAX_KEY_LENGTH = 64;
 
     private final int trustedProxyCount;
@@ -47,9 +37,6 @@ public class ClientIpResolver {
             }
         }
 
-        // Either the header is missing or the request took fewer hops than configured, which means
-        // it did not come through the expected chain. Nothing in the header is trustworthy, so fall
-        // back to the one address the container observed for itself.
         return normalise(request.getRemoteAddr());
     }
 
@@ -67,10 +54,6 @@ public class ClientIpResolver {
         return key.length() > MAX_KEY_LENGTH ? key.substring(0, MAX_KEY_LENGTH) : key;
     }
 
-    /**
-     * Proxies vary on whether they append a port. Drops it so {@code 1.2.3.4:5678} and
-     * {@code 1.2.3.4} share a bucket, and unwraps the {@code [::1]:8080} form IPv6 uses.
-     */
     private static String stripPort(String address) {
         if (address.startsWith("[")) {
             int closing = address.indexOf(']');
@@ -78,7 +61,6 @@ public class ClientIpResolver {
         }
 
         int colon = address.indexOf(':');
-        // A second colon means a bare IPv6 address, where every colon belongs to the address itself.
         if (colon > 0 && address.indexOf(':', colon + 1) < 0) {
             return address.substring(0, colon);
         }

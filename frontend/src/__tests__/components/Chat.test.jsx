@@ -15,7 +15,6 @@ jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
-// jsdom has no scrollIntoView.
 beforeAll(() => {
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
 });

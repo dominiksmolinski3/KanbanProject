@@ -11,7 +11,6 @@ import java.util.Optional;
 @Repository
 public interface RowRepository extends JpaRepository<Row, Integer> {
 
-    /** The swimlanes of one board. See {@link pl.myproject.kanbanproject2.layout.column.ColumnRepository}. */
     List<Row> findByBoardOrderByPositionAsc(Board board);
 
     @Query("SELECT MAX(row.position) FROM Row row WHERE row.board = :board")

@@ -39,19 +39,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The two layout services, which between them were the least covered code in the project, and
- * where three rules argued about elsewhere have to hold again: the next position comes from the
- * highest one in use rather than a row count, a patch treats {@code null} as "leave it alone", and
- * an object on somebody else's board answers 404 rather than 403. Delete paths are covered
- * separately by {@code DeleteDetachesReferencesTest}.
- */
 class LayoutServiceTest {
-
     private static final TenancyFixtures.Tenant TENANT = TenancyFixtures.tenant();
     private static final Board BOARD = TENANT.board();
     private static final User CALLER = TENANT.caller();
-    /** A different id and a different owner, so nothing on it is visible to CALLER. */
     private static final Board OTHER_BOARD = TenancyFixtures.board(99, TenancyFixtures.user(2));
 
     @Nested
@@ -82,14 +73,12 @@ class LayoutServiceTest {
 
             assertThat(service.getAllColumns(CALLER, null)).extracting(ColumnDto::name).containsExactly("To Do");
 
-            // findAll() would hand one caller every board in the deployment.
             verify(repository, never()).findAll();
         }
 
         @Test
         @DisplayName("a new stage lands after the highest position in use, not at count + 1")
         void nextPositionComesFromTheHighestInUse() {
-            // Seven stages of which four were deleted: a count would say 4 and collide with 7.
             when(repository.findMaxPosition(BOARD)).thenReturn(Optional.of(7));
             when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
 
@@ -127,7 +116,6 @@ class LayoutServiceTest {
             var patched = service.patchColumn(CALLER, new ColumnDto(null, "Doing", null, null, null), 1);
 
             assertThat(patched.name()).isEqualTo("Doing");
-            // null means "leave it" rather than "clear it" - the whole reason a PATCH is not a PUT.
             assertThat(patched.wipLimit()).isEqualTo(3);
             assertThat(patched.position()).isZero();
         }
@@ -140,8 +128,6 @@ class LayoutServiceTest {
             assertThatThrownBy(() -> service.getColumnById(CALLER, 5))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
-                    // 403 would confirm the id is in use, which is enough to map a board by
-                    // walking ids and reading status codes.
                     .isEqualTo(ExceptionIdentifier.COLUMN_NOT_FOUND);
         }
 
@@ -264,8 +250,6 @@ class LayoutServiceTest {
 
             service.deleteRow(CALLER, 1);
 
-            // A task outlives its swimlane: the column is what puts it on the board. The row is taken
-            // off every task in one statement - see DeleteDetachesReferencesTest for why not per task.
             verify(taskRepository).detachFromRow(swimlane);
             verify(repository).delete(swimlane);
         }

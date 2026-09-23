@@ -59,8 +59,6 @@ describe('ActivityFeed', () => {
     await renderFeed();
 
     expect(fetchActivity).toHaveBeenCalledWith({ boardId: 3, page: 0 });
-    // The wording is a translation key with the facts as arguments: the server sends a type name
-    // and a detail, never a phrase, so the feed reads in whichever of nine languages is showing.
     expect(screen.getByText(/activity\.types\.MOVED/)).toHaveTextContent('Ada');
     expect(screen.getByText(/activity\.types\.MOVED/)).toHaveTextContent('In Progress');
   });

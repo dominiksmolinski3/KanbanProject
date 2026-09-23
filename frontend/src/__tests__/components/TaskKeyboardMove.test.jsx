@@ -12,13 +12,6 @@ jest.mock('../../services/api', () => ({
   WipLimitExceededError: class WipLimitExceededError extends Error {}
 }));
 
-/**
- * The keys on the card, which are the only way to move it without a pointer.
- *
- * HTML5 drag-and-drop cannot be driven from a keyboard at all, so before this the board's central
- * gesture was unavailable to anyone not using a mouse. These assert the bindings rather than the
- * move: what happens after the drop is the context's, and is covered in keyboardMove.test.js.
- */
 describe('moving a task with the keyboard', () => {
   const task = { id: '1', title: 'Test Task', userIds: [], labels: [], columnId: 'col1', rowId: 'row1' };
 
@@ -59,8 +52,6 @@ describe('moving a task with the keyboard', () => {
   };
 
   test('the card is reachable by keyboard and says what it is', async () => {
-    // Without a tabIndex the card is not in the tab order at all, which is the state this branch
-    // found it in: every key below is unreachable if nothing can focus the element.
     const { card } = await setUp();
 
     expect(card).toHaveAttribute('tabIndex', '0');
@@ -99,8 +90,6 @@ describe('moving a task with the keyboard', () => {
   });
 
   test('the arrow keys do nothing when no card is held', async () => {
-    // Otherwise every arrow press on a focused card would be swallowed, and the page would stop
-    // scrolling for a move that is not happening.
     const { keyboardMove, card } = await setUp(false);
 
     fireEvent.keyDown(card, { key: 'ArrowRight' });
@@ -109,8 +98,6 @@ describe('moving a task with the keyboard', () => {
   });
 
   test('a key pressed inside the card, rather than on it, is left alone', async () => {
-    // The inline title editor and the buttons live inside this element. Space in a text field is
-    // a space, and picking the card up instead would make the title uneditable by keyboard.
     const { keyboardMove, card } = await setUp();
     const inner = card.querySelector('.task-complete-checkbox');
 

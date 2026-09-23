@@ -1,10 +1,5 @@
 import { defineFlow, fetchFlowMetrics } from '../../services/flowApi';
 
-/**
- * The request the flow screen makes: only the parameters it was given, so that "no start column"
- * reaches the server as absent - which it reads as "measure from arrival on the board" - rather
- * than as an empty string it would refuse.
- */
 describe('fetchFlowMetrics', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ boardId: 3 }) });

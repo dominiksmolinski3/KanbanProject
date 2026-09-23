@@ -21,16 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Why a batch route exists at all, stated as tests. One PATCH per card was merely wasteful until
- * tasks gained a {@code @Version}: now a card somebody else moved makes one call a 409 while the
- * calls before it stay applied, leaving the board in an order nobody asked for. The batch is one
- * transaction, so what matters here is what it refuses rather than what it renumbers; what these
- * tests can't show is the rollback itself, which {@code OptimisticLockConflictTest} pins.
- */
 class ReorderTasksTest {
-
-    /** Somebody else's board: a different id and a different owner, so it is not visible here. */
     private final Board otherBoard = TenancyFixtures.board(99, TenancyFixtures.user(2));
     private final Map<Integer, Task> stored = new HashMap<>();
     private TaskRepository taskRepository;
@@ -177,8 +168,6 @@ class ReorderTasksTest {
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.TASK_NOT_FOUND);
 
-        // Every id is resolved before any position is written, so a bad one in the middle of the
-        // list cannot leave the first half renumbered.
         assertThat(first.getPosition()).isZero();
         org.mockito.Mockito.verify(taskRepository, org.mockito.Mockito.never()).save(any());
     }

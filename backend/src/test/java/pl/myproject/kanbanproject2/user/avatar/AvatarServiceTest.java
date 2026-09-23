@@ -40,15 +40,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * FEAT-09: avatars through {@link BlobStore} rather than a {@code File} row's {@code @Lob}. Mirrors
- * {@code TaskAttachmentServiceTest}'s shape - a mocked store and repository, the write ordering that
- * chooses which failure is possible, and the transfer-permit cap - with the one addition this
- * feature keeps from the {@code AvatarService} it replaces: the declared {@code Content-Type} has to
- * match the bytes, not just appear on the allow-list.
- */
 class AvatarServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-04-01T10:15:30Z");
     private static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
 

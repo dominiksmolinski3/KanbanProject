@@ -40,13 +40,6 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
 
-    /**
-     * Registers the address if it is new, and does nothing at all if it is not. Answering
-     * {@code 409 USER_ALREADY_EXISTS} made this endpoint a membership oracle - an unauthenticated
-     * caller could check addresses one at a time - so the caller is told nothing either way, and the
-     * password-reset flow is what a genuine account owner is meant to fall back to. The branch below
-     * is logged so the collision is at least visible server-side.
-     */
     @Transactional
     public void signup(RegisterUserDto input) {
         if (userRepository.findByEmail(input.getEmail()).isPresent()) {
@@ -55,8 +48,6 @@ public class AuthenticationService {
         }
 
         User user = new User(input.getUsername(), input.getEmail(), passwordEncoder.encode(input.getPassword()));
-        // A guess, and the only one available - SupportedLocales.normalise falls back to English
-        // rather than refusing, since a signup is not the place to argue about a header.
         user.setLocale(SupportedLocales.normalise(input.getLocale()));
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
@@ -65,12 +56,6 @@ public class AuthenticationService {
         sendVerificationEmail(user);
     }
 
-    /**
-     * An unknown address is reported as an invalid code rather than an unknown user - the same fact
-     * from the caller's side. Answers with a session, exactly as {@link #login} does, because the
-     * code is a credential spent on redemption; asking for the password again afterwards would be a
-     * second credential for a fact the caller has just proved.
-     */
     public LoginResponse verifyUser(VerifyUserDto input, DeviceContext device) {
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
@@ -89,13 +74,6 @@ public class AuthenticationService {
         return issueSession(userRepository.save(user), device);
     }
 
-    /**
-     * Every failure here is one status: {@code 401 INVALID_CREDENTIALS}, deliberately including an
-     * unverified account. {@code DaoAuthenticationProvider} throws {@code DisabledException} for a
-     * disabled user before comparing the password, and {@code GlobalExceptionHandler} maps every
-     * {@code AuthenticationException} to the same 401 - so a distinct "not verified" status would be
-     * readable without knowing the password, the enumeration oracle this route avoids.
-     */
     public LoginResponse login(LoginUserDto input, DeviceContext device) {
         try {
             authenticationManager.authenticate(
@@ -111,11 +89,6 @@ public class AuthenticationService {
         return issueSession(user, device);
     }
 
-    /**
-     * Exchanges a refresh token for a new pair, without asking for the password again - the route
-     * that makes a short access token affordable. {@link RefreshTokenService#rotate} withdraws the
-     * presented token in the same transaction that issues its replacement.
-     */
     public LoginResponse refresh(String refreshToken, DeviceContext device) {
         RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken, device);
         return respondWith(rotation.user(), rotation.refreshToken(), rotation.sessionId());
@@ -125,16 +98,10 @@ public class AuthenticationService {
         refreshTokenService.revoke(refreshToken);
     }
 
-    /**
-     * The sessions this account can still use. A pass-through, deliberately: the controller already
-     * holds this service and nothing else, and {@link RefreshTokenService} stays the only reader of
-     * the table.
-     */
     public List<ActiveDeviceDto> listSessions(User user) {
         return refreshTokenService.listSessionsFor(user);
     }
 
-    /** Ends one of them by id, or answers 404 if it is not this account's to end. */
     public void revokeSession(User user, Long sessionId) {
         refreshTokenService.revokeSession(user, sessionId);
     }
@@ -153,11 +120,6 @@ public class AuthenticationService {
                 sessionId);
     }
 
-    /**
-     * Sends a fresh code when the address has an account still waiting to be verified, and does
-     * nothing otherwise - the "otherwise" cases used to be a 404 and a 400, partitioning every
-     * address into three answerable states instead of the one this collapses them to.
-     */
     @Transactional
     public void resendVerificationCode(String email) {
         User user = userRepository.findByEmail(email).orElse(null);

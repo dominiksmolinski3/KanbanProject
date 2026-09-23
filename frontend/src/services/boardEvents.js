@@ -2,13 +2,6 @@ import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
 
-/**
- * The board's live connection: one STOMP subscription that says "this board changed, re-read it".
- * Deliberately not the connection `chatApi` holds, since that one opens and closes with the chat
- * panel and a board riding on it would stop updating whenever anyone closed the panel. What
- * arrives is `{ type, boardId }` only - the re-read goes back through the REST routes, which are
- * what decide what this account may see.
- */
 export default class BoardEvents {
   constructor() {
     this.client = null;
@@ -18,12 +11,6 @@ export default class BoardEvents {
     this.serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
   }
 
-  /**
-   * Watches one board, replacing whatever was being watched before.
-   *
-   * Safe to call on every board switch: the connection is kept and only the subscription moves,
-   * because tearing down SockJS to change a destination costs a handshake for nothing.
-   */
   watch(boardId, onEvent) {
     this.onEvent = onEvent;
     this.boardId = boardId;
@@ -40,12 +27,6 @@ export default class BoardEvents {
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
 
-      /*
-       * The CONNECT frame is the only place the fifteen-minute access token is checked, so a
-       * client reconnecting later (a laptop that slept, a dropped idle socket) would otherwise
-       * retry with the same dead token forever. `beforeConnect` runs on every attempt, including
-       * retries, so it can refresh first and hold a live token.
-       */
       beforeConnect: async () => {
         if (isAccessTokenExpired()) {
           try {
@@ -60,11 +41,6 @@ export default class BoardEvents {
 
       onConnect: () => this.resubscribe(),
 
-      /*
-       * A refused SUBSCRIBE arrives here as a STOMP ERROR frame rather than an exception at the
-       * call site. Nothing useful to tell the person - a refusal here means the board stopped
-       * being theirs while they watched, and the next re-read will say so.
-       */
       onStompError: () => {},
       onWebSocketError: () => {},
     });
@@ -72,7 +48,6 @@ export default class BoardEvents {
     this.client.activate();
   }
 
-  /** Points the single subscription at the current board. Idempotent, and safe before connecting. */
   resubscribe() {
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -81,9 +56,6 @@ export default class BoardEvents {
     if (!this.client || !this.client.connected || this.boardId == null) {
       return;
     }
-    // A dot, not a slash: RabbitMQ's STOMP plugin (the broker relay this now goes through - see
-    // BoardEventPublisher.DESTINATION_PREFIX) parses everything after /topic/ as one routing key,
-    // and a further slash makes the whole destination invalid, refusing the SUBSCRIBE outright.
     this.subscription = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
       if (!this.onEvent) {
         return;

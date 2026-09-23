@@ -19,25 +19,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 
-/**
- * A card's comment thread (FEAT-06), built from parts this repository already had: scoped through
- * the task the way {@code TaskAttachmentService} is, paged with the activity feed's numbers and its
- * refusal, announced on the board topic the way every other board change is, and recorded in the
- * activity feed so {@code /activity} says who said something where.
- *
- * <p>Three rules decide who may do what, and each is checked on the way in rather than trusted from
- * the client's own copy of them:
- * <ul>
- *   <li><b>Reading follows the card.</b> Anybody who can see the task can read its thread, a viewer
- *       included - looking at a card and not at what was said about it would be half a look.</li>
- *   <li><b>Writing follows the board.</b> A viewer may not comment. FEAT-08 answered "does looking
- *       include talking" for chat already, and a comment is the same act at a smaller scale.</li>
- *   <li><b>A comment is its author's.</b> Only the author may rewrite it; the author or the board's
- *       owner may remove it, since an owner who cannot take down something posted on their board is
- *       not moderating it. Either refusal is a 403 - the caller can already see the comment, which is
- *       exactly the case the 404-not-403 rule reserves 403 for.</li>
- * </ul>
- */
 @Transactional
 @Service
 public class TaskCommentService {
@@ -139,11 +120,6 @@ public class TaskCommentService {
         boardEvents.commentsChanged(board);
     }
 
-    /**
-     * Everything said about a card that is being deleted. Called by {@code TaskService.deleteTask}
-     * rather than left to a cascade, the same by-hand removal attachments get. No caller parameter:
-     * the task lookup that found the task being deleted has already checked who is asking.
-     */
     public void deleteAllFor(Task task) {
         var toDelete = comments.findByTask(task);
         if (!toDelete.isEmpty()) {
@@ -151,12 +127,6 @@ public class TaskCommentService {
         }
     }
 
-    /**
-     * Every thread on a board being deleted, before its tasks go - {@code task_comments.task_id}
-     * does not cascade, so without this a board with one comment could not be deleted, which is the
-     * failure attachments had. Synchronous, inside {@code deleteBoard}'s transaction; see
-     * {@link BoardTasksDeleting}.
-     */
     @EventListener
     public void onBoardTasksDeleting(BoardTasksDeleting event) {
         if (event.tasks() == null || event.tasks().isEmpty()) {
@@ -168,9 +138,6 @@ public class TaskCommentService {
         }
     }
 
-    // ------------------------------------------------------------------ lookups ---
-
-    /** The task, or a 404 that does not say whether it exists on somebody else's board. */
     private Task findTask(User caller, Integer taskId) {
         var task = tasks.findById(taskId).orElseThrow(() -> taskNotFound(taskId));
         if (task.getBoard() == null || !task.getBoard().isVisibleTo(caller)) {
@@ -179,11 +146,6 @@ public class TaskCommentService {
         return task;
     }
 
-    /**
-     * A comment on the named task, on a task the caller can see. The task is checked first and the
-     * comment matched against it - otherwise a comment id from another board would be reachable
-     * through any task the caller can see, and the task in the path would be decoration.
-     */
     private TaskComment findComment(User caller, Integer taskId, Long commentId) {
         var task = findTask(caller, taskId);
         var comment = comments.findById(commentId).orElseThrow(() -> commentNotFound(commentId));
@@ -193,11 +155,6 @@ public class TaskCommentService {
         return comment;
     }
 
-    /**
-     * By id, never by instance: the caller comes from the JWT filter and the author from the
-     * persistence context, and {@code User} inherits identity equality - the trap
-     * {@code Board.isVisibleTo} documents.
-     */
     private static boolean isAuthor(User caller, TaskComment comment) {
         return comment.getAuthor() != null && caller != null
                 && Objects.equals(comment.getAuthor().getId(), caller.getId());

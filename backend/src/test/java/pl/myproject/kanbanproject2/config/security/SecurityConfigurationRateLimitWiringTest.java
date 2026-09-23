@@ -30,13 +30,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-/**
- * Proves the rate limiter is actually in the filter chain, and in the right place. The filter's own
- * behaviour is covered by unit tests; what only a real context can show is that the chain builds at
- * all and that the ordering reference resolves.
- */
 class SecurityConfigurationRateLimitWiringTest {
-
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withUserConfiguration(TestCollaborators.class);
 
@@ -47,8 +41,6 @@ class SecurityConfigurationRateLimitWiringTest {
             List<Class<?>> filters = filterTypes(context.getBean(SecurityFilterChain.class));
 
             assertThat(filters).contains(AuthRateLimitFilter.class);
-            // After CORS so a 429 still carries the headers a cross-origin caller needs to read it,
-            // and ahead of authorization because these endpoints are public.
             assertThat(filters.indexOf(AuthRateLimitFilter.class))
                     .isGreaterThan(filters.indexOf(CorsFilter.class))
                     .isLessThan(filters.indexOf(AuthorizationFilter.class));
@@ -135,8 +127,6 @@ class SecurityConfigurationRateLimitWiringTest {
 
         @Bean
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
-            // This suite proves the filter's position in the chain, not the escalation itself, so
-            // a mock Redis template is enough - nothing here ever calls tryConsume.
             return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 

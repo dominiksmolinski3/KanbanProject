@@ -29,11 +29,6 @@ public class BoardController {
         return ResponseEntity.ok(boardService.myBoards(currentUser));
     }
 
-    /**
-     * The board the other listings answer with when they are not given a {@code boardId}. The
-     * client asks for it once on load rather than guessing, which is what lets every other route
-     * keep the shape it had before boards existed.
-     */
     @GetMapping("/current")
     public ResponseEntity<BoardDto> currentBoard(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(boardService.currentBoard(currentUser));

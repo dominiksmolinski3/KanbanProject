@@ -6,11 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/**
- * The one outbound HTTP client this application makes, kept separate from
- * {@link CaptchaVerifier} so the verifier can be handed a client in a test without the timeouts
- * having to be reconstructed around a mock.
- */
 @Configuration
 @EnableConfigurationProperties(CaptchaProperties.class)
 public class CaptchaClientConfig {
