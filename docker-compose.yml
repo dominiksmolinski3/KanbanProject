@@ -87,10 +87,13 @@ x-api: &api
     APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://appinsights-sink:8080/;LiveEndpoint=http://appinsights-sink:8080/'
     # Ten seconds rather than the agent's sixty, so a short CI run still sees several exports.
     APPLICATIONINSIGHTS_METRIC_INTERVAL_SECONDS: 10
+  # 1G, the same as api_app's container in Azure. At 512M the Application Insights agent pushed
+  # both replicas to the ceiling (511 and 508 MiB measured), and a JVM pressed against its
+  # container limit stalls in GC - which is what made e2e requests take over Cypress's 4 s.
   deploy:
     resources:
       limits:
-        memory: 512M
+        memory: 1G
 
 services:
   # The public edge: nginx serving the built bundle and reverse-proxying what the API owns. It is
