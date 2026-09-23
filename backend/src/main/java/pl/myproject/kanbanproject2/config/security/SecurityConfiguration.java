@@ -21,6 +21,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitFilter;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
@@ -30,7 +33,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({AuthRateLimitProperties.class, AllowedOriginsProperties.class})
+@EnableConfigurationProperties({AuthRateLimitProperties.class, ApiRateLimitProperties.class, AllowedOriginsProperties.class})
 public class SecurityConfiguration {
 
     private final AuthenticationProvider authenticationProvider;
@@ -40,6 +43,8 @@ public class SecurityConfiguration {
     private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper;
     private final AllowedOriginsProperties allowedOrigins;
+    private final ApiRateLimitProperties apiRateLimitProperties;
+    private final ApiRateLimiter apiRateLimiter;
 
     public SecurityConfiguration(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -48,7 +53,9 @@ public class SecurityConfiguration {
             AuthRateLimiter authRateLimiter,
             ClientIpResolver clientIpResolver,
             ObjectMapper objectMapper,
-            AllowedOriginsProperties allowedOrigins
+            AllowedOriginsProperties allowedOrigins,
+            ApiRateLimitProperties apiRateLimitProperties,
+            ApiRateLimiter apiRateLimiter
     ) {
         this.authenticationProvider = authenticationProvider;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -57,6 +64,8 @@ public class SecurityConfiguration {
         this.clientIpResolver = clientIpResolver;
         this.objectMapper = objectMapper;
         this.allowedOrigins = allowedOrigins;
+        this.apiRateLimitProperties = apiRateLimitProperties;
+        this.apiRateLimiter = apiRateLimiter;
     }
 
     @Bean
@@ -128,6 +137,12 @@ public class SecurityConfiguration {
             http.addFilterAfter(
                     new AuthRateLimitFilter(authRateLimiter, clientIpResolver, objectMapper),
                     CorsFilter.class);
+        }
+
+        if (apiRateLimitProperties.enabled()) {
+            // After the JWT filter, since the account it keys on is what that filter finds; built
+            // here for the same servlet-registration reason as the auth filter above.
+            http.addFilterAfter(new ApiRateLimitFilter(apiRateLimiter, objectMapper), JwtAuthenticationFilter.class);
         }
 
         return http.build();
