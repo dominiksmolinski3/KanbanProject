@@ -66,7 +66,7 @@ class TaskControllerHttpTest {
 
     private static TaskDto dto(Integer id, String title) {
         return new TaskDto(id, 0, title, 1, 2, 3, Set.of(4), Set.of("bug"),
-                false, "described", null, Set.of(), null, false, false);
+                false, "described", null, Set.of(), null, false, false, 0);
     }
 
     @Test

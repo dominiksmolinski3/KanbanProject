@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardTasksDeleting;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
@@ -44,6 +45,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -64,6 +66,7 @@ class TaskAttachmentServiceTest {
     private TaskRepository tasks;
     private BlobStore blobStore;
     private SimpleMeterRegistry meterRegistry;
+    private BoardEventPublisher boardEvents;
     private TaskAttachmentService service;
 
     private TenancyFixtures.Tenant tenant;
@@ -77,6 +80,7 @@ class TaskAttachmentServiceTest {
         tasks = mock(TaskRepository.class);
         blobStore = mock(BlobStore.class);
         meterRegistry = new SimpleMeterRegistry();
+        boardEvents = mock(BoardEventPublisher.class);
 
         when(blobStore.isConfigured()).thenReturn(true);
         when(attachments.save(any(TaskAttachment.class))).thenAnswer(call -> {
@@ -117,6 +121,7 @@ class TaskAttachmentServiceTest {
                 new TaskAttachmentMapper(),
                 blobStore,
                 tenant.boardService(),
+                boardEvents,
                 storageProperties,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 meterRegistry);
@@ -170,6 +175,8 @@ class TaskAttachmentServiceTest {
             assertThat(dto.taskId()).isEqualTo(42);
             assertThat(dto.uploadedById()).isEqualTo(caller.getId());
             assertThat(dto.uploadedAt()).isEqualTo(NOW);
+            // SYNC-01: somebody else with this card open re-reads its attachment list.
+            verify(boardEvents).attachmentsChanged(tenant.board());
         }
 
         @Test
@@ -452,6 +459,7 @@ class TaskAttachmentServiceTest {
 
             verify(attachments).delete(attachment);
             verify(blobStore).remove("tasks/42/blob-1");
+            verify(boardEvents).attachmentsChanged(tenant.board());
         }
 
         @Test
@@ -504,6 +512,7 @@ class TaskAttachmentServiceTest {
 
             verify(blobStore, never()).put(anyString(), anyString(), any(InputStream.class), anyLong());
             verify(attachments, never()).save(any());
+            verifyNoInteractions(boardEvents);
         }
 
         @Test
@@ -515,6 +524,7 @@ class TaskAttachmentServiceTest {
 
             verify(attachments, never()).delete(any());
             verify(blobStore, never()).remove(anyString());
+            verifyNoInteractions(boardEvents);
         }
 
         @Test

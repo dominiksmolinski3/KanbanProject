@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -21,6 +22,7 @@ public class SubTaskService {
     private final TaskRepository taskRepository;
     private final SubTaskMapper subTaskMapper;
     private final BoardService boardService;
+    private final BoardEventPublisher boardEvents;
 
     public SubTaskDto addSubTask(User caller, CreateSubTaskRequest request) {
         var task = findTask(caller, request.task().id());
@@ -34,7 +36,7 @@ public class SubTaskService {
         subTask.setPosition(request.position() != null
                 ? request.position()
                 : nextPositionUnder(task));
-        return subTaskMapper.toDto(subTaskRepository.save(subTask));
+        return saveAndAnnounce(subTask);
     }
 
     /**
@@ -56,6 +58,7 @@ public class SubTaskService {
         var subTask = findSubTask(caller, id);
         boardService.requireWritable(caller, subTask.getTask().getBoard());
         subTaskRepository.delete(subTask);
+        boardEvents.subtasksChanged(subTask.getTask().getBoard());
     }
 
     public SubTaskDto getSubTaskById(User caller, Integer id) {
@@ -94,6 +97,8 @@ public class SubTaskService {
             // the target board may not have a subtask moved onto it by a member of another.
             var target = findTask(caller, task.id());
             boardService.requireWritable(caller, target.getBoard());
+            // The card it leaves loses an open subtask as surely as the one it joins gains it.
+            boardEvents.subtasksChanged(existingSubTask.getTask().getBoard());
             existingSubTask.setTask(target);
         }
         if (request.position().isPresent()) {
@@ -104,7 +109,7 @@ public class SubTaskService {
             existingSubTask.setPosition(position);
         }
 
-        return subTaskMapper.toDto(subTaskRepository.save(existingSubTask));
+        return saveAndAnnounce(existingSubTask);
     }
 
     public SubTaskDto assignTaskToSubTask(User caller, Integer subTaskId, Integer taskId) {
@@ -113,11 +118,12 @@ public class SubTaskService {
         boardService.requireWritable(caller, subTask.getTask().getBoard());
         boardService.requireWritable(caller, task.getBoard());
 
+        boardEvents.subtasksChanged(subTask.getTask().getBoard());
         subTask.setTask(task);
         task.getSubTasks().add(subTask);
 
         taskRepository.save(task);
-        return subTaskMapper.toDto(subTaskRepository.save(subTask));
+        return saveAndAnnounce(subTask);
     }
 
     public List<SubTaskDto> getSubTasksByTaskId(User caller, Integer taskId) {
@@ -128,14 +134,26 @@ public class SubTaskService {
         var subTask = findSubTask(caller, id);
         boardService.requireWritable(caller, subTask.getTask().getBoard());
         subTask.setCompleted(!subTask.isCompleted());
-        return subTaskMapper.toDto(subTaskRepository.save(subTask));
+        return saveAndAnnounce(subTask);
     }
 
     public SubTaskDto updateSubTaskPosition(User caller, Integer id, Integer position) {
         var subTask = findSubTask(caller, id);
         boardService.requireWritable(caller, subTask.getTask().getBoard());
         subTask.setPosition(position);
-        return subTaskMapper.toDto(subTaskRepository.save(subTask));
+        return saveAndAnnounce(subTask);
+    }
+
+    /**
+     * Every subtask write returns through here, so none of them can forget to tell the board's other
+     * viewers: a card carries its open-subtask count, and somebody else ticking the last one would
+     * otherwise leave the "unfinished subtasks" warning on every other screen until a reload.
+     * {@code BoardEventCoverageTest} fails the build on a save-and-map anywhere else in this file.
+     */
+    private SubTaskDto saveAndAnnounce(SubTask subTask) {
+        var saved = subTaskRepository.save(subTask);
+        boardEvents.subtasksChanged(saved.getTask().getBoard());
+        return subTaskMapper.toDto(saved);
     }
 
     /**

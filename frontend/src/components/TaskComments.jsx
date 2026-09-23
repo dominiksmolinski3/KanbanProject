@@ -24,7 +24,7 @@ const MAX_PAGE_SIZE = 100;
  * edit; and its author or the board's owner is offered delete.
  *
  * It re-reads when the board announces `COMMENTS` - `KanbanContext` turns that frame into a
- * `task-comments-changed` window event, the same channel `subtask-updated` already uses. The frame
+ * `task-comments-changed` window event, the same channel subtasks and attachments use. The frame
  * names the board and not the card, so every open thread on the board re-reads on any comment; one
  * page of one card is cheap, and naming the card would mean a payload that says more than "re-read".
  */
