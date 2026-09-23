@@ -8,20 +8,6 @@ import { fetchBoardChatHistory, fetchDirectChatHistory, DEFAULT_PAGE_SIZE } from
 
 const ChatContext = createContext();
 
-/**
- * Chat is the board's conversation now, not a global room.
- *
- * Three things follow from that and are worth knowing before editing this file:
- *
- * - **The board comes from `KanbanContext`, never from a control here.** There was a room picker
- *   with `general`, `help` and `random` in it, which named topics the server had no opinion about.
- *   Switching boards switches the conversation, which is the only sense in which a conversation
- *   here can be switched.
- * - **Opening the panel loads history.** The messages existed all along; nothing read them. Older
- *   pages are fetched on request, newest page first, the same shape the activity feed uses.
- * - **A refusal arrives on its own queue and is a key, not a sentence**, so it goes through `t()`
- *   like every other user-facing string.
- */
 const initialState = {
   isOpen: false,
   messages: [],
@@ -35,7 +21,6 @@ const initialState = {
   isLoadingHistory: false,
 };
 
-/** Oldest first, which is the order the panel reads in; the server pages newest first. */
 const chronological = (messages) =>
   [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
@@ -55,10 +40,6 @@ function chatReducer(state, action) {
       };
     case 'HISTORY_LOADING':
       return { ...state, isLoadingHistory: true };
-    /*
-     * History is marked read on arrival whatever the panel is doing: it is what was already said,
-     * so counting it as unread would badge the button for a conversation nobody missed.
-     */
     case 'HISTORY_LOADED':
       return {
         ...state,
@@ -95,9 +76,6 @@ export function ChatProvider({ children }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const { user, token } = useAuth();
   const { activeBoardId, activeBoard } = useKanban();
-  // FEAT-08: read-only means read-only consistently, so a viewer can watch the board's chat but
-  // not post to it. This is the client's proactive refusal; ChatController.sendMessage refuses the
-  // same way on the server regardless of what this does.
   const isBoardReadOnly = activeBoard?.role === 'VIEWER';
   const { t } = useTranslation();
   const chatApiRef = useRef(null);
@@ -130,15 +108,12 @@ export function ChatProvider({ children }) {
     toast.error(t('chat.connectionError'));
   };
 
-  /** The server sends a key; the wording is the client's, in whichever of the nine is loaded. */
   const onRefusal = (refusal) => {
     toast.warning(t(refusal?.reason || 'chat.errors.notSent'));
   };
 
   const loadHistory = useCallback(async (page = 0) => {
     if (!user) return;
-    // A direct thread needs somebody to be with; the server answers a blank one with a 400, and
-    // there is nothing to show for a recipient field somebody has not finished typing.
     if (state.messageType === 'private' && !state.recipient.trim()) return;
 
     dispatch({ type: 'HISTORY_LOADING' });
@@ -192,11 +167,6 @@ export function ChatProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, state.isOpen]);
 
-  /*
-   * Switching boards switches the conversation. The socket is kept and only the subscription
-   * moves, and the panel is emptied first so the previous board's messages do not read as this
-   * board's - which is the whole point of the feature being board-scoped at all.
-   */
   useEffect(() => {
     if (!state.isOpen || !state.isConnected || !chatApiRef.current) return;
 
@@ -244,12 +214,6 @@ export function ChatProvider({ children }) {
     dispatch({ type: 'RESET_CONVERSATION' });
   };
 
-  /*
-   * Switching between the board and a direct thread switches which conversation is on screen, so
-   * the loaded one follows. The recipient is not in this dependency list on purpose: reloading on
-   * every keystroke would ask the server for a thread with `b`, then `bo`, then `bob` - the panel
-   * asks for it once the address is finished instead, through `reloadConversation`.
-   */
   useEffect(() => {
     if (!state.isOpen) return;
     loadHistory(0);

@@ -117,9 +117,6 @@ describe('Board Component', () => {
   });
   
   test('the keyboard instructions and the live region are on the board', () => {
-    // Every card points its aria-describedby at the help paragraph, and the move is narrated in
-    // the live region - the card does not leave its cell until the drop, so there is nothing else
-    // a screen reader could read to know where it would land.
     const { container } = render(
       <KanbanContext.Provider value={mockContextValue}>
         <Board />
@@ -129,8 +126,6 @@ describe('Board Component', () => {
     expect(container.querySelector('#board-keyboard-move-help')).toBeInTheDocument();
     const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
-    // Visually hidden rather than display:none, which would take it out of the accessibility tree
-    // and leave the region silent.
     expect(liveRegion).toHaveClass('visually-hidden');
   });
 
@@ -361,10 +356,6 @@ describe('Board Component', () => {
     expect(screen.getByText('board.loading')).toBeInTheDocument();
   });
 
-  // A background refresh sets the same `loading` flag the initial load does; gating the whole
-  // board on it would unmount every Task - and any open TaskDetails panel - for the length of
-  // that refresh. That is a real regression this suite caught: typing a second subtask lost the
-  // panel mid-keystroke because adding the first one refreshed the board underneath it.
   test('does not show the loading spinner for a background refresh once the board has data', () => {
     const refreshingContext = {
       ...mockContextValue,

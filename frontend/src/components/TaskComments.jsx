@@ -13,21 +13,8 @@ import {
 } from '../services/api';
 import '../styles/components/TaskComments.css';
 
-/** The server's own ceiling on a page (TaskCommentService.MAX_PAGE_SIZE); asking for more is a 400. */
 const MAX_PAGE_SIZE = 100;
 
-/**
- * A card's comment thread (FEAT-06), newest first, with "load older" paging back through it.
- *
- * Three things decide what is drawn, and the server decides the same three again on the way in:
- * a viewer reads the thread and gets no composer (`readOnly`); only a comment's author is offered
- * edit; and its author or the board's owner is offered delete.
- *
- * It re-reads when the board announces `COMMENTS` - `KanbanContext` turns that frame into a
- * `task-comments-changed` window event, the same channel subtasks and attachments use. The frame
- * names the board and not the card, so every open thread on the board re-reads on any comment; one
- * page of one card is cheap, and naming the card would mean a payload that says more than "re-read".
- */
 function TaskComments({ taskId }) {
   const { t } = useTranslation();
   const { readOnly, activeBoard } = useKanban();
@@ -43,8 +30,6 @@ function TaskComments({ taskId }) {
   const [editDraft, setEditDraft] = useState('');
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
 
-  // How many comments are on screen, so a live re-read keeps what somebody has already paged back
-  // through rather than collapsing the thread to its first page under them.
   const loadedCount = useRef(0);
   loadedCount.current = comments.length;
 
@@ -76,11 +61,6 @@ function TaskComments({ taskId }) {
     return () => window.removeEventListener('task-comments-changed', onChanged);
   }, [reload]);
 
-  /*
-   * Older pages are fetched by offset from what is already loaded rather than by page number, so a
-   * comment posted while somebody reads does not shift a page boundary under them and repeat a row.
-   * Any overlap that remains is removed by id.
-   */
   const loadOlder = async () => {
     try {
       const page = Math.floor(comments.length / pageSize);

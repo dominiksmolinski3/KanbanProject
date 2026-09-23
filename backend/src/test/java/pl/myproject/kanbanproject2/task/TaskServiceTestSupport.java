@@ -18,12 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * A {@link TaskService} whose only real collaborator is the repository under test. Naming the
- * other eight dependencies once here keeps each test to the one stub that is actually the subject.
- */
 final class TaskServiceTestSupport {
-
     static final TenancyFixtures.Tenant TENANT = TenancyFixtures.tenant();
 
     private TaskServiceTestSupport() {

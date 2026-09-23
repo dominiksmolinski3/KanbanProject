@@ -14,11 +14,6 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDate;
 
-/**
- * A board's flow metrics. Its own path rather than under {@code /boards/{id}}, like
- * {@code /activity}: the subject is the board, and {@code ?boardId=} is optional and means the
- * caller's own board, the convention every board-level read here follows.
- */
 @RestController
 @RequestMapping("/flow")
 @RequiredArgsConstructor
@@ -37,11 +32,6 @@ public class FlowMetricsController {
         return ResponseEntity.ok(flowMetricsService.metrics(currentUser, boardId, from, to, start, done));
     }
 
-    /**
-     * Sets the board's own definition of start and done, which every later read without an explicit
-     * choice uses. Owner only: {@code 403 NOT_BOARD_OWNER} for a member or viewer, and the usual 404
-     * for a board the caller cannot see.
-     */
     @PutMapping("/definition")
     public ResponseEntity<FlowDefinitionDto> define(
             @RequestParam(required = false) Integer boardId,

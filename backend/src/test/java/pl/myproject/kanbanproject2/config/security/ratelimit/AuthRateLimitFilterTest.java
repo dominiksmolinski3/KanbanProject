@@ -37,7 +37,6 @@ class AuthRateLimitFilterTest {
 
     @BeforeEach
     void setUp() {
-        // Test capacities: CREDENTIALS 4 per address / 2 per account, EMAIL 3 per address / 2 per account.
         limiter = spy(new AuthRateLimiter(
                 properties(), new InMemoryEscalationStore(), new AuthRateLimitTestSupport.FakeClock(),
                 new SimpleMeterRegistry()));
@@ -132,7 +131,6 @@ class AuthRateLimitFilterTest {
         assertThat(statusOf(resend("A@Example.com"))).isEqualTo(HttpStatus.OK.value());
         assertThat(statusOf(resend("a@example.com"))).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
 
-        // Three requests, one account bucket: the query parameter was read, and case-folded with it.
         verify(limiter, times(3))
                 .tryConsume(AuthRateLimitRule.EMAIL, AuthRateLimitDimension.ACCOUNT, "a@example.com");
     }
@@ -199,7 +197,6 @@ class AuthRateLimitFilterTest {
     @Test
     @DisplayName("a body larger than the buffer is replayed in full, address-limited but not account-limited")
     void streamsPastTheBufferWithoutLosingBytes() throws Exception {
-        // The padding pushes the email past the prefix, so what the filter parses is truncated JSON.
         String padding = "x".repeat(AuthRateLimitFilter.MAX_BUFFERED_BODY_BYTES * 2);
         String body = "{\"padding\":\"" + padding + "\",\"email\":\"a@example.com\"}";
         RecordingFilterChain chain = new RecordingFilterChain();

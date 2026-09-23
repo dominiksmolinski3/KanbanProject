@@ -17,12 +17,6 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Instant;
 
-/**
- * One thing somebody said about one card. It has no board of its own, for the reason an attachment
- * has none: the task carries the board, so a caller may see a comment exactly when they may see the
- * task, and there is no second column that could drift from the first. No {@code @Version}: the
- * only edit is its author rewriting their own words, and the last rewrite is the one they meant.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,10 +32,6 @@ public class TaskComment {
     @JoinColumn(name = "task_id", nullable = false)
     private Task task;
 
-    /**
-     * Who wrote it. Nullable because an account can be deleted while the card it commented on is
-     * still in use - the comment belongs to the card's record, not to the person.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private User author;
@@ -52,7 +42,6 @@ public class TaskComment {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    /** Null until the author rewrites it, so the thread can say which comments were changed. */
     @Column(name = "edited_at")
     private Instant editedAt;
 }

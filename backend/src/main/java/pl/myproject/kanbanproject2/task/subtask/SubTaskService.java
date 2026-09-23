@@ -39,11 +39,6 @@ public class SubTaskService {
         return saveAndAnnounce(subTask);
     }
 
-    /**
-     * The next free position among one task's subtasks, computed as a database aggregate rather
-     * than a count (which collided after a delete) or a Java fold over the fetched list. The task
-     * is never null here: {@code CreateSubTaskRequest} requires one.
-     */
     private int nextPositionUnder(Task task) {
         return subTaskRepository.findMaxPosition(task.getId()).orElse(0) + 1;
     }
@@ -89,15 +84,10 @@ public class SubTaskService {
         if (request.task().isPresent()) {
             var task = request.task().get();
             if (task == null) {
-                // A subtask reads its board through its task, so clearing it would put the subtask
-                // beyond every board at once - including the caller's own.
                 throw new IllegalArgumentException("A subtask must belong to a task");
             }
-            // The destination is written to as well, so it answers the same question: a viewer on
-            // the target board may not have a subtask moved onto it by a member of another.
             var target = findTask(caller, task.id());
             boardService.requireWritable(caller, target.getBoard());
-            // The card it leaves loses an open subtask as surely as the one it joins gains it.
             boardEvents.subtasksChanged(existingSubTask.getTask().getBoard());
             existingSubTask.setTask(target);
         }
@@ -144,23 +134,12 @@ public class SubTaskService {
         return saveAndAnnounce(subTask);
     }
 
-    /**
-     * Every subtask write returns through here, so none of them can forget to tell the board's other
-     * viewers: a card carries its open-subtask count, and somebody else ticking the last one would
-     * otherwise leave the "unfinished subtasks" warning on every other screen until a reload.
-     * {@code BoardEventCoverageTest} fails the build on a save-and-map anywhere else in this file.
-     */
     private SubTaskDto saveAndAnnounce(SubTask subTask) {
         var saved = subTaskRepository.save(subTask);
         boardEvents.subtasksChanged(saved.getTask().getBoard());
         return subTaskMapper.toDto(saved);
     }
 
-    /**
-     * A subtask is visible exactly when the task it hangs off is. The null check matters because
-     * rows written before the task became mandatory can still have none, and the safe reading of
-     * "belongs to no task" is "belongs to no board", not "belongs to every board".
-     */
     private SubTask findSubTask(User caller, Integer id) {
         var subTask = subTaskRepository.findById(id).orElseThrow(() -> subTaskNotFound(id));
         if (subTask.getTask() == null || !subTask.getTask().getBoard().isVisibleTo(caller)) {

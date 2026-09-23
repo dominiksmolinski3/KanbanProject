@@ -23,15 +23,7 @@ public class UserService {
     private final TaskRepository taskRepository;
     private final BoardService boardService;
 
-    /**
-     * The people the caller shares a board with, rather than every account on the deployment — it
-     * used to answer with the whole {@code users} table, every address and display name, to anyone
-     * who could log in. The caller is always included, whether or not they are on a board yet,
-     * because the UI looks itself up in this list.
-     */
     public List<UserDto> getVisibleUsers(User caller) {
-        // Keyed on id: the caller and the peers are two objects for the same account, and User
-        // inherits identity equality - a plain Set listed whoever was asking twice.
         var visible = new LinkedHashMap<Integer, User>();
         if (caller != null) {
             visible.put(caller.getId(), caller);
@@ -47,15 +39,10 @@ public class UserService {
         return userMapper.apply(findVisibleUser(caller, id));
     }
 
-    /** Throws unless the caller may see this account at all. See {@link #findVisibleUser}. */
     public void requireVisibleUser(User caller, Integer id) {
         findVisibleUser(caller, id);
     }
 
-    /**
-     * An account the caller shares no board with answers as one that does not exist. Same reasoning
-     * as everywhere else here: a 403 would confirm the id is in use.
-     */
     private User findVisibleUser(User caller, Integer id) {
         if (caller != null && caller.getId().equals(id)) {
             return caller;
@@ -69,14 +56,6 @@ public class UserService {
         return user;
     }
 
-    /**
-     * Unassigns the user from every task before removing the account.
-     *
-     * <p>{@code User.tasks} is the inverse side of {@code user_task} — {@link Task} owns the join
-     * table — so nothing Hibernate does on the user's behalf clears those rows, and the delete
-     * failed on the foreign key for any user who was assigned to anything. The tasks themselves
-     * stay: they belong to the board, not to the account.
-     */
     public void deleteUser(Integer id) {
         var user = userRepository.findById(id).orElseThrow(() -> userNotFound(id));
 
@@ -102,9 +81,6 @@ public class UserService {
             existingUser.setWipLimit(userDto.wipLimit());
         }
         if (userDto.locale() != null) {
-            // Rejected rather than normalised to English: unlike signup's silent guess from a
-            // browser header, this is somebody choosing, and silently storing a different answer
-            // is worse than telling them the language is not one of the nine.
             if (!SupportedLocales.isSupported(userDto.locale())) {
                 throw new GlobalException(ExceptionIdentifier.UNSUPPORTED_LOCALE);
             }
@@ -113,7 +89,6 @@ public class UserService {
         return userMapper.apply(userRepository.save(existingUser));
     }
 
-    /** A WIP limit is a property of an account, so only its owner may set it. */
     public UserDto updateWipLimit(User caller, Integer userId, Integer wipLimit) {
         if (caller == null || !caller.getId().equals(userId)) {
             throw new GlobalException(ExceptionIdentifier.NOT_ACCOUNT_OWNER);
@@ -123,21 +98,11 @@ public class UserService {
         return userMapper.apply(userRepository.save(user));
     }
 
-    /**
-     * Describes how close a user is to their WIP limit, rather than only whether they are under it.
-     *
-     * <p>A null limit means "no limit", so such a user is always within it.
-     */
     public WipStatusDto getWipStatus(User caller, Integer userId) {
         findVisibleUser(caller, userId);
         return wipStatusOf(userId);
     }
 
-    /**
-     * The same figures without an access check, for {@code TaskService} to consult before it puts
-     * somebody on a task. The caller has already been checked against the board there, and the
-     * assignee against the board's membership, so there is nobody left to check here.
-     */
     private WipStatusDto wipStatusOf(Integer userId) {
         var user = userRepository.findById(userId).orElseThrow(() -> userNotFound(userId));
         Integer wipLimit = user.getWipLimit();

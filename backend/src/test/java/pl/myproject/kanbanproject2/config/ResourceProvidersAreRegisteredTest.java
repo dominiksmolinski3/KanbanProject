@@ -18,24 +18,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A guard over the Azure services this deployment uses and the subscription registrations that let
- * it use them. An Azure resource provider is registered per <em>subscription</em>, and ARM refuses
- * a request against an unregistered namespace outright rather than registering it on the way -
- * measured, not imagined: the first apply of the delivery-report work hit exactly this
- * ({@code 409 MissingSubscriptionRegistration} for {@code Microsoft.EventGrid}) because it was the
- * first genuinely new Azure service added since the subscription was set up. Nothing else can see
- * this coupling - a resource added to a module with its namespace absent from
- * {@code providers.tf} parses, formats and validates clean, and only an apply against a real
- * environment fails, partway through, having already changed some of it. The list is exhaustive on
- * purpose rather than naming only what the provider's defaults miss, since that set is not
- * readable from here and changes silently under a version bump; registering an already-registered
- * namespace is a no-op. {@code Microsoft.Resources} and {@code Microsoft.Authorization} are
- * excluded deliberately - they are the control plane a registration call is itself made through.
- */
 class ResourceProvidersAreRegisteredTest {
-
-    /** Tests run with {@code backend/} as the working directory, so the repository root is up one. */
     private static final Path TERRAFORM = Path.of("..", "terraform");
 
     private static final Path PROVIDERS = TERRAFORM.resolve("providers.tf");
@@ -48,13 +31,6 @@ class ResourceProvidersAreRegisteredTest {
 
     private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
 
-    /**
-     * Terraform resource-type prefix to the ARM namespace the resource is created in, longest
-     * prefix winning. Maintained by hand: the namespace is not derivable from the resource name
-     * (nothing about {@code azurerm_log_analytics_workspace} says
-     * {@code Microsoft.OperationalInsights}), and a resource type no prefix here matches fails the
-     * test naming itself, which is the point.
-     */
     private static final Map<String, String> NAMESPACES = new LinkedHashMap<>() {{
         put("azurerm_container_app", "Microsoft.App");
         put("azurerm_eventgrid_", "Microsoft.EventGrid");
@@ -75,11 +51,6 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_virtual_network", "Microsoft.Network");
     }};
 
-    /**
-     * The control plane itself. A registration is an ARM call, so these are registered in any
-     * subscription that can be talked to at all, and asking for them is asking ARM to register the
-     * thing being asked through.
-     */
     private static final Set<String> ALWAYS_REGISTERED =
             Set.of("Microsoft.Resources", "Microsoft.Authorization");
 
@@ -116,7 +87,6 @@ class ResourceProvidersAreRegisteredTest {
                 .doesNotContainAnyElementsOf(ALWAYS_REGISTERED);
     }
 
-    /** Every namespace reachable from a declared resource, minus the control plane. */
     private static Set<String> namespacesUsed() throws IOException {
         Set<String> namespaces = new TreeSet<>();
 
@@ -147,7 +117,6 @@ class ResourceProvidersAreRegisteredTest {
     private static Optional<String> namespaceOf(String resourceType) {
         return NAMESPACES.entrySet().stream()
                 .filter(entry -> resourceType.startsWith(entry.getKey()))
-                // Longest prefix wins, so a specific entry can override a broader one later.
                 .max(Map.Entry.comparingByKey(java.util.Comparator.comparingInt(String::length)))
                 .map(Map.Entry::getValue);
     }

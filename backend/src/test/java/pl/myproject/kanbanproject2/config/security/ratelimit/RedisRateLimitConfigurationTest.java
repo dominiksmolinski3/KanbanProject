@@ -7,13 +7,7 @@ import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitTestSupport.properties;
 
-/**
- * The connection factory bean is built by hand from {@link AuthRateLimitProperties} rather than
- * left to Spring Boot's own {@code spring.data.redis.*} binding, so nothing but this test checks
- * that the properties actually reach it.
- */
 class RedisRateLimitConfigurationTest {
-
     private final RedisRateLimitConfiguration configuration = new RedisRateLimitConfiguration();
 
     @Test

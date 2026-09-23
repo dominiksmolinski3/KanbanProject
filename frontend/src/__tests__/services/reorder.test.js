@@ -5,13 +5,6 @@ import {
   reorderTasks
 } from '../../services/api';
 
-/**
- * One call per drag, and one specific answer for the one status this route can newly return.
- *
- * A 409 is not a failure in the usual sense: nothing is broken, nothing was half-applied, and the
- * only useful response is to reload. Giving it its own type is what lets the caller say that
- * instead of raising a generic error toast over a board that is simply out of date.
- */
 describe('reorder helpers', () => {
   beforeEach(() => {
     window.fetch = jest.fn();

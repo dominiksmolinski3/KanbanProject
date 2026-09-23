@@ -110,10 +110,9 @@ describe('ChatContext', () => {
   test('a message arriving while the panel is closed counts as unread; opening marks it read', async () => {
     renderChat();
 
-    // Connect first (panel open), then close it, then simulate an inbound frame.
     fireEvent.click(screen.getByText('Toggle'));
     await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Toggle')); // close
+    fireEvent.click(screen.getByText('Toggle'));
     await waitFor(() => expect(screen.getByText('Open: false')).toBeInTheDocument());
 
     const onMessageReceived = ChatApi.mock.calls[0][0];
@@ -124,7 +123,7 @@ describe('ChatContext', () => {
     await waitFor(() => expect(screen.getByText('Unread: 1')).toBeInTheDocument());
     expect(screen.getByText('Messages: ping(false)')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Toggle')); // reopen
+    fireEvent.click(screen.getByText('Toggle'));
     await waitFor(() => expect(screen.getByText('Unread: 0')).toBeInTheDocument());
   });
 

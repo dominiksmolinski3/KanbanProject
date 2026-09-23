@@ -38,11 +38,6 @@ variable "ghcr_token" {
   default     = ""
 }
 
-# No default, so every environment must name the image it's deploying. A fixed tag like "latest"
-# renders a byte-identical template every apply, so Terraform never creates a revision even as CD
-# keeps promoting "latest" (measured: dev sat on one stale revision for over a week this way). Being
-# required means a plan that stops with "No value for required variable" forces a deploy to say
-# which build it is.
 variable "app_image_tag" {
   type        = string
   description = "Tag for the application container image - an immutable value such as the git SHA the CD pipeline pushed. Required: a deploy has to name the build it deploys, and a mutable tag like \"latest\" renders an identical template every apply and therefore never rolls a revision."
@@ -53,9 +48,6 @@ variable "app_image_tag" {
   }
 }
 
-# Two ceilings, because the two containers are limited by different things. Splitting one variable
-# into two is most of what phase 2 of the container split is: the edge is free to move and the API
-# is not, and one number could only ever express the stricter of the two.
 variable "api_max_replicas" {
   description = "Upper bound on API replicas. Phase 4 of the container-split plan: safe to raise once all state that used to live in one JVM has moved somewhere every replica can see it - the outbox claim, the deadline sweep claim, AuthRateLimiter's Redis-backed escalation, and the STOMP broker relay. See the module variable of the same name."
   type        = number

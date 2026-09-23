@@ -63,7 +63,6 @@ def get(url, accept="*/*"):
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
             return response.status, response.headers, response.read()
     except urllib.error.HTTPError as refusal:
-        # 401/403/404 are answers this asks for, so they must not look like a broken sweep.
         return refusal.code, refusal.headers, refusal.read()
     except urllib.error.URLError as unreachable:
         fail("the origin is unreachable", url + ": " + str(unreachable.reason))
@@ -100,7 +99,6 @@ def main(origin):
 
     print("checking " + origin)
 
-    # --- the headers the browser is told to obey ------------------------------------------
     status, headers, body = get(origin + "/")
     check("the origin serves the app shell", status == 200, "GET / answered " + str(status))
 
@@ -118,17 +116,10 @@ def main(origin):
         check(header + ": " + expected, headers.get(header) == expected,
               "served " + repr(headers.get(header)))
 
-    # Declined deliberately, and asserted absent by SecurityHeadersTest so that adding it is a
-    # deliberate act. It would break the reCAPTCHA frame, which carries no CORP header of its own.
     check("Cross-Origin-Embedder-Policy is still declined",
           headers.get("Cross-Origin-Embedder-Policy") is None,
           "served " + repr(headers.get("Cross-Origin-Embedder-Policy")) + ", which breaks the reCAPTCHA frame")
 
-    # --- the bundle the shell boots -------------------------------------------------------
-    # nginx serves these from disk now, and nothing in the repository knows what Vite emitted -
-    # Jest stubs fetch and Cypress runs against the dev server, which builds its own. A shell that
-    # references a hashed name the edge does not have is a blank page, and this is the only thing
-    # that would say so.
     shell = body.decode("utf-8", "replace")
     check("the shell has a mount point", '<div id="root">' in shell, "no #root in the served HTML")
     check("the shell carries no inline script",
@@ -143,7 +134,6 @@ def main(origin):
         check(asset + " is served", status == 200,
               "answered " + str(status) + " - the shell boots and the script behind it does not")
 
-    # --- the published contract -----------------------------------------------------------
     status, _, body = get(origin + "/v3/api-docs", accept="application/json")
     check("/v3/api-docs is public", status == 200, "answered " + str(status) + " to an anonymous caller")
     check("/v3/api-docs is an OpenAPI document", b'"openapi"' in body, "no openapi key in the body")
@@ -152,29 +142,15 @@ def main(origin):
     check("/api/v3/api-docs is not where the contract lives", status in (401, 403, 404),
           "answered " + str(status) + "; the prefix predicate has moved springdoc's route")
 
-    # --- the routes the client owns -------------------------------------------------------
     for route in routes:
         status, _, body = get(origin + route)
         check(route + " serves the SPA shell", status == 200 and b'<div id="root">' in body,
               "answered " + str(status) + " - try_files at the edge answers every path with the "
               "shell, so this failing means the edge is not serving the bundle at all")
 
-    # --- what an anonymous caller must not get --------------------------------------------
     status, _, _ = get(origin + "/api/columns")
     check("/api/columns refuses an anonymous caller", status in (401, 403), "answered " + str(status))
 
-    # The API app has internal ingress and the edge proxies /api, /ws and /v3/api-docs and nothing
-    # else, so actuator is not reachable from here at all. That is a claim worth asking about
-    # rather than a check lost in the split: it is the cheapest confirmation anybody has that the
-    # API container really is internal, and it fails loudly the day somebody proxies /actuator
-    # "just for a health check" or puts external ingress back on the API app.
-    #
-    # What it costs is the two checks that used to live here - that both probe groups answer, and
-    # that an anonymous caller gets no components (SEC-09). Both moved inside: Container Apps
-    # probes /actuator/health/readiness and /liveness on the API app directly, and a revision whose
-    # probes do not answer never becomes healthy, so a broken group is a deployment that does not
-    # happen rather than one this would have to notice. The show-details setting is asserted by
-    # HealthConfiguration's own tests.
     for hidden in ("/actuator/health", "/actuator/health/readiness", "/actuator/info"):
         status, _, _ = get(origin + hidden)
         check(hidden + " is not reachable from the public origin", status == 404,

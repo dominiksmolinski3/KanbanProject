@@ -43,16 +43,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * The three deletes that used to answer 500.
- *
- * <p>Each failed on a foreign key rather than in Java, so the assertion here is that the reference
- * is gone before the delete is issued — the mapping never cleared it, and the database was the only
- * thing that noticed. A migration-backed integration test would exercise the constraint itself;
- * this covers the service contract that has to hold either way.
- */
 class DeleteDetachesReferencesTest {
-
     private static final TenancyFixtures.Tenant TENANT = TenancyFixtures.tenant();
     private static final Board BOARD = TENANT.board();
     private static final User CALLER = TENANT.caller();
@@ -85,9 +76,6 @@ class DeleteDetachesReferencesTest {
             InOrder order = inOrder(taskRepository, rowRepository);
             order.verify(taskRepository).detachFromRow(row);
             order.verify(rowRepository).delete(row);
-            // One statement, not a versioned save per task: the saves are what made a row deleted
-            // alongside a column holding the same tasks answer 409. The loaded task is left alone,
-            // or Hibernate would write it back with the same version check at flush.
             verify(taskRepository, never()).save(any());
             assertThat(task.getRow()).isSameAs(row);
             assertThat(row.getTasks()).isEmpty();
@@ -133,8 +121,6 @@ class DeleteDetachesReferencesTest {
 
             columnService.deleteColumn(CALLER, 2);
 
-            // task_column_history.task_id is nullable = false, so the cascade on Column.tasks could
-            // never have done this on its own.
             InOrder order = inOrder(taskService, columnRepository);
             order.verify(taskService).deleteTask(CALLER, 7);
             order.verify(columnRepository).delete(column);
@@ -155,9 +141,6 @@ class DeleteDetachesReferencesTest {
             column.setTasks(new ArrayList<>(List.of(first, second)));
             when(columnRepository.findById(4)).thenReturn(Optional.of(column));
             when(historyRepository.findByColumn(column)).thenReturn(List.of());
-            // What the column still holds at the moment each task is deleted. Column.tasks
-            // cascades ALL, so a deleted task left in it is persisted again by the next query's
-            // flush - which made every column with two or more cards a 500.
             var heldDuringDeletes = new ArrayList<Integer>();
             org.mockito.Mockito.doAnswer(call -> {
                 heldDuringDeletes.add(column.getTasks().size());
@@ -180,8 +163,6 @@ class DeleteDetachesReferencesTest {
             column.setTasks(new ArrayList<>());
             when(columnRepository.findById(2)).thenReturn(Optional.of(column));
 
-            // Nothing is in the column right now - the task that once passed through it moved on to
-            // a different column - but the row from that visit still points here.
             TaskColumnHistory strandedEntry = new TaskColumnHistory();
             strandedEntry.setColumn(column);
             when(historyRepository.findByColumn(column)).thenReturn(List.of(strandedEntry));
@@ -197,7 +178,6 @@ class DeleteDetachesReferencesTest {
         @Test
         @DisplayName("puts the board's flow definition back on the default when it named this column")
         void forgetsTheFlowColumn() {
-            // A board of its own, since BOARD is shared across this class and this test changes it.
             var board = TenancyFixtures.board(78, CALLER);
             Column column = new Column();
             column.setId(3);
@@ -212,8 +192,6 @@ class DeleteDetachesReferencesTest {
 
             columnService.deleteColumn(CALLER, 3);
 
-            // V23's ON DELETE SET NULL covers the database; this covers a board already loaded in
-            // the same transaction, which would otherwise flush the deleted id straight back.
             assertThat(board.getFlowDoneColumn()).isNull();
             assertThat(board.getFlowStartColumn()).isSameAs(other);
         }
@@ -252,7 +230,6 @@ class DeleteDetachesReferencesTest {
 
             userService.deleteUser(5);
 
-            // Task owns user_task; nothing on the User side would have cleared it.
             assertThat(task.getUsers()).isEmpty();
             InOrder order = inOrder(taskRepository, userRepository);
             order.verify(taskRepository).save(task);

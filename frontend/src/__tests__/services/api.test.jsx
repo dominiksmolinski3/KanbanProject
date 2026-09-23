@@ -9,7 +9,6 @@ describe('API Services', () => {
     URL.createObjectURL.mockClear();
   });
 
-  // ====== COLUMN OPERATIONS TESTS ======
   describe('Column Operations', () => {
     test('fetchColumns should return columns when successful', async () => {
       const mockColumns = [
@@ -222,7 +221,6 @@ describe('API Services', () => {
 
   });
 
-  // ====== TASK OPERATIONS TESTS ======
   describe('Task Operations', () => {
     test('fetchTasks should return tasks when successful', async () => {
       const mockTasks = [
@@ -786,13 +784,11 @@ describe('API Services', () => {
 
       const summary = await api.getTaskColumnTimeSpentSummary(7);
 
-      // One call, to the history endpoint only — the column names come off the history rows.
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(fetch).toHaveBeenCalledWith('/api/tasks/7/column-history');
 
       const doing = summary.find(c => c.columnId === 2);
       expect(doing).toMatchObject({ columnName: 'Doing', totalTimeMs: 60 * 60 * 1000, formattedTime: '1h 0m' });
-      // "To Do" is entered twice: 2h before Doing, then from the last move until now.
       const todo = summary.find(c => c.columnId === 1);
       expect(todo.totalTimeMs).toBeGreaterThanOrEqual(2 * 60 * 60 * 1000);
     });
@@ -806,7 +802,6 @@ describe('API Services', () => {
 
   });
 
-  // ====== ROW OPERATIONS TESTS ======
   describe('Row Operations', () => {
     test('updateRowName should update row name', async () => {
       const mockRow = { id: 'row1', name: 'Updated Row' };
@@ -1148,7 +1143,6 @@ describe('API Services', () => {
 
   });
 
-  // ====== USER OPERATIONS TESTS ======
   describe('User Operations', () => {
     test('updateUserWipLimit should update user WIP limit', async () => {
       const mockUser = { id: '123', name: 'Test User', wipLimit: 5 };
@@ -1452,7 +1446,6 @@ describe('API Services', () => {
 
   });
 
-  // ====== SUBTASK OPERATIONS TESTS ======
   describe('SubTask Operations', () => {
     test('fetchSubTasksByTaskId should return subtasks for a task', async () => {
       const mockSubTasks = [
@@ -1657,7 +1650,6 @@ describe('API Services', () => {
 
   });
 
-  // ====== FILE OPERATIONS TESTS ======
   describe('Avatar Uploads', () => {
     test('uploadUserAvatar should use proper FormData with file contents', async () => {
       const file = new File(['avatar content'], 'avatar.png', { type: 'image/png' });
@@ -1681,7 +1673,6 @@ describe('API Services', () => {
     
   });
 
-  // Tests for multiple fetch handling
   describe('Multiple fetch scenarios', () => {
     test('fetch retries should work properly for maximum retries', async () => {
       fetch.mockResolvedValueOnce({

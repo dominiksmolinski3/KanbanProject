@@ -1,18 +1,8 @@
 locals {
   app_port = 8080
 
-  # The public edge. This is the app that holds the FQDN a browser types, which is why the ingress
-  # restrictions and the CORS origin below are computed from its name rather than the API app's.
   app_name = "kanban-web-${var.env}"
 
-  # Where nginx sends /api, /ws and /v3/api-docs. https, not http: a Container App with
-  # external_enabled = false still terminates TLS on its internal ingress and 301-redirects plain
-  # HTTP to https (verified against kanban-app-dev), which nginx would otherwise hand straight back
-  # to the browser as a hostname it can't resolve. The internal ingress cert carries
-  # `*.internal.<environment-domain>` and verifies against the stock CA bundle, so this authenticates
-  # the hop instead of declaring it insecure. Composed from the fixed name pattern rather than read
-  # from api_app's own output, so the two modules stay independent - `api_upstream_matches_api_app`
-  # in the root module asserts they still agree.
   api_upstream = "https://kanban-api-${var.env}.internal.${var.container_app_env_default_domain}"
 
   ghcr_credentials_configured = var.ghcr_token != ""
@@ -55,18 +45,11 @@ resource "azurerm_container_app" "main" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      # The one thing this container is configured with. nginx renders it into its server block at
-      # start through the stock entrypoint's envsubst, so the same image runs here and against
-      # http://app:8080 in docker-compose.
       env {
         name  = "API_UPSTREAM"
         value = local.api_upstream
       }
 
-      # nginx's own probe: a one-line `return 200` with no upstream behind it. The JVM's readiness
-      # and liveness groups stay on the API app and are probed there directly - an edge that
-      # reported itself unhealthy because the API was restarting would take the shell down with it,
-      # and the shell is what tells a person the API is restarting.
       startup_probe {
         transport               = "HTTP"
         port                    = local.app_port
@@ -99,8 +82,6 @@ resource "azurerm_container_app" "main" {
     min_replicas = 1
     max_replicas = var.max_replicas
 
-    # Tuned for page loads rather than API calls: a browser opening the board fetches the shell, the
-    # hashed bundle and a locale file, all of which nginx answers from disk in a few milliseconds.
     http_scale_rule {
       name                = "http-scale"
       concurrent_requests = "100"
@@ -112,7 +93,6 @@ resource "azurerm_container_app" "main" {
     target_port      = local.app_port
     transport        = "http"
 
-    # These guard the public edge, which is what this app now is and the API app no longer is.
     dynamic "ip_security_restriction" {
       for_each = toset(var.allowed_ingress_cidrs)
       content {
@@ -142,9 +122,6 @@ resource "azurerm_user_assigned_identity" "web" {
   resource_group_name = var.resource_group_name
 }
 
-# Scoped to the one secret, not the vault - the reason this is a second identity rather than reusing
-# the API app's. The edge needs only the token that pulls its own image; a vault-scoped grant would
-# let nginx read the Postgres password and JWT signing key too.
 resource "azurerm_role_assignment" "ghcr_token_reader" {
   count = local.ghcr_credentials_configured ? 1 : 0
 
@@ -153,9 +130,6 @@ resource "azurerm_role_assignment" "ghcr_token_reader" {
   principal_id         = azurerm_user_assigned_identity.web.principal_id
 }
 
-# Keyed on the assignment's id rather than ordered by depends_on, so the wait is recreated whenever
-# the grant is - see the same pattern in modules/api_app and modules/key_vault. `depends_on` on a
-# counted resource means "all instances", so this still orders correctly when the count is zero.
 resource "time_sleep" "wait_for_secrets_user" {
   triggers = {
     role_assignment_id = join(",", azurerm_role_assignment.ghcr_token_reader[*].id)

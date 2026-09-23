@@ -25,9 +25,6 @@ describe('Row Management', () => {
   it('allows deleting a row', () => {
     cy.createRow('Delete Me Row', 0);
     cy.wait(300);
-    // Deletion is confirmed through a react-toastify toast (Board.jsx's
-    // handleDeleteRowClick), not a native window.confirm() - the delete button alone only
-    // opens it, so the toast's own `.confirm-button` has to be clicked too.
     cy.contains('.grid-row-header', 'Delete Me Row').find('.delete-row-btn').click();
     cy.get('.confirm-button').click();
     cy.contains('.grid-row-header', 'Delete Me Row').should('not.exist');

@@ -13,23 +13,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Runs the real {@code redis/auth-rate-limit.lua} against a real Redis - the CI backend job runs one
- * as a service container, exactly as it already does for Postgres, and docker-compose's {@code
- * redis} service answers the same defaults locally (override with {@code REDIS_HOST}/{@code
- * REDIS_PORT} to point elsewhere). This is the behavioural half {@link AuthRateLimitScriptTest}
- * cannot provide on its own - the same division of labour {@code OutboxClaimQueryTest} draws against
- * the outbox claim's own native SQL, except here the whole suite runs on every build rather than
- * only having been checked by hand once, because a Redis service container costs nothing extra to
- * add.
- *
- * <p>"now" is still supplied by the test, exactly as {@link AuthRateLimiter} supplies it in
- * production - so these assertions read like {@code AuthRateLimiterTest}'s own, against real Redis
- * rather than {@link InMemoryEscalationStore}, and every cooldown here is proven without a test ever
- * sleeping.
- */
 class RedisEscalationStoreIntegrationTest {
-
     private static final EscalationStore.Limit CREDENTIALS_IP = new EscalationStore.Limit(
             4, Duration.ofSeconds(15).toMillis(), Duration.ofMinutes(5).toMillis(), Duration.ofMinutes(15).toMillis());
 
@@ -46,8 +30,6 @@ class RedisEscalationStoreIntegrationTest {
         connectionFactory = new JedisConnectionFactory(new RedisStandaloneConfiguration(host, port));
         connectionFactory.afterPropertiesSet();
         store = new RedisEscalationStore(new StringRedisTemplate(connectionFactory));
-        // A fresh key per test, and a large realistic epoch rather than a small one, so nothing
-        // here could accidentally pass by landing on the number line's uninteresting half.
         key = "test:auth-rate-limit:" + UUID.randomUUID();
         now = 1_700_000_000_000L;
     }
@@ -79,7 +61,6 @@ class RedisEscalationStoreIntegrationTest {
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(60);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(120);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(240);
-        // 480s would be next, but the ceiling here is five minutes.
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(300);
         assertThat(waitAfterSittingOutTheCooldown()).isEqualTo(300);
     }
@@ -131,8 +112,6 @@ class RedisEscalationStoreIntegrationTest {
             store.attempt(key, CREDENTIALS_IP, now);
         }
 
-        // Twenty minutes of trying once a minute - longer than the fifteen-minute window, but never
-        // fifteen quiet minutes, so the escalation stands rather than resetting under the traffic.
         for (int minute = 0; minute < 20; minute++) {
             now += Duration.ofMinutes(1).toMillis();
             store.attempt(key, CREDENTIALS_IP, now);
@@ -152,7 +131,6 @@ class RedisEscalationStoreIntegrationTest {
         assertThat(store.attempt(key + ":other", CREDENTIALS_IP, now).allowed()).isTrue();
     }
 
-    /** Takes the attempt the moment its cooldown expires, and answers the next wait in seconds. */
     private long waitAfterSittingOutTheCooldown() {
         AuthRateLimitDecision refused = store.attempt(key, CREDENTIALS_IP, now);
         assertThat(refused.allowed()).isFalse();

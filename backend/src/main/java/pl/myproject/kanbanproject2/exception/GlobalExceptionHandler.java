@@ -29,19 +29,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Counts a 409 caused by a stale {@code @Version}, one shared series across every entity rather
-     * than one per type - {@code TaskService}, {@code ColumnService} and {@code RowService} all land
-     * here, and the interesting question ("are conflicts common") does not need them told apart.
-     * There is no export pipeline to Log Analytics in this branch's scope, so this is read from
-     * {@code /actuator/metrics} rather than replacing an alert - there was never a KQL rule for this
-     * one, since a 409 never reached the 5xx alert to begin with.
-     */
     static final String OPTIMISTIC_LOCK_CONFLICTS_COUNTER = "kanban.task.optimistic_lock.conflicts";
 
     private final MeterRegistry meterRegistry;
 
-    /** Kept so the many {@code .setControllerAdvice(new GlobalExceptionHandler())} slice tests need no change. */
     public GlobalExceptionHandler() {
         this(new SimpleMeterRegistry());
     }
@@ -69,12 +60,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("VALIDATION_ERROR", message));
     }
 
-    /**
-     * Constraints declared on a handler parameter rather than a body object - the {@code @Email} on
-     * the resend route's query parameter is the only one today. These arrive from the
-     * {@code @Validated} proxy as a different type than {@link MethodArgumentNotValidException} and
-     * used to fall through to the catch-all.
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
         String message = ex.getConstraintViolations().stream()
@@ -86,12 +71,6 @@ public class GlobalExceptionHandler {
                         message.isEmpty() ? "The request is not valid" : message));
     }
 
-    /**
-     * A body the converter cannot read at all: not JSON, truncated, or the wrong shape for its
-     * field. The message is fixed rather than taken from the exception, since Jackson's own text
-     * names the target class, field and a source excerpt - details an unauthenticated caller
-     * shouldn't get about a record it has never seen.
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
         log.debug("Unreadable request body: {}", ex.getMostSpecificCause().getMessage());
@@ -108,10 +87,6 @@ public class GlobalExceptionHandler {
                         "Required parameter is missing: " + ex.getParameterName()));
     }
 
-    /**
-     * A path variable or query parameter that will not convert. The name is the word the client
-     * itself sent and is safe to echo back; the offending value is not repeated.
-     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity
@@ -136,10 +111,6 @@ public class GlobalExceptionHandler {
                         "This route does not accept that content type"));
     }
 
-    /**
-     * Nothing is mapped at the requested path - the SPA forward covers client routes, so this is an
-     * API path that doesn't exist, a 404 rather than the 500 the catch-all used to report.
-     */
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex) {
         return ResponseEntity
@@ -154,13 +125,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("NOT_FOUND", ex.getMessage()));
     }
 
-    /**
-     * A bearer token that will not parse or verify — expired, tampered, signed with a retired key.
-     * Without this handler these fell to {@link #handleGeneric}: a 500 at error level for the single
-     * most routine event in the system, a token hitting its fifteen-minute expiry. It's a 401 like
-     * any rejected credential, and the client renews and retries — the reason is not the caller's to
-     * know, so every JWT failure gets the same status and message.
-     */
     @ExceptionHandler(JwtException.class)
     public ResponseEntity<ErrorResponse> handleInvalidJwt(JwtException ex) {
         log.debug("Rejected a bearer token: {}", ex.getClass().getSimpleName());
@@ -189,11 +153,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("ACCESS_DENIED", "You do not have permission to perform this operation"));
     }
 
-    /**
-     * Two callers changed the same {@code @Version}-carrying row and the second one lost the race.
-     * Nothing is broken - the loser is holding a stale copy - so it is a 409 to reload and retry,
-     * not the 500 the catch-all would have logged and alerted on.
-     */
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex) {
         log.debug("Optimistic lock conflict: {}", ex.getMessage());
@@ -212,12 +171,6 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("BAD_REQUEST", ex.getMessage()));
     }
 
-    /**
-     * Last resort, and the reason the handlers above exist. Everything reaching this one is logged
-     * at {@code error} and answered 5xx, which is what an alert on the error rate fires on - so a
-     * request the client got wrong must never arrive here, or a client looping on bad input reads
-     * as a server outage.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         log.error("Unhandled exception", ex);

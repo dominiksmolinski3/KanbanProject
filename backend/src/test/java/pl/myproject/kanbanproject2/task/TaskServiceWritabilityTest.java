@@ -33,14 +33,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * FEAT-08's write check on the task side: every mutation entry point asks
- * {@code BoardService.requireWritable}, not just the visibility {@code findTask} already checked -
- * and a viewer, who can see the board, gets {@code VIEWER_READ_ONLY} (403) rather than a task
- * quietly not found. The read paths are deliberately not checked here; they need no write access.
- */
 class TaskServiceWritabilityTest {
-
     private TaskRepository taskRepository;
     private BoardService boardService;
     private TaskService taskService;
@@ -73,8 +66,6 @@ class TaskServiceWritabilityTest {
                 mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class),
                 mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
 
-        // A viewer can still see the board (findTask's own check), but every write asks
-        // requireWritable, which now refuses.
         doThrow(new GlobalException(ExceptionIdentifier.VIEWER_READ_ONLY))
                 .when(boardService).requireWritable(any(User.class), any(Board.class));
     }

@@ -6,8 +6,6 @@ import '../styles/components/LanguageSwitcher.css';
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation();
-  // Optional chaining rather than a destructure: nothing about a language control should
-  // throw when it is rendered without an auth context around it.
   const user = useAuth()?.user;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -30,14 +28,9 @@ function LanguageSwitcher() {
     i18n.changeLanguage(lng);
     setIsOpen(false);
 
-    // The switcher also sets the account's mail language: mail is composed by a route or a
-    // scheduler with no client to ask, so the account has to carry the answer, and this is where a
-    // person sets it. Signed out there is no account to say it to.
     if (!user?.id) {
       return;
     }
-    // Not awaited and not toasted: what was asked for has already happened on screen, and this is
-    // a preference for a message that has not been written yet.
     updateUserLocale(user.id, lng).catch((error) => {
       console.error('Could not store the account language', error);
     });

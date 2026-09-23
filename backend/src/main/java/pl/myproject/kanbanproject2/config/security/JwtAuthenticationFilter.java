@@ -84,22 +84,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    /*
-     * Delegates to the same patterns the filter chain permits with, rather than a hand-rolled list
-     * that had drifted (still testing `/auth/` after the `/api` prefix landed, and skipping any
-     * path merely *ending* in a static-asset extension, which let a task label like `build.js`
-     * bypass the filter entirely).
-     *
-     * "Public" answers whether a caller *must* present a token - a different question from whether
-     * this filter should *look* at one offered voluntarily. They coincide everywhere except
-     * `/actuator/health`, where `management.endpoint.health.show-details=when_authorized` reads the
-     * principal to decide whether to answer with details; skipping it there made `when_authorized`
-     * behave as `never` on every deployment; for example, the `mail` health indicator was never
-     * readable by anybody.
-     *
-     * Container probes are unaffected: they carry no Authorization header, so they take the
-     * `authHeader == null` branch below and never reach token parsing.
-     */
     private boolean shouldSkipFilter(String requestPath, String method) {
         if ("OPTIONS".equals(method)) {
             return true;
@@ -107,11 +91,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return PublicPaths.isPublic(requestPath) && !wantsAnIdentityWhenOffered(requestPath);
     }
 
-    /**
-     * Public paths that still read the principal when a caller presents one - deliberately the
-     * actuator endpoints and nothing else, or a stale token on {@code /api/auth/login} would fail
-     * parsing and answer 401 to somebody trying to sign in again.
-     */
     private boolean wantsAnIdentityWhenOffered(String requestPath) {
         return requestPath.startsWith("/actuator/");
     }

@@ -4,14 +4,6 @@ import { useKanban } from '../context/KanbanContext';
 import { fetchActivity } from '../services/activityApi';
 import '../styles/components/ActivityFeed.css';
 
-/**
- * What has happened on this board, newest first — the question `TaskColumnHistory` never answered,
- * since it recorded moves only and never who made them.
- *
- * <p>Sentences are built here, not on the server: the API returns a type name and a detail string,
- * and the wording is a translation key, because a feed composed in Java would be a screen the
- * other eight languages cannot translate.
- */
 function ActivityFeed() {
   const { activeBoardId } = useKanban();
   const { t } = useTranslation();
@@ -44,8 +36,6 @@ function ActivityFeed() {
     load();
   }, [load]);
 
-  // Switching boards resets to the first page. A page number that survives the switch points into
-  // a different feed of a different length, which is the single most common bug in a paged list.
   useEffect(() => {
     setPage(0);
   }, [activeBoardId]);

@@ -1,28 +1,15 @@
 locals {
   app_port = 8080
 
-  # An optional secret (a variable defaulting to "") must be switched off in three places together:
-  # no Key Vault secret created, no container-app `secret` block, no `env` referencing it. Key Vault
-  # accepts an empty secret value, but Container Apps then fails to resolve it and the revision never
-  # provisions - so "blank is safe" is true of the app but false of the deployment.
   ghcr_credentials_configured = var.ghcr_token != ""
   acs_mail_configured         = var.acs_email_connection_string != ""
   delivery_reports_configured = var.mail_delivery_report_key != ""
   captcha_secret_configured   = var.captcha_secret != ""
 
-  # Internal ingress only, reachable at <app-name>.internal.<environment-default-domain> - a fixed
-  # pattern so the web module can compose the same string without depending on this module's
-  # resources.
   app_name = "kanban-api-${var.env}"
 
-  # Vite marks its module scripts/stylesheets `crossorigin`, so the browser sends an Origin header
-  # even on a same-origin request - and nginx forwards it unchanged, so what Spring's CORS filter
-  # sees is the *web* app's FQDN, not this one's. Getting it wrong is a silent 403 on every API call,
-  # not a 500.
   browser_origin = "https://${var.web_app_name}.${var.container_app_env_default_domain}"
 
-  # Setting this always, rather than only when extra_cors_origins is non-empty, is what keeps
-  # every environment's own origin covered without anyone having to remember to.
   cors_allowed_origins = join(",", concat([local.browser_origin], var.extra_cors_origins))
 }
 
@@ -40,8 +27,6 @@ resource "azurerm_container_app" "main" {
     azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.mail_delivery_report_key,
     azurerm_key_vault_secret.captcha_secret,
-    # `depends_on` on a counted resource is legal and means "all instances", so these still order
-    # correctly when the count is zero - there is simply nothing to wait for.
     azurerm_key_vault_secret.ghcr_token,
   ]
 
@@ -105,13 +90,6 @@ resource "azurerm_container_app" "main" {
     }
   }
 
-  # Last, not next to redis-access-key above: an azurerm_container_app's secret blocks are matched
-  # positionally, so an insertion anywhere but the tail shifts every later block's index and turns a
-  # pure addition into a replace-in-place of every secret after it. Harmless in the end state - same
-  # Key Vault references, same values - but a needlessly noisy plan for what is one new secret.
-  # Not in Key Vault: with local authentication disabled it is an address, not a credential, and
-  # a vault secret would be a second place for Terraform to write the same value. A container-app
-  # secret still keeps it out of the revision's plain environment listing.
   secret {
     name  = "app-insights-connection-string"
     value = var.app_insights_connection_string
@@ -135,10 +113,8 @@ resource "azurerm_container_app" "main" {
 
   template {
     container {
-      name  = "kanban-api"
-      image = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
-      # Doubled with the container split - the cheapest item on the front-door scaling document's
-      # list. MaxRAMPercentage=60 in the Dockerfile keeps the heap following this limit automatically.
+      name   = "kanban-api"
+      image  = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
       cpu    = 0.5
       memory = "1Gi"
 
@@ -158,8 +134,6 @@ resource "azurerm_container_app" "main" {
         name        = "JWT_SECRET_KEY"
         secret_name = "jwt-secret-key"
       }
-      # Absent rather than empty, which the application already reads the same way: a blank
-      # ACS_EMAIL_CONNECTION_STRING and an unset one both select DisabledEmailSender.
       dynamic "env" {
         for_each = local.acs_mail_configured ? [1] : []
         content {
@@ -171,8 +145,6 @@ resource "azurerm_container_app" "main" {
         name  = "ACS_EMAIL_SENDER_ADDRESS"
         value = var.acs_email_sender_address
       }
-      # Unset leaves app.mail.delivery-report-key blank, which is what makes the webhook answer
-      # 404 to everything - the state every fresh clone and CI run is already in.
       dynamic "env" {
         for_each = local.delivery_reports_configured ? [1] : []
         content {
@@ -184,8 +156,6 @@ resource "azurerm_container_app" "main" {
         name  = "CAPTCHA_ENABLED"
         value = tostring(var.captcha_enabled)
       }
-      # CAPTCHA_ENABLED above is what decides whether the check runs; with it off the secret is
-      # not read, and CaptchaVerifier refuses to start enabled with no secret either way.
       dynamic "env" {
         for_each = local.captcha_secret_configured ? [1] : []
         content {
@@ -197,9 +167,6 @@ resource "azurerm_container_app" "main" {
         name  = "SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT"
         value = tostring(var.ingress_trusted_proxy_count)
       }
-      # AuthRateLimiter's escalation - see modules/redis. SSL is not conditional: Managed Redis's
-      # default_database is Encrypted-only here, unlike attachment storage's
-      # connection-string/managed-identity fork, which exists only for local Azurite.
       env {
         name  = "SECURITY_RATE_LIMIT_REDIS_HOST"
         value = var.redis_hostname
@@ -220,9 +187,6 @@ resource "azurerm_container_app" "main" {
         name  = "SECURITY_CORS_ALLOWED_ORIGINS"
         value = local.cors_allowed_origins
       }
-      # Task attachments. Neither value is a secret, so neither goes through Key Vault - what
-      # authorises the app is the role assignment below, held by the identity it already runs as.
-      # There is no storage key anywhere in this deployment.
       env {
         name  = "AZURE_STORAGE_BLOB_ENDPOINT"
         value = var.storage_blob_endpoint
@@ -231,20 +195,10 @@ resource "azurerm_container_app" "main" {
         name  = "AZURE_STORAGE_IDENTITY_CLIENT_ID"
         value = azurerm_user_assigned_identity.main.client_id
       }
-      # TaskAttachmentService divides app.storage.max-concurrent-transfers by this so the configured
-      # number stays a fleet-wide ceiling rather than becoming that value times the replica count.
-      # var.max_replicas, not the live replica count - nothing here can read the latter, and dividing
-      # by the ceiling is the conservative direction to be wrong in.
       env {
         name  = "ATTACHMENT_REPLICA_COUNT_HINT"
         value = tostring(var.max_replicas)
       }
-      # WebSocketConfig's broker relay - see modules/broker. Reached by app name, not an internal
-      # FQDN: TCP ingress within one Container Apps environment resolves other apps by name and
-      # exposed port directly, with no Host-header routing to get wrong the way the edge's proxy to
-      # this app itself had to learn. Last, not next to the other backing-service env blocks above:
-      # positional block matching means an insertion anywhere but the tail turns a pure addition
-      # into a replace-in-place of every env block after it - see the same note on the secret block.
       env {
         name  = "STOMP_RELAY_HOST"
         value = var.broker_app_name
@@ -261,31 +215,16 @@ resource "azurerm_container_app" "main" {
         name        = "STOMP_RELAY_PASSWORD"
         secret_name = "rabbitmq-password"
       }
-      # ECS JSON rather than prose, so Log Analytics gets fields - RequestIdFilter's requestId
-      # among them, which is what joins a line here to the nginx line carrying the same rid= on the
-      # web app's stream. Appended rather than inserted: env blocks match positionally, so anything
-      # but the tail turns an addition into a replace-in-place of every block after it.
       env {
         name  = "LOG_FORMAT"
         value = "ecs"
       }
 
-      # The connection pool, sized fleet-wide for the same reason the attachment semaphore is: what
-      # runs out is on the Postgres server, so a per-replica limit is that limit times the replica
-      # count. Divided by var.max_replicas - the ceiling, not the live count, which nothing here
-      # can read - so the number the server sees is the budget whatever the autoscaler is doing.
-      # Hikari's own default is 10 per replica *and* holds all ten idle, which at five replicas is
-      # fifty against a B1ms that has forty usable. Appended rather than inserted, for the reason
-      # the STOMP blocks above give: env blocks match positionally.
       env {
         name  = "DB_MAX_POOL_SIZE"
         value = tostring(max(1, floor(var.db_connection_budget / var.max_replicas)))
       }
 
-      # The Application Insights agent reads these two itself; the backend image attaches it only
-      # when the first is set, so an environment without them runs no agent at all. The second
-      # names the identity the agent signs its ingestion with, which is required: the resource
-      # refuses key-only ingestion. Appended, for the positional reason above.
       env {
         name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
         secret_name = "app-insights-connection-string"
@@ -336,11 +275,6 @@ resource "azurerm_container_app" "main" {
   }
 
 
-  # Internal: nothing outside the Managed Environment can reach Spring, which is why the
-  # ip_security_restriction blocks moved to the web module - there is no public ingress left here to
-  # restrict. `transport = "http"` describes the container's own port, not the wire: the internal
-  # ingress terminates TLS regardless and answers plain HTTP with a 301, which is why the edge speaks
-  # https to it rather than carrying allow_insecure_connections.
   ingress {
     external_enabled = false
     target_port      = local.app_port
@@ -359,11 +293,7 @@ resource "azurerm_container_app" "main" {
 }
 
 resource "azurerm_user_assigned_identity" "main" {
-  tags = var.tags
-  # Deliberately not renamed with the app. Renaming a user-assigned identity destroys and recreates
-  # it, which means a new principal id, new role assignments against Key Vault and the storage
-  # account, and another wait on RBAC propagation - all to change a string nothing reads. The edge
-  # gets its own identity under its own name; this one keeps the name its grants were made to.
+  tags                = var.tags
   name                = "kanban-app-identity-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -375,10 +305,6 @@ resource "azurerm_role_assignment" "key_vault_secrets_user" {
   principal_id         = azurerm_user_assigned_identity.main.principal_id
 }
 
-# Keyed on the assignment's id rather than ordered by `depends_on`, so the wait is recreated
-# whenever the grant is. See the note on the same pattern in modules/key_vault: `depends_on` waited
-# on the first apply and silently stopped waiting on every one after it, which is the opposite of
-# what this is for - a replaced assignment is a brand-new grant with no propagation behind it.
 resource "time_sleep" "wait_for_secrets_user" {
   triggers = {
     role_assignment_id = azurerm_role_assignment.key_vault_secrets_user.id
@@ -386,14 +312,6 @@ resource "time_sleep" "wait_for_secrets_user" {
   create_duration = var.rbac_propagation_delay
 }
 
-# Read/write the attachment blobs, and create the container the app puts them in on first start.
-# Contributor rather than the narrower Storage Blob Data Reader/Writer pair because creating a
-# container is a container-level operation Writer doesn't grant - and it's the only path in, since
-# shared_access_key_enabled is false and there is no account key to build a connection string from.
-# Lets the agent's ingestion, signed as this identity, into the Application Insights resource. No
-# propagation wait in front of the container app, unlike the two grants here that gate startup: an
-# export refused while the grant propagates is retried by the agent and costs a minute of metrics,
-# never a revision that fails to start.
 resource "azurerm_role_assignment" "monitoring_metrics_publisher" {
   scope                = var.app_insights_id
   role_definition_name = "Monitoring Metrics Publisher"
@@ -413,10 +331,6 @@ resource "time_sleep" "wait_for_blob_contributor" {
   create_duration = var.rbac_propagation_delay
 }
 
-# Generated randomly so nothing outside the app needs to know it - the same pattern the postgres
-# module uses for its admin password. Stored base64-encoded because JwtService.getSignInKey calls
-# Decoders.BASE64.decode() then Keys.hmacShaKeyFor(), which throws under 32 decoded bytes; 64 random
-# characters clears that.
 resource "random_password" "jwt_secret_key" {
   length  = 64
   special = false
@@ -429,18 +343,12 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   content_type = "base64 HMAC signing key"
   key_vault_id = var.key_vault_id
 
-  # Rotating the JWT key signs out every user, so it is done deliberately and
-  # out-of-band (`az keyvault secret set`). Without this, the next apply would
-  # silently revert it and sign everyone out a second time.
   lifecycle {
+    # The JWT key is rotated out-of-band; without this an apply reverts it and signs everyone out.
     ignore_changes = [value]
   }
 }
 
-# The connection string is issued by Azure Communication Services, so it cannot be generated - it
-# comes in as a variable and sits in tfvars and state in plaintext, the same deliberate acceptance
-# as captcha_secret (see terraform/README.md, Secrets). Empty is allowed: the app reads a blank
-# ACS_EMAIL_CONNECTION_STRING as "mail off" rather than failing to boot.
 resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   count = local.acs_mail_configured ? 1 : 0
 
@@ -451,10 +359,6 @@ resource "azurerm_key_vault_secret" "acs_email_connection_string" {
   key_vault_id = var.key_vault_id
 }
 
-# The key in the delivery-report webhook's URL. Empty by default everywhere: with no key the webhook
-# answers 404 to everything and no Event Grid subscription is created either, so this write path
-# doesn't exist unless deliberately switched on. Stored as a secret, not a plain env value, because
-# it's a credential worth keeping out of the container template.
 resource "azurerm_key_vault_secret" "mail_delivery_report_key" {
   count = local.delivery_reports_configured ? 1 : 0
 

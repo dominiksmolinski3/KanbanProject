@@ -18,15 +18,7 @@ import java.util.TreeSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Fails the build if a controller binds a JPA entity straight off the wire. Lombok puts a public
- * setter on every entity id, so an entity request body lets a create call carry a primary key -
- * {@code save} then merges instead of inserting, overwriting whatever record holds that key. A scan
- * rather than a review note because the shape only shows up at runtime and the frontend never sends
- * an id, so no existing test would go red.
- */
 class RequestBodyBindingTest {
-
     private static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
     @Test
@@ -58,7 +50,6 @@ class RequestBodyBindingTest {
                 .isEmpty();
     }
 
-    /** Walks generic arguments too, so a {@code List<Task>} body is caught as readily as a {@code Task}. */
     private static Set<Class<?>> entitiesIn(Type type) {
         Set<Class<?>> found = new java.util.LinkedHashSet<>();
         if (type instanceof Class<?> raw) {

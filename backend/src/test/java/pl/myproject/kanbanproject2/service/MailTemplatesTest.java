@@ -14,15 +14,7 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * What is worth pinning about a template is not its wording, but four things: both bodies exist and
- * say the same thing (the plain part is the one nobody looks at, so the one that silently goes
- * missing); the code to read out is in both; a user-supplied value can't close a tag; and, with the
- * bundles, every message renders in every locale - nine languages times four messages is where a
- * missing key or mis-quoted apostrophe lives, invisible to the compiler.
- */
 class MailTemplatesTest {
-
     private static final Locale EN = Locale.ENGLISH;
     private static final LocalDateTime DEADLINE = LocalDateTime.of(2026, 1, 1, 9, 0);
 
@@ -82,11 +74,6 @@ class MailTemplatesTest {
             assertThat(message.textBody()).contains("Delivery").contains("Ada").doesNotContain("<");
         }
 
-        /**
-         * The one branch in this message: an address with no account is told to create one, an
-         * address with an account is told to sign in - getting this backwards mails somebody
-         * instructions they cannot follow, with nothing else looking wrong.
-         */
         @Test
         @DisplayName("an address with no account is told to sign up, not to sign in")
         void anUnregisteredInviteeIsToldToSignUp() {
@@ -134,8 +121,6 @@ class MailTemplatesTest {
                     .contains("&lt;script&gt;")
                     .contains("&quot;")
                     .contains("Q &amp; A");
-            // The plain part is not markup, so it needs no escaping - and escaping it there would
-            // show the entities to the reader.
             assertThat(message.textBody()).contains(title).contains("Q & A");
         }
 
@@ -167,12 +152,6 @@ class MailTemplatesTest {
             return List.copyOf(SupportedLocales.sorted());
         }
 
-        /**
-         * The one that earns its keep: Spring runs a message through {@code MessageFormat} only
-         * when handed arguments, so a lone apostrophe in a translated string with a {@code {0}}
-         * quotes the rest of the pattern and the placeholder survives verbatim - the bundle parses,
-         * the build passes, and one language mails "{0}" at people.
-         */
         @ParameterizedTest(name = "{0}")
         @MethodSource("tags")
         @DisplayName("every message substitutes every argument")
@@ -235,10 +214,6 @@ class MailTemplatesTest {
                     .contains("dir=\"ltr\"");
         }
 
-        /**
-         * A language with no bundle falls back to the base (English) file rather than the JVM's own
-         * locale, which is what {@code fallbackToSystemLocale} left on would have meant.
-         */
         @Test
         @DisplayName("a language with no bundle falls back to English rather than to the server's locale")
         void anUnknownLanguageFallsBackToTheBaseBundle() {

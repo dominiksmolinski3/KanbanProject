@@ -19,11 +19,6 @@ public class ColumnController {
         this.columnService = columnService;
     }
 
-    /**
-     * {@code boardId} is optional and means "the board I work on" when it is left out, which is
-     * what keeps the client that predates boards working unchanged. Every route that already names
-     * an object takes the board from the object instead.
-     */
     @GetMapping
     public ResponseEntity<List<ColumnDto>> getAllColumns(
             @RequestParam(required = false) Integer boardId,
@@ -68,7 +63,6 @@ public class ColumnController {
         return ResponseEntity.ok(columnService.updateColumnPosition(currentUser, id, position));
     }
 
-    /** The whole left-to-right order in one transaction. See {@code TaskController.reorderTasks}. */
     @PatchMapping("/positions")
     public ResponseEntity<List<ColumnDto>> reorderColumns(
             @Valid @RequestBody ReorderColumnsRequest request,

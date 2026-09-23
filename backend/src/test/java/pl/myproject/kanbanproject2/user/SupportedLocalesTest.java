@@ -10,18 +10,7 @@ import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The rules a language tag has to survive between a browser saying it and a column holding it.
- *
- * <p>Two of them are worth stating rather than reading off the code. A tag arrives in whatever
- * shape its sender felt like - {@code pl}, {@code pl-PL}, {@code PL}, or {@code pl_PL} through
- * anything that has been round-tripped by a Java {@code Locale} - and all four name Polish. And
- * only the language survives: nine bundles with no regional variants between them means
- * {@code de-AT} and {@code de-DE} select the same messages, so a column keeping the distinction
- * would be a column inviting somebody to believe it was honoured.
- */
 class SupportedLocalesTest {
-
     @Nested
     @DisplayName("reading a tag")
     class Reading {

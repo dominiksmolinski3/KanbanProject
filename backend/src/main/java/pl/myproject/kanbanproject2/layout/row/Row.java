@@ -23,7 +23,6 @@ public class Row {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
-    /** Optimistic lock; see {@link pl.myproject.kanbanproject2.task.Task#getVersion()}. */
     @Version
     private Integer version;
     @Column(name = "name")
@@ -31,11 +30,9 @@ public class Row {
     private Integer position;
     @Column(name = "wip_limit")
     private Integer wipLimit;
-    /** The board this swimlane belongs to. See {@link pl.myproject.kanbanproject2.board.Board}. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
-    /** Batched alongside {@link pl.myproject.kanbanproject2.layout.column.Column#tasks}. */
     @OneToMany(mappedBy = "row", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @BatchSize(size = 50)
     List<Task> tasks;

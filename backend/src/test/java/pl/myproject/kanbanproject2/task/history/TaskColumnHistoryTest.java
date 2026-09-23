@@ -9,13 +9,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The record of a card moving between stages, and the shape it reaches a client in. Worth pinning
- * because the entity copies the column's name at the moment of the move rather than reading it
- * through the association — a renamed or deleted stage would otherwise rewrite or erase history.
- */
 class TaskColumnHistoryTest {
-
     private static Column column(int id, String name) {
         var column = new Column();
         column.setId(id);
@@ -49,8 +43,6 @@ class TaskColumnHistoryTest {
 
         stage.setName("In Progress");
 
-        // The card moved into a stage called "Doing"; that it is called something else now is a
-        // fact about the board today, not about the move.
         assertThat(entry.getColumnName()).isEqualTo("Doing");
     }
 
@@ -84,8 +76,6 @@ class TaskColumnHistoryTest {
     @DisplayName("an entry whose column was deleted maps with no column id instead of throwing")
     void aDetachedEntryStillMaps() {
         var entry = new TaskColumnHistory(task(1, "Write the migration"), column(2, "Doing"));
-        // What ColumnService.deleteColumn leaves behind since V17: the row, its copied name, and no
-        // column. The mapper dereferenced it, so the task's whole history answered 500.
         entry.setColumn(null);
 
         var dto = new TaskColumnHistoryMapper().toDTO(entry);
@@ -101,8 +91,6 @@ class TaskColumnHistoryTest {
         var one = new TaskColumnHistoryDto(1, 2, "Write the migration", 3, "Doing", moved);
         var other = new TaskColumnHistoryDto(1, 2, "Write the migration", 3, "Doing", moved);
 
-        // A Lombok @Data record of a value, so this is the generated contract rather than a
-        // decision - but a client that de-duplicates a feed depends on it holding.
         assertThat(one).isEqualTo(other).hasSameHashCodeAs(other);
         assertThat(one.toString()).contains("Doing");
     }

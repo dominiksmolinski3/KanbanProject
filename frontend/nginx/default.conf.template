@@ -1,76 +1,20 @@
-# The edge. It serves the bundle from disk and proxies everything the API owns.
-#
-# Rendered at container start by the stock nginx entrypoint, which runs envsubst over
-# /etc/nginx/templates/*.template. Only ${API_UPSTREAM} and ${NGINX_LOCAL_RESOLVERS} are
-# substituted - nginx's own variables are written without braces and envsubst leaves them alone.
-
-# ---------------------------------------------------------------------------------------------
-# One identifier per request, shared by both containers' logs.
-#
-# Since the split there are two log streams and, until this, nothing joining them: a 502 recorded
-# here could not be matched to the API line for the same request, which is exactly the class of bug
-# the split has already produced twice - the SNI reset and the wrong Host. Both were diagnosed by
-# hand-built curl against the real origin, because the logs could not answer it.
-#
-# This block is at http level rather than inside `server`, which it can be because the stock
-# entrypoint renders templates into /etc/nginx/conf.d - a directory nginx.conf includes from http.
-# `map` and `log_format` are not valid in a server block and nginx would refuse to start.
-#
-# An inbound id is honoured only if it looks like one. $http_x_request_id reaches this from
-# whatever sent the request, and it ends up in every log line for that request: unbounded, it is a
-# log entry of the client's choosing. The pattern bounds the length and the alphabet, and anything
-# else is replaced by nginx's own $request_id (32 hex characters, per request). Trusting it at all
-# is deliberate - it is what lets a load test or a future client correlate its own request with
-# both halves of this deployment - and trusting it unchecked is what the regex refuses.
-#
-# It is passed upstream with proxy_set_header on every location that proxies, where RequestIdFilter
-# reads it into the MDC - so the edge's line and every application line for one request carry one
-# id. It is deliberately *not* echoed to the browser from here: add_header does not inherit into a
-# location that sets one of its own, so an edge-side echo would mean including the security-headers
-# snippet in each proxying location and overriding what Spring already sends on those responses.
-# The application echoes it on its own responses instead, which is the half a person reporting a
-# failure can read off.
 map $http_x_request_id $edge_request_id {
     "~^[A-Za-z0-9_-]{8,64}$" $http_x_request_id;
     default                  $request_id;
 }
 
-# The stock image already defines `main` and nginx refuses a duplicate log_format, so this is its
-# own name. rid= is the join key; the upstream fields are here because the whole point is telling
-# "the API answered 500" from "the API never answered".
 log_format edge '$remote_addr - $remote_user [$time_local] "$request" $status '
                 '$body_bytes_sent "$http_referer" "$http_user_agent" '
                 'rid=$edge_request_id upstream_status=$upstream_status '
                 'request_time=$request_time upstream_time=$upstream_response_time';
 
-# ---------------------------------------------------------------------------------------------
-# How fast one client may ask. Until this nothing but the auth routes had a limit: one signed-in
-# account from one machine drove the API container to four cores at 214 requests a second, and
-# 3 000 requests with no token at all pinned it at 100% doing nothing but refusing them. The edge is
-# where the second kind has to stop - before a JVM parses a single header - and the API's own
-# per-account limit (ApiRateLimiter, in Redis) is where the first kind does, since an account can
-# move between addresses and an office shares one.
-#
-# Keyed on the client's address as the Container Apps ingress saw it: the *last* entry of
-# X-Forwarded-For, which the ingress appends. The first entry is whatever the client wrote there
-# itself, so keying on it would let anybody pick a fresh bucket per request. With no header at all -
-# the compose stack, which has no ingress - it is the socket address.
-#
-# These zones live in each nginx process, so at web_max_replicas = 5 the edge's limit is five times
-# what it says. That is the known cost of a limit at this layer; the per-account limit behind it is
-# fleet-wide, and this one exists to be cheap rather than exact.
 map $http_x_forwarded_for $edge_client {
     "~(?:^|,)\s*(?<last_hop>[^,\s]+)\s*$" $last_hop;
     default                                 $remote_addr;
 }
 
-# The API: comfortably above the per-account 20/s the application enforces, so that limit is the one
-# a signed-in person meets and this one only ever meets floods and a busy shared address.
 limit_req_zone $edge_client zone=edge_api:10m rate=50r/s;
-# The socket: a SockJS session is a handful of requests, and a reconnect loop is the thing to stop.
 limit_req_zone $edge_client zone=edge_ws:10m rate=5r/s;
-# The shell. Served from disk and cheap, but every copy is egress, and /board was the route asked
-# about. /assets/ is left out: the files are immutable and a browser fetches each once.
 limit_req_zone $edge_client zone=edge_shell:10m rate=20r/s;
 
 server {
@@ -80,73 +24,21 @@ server {
 
     root /usr/share/nginx/html;
 
-    # /var/log/nginx/access.log is a symlink to /dev/stdout in this image, which is what Container
-    # Apps and `docker compose logs` collect.
     access_log /var/log/nginx/access.log edge;
 
-    # Resolve the upstream per request rather than once at worker start.
-    #
-    # nginx caches a literal proxy_pass target forever, and Container Apps hands the API app a new
-    # address whenever its service is recreated. The symptom of getting this wrong is a web tier
-    # that works until the first API deploy and then 502s until something restarts it - which looks
-    # exactly like a broken API. A variable in proxy_pass forces the lookup through this resolver.
-    #
-    # The address is read out of the container's own /etc/resolv.conf rather than written down:
-    # NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 in the Dockerfile makes the stock entrypoint export
-    # NGINX_LOCAL_RESOLVERS before envsubst runs. Writing it down was the original plan and the
-    # plan's guess was wrong - 168.63.129.16 is Azure's platform DNS and is right in a VM, while
-    # a Container App says `nameserver 127.0.0.11` (measured on kanban-app-dev, 15 Sep 2026;
-    # search k8se-apps.svc.cluster.local). Docker's embedded DNS is the same address, so both
-    # environments happen to agree - which is exactly the coincidence that would have hidden a
-    # wrong constant until the first deploy. An empty resolv.conf leaves this directive malformed
-    # and nginx refuses to start, which is the loud failure rather than the silent one.
     resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
 
-    # No URI part, so nginx passes the original request URI through unchanged. Adding one - even a
-    # bare trailing slash - would make nginx rewrite the path and every /api route would 404.
+    # A variable so the upstream is re-resolved; proxy_pass must carry no URI part, or nginx rewrites every path.
     set $api_upstream ${API_UPSTREAM};
 
-    # Send SNI, and check the certificate that comes back.
-    #
-    # Both of these default to OFF in nginx, and both defaults are wrong here. In the deployment
-    # API_UPSTREAM is https://kanban-api-<env>.internal.<env-domain>, and the Container Apps ingress
-    # routes by SNI - so without proxy_ssl_server_name nginx opens TLS to the ingress IP naming
-    # nobody, envoy has no way to tell which app the connection is for, and it resets the handshake.
-    # That is a 502 on every API call with a perfectly healthy API container behind it, which is
-    # what the first apply of the split produced:
-    #
-    #   peer closed connection in SSL handshake (104: Connection reset by peer)
-    #   while SSL handshaking to upstream, upstream: "https://100.100.0.208:443/api/columns"
-    #
-    # proxy_ssl_verify is the other half and is not optional either: encrypting a hop without
-    # authenticating the peer is the same mistake as sslmode=require on Postgres, which this
-    # deployment rejected in favour of verify-full for exactly this reason. The trust anchor is the
-    # image's own CA bundle - the internal ingress presents a certificate carrying
-    # *.internal.<env-domain>, issued by "Microsoft TLS G2 RSA CA", which is already in it.
-    #
-    # proxy_ssl_name defaults to $proxy_host, which is the host out of $api_upstream and is what we
-    # want; it is written out because a reader should not have to know that default to see that the
-    # name being asserted is the name we resolved.
-    #
-    # None of this is exercised by docker-compose, where API_UPSTREAM is http://app:8080 and these
-    # four directives are inert. The local stack and the deployment differ in exactly one thing -
-    # the upstream scheme - and that one thing is what broke. EdgeUpstreamTest is the guard,
-    # because no stack anybody runs locally can be.
+    # Both default off: the internal ingress routes by SNI, and verify is what authenticates the hop.
     proxy_ssl_server_name         on;
     proxy_ssl_name                $proxy_host;
     proxy_ssl_verify              on;
     proxy_ssl_verify_depth        3;
     proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
 
-    # The web tier's own probe. The JVM's readiness and liveness groups stay on the API app and are
-    # probed there directly; nothing about a healthy nginx says anything about them.
-    # One answer for every refusal below: the application's own error shape, so the client's error
-    # handling reads it like any other 429, and the security headers, since this response is
-    # generated here rather than by Spring. Retry-After is one second, the whole-second rounding the
-    # application's own limiters use; nginx has no per-request figure to offer.
     limit_req_status    429;
-    # Below error_log's default level, so a refusal is not logged twice: the access log already has
-    # a line with status=429 for it, and under a flood a second one per request is billed volume.
     limit_req_log_level info;
     error_page 429 = @rate_limited;
 
@@ -164,34 +56,22 @@ server {
     }
 
     location /api/ {
-        # nodelay: a burst is answered at once rather than queued, since a queued request is a held
-        # connection and holding connections is what a flood wants.
         limit_req zone=edge_api burst=200 nodelay;
         proxy_pass $api_upstream;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
         proxy_set_header X-Request-Id      $edge_request_id;
-        # Appends to the header the ingress already set. $remote_addr would replace it, collapsing
-        # two hops into one and breaking ClientIpResolver from the other direction - see
-        # ingress_trusted_proxy_count, which has to be 2 now that nginx is the second proxy.
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_http_version 1.1;
 
-        # An attachment is capped at 10 MB by the application and nginx defaults to 1 MB. Without
-        # this, every upload over 1 MB is a 413 generated at the edge: TaskAttachmentService never
-        # runs and nothing appears in the application log.
         client_max_body_size    12m;
 
-        # The attachment design's central claim is that nothing on either path holds a file.
-        # Buffering re-introduces exactly that here, and silently defeats the Range/206 resume the
-        # client was taught to send.
         proxy_request_buffering off;
         proxy_buffering         off;
         proxy_read_timeout      300s;
     }
 
-    # STOMP over SockJS. Not under /api: the destinations are resolved by the broker, not by MVC.
     location /ws/ {
         limit_req zone=edge_ws burst=30 nodelay;
         proxy_pass $api_upstream;
@@ -204,18 +84,9 @@ server {
         proxy_set_header Upgrade           $http_upgrade;
         proxy_set_header Connection        "upgrade";
         proxy_buffering    off;
-        # SockJS heartbeats every 25s, but its xhr-streaming fallback holds one response open far
-        # longer than the 60s default.
         proxy_read_timeout 3600s;
     }
 
-    # The published contract, and the one non-/api path the API app still owns from the outside.
-    #
-    # It is public because publishing it is the point - a generator or somebody wiring up a client
-    # reads it before they have an account - so an edge that did not proxy it would leave the
-    # contract published at an address only the inside of the VNet can reach. /actuator is the
-    # deliberate opposite: it is not proxied, Container Apps probes it on the API app directly, and
-    # the deployed-contract sweep asserts the public origin does not answer it.
     location /v3/api-docs {
         limit_req zone=edge_api burst=200 nodelay;
         proxy_pass $api_upstream;
@@ -227,33 +98,18 @@ server {
         proxy_http_version 1.1;
     }
 
-    # Refused rather than left to fall through, which is not the same thing.
-    #
-    # `location /` ends in try_files ... /index.html, so an unproxied path does not 404 - it answers
-    # the app shell with a 200. Measured, on the compose stack, before this block existed:
-    # GET /actuator/health returned 200 and a page of HTML, which to anything checking a status
-    # code is indistinguishable from an actuator endpoint published to the internet. The sweep that
-    # asserts this origin does not serve actuator would have passed on the shell.
-    #
-    # Container Apps probes /actuator/health/readiness and /liveness on the API app directly, so
-    # nothing here needs them. Proxying them "just for a health check" is the change this refuses.
+    # Without this, try_files below answers /actuator with the app shell and a 200.
     location /actuator {
         access_log off;
         return 404;
     }
 
-    # Vite's hashed output. The name is the version, so the file can be cached forever - which it
-    # never has been, because Spring Security sends no-store on everything it serves and it served
-    # this too. Splitting the tier is what makes it fixable.
     location ^~ /assets/ {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
 
-    # Everything else is the app shell. try_files answers every client route - the four in
-    # SpaRoutes.ALL and any future one - with no list to keep in step, which is why the routes are
-    # deliberately not enumerated here.
     location / {
         limit_req zone=edge_shell burst=100 nodelay;
         include /etc/nginx/snippets/security-headers.conf;

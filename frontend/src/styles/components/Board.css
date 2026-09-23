@@ -5,7 +5,6 @@
   min-height: 70vh;
   padding: 1rem;
 }
-/* Grid-based board for when rows are present */
 .board-grid {
   padding: 1rem;
   width: 100%;
@@ -18,12 +17,10 @@
   border-spacing: 0.5rem;
 }
 
-/* Set dynamic column count with JavaScript */
 :root {
-  --column-count: 3; /* Default, will be updated with JS */
+  --column-count: 3;
 }
 
-/* Corner cell (top-left empty cell) */
 .grid-corner {
   background-color: #76777c;
   border-radius: 4px;
@@ -31,7 +28,6 @@
   padding: 0.75rem;
 }
 
-/* Column headers */
 .grid-column-header {
   background-color: rgba(134, 214, 255, 0.3);
   padding: 0.75rem;
@@ -77,7 +73,6 @@
   color: #86d6ff;
 }
 
-/* Row headers */
 .grid-row-header {
   background-color: rgba(134, 214, 255, 0.3);
   padding: 0.75rem;
@@ -100,7 +95,6 @@
   margin-top: 0.25rem;
 }
 
-/* Grid cells */
 .grid-cell {
   background-color: #e0d2d2;
   padding: 0.5rem;
@@ -133,7 +127,6 @@
   border-color: rgba(134, 214, 255, 0.6);
   color: #0e1b36;
 }
-/* WIP limit indicator */
 .wip-limit {
   font-size: 0.8rem;
   color: #76777c;
@@ -187,7 +180,6 @@
   color: #86d6ff;
 }
 
-/* Loading and error states */
 .board-loading,
 .board-error {
   display: flex;
@@ -202,7 +194,6 @@
   color: #0e1b36;
 }
   
-/* Media query for smaller screens */
 @media (max-width: 768px) {
   .board {
     padding: 10px 0;
@@ -214,7 +205,6 @@
   }
 }
 
-/* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   .grid-corner {
     background-color: #1b1b1d;
@@ -290,7 +280,7 @@
   font-size: inherit;
   font-weight: inherit;
   color: #0e1b36;
-  width: calc(100% - 1.5rem); /* Account for the drag handle */
+  width: calc(100% - 1.5rem);
   box-sizing: border-box;
 }
 
@@ -319,7 +309,6 @@
   }
 }
 
-/* Row name input styling */
 .row-title {
   display: flex;
   align-items: center;
@@ -335,7 +324,7 @@
   font-size: inherit;
   font-weight: inherit;
   color: #0e1b36;
-  width: calc(100% - 1.5rem); /* Account for the drag handle */
+  width: calc(100% - 1.5rem);
   box-sizing: border-box;
 }
 
@@ -352,7 +341,6 @@
   text-overflow: ellipsis;
 }
 
-/* Task title input styling */
 .task-content {
   display: flex;
   align-items: center;
@@ -368,7 +356,7 @@
   font-size: inherit;
   font-weight: inherit;
   color: #0e1b36;
-  width: calc(100% - 2rem); /* Account for avatar space */
+  width: calc(100% - 2rem);
   box-sizing: border-box;
   max-width: 100%;
 }
@@ -386,7 +374,6 @@
   text-overflow: ellipsis;
 }
 
-/* Dark mode styles for inputs */
 @media (prefers-color-scheme: dark) {
   .row-name-input,
   .task-title-input {
@@ -421,7 +408,6 @@
   color: #ff0000;
 }
 
-/* Adjust existing styles for better visibility */
 .grid-cell {
   transition: background-color 0.3s ease;
 }
@@ -506,7 +492,6 @@
   background-color: #bdbdbd;
 }
 
-/* ====== READ-ONLY BANNER (FEAT-08) ====== */
 .board-readonly-banner {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-sm, 4px);
@@ -517,7 +502,6 @@
   margin-bottom: var(--spacing-sm);
 }
 
-/* ====== BOARD TOOLBAR ====== */
 .board-toolbar {
   display: flex;
   align-items: center;
@@ -565,24 +549,12 @@
   color: var(--text-muted);
 }
 
-/* ---------------------------------------------------------------------------
-   Moving a card with the keyboard.
-
-   The card does not leave its cell while it is held - re-parenting it would move the focus with
-   it, and there would be nothing to put focus back on if the move were cancelled. So the two
-   things a pointer user gets for free, "which card am I holding" and "where would it land", have
-   to be drawn instead.
-   --------------------------------------------------------------------------- */
-
 .grid-cell.keyboard-move-target {
   outline: 3px dashed var(--accent-color, #4a90d9);
   outline-offset: -3px;
   background: color-mix(in srgb, var(--accent-color, #4a90d9) 12%, transparent);
 }
 
-/* Announcements and the key list: read by a screen reader, never laid out. `clip-path` with a
-   1px box rather than `display: none`, which would take the text out of the accessibility tree
-   and stop it being announced at all - the mistake that makes a live region silent. */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -590,6 +562,7 @@
   margin: -1px;
   padding: 0;
   overflow: hidden;
+  /* Not display: none, which would take a live region out of the accessibility tree. */
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;

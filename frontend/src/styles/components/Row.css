@@ -102,7 +102,6 @@
   gap: var(--spacing-sm);
 }
 
-/* Dark mode */
 @media (prefers-color-scheme: dark) {
   .row {
     background-color: var(--surface-dark);

@@ -21,11 +21,6 @@ describe('activityApi', () => {
     expect(params.get('size')).toBe(String(DEFAULT_PAGE_SIZE));
   });
 
-  /*
-   * Leaving boardId out means "the caller's own board" on every listing in this application, so
-   * sending boardId=undefined - which is what a naive template literal produces - would ask for a
-   * board id that is the literal string "undefined".
-   */
   test('a missing board id is left out rather than sent as the word undefined', async () => {
     respondWith({ activities: [], page: 0, size: 25, totalEntries: 0, totalPages: 0 });
 

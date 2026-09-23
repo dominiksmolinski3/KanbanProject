@@ -13,15 +13,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * What a search request means before it reaches the database. The wildcard escaping matters most:
- * without it, searching {@code 100%} matches the whole board with no error, just a search that
- * quietly stops narrowing anything. The page-size refusal is a decision, not an implementation
- * detail — PERF-02 asked for a number, and asking for more than it is answered rather than
- * silently clamped.
- */
 class TaskSearchCriteriaTest {
-
     private static TaskSearchCriteria criteria(String text) {
         return TaskSearchCriteria.of(text, null, null, null, null, null, null, null);
     }

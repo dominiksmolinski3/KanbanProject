@@ -11,13 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The store a deployment with no Azure account gets - CI, and a fresh clone. It refuses rather than
- * pretends: unlike a dropped mail, which nobody is watching for, an upload has somebody watching a
- * progress bar, so a 503 naming the reason is the only honest answer.
- */
 class DisabledBlobStoreTest {
-
     private final BlobStore store = new DisabledBlobStore();
 
     @Test

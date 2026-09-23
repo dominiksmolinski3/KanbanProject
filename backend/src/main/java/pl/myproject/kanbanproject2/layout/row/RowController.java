@@ -69,7 +69,6 @@ public class RowController {
         return ResponseEntity.ok(rowService.updateRowPosition(currentUser, id, position));
     }
 
-    /** The whole top-to-bottom order in one transaction. See {@code TaskController.reorderTasks}. */
     @PatchMapping("/positions")
     public ResponseEntity<List<RowDto>> reorderRows(
             @Valid @RequestBody ReorderRowsRequest request,

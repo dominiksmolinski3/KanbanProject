@@ -28,23 +28,13 @@ import static jakarta.servlet.http.HttpServletResponse.SC_OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-/**
- * What the filter chain lets through, and — since the split — what it no longer has any reason to.
- * This class used to guard the opposite claim, when the jar served the bundle and fifteen static
- * patterns had to be permitted before anyone held a token. nginx serves all of it now from its own
- * container, so the assertions are inverted: the chain must refuse the bundle, refuse the client
- * routes, and still refuse the API behind them - deleting the guard outright would leave a merge
- * that puts a pattern back unnoticed.
- */
 class PublicChainPathsTest {
-
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withUserConfiguration(TestCollaborators.class);
 
     @Test
     @DisplayName("the chain serves none of the bundle, because it no longer has one")
     void permitsNothingStatic() {
-        // Hashed filenames stand in for whatever Vite emits; only the directory ever mattered.
         assertDenied(
                 "/index.html",
                 "/assets/index-BMKiHw11.js",
@@ -58,8 +48,6 @@ class PublicChainPathsTest {
     @Test
     @DisplayName("the chain serves none of the client routes either")
     void permitsNoClientRoute() {
-        // try_files answers these at the edge. Permitting them here would be permitting paths this
-        // application has no handler for, which is how /*.json got next to a free-text label.
         assertDenied(SpaRoutes.ALL);
         assertDenied("/");
     }
@@ -67,9 +55,6 @@ class PublicChainPathsTest {
     @Test
     @DisplayName("what a caller with no token still has to reach is still reachable")
     void stillPermitsWhatNeedsNoToken() {
-        // The published contract and the probes: neither is behind a token, and narrowing the
-        // chain must not have taken either with it. The auth routes are deliberately absent from
-        // this list - AuthRateLimitFilter sits in front of them and a burst here would be flaky.
         assertPermitted("/v3/api-docs", "/actuator/health", "/actuator/health/readiness");
     }
 
@@ -90,18 +75,12 @@ class PublicChainPathsTest {
     @Test
     @DisplayName("metrics is exposed but not public - it follows health's detail rule, not its route rule")
     void metricsRequiresAuthentication() {
-        // Only /actuator/health, /actuator/health/** and /actuator/info are in PublicPaths.
-        // Exposing "metrics" in management.endpoints.web.exposure.include did not add it there, so
-        // it falls to anyRequest().authenticated() like the rest of the API - see OBS-01.
         assertDenied("/actuator/metrics", "/actuator/metrics/kanban.mail.outbox.dead_letters");
     }
 
     @Test
     @DisplayName("nothing is served on the unprefixed paths the API used to answer")
     void guardsTheUnprefixedPaths() {
-        // /users was the one path that was both: a client route the chain permitted, and the name
-        // UserController answered before the /api prefix existed. Neither is true here now, and a
-        // matcher drifting back to any of them would otherwise be silent.
         assertDenied("/users", "/tasks", "/columns", "/rows", "/subtasks");
     }
 
@@ -125,8 +104,6 @@ class PublicChainPathsTest {
                 request.setServletPath(uri);
                 MockHttpServletResponse response = new MockHttpServletResponse();
 
-                // MockFilterChain is the handler: reaching it leaves the response at its default
-                // 200, so the status here is exactly "what security did with this request".
                 chain.doFilter(request, response, new MockFilterChain());
 
                 assertion.check(uri, response.getStatus());
@@ -164,8 +141,6 @@ class PublicChainPathsTest {
 
         @Bean
         AuthRateLimiter authRateLimiter(AuthRateLimitProperties properties) {
-            // This suite is about path matching in the security chain, not the escalation itself,
-            // so a mock Redis template is enough - nothing here ever calls tryConsume.
             return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 

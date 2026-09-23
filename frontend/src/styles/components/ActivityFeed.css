@@ -1,5 +1,3 @@
-/* The board's own history. Deliberately plain: it is a list of sentences, and anything that made
-   an entry look like a card would compete with the board it describes. */
 .activity-feed {
   max-width: 60rem;
   margin: 0 auto 2rem;
@@ -31,7 +29,6 @@
   border-bottom: 1px solid rgba(127, 127, 127, 0.2);
 }
 
-/* A deletion is the one entry whose subject no longer exists, so it is the one worth marking. */
 .activity-entry.activity-deleted .activity-what {
   opacity: 0.7;
 }

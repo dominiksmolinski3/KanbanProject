@@ -22,18 +22,7 @@ public class RegisterUserDto {
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
     private String username;
 
-    /**
-     * Verified by CaptchaVerifier when security.captcha.enabled is on, and ignored when it is not.
-     * Unvalidated here deliberately: a missing token is a captcha failure rather than a field
-     * error, so that both answers - absent and wrong - come out of the same place.
-     */
     private CaptchaDto captcha;
 
-    /**
-     * The language to mail this account in, as the client's own i18next tag. Unvalidated here: an
-     * unrecognised tag is a guess that missed rather than a request that is wrong, and
-     * {@code SupportedLocales.normalise} answers it with English rather than refusing the signup.
-     * Setting it deliberately, later, does answer 400 - see {@code UNSUPPORTED_LOCALE}.
-     */
     private String locale;
 }

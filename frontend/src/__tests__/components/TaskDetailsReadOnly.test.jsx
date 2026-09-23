@@ -22,13 +22,6 @@ jest.mock('react-toastify', () => ({
 
 jest.mock('../../services/api');
 
-/**
- * FEAT-08 gated the board and never reached the task panel: a viewer who opened a card was offered
- * every edit in it - title, description, subtasks, attachments, labels, assignees - and each one
- * failed on the server. The panel now reads `readOnly` from the board context and draws what a
- * viewer can do, which is look. The same panel for a member keeps every control, which is the
- * control case: without it a panel that lost its buttons for everybody would pass as well.
- */
 describe('TaskDetails for a viewer', () => {
   const task = { id: 1, title: 'Test Task', description: 'A task', labels: ['Bug'] };
 

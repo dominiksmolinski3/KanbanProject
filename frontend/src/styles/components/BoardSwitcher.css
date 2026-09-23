@@ -115,7 +115,6 @@
   flex: 0 0 auto;
 }
 
-/* The count of outstanding invitations, on the one control that is on every screen. */
 .board-switcher-badge {
   display: inline-block;
   min-width: 1.25rem;

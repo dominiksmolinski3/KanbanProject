@@ -19,19 +19,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 
-/**
- * How often one signed-in account may call the API: a token bucket per account, kept in the same
- * Redis the auth limiter uses, so the limit is fleet-wide - five replicas do not give an account five
- * buckets - and follows the account across addresses, which the edge's per-IP limit cannot.
- *
- * <p>Keyed on the account rather than the address on purpose. The edge already limits by address
- * and is what stops a flood that never authenticates; this is for the one that does, and an office
- * of twenty people behind one NAT address must not share one person's allowance.
- *
- * <p><b>It fails open</b>, like {@link RedisEscalationStore}: the limit is defence against abuse, not
- * a control anything else relies on, so Redis being unreachable costs the limit for the length of the
- * outage rather than every signed-in request.
- */
 @Slf4j
 @Component
 public class ApiRateLimiter {
@@ -51,8 +38,6 @@ public class ApiRateLimiter {
     }
 
     ApiRateLimiter(ApiRateLimitProperties properties, StringRedisTemplate redis, Clock clock, MeterRegistry registry) {
-        // Refused at startup, like AuthRateLimitProperties' bad values: a rate of zero would divide
-        // by zero in the script and a burst of zero would refuse every signed-in call.
         if (properties.perSecond() < 1) {
             throw new IllegalArgumentException("security.api-rate-limit.per-second must be at least 1");
         }
@@ -65,7 +50,6 @@ public class ApiRateLimiter {
         this.refused = registry.counter(REFUSED_COUNTER);
     }
 
-    /** Takes one call from the account's bucket, or says how long until it may try again. */
     @SuppressWarnings("unchecked")
     public AuthRateLimitDecision attempt(Integer accountId) {
         try {

@@ -49,12 +49,6 @@ import BoardEvents from '../services/boardEvents';
 
 const KanbanContext = createContext();
 
-/**
- * How long a burst of board events is collected before one re-read answers all of them.
- *
- * Long enough that a drag - which is one gesture and several frames - costs one fetch;
- * short enough that a change still looks immediate to somebody watching it happen.
- */
 const LIVE_REFRESH_WINDOW_MS = 250;
 
 export function KanbanProvider({ children }) {
@@ -71,12 +65,6 @@ export function KanbanProvider({ children }) {
   const [myInvitations, setMyInvitations] = useState([]);
   const { t } = useTranslation();
 
-  /*
-   * Every listing below is scoped to one board, and a member of somebody else's board has at
-   * least two, so the client cannot just let the server pick. A remembered choice is honoured
-   * only if it is still on the list, or being removed from a board would leave the app asking
-   * for one it can no longer see.
-   */
   useEffect(() => {
     const resolveBoard = async () => {
       try {
@@ -95,9 +83,6 @@ export function KanbanProvider({ children }) {
     };
 
     resolveBoard();
-    // Asked for once on load, beside the board itself: an invitation is the one thing that can
-    // change which boards exist without this session doing anything, so it is read at the same
-    // moment the board list is and re-read whenever one is answered.
     refreshMyInvitations();
   }, []);
 
@@ -155,12 +140,6 @@ export function KanbanProvider({ children }) {
 
   const activeBoard = boards.find(board => board.id === activeBoardId) || null;
 
-  /*
-   * FEAT-08: a viewer may see the board and not change it. The server enforces this on every write
-   * route regardless of what the client does - this is the UX half, not the control - so every
-   * write handler below checks it first and answers with the same toast a rejected API call would
-   * have produced anyway, rather than sending a request the server was always going to refuse.
-   */
   const isViewer = activeBoard?.role === 'VIEWER';
 
   const blockIfReadOnly = () => {
@@ -171,7 +150,6 @@ export function KanbanProvider({ children }) {
     return false;
   };
 
-  /** Switches boards, which reloads the whole board through the effect above. */
   const selectBoard = (boardId) => {
     if (boardId === activeBoardId) {
       return;
@@ -213,11 +191,6 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  /*
-   * Deleting takes the board's columns, swimlanes and tasks with it, so the client asks first and
-   * then falls back to whatever board is left - there is always one, because the server provisions
-   * a fresh board for an account that has none.
-   */
   const handleDeleteBoard = async (boardId) => {
     try {
       await deleteBoard(boardId);
@@ -240,11 +213,6 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  /*
-   * Invitations, both directions. `myInvitations` is loaded once on mount and re-read after every
-   * answer rather than kept in step optimistically: accepting one changes which boards exist, so
-   * the two lists have to move together and a stale invitation is a button that 404s.
-   */
   const refreshMyInvitations = async () => {
     try {
       const mine = await fetchMyInvitations();
@@ -259,8 +227,6 @@ export function KanbanProvider({ children }) {
   const handleInviteToBoard = async (boardId, email, role) => {
     try {
       const invitation = await inviteToBoard(boardId, email, role);
-      // Deliberately not "added": nobody has joined anything, and the server answers the same
-      // whether or not that address has an account here.
       toast.info(t('notifications.boardInvitationSent'));
       return invitation;
     } catch (err) {
@@ -408,7 +374,6 @@ export function KanbanProvider({ children }) {
       const targetColumnId = columnId || columns[0].id;
       const newTask = await addTask(title, targetColumnId, deadline);
 
-      // Prefer explicit row if provided; otherwise fallback to first row when available
       let finalTask = newTask;
       const hasRows = rows && rows.length > 0;
       const validProvidedRow = rowId && (rows?.some(r => String(r.id) === String(rowId)));
@@ -472,17 +437,10 @@ export function KanbanProvider({ children }) {
       
       setTasks(updatedTasks);
       
-      /*
-       * One call for the whole cell, not one per card: with a version on the task, a per-card loop
-       * would let a card somebody else moved 409 out from under the ones already saved, leaving
-       * the board half in the old order and half in the new.
-       */
       try {
         await reorderTasks(newOrder.map(task => task.id));
       } catch (err) {
         if (err instanceof ConcurrentModificationError) {
-          // Nothing was applied - the whole batch rolled back - so there is nothing to undo and
-          // nothing to report as broken. Say what happened and show what the board is now.
           toast.info(t('notifications.changedBySomeoneElse'));
           await refreshTasks();
           return;
@@ -529,18 +487,6 @@ export function KanbanProvider({ children }) {
     }
   };
 
-  /**
-   * Applies somebody else's change without them having to say so: the server announces a kind of
-   * change per board topic, and this re-reads through the same calls as the rest of the file
-   * rather than trusting the payload, so there is no second way board state gets in.
-   *
-   * Coalesced into one fetch per burst (`LIVE_REFRESH_WINDOW_MS`): a drag renumbers its own cell
-   * and re-reads anyway, so without a window the originator would fetch twice, and filtering by
-   * actor can't work since the same account in a second tab still needs the event.
-   *
-   * No toast: a card moving under somebody is worth showing, not interrupting them over, and
-   * `/activity` says who did it.
-   */
   const liveRefresh = useRef(null);
   liveRefresh.current = { refreshTasks, refreshBoard };
 
@@ -554,8 +500,6 @@ export function KanbanProvider({ children }) {
     let wanted = null;
 
     events.watch(activeBoardId, ({ type }) => {
-      // A comment or a file changes no card, so neither takes a board read: the open task panel
-      // re-reads its own thread or list instead, through a window event it listens for.
       if (type === 'COMMENTS') {
         window.dispatchEvent(new CustomEvent('task-comments-changed'));
         return;
@@ -564,13 +508,9 @@ export function KanbanProvider({ children }) {
         window.dispatchEvent(new CustomEvent('task-attachments-changed'));
         return;
       }
-      // A subtask does change the card - it carries its open-subtask count - so it is a task read
-      // like TASKS, and the open panel re-reads its list as well, which no task read reaches.
       if (type === 'SUBTASKS') {
         window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
       }
-      // COLUMNS and ROWS both take the wider read: deleting a column takes its cards with it, so
-      // a layout change is a task change as well and refreshBoard is the call that covers both.
       wanted = wanted === 'board' || (type !== 'TASKS' && type !== 'SUBTASKS') ? 'board' : 'tasks';
       if (pending) {
         return;
@@ -789,8 +729,6 @@ export function KanbanProvider({ children }) {
         const remainingRows = rows.filter(row => row.id !== rowId);
         const targetRowId = remainingRows[0].id;
       
-        // A card somebody else changed or deleted a moment ago answers 409 or 404 here. Neither is a
-        // reason to abandon deleting the row: the server takes the row off whatever is still in it.
         for (const task of tasksToUpdate) {
           try {
             await updateTaskRow(task.id, targetRowId);
@@ -837,12 +775,6 @@ export function KanbanProvider({ children }) {
     }
   };
   
-  /**
-   * Completion is the one board mutation with a real server rule behind it: a task whose parent is
-   * still open cannot be completed, and un-completing one cascades to everything below it. The
-   * cascade is why this refreshes rather than patching local state — the response describes the
-   * task that was asked about, not the dependents the server also changed.
-   */
   const handleUpdateTaskCompletion = async (taskId, completed) => {
     if (blockIfReadOnly()) return false;
     try {
@@ -983,8 +915,6 @@ export function KanbanProvider({ children }) {
       
       try {
         const reordered = await reorderColumns(newColumns.map(column => column.id));
-        // The server's positions rather than the local array order: they are the same thing when
-        // the call succeeds, and taking them back keeps the two from drifting.
         setColumns(reordered);
       } catch (err) {
         if (err instanceof ConcurrentModificationError) {
@@ -1146,16 +1076,6 @@ export function KanbanProvider({ children }) {
     setDraggedItem(null);
   };
   
-  /**
-   * The keyboard's equivalent of a drag. Built on handleMoveTask, the same call handleDrop makes,
-   * so a card moved with the keyboard takes exactly the path a dragged one does - the toast, the
-   * resync and the activity entry are not a second implementation that can drift from the first.
-   *
-   * `grab` is wrapped rather than left as-is: `handleMoveTask` already refuses the eventual drop for
-   * a viewer, but without this a card could still be picked up and held - the same restriction the
-   * mouse path gets via `draggable={!readOnly}`, applied here so neither input method is the one
-   * that quietly still works.
-   */
   const keyboardMoveRaw = useKeyboardMove({ columns, rows, moveTask: handleMoveTask });
   const keyboardMove = {
     ...keyboardMoveRaw,

@@ -4,14 +4,6 @@ import { useKanban } from '../context/KanbanContext';
 import { searchTasks, getAllLabels, fetchUsers } from '../services/api';
 import '../styles/components/TaskSearch.css';
 
-/**
- * Finding a task, as opposed to reading the board: this asks the server rather than filtering the
- * board already loaded, so there is one predicate rather than a second one re-implemented in
- * JavaScript that can quietly disagree with the API. The cost is a request per query, debounced to
- * one per pause in typing. Results are a list rather than a filtered board, because hiding cards
- * would destroy the layout that says where they are - each result names its cell, and "show on
- * board" scrolls to the real card and flashes it.
- */
 function TaskSearch() {
   const { columns, rows, tasks } = useKanban();
   const { t } = useTranslation();
@@ -44,8 +36,6 @@ function TaskSearch() {
     [users]
   );
 
-  // The facets a person can pick from are the board's own vocabulary, so they are loaded once the
-  // panel is opened rather than on every board render — nothing needs them until then.
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -59,21 +49,12 @@ function TaskSearch() {
         }
       })
       .catch(() => {
-        // A missing facet list is not a broken search: the text box still works, and saying so
-        // with a toast would be noise on a panel the person has only just opened.
       });
     return () => {
       cancelled = true;
     };
   }, [isOpen]);
 
-  /**
-   * The request itself, debounced and guarded against arriving out of order.
-   *
-   * Both matter for a search-as-you-type box. Without the debounce every keystroke is a request;
-   * without the sequence check a slow answer to "de" can land after the fast answer to "deploy"
-   * and leave the list showing results for a query nobody can see any more.
-   */
   const latestRequest = useRef(0);
 
   useEffect(() => {
@@ -116,13 +97,6 @@ function TaskSearch() {
     return () => clearTimeout(timer);
   }, [isOpen, term, selectedLabels, selectedAssignees, completed, deadlineFrom, deadlineTo, page]);
 
-  /**
-   * Changing a filter goes back to the first page.
-   *
-   * Staying on page 3 of a result set that has just been replaced shows an empty list for a search
-   * that matched plenty, which reads as "nothing found" and is the single most common bug in a
-   * paged filter.
-   */
   const changeFilter = useCallback((apply) => {
     setPage(0);
     apply();
@@ -151,12 +125,6 @@ function TaskSearch() {
     deadlineFrom !== '' ||
     deadlineTo !== '';
 
-  /**
-   * Scrolls the real card into view and flashes it.
-   *
-   * A card can be missing from the DOM for a reason that is not an error — the daily-focus filter
-   * hides everything that is not starred — so the absence is reported rather than ignored.
-   */
   const showOnBoard = (taskId) => {
     const card = document.getElementById(`task-${taskId}`);
     if (!card) {
@@ -370,10 +338,6 @@ function TaskSearch() {
         </div>
       )}
 
-      {/*
-        The board's own count, for the one question the result list cannot answer: whether a search
-        that found nothing found nothing because the board is empty. Cheap, and it is already here.
-      */}
       {results && total === 0 && tasks.length > 0 && (
         <p className="task-search-hint">{t('board.search.boardHas', { count: tasks.length })}</p>
       )}

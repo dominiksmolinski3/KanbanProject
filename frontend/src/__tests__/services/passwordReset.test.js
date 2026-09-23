@@ -1,11 +1,5 @@
 import { authService } from '../../services/authService';
 
-/**
- * A forgotten password used to be an unrecoverable account. What these pin is the part a client
- * can get wrong on its own: the request goes as a body rather than a query string, so the address
- * does not land in an access log or a browser history the way `/auth/resend?email=` does, and the
- * 202 carries no body to parse.
- */
 describe('authService password reset', () => {
   const accepted = (status = 202) => ({
     ok: true,
@@ -106,8 +100,6 @@ describe('authService password reset', () => {
     });
 
     test('the path carries no /auth/, so the interceptor attaches the token', () => {
-      // apiInterceptor skips any URL containing '/auth/'. A change-password route placed under
-      // /auth/ would go out unauthenticated and be rejected, which is easy to do by accident.
       expect('/api/users/7/password').not.toContain('/auth/');
     });
 

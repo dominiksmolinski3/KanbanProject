@@ -33,7 +33,6 @@ class ClientIpResolverTest {
     void takesTheEntryTheTrustedProxyAppended() {
         ClientIpResolver resolver = new ClientIpResolver(properties(1));
 
-        // The client forged "1.2.3.4"; ingress appended the address it actually saw.
         String resolved = resolver.resolve(request("10.0.0.5", "1.2.3.4, 198.51.100.7"));
 
         assertThat(resolved).isEqualTo("198.51.100.7");

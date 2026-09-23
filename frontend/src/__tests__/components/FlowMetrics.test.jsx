@@ -58,11 +58,6 @@ const metrics = (overrides = {}) => ({
   ...overrides
 });
 
-/**
- * The flow screen draws what the server computed and nothing else: the numbers come from
- * `/api/flow`, and this suite checks they land in the tiles, the legend, the tables and the hover
- * layer, and that choosing a column asks the server again rather than re-deriving anything here.
- */
 describe('FlowMetrics', () => {
   beforeEach(() => {
     fetchFlowMetrics.mockReset();
@@ -276,7 +271,6 @@ describe('FlowMetrics', () => {
       await waitFor(() => expect(within(selects[1]).getAllByRole('option')[0])
         .toHaveTextContent('flow.asTheBoardDefines:{"name":"Doing"}'));
       expect(within(selects[2]).getAllByRole('option')[0]).toHaveTextContent('flow.asTheBoardDefines:{"name":"Doing"}');
-      // Matching the board already, so there is nothing to save - only a way back to the default.
       expect(screen.queryByText('flow.saveDefinition')).not.toBeInTheDocument();
       expect(screen.getByText('flow.resetDefinition')).toBeInTheDocument();
     });
@@ -298,14 +292,12 @@ describe('FlowMetrics', () => {
 
       render(<FlowMetrics />);
       await screen.findByText('flow.finished');
-      // Nothing is offered until somebody picks something.
       expect(screen.queryByText('flow.saveDefinition')).not.toBeInTheDocument();
       fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: '11' } });
       fireEvent.click(await screen.findByText('flow.saveDefinition'));
 
       await waitFor(() => expect(defineFlow).toHaveBeenCalledWith({ boardId: 3, start: 10, done: 11 }));
       await waitFor(() => expect(toast.success).toHaveBeenCalledWith('flow.definitionSaved'));
-      // Opened, picked, then read back as "as the board defines it" once saved.
       await waitFor(() => expect(fetchFlowMetrics).toHaveBeenCalledTimes(3));
       const reread = fetchFlowMetrics.mock.calls[2][0];
       expect(reread.start).toBe('');
@@ -332,7 +324,6 @@ describe('FlowMetrics', () => {
       fireEvent.click(await screen.findByText('flow.saveDefinition'));
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('flow.definitionFailed'));
-      // The pick survives the refusal: nothing was saved, so nothing is reset.
       expect(screen.getAllByRole('combobox')[2]).toHaveValue('11');
     });
 

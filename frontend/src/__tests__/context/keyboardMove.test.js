@@ -1,15 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { neighbourOf, stepCell, sameCell, useKeyboardMove } from '../../context/keyboardMove';
 
-/**
- * The arithmetic and the state machine behind moving a card without a pointer.
- *
- * Kept off the rendered board on purpose: through a board these would be assertions about two
- * components and a context, and the thing worth checking is that the step clamps, that nothing
- * reaches the server until the drop, and that a drop onto the cell the card came from is not a
- * move at all.
- */
-
 const columns = [
   { id: 'col1', name: 'To Do' },
   { id: 'col2', name: 'In Progress' },
@@ -38,8 +29,6 @@ describe('stepping between cells', () => {
   });
 
   test('a step at the edge stays put rather than wrapping round', () => {
-    // Wrapping would move a card the width of the board on a keystroke that looked like a nudge,
-    // to somebody who may not be looking at the screen at all.
     expect(stepCell({ columns, rows, cell: { columnId: 'col1', rowId: 'row1' }, direction: 'left' }))
       .toEqual({ columnId: 'col1', rowId: 'row1' });
     expect(stepCell({ columns, rows, cell: { columnId: 'col3', rowId: 'row2' }, direction: 'down' }))
@@ -82,8 +71,6 @@ describe('holding and dropping a card', () => {
   });
 
   test('stepping moves the target and calls nothing', () => {
-    // The whole reason the target is held here rather than committed per keystroke: crossing four
-    // columns would otherwise be four moves, four toasts, four refreshes and four feed entries.
     const { moveTask, result } = setUp();
 
     act(() => result.current.grab(task, 'col1', 'row1'));
@@ -143,8 +130,6 @@ describe('holding and dropping a card', () => {
   });
 
   test('a card with no cell cannot be picked up', () => {
-    // A task off the board has no cell to step from, and grabbing it would leave a held card whose
-    // every arrow press is a no-op with no way to tell that from a broken keyboard.
     const { result } = setUp();
 
     act(() => result.current.grab(task, 'col1', null));
@@ -154,8 +139,6 @@ describe('holding and dropping a card', () => {
   });
 
   test('what is announced is a key and its values, never a sentence', () => {
-    // The activity feed's rule. A sentence composed here is one the other eight locale bundles
-    // cannot translate, and the live region is read aloud in the reader's language or not at all.
     const { result } = setUp();
 
     act(() => result.current.grab(task, 'col1', 'row1'));
@@ -166,7 +149,6 @@ describe('holding and dropping a card', () => {
   });
 
   test('a step that hits the edge does not re-announce the cell it is already on', () => {
-    // Announcing again would read as movement that did not happen.
     const { result } = setUp();
 
     act(() => result.current.grab(task, 'col1', 'row1'));

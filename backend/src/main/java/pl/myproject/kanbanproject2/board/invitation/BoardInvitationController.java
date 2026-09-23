@@ -16,14 +16,6 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.util.List;
 
-/**
- * The owner's half of an invitation: send one, see what is outstanding, take one back.
- *
- * <p>Nested under the board because an invitation has no board of its own to be scoped by - it is
- * the board's, entirely, which is the same reason attachments are nested under their task. The
- * invitee's half lives at {@code /invitations} instead, because that listing does not start from a
- * board the caller can necessarily see.
- */
 @RestController
 @RequestMapping("/boards/{boardId}/invitations")
 @RequiredArgsConstructor

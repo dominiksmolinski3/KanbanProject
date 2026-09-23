@@ -17,23 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code BoardScopedRoutesTest}'s rule, one channel over: <b>every STOMP handler takes the caller
- * it has to check.</b>
- *
- * <p>That test scans {@code @RestController} and has held the REST surface honest since the
- * tenancy model landed. Nothing scanned {@code @MessageMapping}, and chat is what grew in the gap
- * — a controller that built its destination out of a {@code roomId} the client supplied and
- * addressed any {@code recipientId} it was handed, in an application where every other route
- * answers "may this caller see this board?" before it answers anything else. A guard that covers
- * one transport and not the other is a guard that says where the next hole will be.
- *
- * <p>A STOMP handler has no {@code PublicPaths} to be excused by: the channel is authenticated at
- * CONNECT, so there is no such thing as a public destination here and the rule has no exceptions.
- * It runs by reflection over the compiled classes, so it costs nothing and needs no broker.
- */
 class BoardScopedStompRoutesTest {
-
     private static final String PRODUCTION_PACKAGE = "pl.myproject.kanbanproject2";
 
     private record Route(Class<?> controller, Method handler, String destination) {
@@ -68,12 +52,6 @@ class BoardScopedStompRoutesTest {
                 .isNotEmpty();
     }
 
-    /**
-     * The destinations themselves, so that a handler reintroducing a room the client names shows up
-     * as a changed assertion rather than as nothing at all. {@code /topic/public} and
-     * {@code /topic/room.} are gone from the application; what replaced them is the board's own
-     * topic, which {@code BoardSubscriptionInterceptor} already authorises.
-     */
     @Test
     @DisplayName("the application destinations are the four board-scoped chat ones")
     void theDestinationsAreTheOnesBoardScopingCovers() {
@@ -103,7 +81,6 @@ class BoardScopedStompRoutesTest {
         return routes;
     }
 
-    /** The scan sees the test classpath too, where suites declare fixtures of their own. */
     private static boolean isProductionClass(Class<?> type) {
         var source = type.getProtectionDomain().getCodeSource();
         return source != null && !source.getLocation().getPath().contains("test-classes");

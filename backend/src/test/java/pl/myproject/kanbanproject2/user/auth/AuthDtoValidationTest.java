@@ -8,14 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The auth DTOs carry the only input constraints the signup and login routes have, since the filter
- * chain lets both through unauthenticated. The password bounds matter beyond tidiness: BCrypt
- * silently truncates at 72 bytes, so an unbounded field would let two different passwords
- * authenticate the same account.
- */
 class AuthDtoValidationTest {
-
     private static Validator validator;
 
     @BeforeAll

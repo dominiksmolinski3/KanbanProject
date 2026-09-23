@@ -14,29 +14,13 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The request id is a rule in two files and neither compiles the other.
- *
- * <p>nginx mints it and forwards it; {@link RequestIdFilter} reads it. If the header name moves on
- * one side, nothing fails - the edge logs an id, the application logs a different one, and the two
- * streams look exactly as joined as they did before while being joined by nothing. That is the
- * failure this whole change exists to remove, so it is worth a test of the shape
- * {@code SecurityHeadersMatchTheEdgeTest} already uses against the headers snippet.
- *
- * <p>The assertion about <em>every</em> proxying location is the one that earns its keep over time.
- * The three that exist today all forward the header; a fourth added later without it is a route
- * whose application lines carry an id the edge never logged, which is a blind spot in exactly the
- * place a new route is most likely to need one.
- */
 class RequestIdMatchesTheEdgeTest {
-
     private static final Path REPO = Path.of("..");
     private static final Path EDGE_TEMPLATE = REPO.resolve(Path.of("frontend", "nginx", "default.conf.template"));
     private static final Path APP_PROPERTIES = Path.of("src", "main", "resources", "application.properties");
     private static final Path COMPOSE = REPO.resolve("docker-compose.yml");
     private static final Path API_APP = REPO.resolve(Path.of("terraform", "modules", "api_app", "main.tf"));
 
-    /** {@code location <match> {} ... }, captured with its body so each one can be asked about itself. */
     private static final Pattern LOCATION = Pattern.compile("\\n    location ([^{]+)\\{(.*?)\\n    }", Pattern.DOTALL);
 
     @Test
@@ -81,8 +65,6 @@ class RequestIdMatchesTheEdgeTest {
     @Test
     @DisplayName("the edge's own access log carries the id it forwards")
     void theEdgeLogsTheIdItSends() {
-        // Forwarding it without logging it joins the application to nothing: the edge line is the
-        // half that says whether the request reached the API at all.
         assertThat(edgeTemplate())
                 .as("the log_format does not carry $edge_request_id, so the 502 recorded here still "
                         + "cannot be matched to anything")
@@ -97,8 +79,6 @@ class RequestIdMatchesTheEdgeTest {
     @Test
     @DisplayName("an inbound id is bounded on both sides of the hop")
     void bothSidesRefuseAnUnboundedId() {
-        // Whatever arrives ends up in every log line for the request. The API container is also
-        // reachable without going through nginx, so one check would leave the other door open.
         assertThat(edgeTemplate())
                 .as("the edge's map trusts $http_x_request_id unconditionally")
                 .containsPattern("\\[A-Za-z0-9_-]\\{8,64}");
@@ -111,8 +91,6 @@ class RequestIdMatchesTheEdgeTest {
                 .as("a default of anything but empty makes a unit test's own output JSON")
                 .contains("logging.structured.format.console=${LOG_FORMAT:}");
 
-        // A requestId in the MDC and prose on the console is the finding rather than the fix: the
-        // field has to reach Log Analytics as a field to be queryable next to the edge's rid=.
         assertThat(read(COMPOSE))
                 .as("the local stack logs prose, so nothing here exercises the format the "
                         + "deployment collects")

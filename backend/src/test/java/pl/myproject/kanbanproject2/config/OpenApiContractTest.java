@@ -15,16 +15,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-/**
- * The half of the published contract springdoc cannot derive: which routes need a token. Shapes
- * and paths come from the mappings and DTO records so they cannot drift, but the security
- * requirement has no such anchor - it's a statement about the filter chain written elsewhere.
- * {@link OpenApiConfiguration} answers it by reading {@link PublicPaths} rather than listing
- * anything, so this test checks the reading, written against the traps rather than the happy path
- * - {@code /auth} is the prefix where "public" and "not public" sit next to each other.
- */
 class OpenApiContractTest {
-
     private final OpenApiConfiguration configuration = new OpenApiConfiguration();
 
     @Test
@@ -40,8 +31,6 @@ class OpenApiContractTest {
     @Test
     @DisplayName("the routes a caller reaches before they have a token are left unsecured")
     void leavesPublicRoutesAlone() {
-        // Every one of these exists for somebody who cannot prove who they are yet: signing up,
-        // signing in, redeeming a code from a mailbox, or renewing an access token that has lapsed.
         OpenAPI openApi = customized(
                 "/api/auth/signup",
                 "/api/auth/login",
@@ -60,9 +49,6 @@ class OpenApiContractTest {
     @Test
     @DisplayName("the two authenticated routes under /auth are not swept up with their neighbours")
     void securesTheDeviceRoutes() {
-        // The trap this test exists for. `/api/auth/**` reads as "the pre-authentication prefix",
-        // and it is - except for these two, which are about an account and so require one. The
-        // client-side interceptor made exactly this mistake with exactly this prefix.
         OpenAPI openApi = customized("/api/auth/devices", "/api/auth/devices/{id}");
 
         assertThat(requirementNamesOn(openApi, "/api/auth/devices"))
@@ -93,9 +79,6 @@ class OpenApiContractTest {
     @Test
     @DisplayName("the requirement names a scheme the document actually defines")
     void theRequirementResolvesToADeclaredScheme() {
-        // A requirement referencing a name that is not in components is a document every generator
-        // and validator rejects, and nothing but this comparison can see the two halves are one
-        // string apart.
         OpenAPI document = configuration.kanbanOpenApi();
         OpenAPI customized = customized("/api/tasks");
 
@@ -122,8 +105,6 @@ class OpenApiContractTest {
     @Test
     @DisplayName("a document with no paths is left alone rather than dereferenced")
     void toleratesAnEmptyDocument() {
-        // springdoc hands the customizer whatever it has built; a document with no paths is what a
-        // context with no mapped controllers produces, which is what several tests here run in.
         assertThatCode(() -> configuration.bearerTokenOnAuthenticatedRoutes().customise(new OpenAPI()))
                 .doesNotThrowAnyException();
     }
@@ -135,15 +116,12 @@ class OpenApiContractTest {
         assertThat(PublicPaths.isPublic("/v3/api-docs")).isTrue();
         assertThat(PublicPaths.isPublic("/v3/api-docs/swagger-config")).isTrue();
 
-        // And it is served where springdoc says it is, not under the application's own prefix -
-        // see WebConfig, which scopes the /api prefix to this project's package for this reason.
         assertThat(PublicPaths.isPublic("/api/v3/api-docs"))
                 .as("a contract at the prefixed path would be a path nothing thinks to ask for, "
                         + "and opening it up would say the prefix scoping had been lost")
                 .isFalse();
     }
 
-    /** Runs the customizer over a document holding one GET per path. */
     private OpenAPI customized(String... paths) {
         Paths documentPaths = new Paths();
         for (String path : paths) {

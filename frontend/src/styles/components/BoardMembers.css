@@ -180,9 +180,6 @@
   cursor: pointer;
 }
 
-/* Invitations: the pending list an owner sees, and the offers an invitee answers. Deliberately
-   the same visual weight as the member list beside it - an invitation is a member who has not
-   said yes yet, and styling it as a separate kind of thing would say otherwise. */
 .board-invite-heading {
   margin: 1.25rem 0 0.5rem;
   font-size: 0.95rem;

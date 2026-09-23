@@ -5,14 +5,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.util.List;
 
-/**
- * The browser origins allowed to reach this app, single-sourced because
- * {@code SecurityConfiguration.corsConfigurationSource} and {@code WebSocketConfig}'s SockJS
- * handshake used to hold a copy each and had drifted (the WebSocket list also allowed plaintext
- * {@code http://kanbanproject.pl} variants). Binds from {@code security.cors.allowed-origins}
- * ({@code SECURITY_CORS_ALLOWED_ORIGINS}, comma-separated) so a new origin is a deployment change,
- * not a rebuild — the same single-sourcing {@link SpaRoutes} does for client routes.
- */
 @ConfigurationProperties(prefix = "security.cors")
 public record AllowedOriginsProperties(
 
@@ -41,7 +33,6 @@ public record AllowedOriginsProperties(
         allowedOrigins = List.copyOf(allowedOrigins);
     }
 
-    /** As {@code setAllowedOrigins} varargs want it. */
     public String[] asArray() {
         return allowedOrigins.toArray(String[]::new);
     }

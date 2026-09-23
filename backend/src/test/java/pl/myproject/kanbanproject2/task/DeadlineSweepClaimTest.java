@@ -11,17 +11,7 @@ import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The two halves of the sweep's claim, neither of which any other test here can see: every suite
- * mocks {@link TaskRepository}, so this native query never reaches a database that could object to
- * it, and {@code QueryStringsResolveTest} deliberately skips native queries. Both halves fail
- * silently and identically at one replica — {@code FOR UPDATE SKIP LOCKED}, without which two
- * schedulers flip the same tasks and mail every assignee twice, and the class-level
- * {@code @Transactional} on {@code TaskService}, without which the row lock releases at the end of
- * its own statement and the claim protects nothing.
- */
 class DeadlineSweepClaimTest {
-
     @Test
     @DisplayName("the sweep's claim still locks the rows it takes, and still skips locked ones")
     void theClaimStillSkipsLockedRows() {
@@ -45,8 +35,6 @@ class DeadlineSweepClaimTest {
     void theSweepIsTransactional() {
         Method sweep = methodNamed(TaskService.class, "checkAllTasksDeadlines");
 
-        // Both spellings, because Spring honours both and this service happens to carry Jakarta's.
-        // Asserting only the Spring one would fail on a class that is perfectly transactional.
         assertThat(isTransactional(sweep) || isTransactional(TaskService.class))
                 .as("a claim whose transaction ends with the select is a claim that holds nothing")
                 .isTrue();
