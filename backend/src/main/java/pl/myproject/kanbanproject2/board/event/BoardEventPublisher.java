@@ -66,6 +66,10 @@ public class BoardEventPublisher {
         publish(board, BoardEventType.ROWS);
     }
 
+    public void commentsChanged(Board board) {
+        publish(board, BoardEventType.COMMENTS);
+    }
+
     private void publish(Board board, BoardEventType type) {
         if (board == null || board.getId() == null) {
             return;

@@ -80,7 +80,8 @@ class BoardDataIntegrityTest {
                 tenant.boardService(),
                 Mockito.mock(DeadlineNotifier.class),
                 Mockito.mock(TaskAttachmentService.class),
-                Mockito.mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
+                Mockito.mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class),
+                mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
     }
 
     @Nested

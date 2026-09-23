@@ -57,7 +57,8 @@ class TaskServiceDeadlineSweepTest {
                 mock(BoardService.class),
                 deadlineNotifier,
                 mock(TaskAttachmentService.class),
-                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class));
+                mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class),
+                mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
     }
 
     private static Task task(LocalDateTime deadline, boolean expired) {
