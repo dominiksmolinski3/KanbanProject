@@ -218,3 +218,14 @@ variable "rbac_propagation_delay" {
   type        = string
   default     = "60s"
 }
+
+variable "app_insights_id" {
+  description = "The Application Insights resource the API's agent exports its kanban.* meters to. The API's identity is granted Monitoring Metrics Publisher on it, since the resource accepts Entra-authenticated ingestion only."
+  type        = string
+}
+
+variable "app_insights_connection_string" {
+  description = "Where the agent sends telemetry. Not a credential while the resource has local authentication disabled - ingestion then also needs the identity's token - but marked sensitive so a plan does not print it."
+  type        = string
+  sensitive   = true
+}

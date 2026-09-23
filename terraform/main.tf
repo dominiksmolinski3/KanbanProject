@@ -70,6 +70,29 @@ resource "azurerm_log_analytics_workspace" "main" {
   retention_in_days   = lookup(local.log_retention_days, var.env, 30)
 }
 
+# Where the API's own meters go (OBS-01's loose end). The Application Insights agent in the backend
+# image exports the kanban.* meters, and only those; applicationinsights.json filters out the
+# ~190 other series Spring publishes per replica, and without that filter they would be the bulk
+# of this workspace's bill. Workspace-based, so the telemetry lands in AppMetrics/AppRequests in the
+# same workspace the alerts in modules/diagnostics already query, and inherits its retention.
+#
+# local_authentication_enabled = false: ingestion accepts Entra tokens only. The connection string
+# in the container's environment is then an address rather than a credential - nobody holding it
+# can send telemetry here - and the API authenticates as its managed identity, the way it reaches
+# blob storage. The grant is in modules/api_app, beside the identity it is granted to.
+#
+# Here rather than in modules/diagnostics because api_app needs its connection string, and
+# diagnostics already depends on api_app.
+resource "azurerm_application_insights" "main" {
+  tags                         = local.tags
+  name                         = "appi-kanban-${var.env}"
+  location                     = azurerm_resource_group.main.location
+  resource_group_name          = azurerm_resource_group.main.name
+  workspace_id                 = azurerm_log_analytics_workspace.main.id
+  application_type             = "java"
+  local_authentication_enabled = false
+}
+
 module "vnet" {
   source                          = "./modules/vnet"
   resource_group_name             = azurerm_resource_group.main.name
@@ -236,6 +259,9 @@ module "api_app" {
   depends_on = [module.key_vault, module.postgres, module.storage, module.redis, module.broker]
 
   mail_delivery_report_key = var.mail_delivery_report_key
+
+  app_insights_id                = azurerm_application_insights.main.id
+  app_insights_connection_string = azurerm_application_insights.main.connection_string
 }
 
 # Two modules compose the same FQDN from the same pattern and neither reads the other's resources,

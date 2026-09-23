@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A rule in two files, checked in one - {@code DeadLetterAlertTest}'s shape, applied to the one
+ * A rule in two files, checked in one - {@code MetricAlertsMatchTheMetersTest}'s shape, applied to the one
  * thing the server now says to a person in words it does not own.
  *
  * <p>{@link ChatRefusal} carries a translation key rather than a sentence, which is the activity

@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,13 @@ class MailDeliveryReportServiceTest {
 
     private OutboxEmailRepository outbox;
     private MailDeliveryReportService service;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
         outbox = mock(OutboxEmailRepository.class);
-        service = new MailDeliveryReportService(outbox, Clock.fixed(NOW, ZoneOffset.UTC));
+        meterRegistry = new SimpleMeterRegistry();
+        service = new MailDeliveryReportService(outbox, meterRegistry, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private OutboxEmail sentMessage(String providerMessageId) {
@@ -76,6 +79,37 @@ class MailDeliveryReportServiceTest {
         assertThat(row.getDeliveryStatus()).isEqualTo("Bounced");
         assertThat(row.getDeliveryDetail()).isEqualTo("550 5.1.1 recipient rejected");
         assertThat(MailDeliveryStatuses.isUndelivered(row.getDeliveryStatus())).isTrue();
+    }
+
+    private double undelivered(String status) {
+        var counter = meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).tag("status", status).counter();
+        return counter == null ? 0 : counter.count();
+    }
+
+    @Test
+    @DisplayName("a bounce is counted for the alert, under the canonical spelling, and a delivery is not")
+    void undeliveredIsCounted() {
+        when(outbox.findByProviderMessageId("op-b")).thenReturn(Optional.of(sentMessage("op-b")));
+        when(outbox.findByProviderMessageId("op-d")).thenReturn(Optional.of(sentMessage("op-d")));
+
+        service.record(report("op-b", "bounced", NOW, null));
+        service.record(report("op-d", "Delivered", NOW, null));
+
+        assertThat(undelivered("Bounced")).isEqualTo(1);
+        assertThat(meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).counters()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a stale bounce that loses to a newer report counts nothing, and neither does an unknown message")
+    void onlyKeptReportsCount() {
+        OutboxEmail row = sentMessage("op-s");
+        when(outbox.findByProviderMessageId("op-s")).thenReturn(Optional.of(row));
+        service.record(report("op-s", "Delivered", NOW, null));
+
+        service.record(report("op-s", "Bounced", NOW.minusSeconds(30), null));
+        service.record(report("op-nobody", "Bounced", NOW, null));
+
+        assertThat(undelivered("Bounced")).isZero();
     }
 
     @Test

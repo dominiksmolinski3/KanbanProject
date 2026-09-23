@@ -1302,12 +1302,12 @@ a reason to restart the container. Details are hidden from anonymous callers by
 `management.endpoint.health.show-details=when_authorized`, and nothing loads a row, because a
 pending row's body is a live verification code.
 
-For the far commoner case of nobody asking, `OutboxRelay` logs `DEAD_LETTER_MARKER` —
-`MAIL_DEAD_LETTER` — on the give-up line, and a Log Analytics rule in
-`terraform/modules/diagnostics/main.tf` matches it and mails the alert address, next to the 5xx and
-restart alerts. It is a token rather than a phrase from the sentence because a reworded log line is
-an alert that stops firing without anything failing; `DeadLetterAlertTest` reads the Terraform and
-fails the build if the two stop agreeing, which is the only thing that can see that coupling.
+For the far commoner case of nobody asking, a Log Analytics rule in
+`terraform/modules/diagnostics/main.tf` fires on any increase of `kanban.mail.outbox.dead_letters`
+across the fleet and mails the alert address, next to the 5xx and restart alerts. It used to match
+the text `MAIL_DEAD_LETTER` in the console log, with a test holding the string to the Java; the
+counter replaced that (see **Application metrics** below). `OutboxRelay` still writes the marker on
+the give-up line for a person searching the logs, but nothing depends on it any more.
 
 What a caller sees change: `POST /api/auth/register` no longer waits for Azure and no longer answers
 `500 EMAIL_SEND_FAILED` when the provider refuses. `EmailDeliveryException` still exists and still
@@ -1349,10 +1349,11 @@ the report names. Five things carry it.
 - **`delivery_status` stores the provider's own word** — `Delivered`, `Bounced`, `Failed`,
   `Quarantined`, `FilteredSpam`, `Suppressed` — rather than an enum of this application's invention,
   and an unrecognised value is stored rather than refused. Which of those mean "did not arrive" is
-  written down twice, in `MailDeliveryStatuses.UNDELIVERED` and in the Log Analytics bounce alert's
-  KQL, and `BounceStatusesMatchAlertTest` fails the build when the two disagree —
-  `DeadLetterAlertTest`'s shape, on a rule that has already been wrong once (the alert's first draft
-  omitted `Bounced` itself).
+  written down once, in `MailDeliveryStatuses.UNDELIVERED`: `MailDeliveryReportService` counts
+  exactly those into `kanban.mail.delivery.undelivered`, and the bounce alert reads the counter.
+  It used to be written twice, the second copy in the alert's KQL, and that copy had already been
+  wrong once (its first draft omitted `Bounced` itself). The alert needs delivery reports flowing,
+  so it is gated on the same key the Event Grid subscription is.
 
 The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
 (`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module
@@ -1445,6 +1446,42 @@ site key with `CAPTCHA_ENABLED=false` and the widget renders and is decorative, 
 SEC-06 was. `ConfigurationTest` audits which environments supply what; that the two agree in
 *meaning* is not something any test here can see, so it is written here instead.
 
+
+**Application metrics reach Azure Monitor through the Application Insights Java agent (OBS-01's
+loose end).** The app registers its own meters under `kanban.*` - outbox dead letters and pending
+depth, undelivered mail, rate-limit refusals, edit conflicts, dropped board subscriptions and busy
+attachment transfers - and until this the numbers never left the container: `/actuator/metrics` on
+one replica, reset on every restart. The backend image now carries the agent (pinned by version and
+SHA-256), a workspace-based `azurerm_application_insights` in the root module receives it, and the
+alerts in `modules/diagnostics` query the `AppMetrics` table. Five things carry it, and the first
+three were measured on a capture of what the agent actually sends rather than read off its docs:
+
+- **Only `kanban_*` leaves the container.** Spring publishes about 190 series per replica per export
+  interval; unfiltered, five replicas would be the bulk of the workspace's bill for numbers no alert
+  reads. `backend/applicationinsights.json`'s metric filter drops everything else, and the agent's
+  log capture is off because the console logs already reach Log Analytics.
+- **Names arrive with dots as underscores** (`kanban_mail_outbox_dead_letters`), counters as the
+  increase over each interval (so `sum(Sum)` over a window counts across the fleet) and the outbox
+  gauge as its value from every replica (so it is read with `max`). `MetricAlertsMatchTheMetersTest`
+  fails the build when an alert names a metric the code does not register, or one the agent's filter
+  would drop - it replaced `DeadLetterAlertTest` and `BounceStatusesMatchAlertTest`, since the
+  coupling moved from a log string and a KQL list to a metric name rather than disappearing.
+- **Probe requests are sampled out** (`/actuator.*` at 0%), since Container Apps probes every
+  replica every few seconds and each would otherwise be a stored request.
+- **No agent without a connection string.** The entrypoint adds `-javaagent` only when
+  `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, so docker-compose and CI run the JVM exactly as
+  before. `ConfigurationTest` exempts the two `APPLICATIONINSIGHTS_*` variables from "passes nothing
+  unread" only while the Dockerfile still attaches the agent.
+- **No ingestion key.** The resource has `local_authentication_enabled = false`; the agent signs its
+  exports as the API's managed identity (`APPLICATIONINSIGHTS_AUTHENTICATION_STRING`), which
+  `modules/api_app` grants `Monitoring Metrics Publisher`. The connection string is then an address
+  rather than a credential, which is why it is a container-app secret and not a Key Vault one.
+
+The alerts: dead letters (any, severity 1), a mail backlog that has not once touched zero in an
+hour (severity 2 - an hour because one refused message alone stays pending for about 31 minutes of
+backoff before it dead-letters), bounces (any, gated on delivery reports), and four rate alerts at
+severity 3 for refusals that happen in ordinary use and only mean something in bulk - thresholds
+and reasons in `local.refusal_alerts`.
 ### CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing.
