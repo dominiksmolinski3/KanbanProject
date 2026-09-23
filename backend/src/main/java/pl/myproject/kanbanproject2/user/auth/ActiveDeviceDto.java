@@ -8,6 +8,11 @@ public record ActiveDeviceDto(
         String userAgent,
         Instant signedInAt,
         Instant lastSeenAt,
-        Instant expiresAt
+        Instant expiresAt,
+        boolean redacted
 ) {
+
+    public ActiveDeviceDto withDetailsRedacted() {
+        return new ActiveDeviceDto(id, null, null, signedInAt, lastSeenAt, expiresAt, true);
+    }
 }

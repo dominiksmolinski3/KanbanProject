@@ -6,6 +6,19 @@ import { getSessionId } from '../services/session';
 import { useAuth } from '../context/AuthContext';
 import '../styles/components/Devices.css';
 
+// Stand-ins drawn under a blur when the server withholds the real values; never real data.
+const REDACTED_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0';
+const REDACTED_ADDRESS = '000.000.000.000';
+
+function Redacted({ placeholder, label }) {
+  return (
+    <span className="device-redacted" title={label}>
+      <span className="device-redacted-text" aria-hidden="true">{placeholder}</span>
+      <span className="device-redacted-label">{label}</span>
+    </span>
+  );
+}
+
 function Devices() {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +80,9 @@ function Devices() {
     <div className="container">
       <h1>{t('devices.title')}</h1>
       <p className="devices-intro">{t('devices.intro')}</p>
+      {sessions.some((session) => session.redacted) && (
+        <p className="devices-demo-notice">{t('devices.demoNotice')}</p>
+      )}
 
       <div className="devices-container">
         <div className="devices-header">
@@ -91,12 +107,18 @@ function Devices() {
               data-session-id={session.id}
             >
               <span className="device-agent">
-                {session.userAgent || t('devices.fields.unknownDevice')}
+                {session.redacted
+                  ? <Redacted placeholder={REDACTED_AGENT} label={t('devices.fields.hidden')} />
+                  : session.userAgent || t('devices.fields.unknownDevice')}
                 {isCurrentSession(session) && (
                   <span className="device-badge">{t('devices.fields.thisDevice')}</span>
                 )}
               </span>
-              <span className="device-address">{session.ipAddress || '—'}</span>
+              <span className="device-address">
+                {session.redacted
+                  ? <Redacted placeholder={REDACTED_ADDRESS} label={t('devices.fields.hidden')} />
+                  : session.ipAddress || '—'}
+              </span>
               <span className="device-moment">{formatMoment(session.signedInAt)}</span>
               <span className="device-moment">{formatMoment(session.lastSeenAt)}</span>
               <span className="device-actions">

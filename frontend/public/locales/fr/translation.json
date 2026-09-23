@@ -440,6 +440,7 @@
     "devices": {
       "title": "Appareils connectés",
       "intro": "Toutes les sessions encore renouvelables sur ce compte. En terminer une déconnecte ce navigateur ; cela ne change pas le mot de passe.",
+      "demoNotice": "Ceci est un compte de démonstration partagé : l'origine de connexion de chaque session est donc masquée.",
       "fields": {
         "device": "Appareil",
         "address": "Adresse",
@@ -447,7 +448,8 @@
         "lastSeen": "Dernier renouvellement",
         "actions": "Actions",
         "thisDevice": "Cet appareil",
-        "unknownDevice": "Appareil inconnu"
+        "unknownDevice": "Appareil inconnu",
+        "hidden": "Masqué sur le compte de démonstration"
       },
       "buttons": {
         "end": "Déconnecter",

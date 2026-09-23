@@ -440,6 +440,7 @@
   "devices": {
     "title": "Signed-in devices",
     "intro": "Every session that can still be renewed on this account. Ending one signs that browser out; it does not change your password.",
+    "demoNotice": "This is a shared demo account, so where each session signs in from is hidden.",
     "fields": {
       "device": "Device",
       "address": "Address",
@@ -447,7 +448,8 @@
       "lastSeen": "Last renewed",
       "actions": "Actions",
       "thisDevice": "This device",
-      "unknownDevice": "Unknown device"
+      "unknownDevice": "Unknown device",
+      "hidden": "Hidden on the demo account"
     },
     "buttons": {
       "end": "Sign out",
