@@ -49,4 +49,15 @@ class DeviceContextTest {
         assertThat(DeviceContext.unknown().ipAddress()).isNull();
         assertThat(DeviceContext.unknown().userAgent()).isNull();
     }
+
+    @Test
+    @DisplayName("only an address and a browser together identify a device")
+    void identifiableNeedsBothHalves() {
+        assertThat(new DeviceContext("198.51.100.4", "Mozilla/5.0").isIdentifiable()).isTrue();
+        assertThat(new DeviceContext("198.51.100.4", null).isIdentifiable()).isFalse();
+        assertThat(new DeviceContext(null, "Mozilla/5.0").isIdentifiable()).isFalse();
+        assertThat(new DeviceContext("unknown", "Mozilla/5.0").isIdentifiable())
+                .as("ClientIpResolver's placeholder is not an address")
+                .isFalse();
+    }
 }

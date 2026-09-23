@@ -369,6 +369,38 @@ class RefreshTokenServiceTest {
         }
 
         @Test
+        @DisplayName("signing in again from the same browser and network replaces that device's sessions")
+        void signingInAgainReplacesTheSameDevice() {
+            when(repository.revokeLiveForDevice(user, "203.0.113.7", "Mozilla/5.0", NOW)).thenReturn(2);
+
+            service.issue(user, new DeviceContext("203.0.113.7", "Mozilla/5.0"));
+
+            verify(repository).revokeLiveForDevice(user, "203.0.113.7", "Mozilla/5.0", NOW);
+            assertThat(lastSaved().getRevokedAt()).as("the new session itself stays live").isNull();
+        }
+
+        @Test
+        @DisplayName("a sign-in that cannot say where it is from replaces nothing")
+        void anUnidentifiableSignInReplacesNothing() {
+            service.issue(user, DeviceContext.unknown());
+            service.issue(user, new DeviceContext("unknown", "Mozilla/5.0"));
+            service.issue(user, new DeviceContext("203.0.113.7", null));
+
+            verify(repository, never()).revokeLiveForDevice(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("a renewal is the same session, so it replaces nothing")
+        void rotationReplacesNothing() {
+            when(repository.findByTokenHash(digestOf("live")))
+                    .thenReturn(Optional.of(stored("live", NOW.minusSeconds(60), NOW.plus(TTL))));
+
+            service.rotate("live", new DeviceContext("203.0.113.7", "Mozilla/5.0"));
+
+            verify(repository, never()).revokeLiveForDevice(any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("issuing hands back the row id, which is how the client recognises itself in the list")
         void issuingReturnsTheRowId() {
             when(repository.save(any(RefreshToken.class))).thenAnswer(call -> {

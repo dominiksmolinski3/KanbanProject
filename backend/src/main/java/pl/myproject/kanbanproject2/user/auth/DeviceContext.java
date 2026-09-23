@@ -14,6 +14,11 @@ public record DeviceContext(String ipAddress, String userAgent) {
         return new DeviceContext(null, null);
     }
 
+    // ClientIpResolver answers "unknown" rather than null; that names no device.
+    public boolean isIdentifiable() {
+        return ipAddress != null && userAgent != null && !"unknown".equals(ipAddress);
+    }
+
     private static String trimmedToNull(String value, int maxLength) {
         if (value == null) {
             return null;
