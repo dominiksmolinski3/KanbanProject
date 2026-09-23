@@ -5,6 +5,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,5 +35,18 @@ public class FlowMetricsController {
             @RequestParam(required = false) Integer done,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(flowMetricsService.metrics(currentUser, boardId, from, to, start, done));
+    }
+
+    /**
+     * Sets the board's own definition of start and done, which every later read without an explicit
+     * choice uses. Owner only: {@code 403 NOT_BOARD_OWNER} for a member or viewer, and the usual 404
+     * for a board the caller cannot see.
+     */
+    @PutMapping("/definition")
+    public ResponseEntity<FlowDefinitionDto> define(
+            @RequestParam(required = false) Integer boardId,
+            @RequestBody FlowDefinitionRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(flowMetricsService.define(currentUser, boardId, request));
     }
 }

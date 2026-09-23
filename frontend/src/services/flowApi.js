@@ -8,8 +8,9 @@ export const MAX_FLOW_DAYS = 180;
 
 /**
  * `boardId` may be left out, which means the caller's own board. `start` and `done` are column
- * ids; leaving `done` out means the board's last column, and leaving `start` out measures from the
- * moment a card arrived on the board (a lead time rather than a cycle time).
+ * ids. Leaving either out means the board's own definition (FLOW-02), and where the board has none,
+ * FEAT-07's rule: the last column for done, and a card's arrival on the board for start (a lead
+ * time rather than a cycle time).
  */
 export const fetchFlowMetrics = async ({ boardId, from, to, start, done } = {}) => {
   const params = new URLSearchParams();
@@ -27,6 +28,26 @@ export const fetchFlowMetrics = async ({ boardId, from, to, start, done } = {}) 
   const response = await fetch(`${FLOW}?${params.toString()}`);
   if (!response.ok) {
     throw new Error(`Error fetching the flow metrics: ${response.status}`);
+  }
+  return response.json();
+};
+
+/**
+ * Stores the board's definition of start and done, which every later read without a choice of its
+ * own uses. Owner only - the server answers 403 to anyone else. A null end goes back to the default.
+ */
+export const defineFlow = async ({ boardId, start = null, done = null } = {}) => {
+  const params = new URLSearchParams();
+  if (boardId !== undefined && boardId !== null) {
+    params.set('boardId', String(boardId));
+  }
+  const response = await fetch(`${FLOW}/definition?${params.toString()}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startColumnId: start, doneColumnId: done })
+  });
+  if (!response.ok) {
+    throw new Error(`Error saving the flow definition: ${response.status}`);
   }
   return response.json();
 };

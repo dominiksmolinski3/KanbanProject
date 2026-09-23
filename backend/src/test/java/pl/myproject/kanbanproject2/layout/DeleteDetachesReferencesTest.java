@@ -158,6 +158,30 @@ class DeleteDetachesReferencesTest {
         }
 
         @Test
+        @DisplayName("puts the board's flow definition back on the default when it named this column")
+        void forgetsTheFlowColumn() {
+            // A board of its own, since BOARD is shared across this class and this test changes it.
+            var board = TenancyFixtures.board(78, CALLER);
+            Column column = new Column();
+            column.setId(3);
+            column.setBoard(board);
+            column.setTasks(new ArrayList<>());
+            Column other = new Column();
+            other.setId(4);
+            board.setFlowStartColumn(other);
+            board.setFlowDoneColumn(column);
+            when(columnRepository.findById(3)).thenReturn(Optional.of(column));
+            when(historyRepository.findByColumn(column)).thenReturn(List.of());
+
+            columnService.deleteColumn(CALLER, 3);
+
+            // V23's ON DELETE SET NULL covers the database; this covers a board already loaded in
+            // the same transaction, which would otherwise flush the deleted id straight back.
+            assertThat(board.getFlowDoneColumn()).isNull();
+            assertThat(board.getFlowStartColumn()).isSameAs(other);
+        }
+
+        @Test
         @DisplayName("an unknown column is still a 404")
         void unknownColumnIsNotFound() {
             when(columnRepository.findById(99)).thenReturn(Optional.empty());

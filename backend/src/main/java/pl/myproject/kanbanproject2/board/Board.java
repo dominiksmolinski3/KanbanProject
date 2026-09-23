@@ -76,6 +76,21 @@ public class Board {
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<Column> columns;
 
+    /*
+     * The board's own definition of when work starts and when it is done, for the flow screen
+     * (FLOW-02, V23). Null keeps FEAT-07's rule - the last column is done, and a card starts when it
+     * arrives on the board - so an unset board reads exactly as it did. A setting, not content: the
+     * owner sets it, as they set the name, and deleting the chosen column puts the board back on the
+     * default (ON DELETE SET NULL, and ColumnService clears it in Java first).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "flow_start_column_id")
+    private Column flowStartColumn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "flow_done_column_id")
+    private Column flowDoneColumn;
+
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<Row> rows;
 
@@ -87,6 +102,22 @@ public class Board {
         this.owner = owner;
         if (owner != null) {
             this.members = new LinkedHashSet<>(Set.of(owner));
+        }
+    }
+
+    /**
+     * Puts the flow definition back on the default wherever it names {@code column}, which is about
+     * to be deleted. Compared on id, for the reason {@link #isVisibleTo} is.
+     */
+    public void forgetFlowColumn(Column column) {
+        if (column == null || column.getId() == null) {
+            return;
+        }
+        if (flowStartColumn != null && column.getId().equals(flowStartColumn.getId())) {
+            flowStartColumn = null;
+        }
+        if (flowDoneColumn != null && column.getId().equals(flowDoneColumn.getId())) {
+            flowDoneColumn = null;
         }
     }
 

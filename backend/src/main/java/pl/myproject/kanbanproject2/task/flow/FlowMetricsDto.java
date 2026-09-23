@@ -12,12 +12,19 @@ import java.util.List;
  * <p>{@code cumulativeFlow} carries one count per column per day, in the same order as
  * {@code columns}, rather than a map keyed by id - a chart draws bands in column order, and a map
  * would make every client re-derive the order the server already knows.
+ *
+ * <p>{@code startColumnId}/{@code doneColumnId} are what this answer was computed with;
+ * {@code definedStartColumnId}/{@code definedDoneColumnId} are the board's own stored definition
+ * (FLOW-02), null where the board has none - so the screen can tell "the board says" from "you
+ * picked" and offer the owner a save only when the two differ.
  */
 public record FlowMetricsDto(Integer boardId,
                              LocalDate from,
                              LocalDate to,
                              Integer startColumnId,
                              Integer doneColumnId,
+                             Integer definedStartColumnId,
+                             Integer definedDoneColumnId,
                              List<Column> columns,
                              List<CumulativeFlowDay> cumulativeFlow,
                              CycleTimeSummary cycleTime,

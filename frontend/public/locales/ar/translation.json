@@ -561,7 +561,12 @@
       "finishedOn": "أُنجزت",
       "card": "البطاقة",
       "throughput": "الإنتاجية",
-      "throughputCaption": "البطاقات المنجزة كل يوم."
+      "throughputCaption": "البطاقات المنجزة كل يوم.",
+      "asTheBoardDefines": "كما تحدده اللوحة ({{name}})",
+      "saveDefinition": "اجعل هذا تعريف اللوحة",
+      "resetDefinition": "العودة إلى الافتراضي",
+      "definitionSaved": "تم حفظ تعريف البداية والانتهاء للوحة.",
+      "definitionFailed": "تعذّر حفظ تعريف اللوحة."
     },
     "taskComments": {
       "heading": "التعليقات",

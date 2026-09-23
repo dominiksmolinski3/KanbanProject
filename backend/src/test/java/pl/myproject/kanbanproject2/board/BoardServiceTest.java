@@ -252,6 +252,19 @@ class BoardServiceTest {
         }
 
         @Test
+        @DisplayName("the stages it seeds come with a definition of start and done (FLOW-02)")
+        void seedsTheFlowDefinition() {
+            when(boardRepository.findFirstByOwnerIsNullOrderByIdAsc()).thenReturn(Optional.empty());
+
+            var board = boardService.provisionFor(owner);
+
+            // Done, not the last column: the default board ends Done, Closed, and measuring to Closed
+            // is what opened the flow screen on "0 finished" for a team that stops at Done.
+            assertThat(board.getFlowStartColumn().getName()).isEqualTo("In Progress");
+            assertThat(board.getFlowDoneColumn().getName()).isEqualTo("Done");
+        }
+
+        @Test
         @DisplayName("the first account adopts the migration's unclaimed board instead of shadowing it")
         void adoptsTheUnclaimedBoard() {
             var legacy = TenancyFixtures.board(1, null);
@@ -393,6 +406,24 @@ class BoardServiceTest {
             verify(historyRepository).deleteAll(any());
             verify(taskRepository).deleteAll(tasks);
             verify(boardRepository).delete(board);
+        }
+
+        @Test
+        @DisplayName("lets go of its flow columns before it deletes them (V23)")
+        void clearsTheFlowDefinitionFirst() {
+            var board = boardOf(owner);
+            var done = new Column();
+            done.setId(5);
+            board.setFlowStartColumn(done);
+            board.setFlowDoneColumn(done);
+            when(taskRepository.findByBoardOrderByIdAsc(board)).thenReturn(List.of());
+            when(columnRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>(List.of(done)));
+            when(rowRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
+
+            boardService.deleteBoard(owner, 10);
+
+            assertThat(board.getFlowStartColumn()).isNull();
+            assertThat(board.getFlowDoneColumn()).isNull();
         }
 
         @Test

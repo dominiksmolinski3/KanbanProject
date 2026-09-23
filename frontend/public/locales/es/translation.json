@@ -561,7 +561,12 @@
       "finishedOn": "Terminada",
       "card": "Tarjeta",
       "throughput": "Rendimiento",
-      "throughputCaption": "Tarjetas terminadas cada día."
+      "throughputCaption": "Tarjetas terminadas cada día.",
+      "asTheBoardDefines": "Según lo define el tablero ({{name}})",
+      "saveDefinition": "Usar como definición del tablero",
+      "resetDefinition": "Volver a lo predeterminado",
+      "definitionSaved": "Se guardó la definición de inicio y fin del tablero.",
+      "definitionFailed": "No se pudo guardar la definición del tablero."
     },
     "taskComments": {
       "heading": "Comentarios",

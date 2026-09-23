@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FlowMetrics from '../../components/FlowMetrics';
-import { fetchFlowMetrics } from '../../services/flowApi';
+import { defineFlow, fetchFlowMetrics } from '../../services/flowApi';
+import { toast } from 'react-toastify';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -10,12 +11,15 @@ jest.mock('react-i18next', () => ({
   })
 }));
 
+jest.mock('react-toastify', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+
 jest.mock('../../services/flowApi', () => ({
   fetchFlowMetrics: jest.fn(),
+  defineFlow: jest.fn(),
   MAX_FLOW_DAYS: 180
 }));
 
-const mockKanban = { activeBoardId: 3 };
+const mockKanban = { activeBoardId: 3, activeBoard: { id: 3, owned: true } };
 
 jest.mock('../../context/KanbanContext', () => ({
   useKanban: () => mockKanban
@@ -33,6 +37,8 @@ const metrics = (overrides = {}) => ({
   to: '2026-09-10',
   startColumnId: null,
   doneColumnId: 12,
+  definedStartColumnId: null,
+  definedDoneColumnId: null,
   columns,
   cumulativeFlow: [
     { date: '2026-09-08', counts: [2, 1, 0] },
@@ -60,7 +66,11 @@ const metrics = (overrides = {}) => ({
 describe('FlowMetrics', () => {
   beforeEach(() => {
     fetchFlowMetrics.mockReset();
+    defineFlow.mockReset();
+    toast.success.mockReset();
+    toast.error.mockReset();
     mockKanban.activeBoardId = 3;
+    mockKanban.activeBoard = { id: 3, owned: true };
     console.error = jest.fn();
   });
 
@@ -252,5 +262,91 @@ describe('FlowMetrics', () => {
     render(<FlowMetrics />);
 
     expect(await screen.findByText('flow.failed')).toBeInTheDocument();
+  });
+
+  describe("the board's own definition (FLOW-02)", () => {
+    test('the default choice names the column the board defines, where it defines one', async () => {
+      fetchFlowMetrics.mockResolvedValue(metrics({
+        startColumnId: 11, doneColumnId: 11, definedStartColumnId: 11, definedDoneColumnId: 11
+      }));
+
+      render(<FlowMetrics />);
+
+      const selects = await screen.findAllByRole('combobox');
+      await waitFor(() => expect(within(selects[1]).getAllByRole('option')[0])
+        .toHaveTextContent('flow.asTheBoardDefines:{"name":"Doing"}'));
+      expect(within(selects[2]).getAllByRole('option')[0]).toHaveTextContent('flow.asTheBoardDefines:{"name":"Doing"}');
+      // Matching the board already, so there is nothing to save - only a way back to the default.
+      expect(screen.queryByText('flow.saveDefinition')).not.toBeInTheDocument();
+      expect(screen.getByText('flow.resetDefinition')).toBeInTheDocument();
+    });
+
+    test('an unset board keeps the old wording and offers no reset', async () => {
+      fetchFlowMetrics.mockResolvedValue(metrics());
+
+      render(<FlowMetrics />);
+
+      const selects = await screen.findAllByRole('combobox');
+      await waitFor(() => expect(within(selects[2]).getAllByRole('option')[0]).toHaveTextContent('flow.lastColumn'));
+      expect(within(selects[1]).getAllByRole('option')[0]).toHaveTextContent('flow.arrivalOnBoard');
+      expect(screen.queryByText('flow.resetDefinition')).not.toBeInTheDocument();
+    });
+
+    test('the owner saves what the screen was computed with, and the screen reads it back', async () => {
+      fetchFlowMetrics.mockResolvedValue(metrics({ startColumnId: 10, doneColumnId: 11 }));
+      defineFlow.mockResolvedValue({ boardId: 3, startColumnId: 10, doneColumnId: 11 });
+
+      render(<FlowMetrics />);
+      await screen.findByText('flow.finished');
+      // Nothing is offered until somebody picks something.
+      expect(screen.queryByText('flow.saveDefinition')).not.toBeInTheDocument();
+      fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: '11' } });
+      fireEvent.click(await screen.findByText('flow.saveDefinition'));
+
+      await waitFor(() => expect(defineFlow).toHaveBeenCalledWith({ boardId: 3, start: 10, done: 11 }));
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('flow.definitionSaved'));
+      // Opened, picked, then read back as "as the board defines it" once saved.
+      await waitFor(() => expect(fetchFlowMetrics).toHaveBeenCalledTimes(3));
+      const reread = fetchFlowMetrics.mock.calls[2][0];
+      expect(reread.start).toBe('');
+      expect(reread.done).toBe('');
+    });
+
+    test('the reset sends nulls, which put both ends back on the default', async () => {
+      fetchFlowMetrics.mockResolvedValue(metrics({ doneColumnId: 11, definedDoneColumnId: 11 }));
+      defineFlow.mockResolvedValue({ boardId: 3, startColumnId: null, doneColumnId: null });
+
+      render(<FlowMetrics />);
+      fireEvent.click(await screen.findByText('flow.resetDefinition'));
+
+      await waitFor(() => expect(defineFlow).toHaveBeenCalledWith({ boardId: 3, start: null, done: null }));
+    });
+
+    test('a refused save says so and changes nothing', async () => {
+      fetchFlowMetrics.mockResolvedValue(metrics({ doneColumnId: 11 }));
+      defineFlow.mockRejectedValue(new Error('403'));
+
+      render(<FlowMetrics />);
+      await screen.findByText('flow.finished');
+      fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: '11' } });
+      fireEvent.click(await screen.findByText('flow.saveDefinition'));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('flow.definitionFailed'));
+      // The pick survives the refusal: nothing was saved, so nothing is reset.
+      expect(screen.getAllByRole('combobox')[2]).toHaveValue('11');
+    });
+
+    test('somebody who does not own the board is offered neither', async () => {
+      mockKanban.activeBoard = { id: 3, owned: false };
+      fetchFlowMetrics.mockResolvedValue(metrics({ doneColumnId: 11, definedDoneColumnId: 12 }));
+
+      render(<FlowMetrics />);
+
+      await screen.findByText('flow.finished');
+      fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: '11' } });
+      await waitFor(() => expect(fetchFlowMetrics).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText('flow.saveDefinition')).not.toBeInTheDocument();
+      expect(screen.queryByText('flow.resetDefinition')).not.toBeInTheDocument();
+    });
   });
 });

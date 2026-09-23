@@ -561,7 +561,12 @@
     "finishedOn": "Finished",
     "card": "Card",
     "throughput": "Throughput",
-    "throughputCaption": "Cards finished each day."
+    "throughputCaption": "Cards finished each day.",
+    "asTheBoardDefines": "As the board defines it ({{name}})",
+    "saveDefinition": "Make this the board's definition",
+    "resetDefinition": "Back to the default",
+    "definitionSaved": "The board's definition of start and done is saved.",
+    "definitionFailed": "The board's definition could not be saved."
   },
   "taskComments": {
     "heading": "Comments",
