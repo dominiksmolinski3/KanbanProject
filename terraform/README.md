@@ -451,10 +451,13 @@ Five consequences are worth having in one place:
   `*.internal.<environment-domain>` as a SAN, is issued by *Microsoft TLS G2 RSA CA*, and verifies
   against the stock CA bundle — so the hop is authenticated as well as encrypted, and nothing has
   to be declared insecure.
-- **`ingress_trusted_proxy_count` is 2**, because there are two proxies now: the Container Apps
-  ingress, then nginx. At 1 the rate limiter keys every request on nginx's own pod address — one
-  shared bucket for the entire internet — and nothing 500s, nothing logs, and the `CREDENTIALS`
-  limit quietly stops being per-IP.
+- **`ingress_trusted_proxy_count` is 3**, because three hops append to `X-Forwarded-For` now: the
+  web app's ingress appends the client, nginx (`$proxy_add_x_forwarded_for`) appends that ingress's
+  envoy, and the API's internal ingress appends nginx. It was 2 from the split until 24 Sep 2026,
+  one short, and nothing said so: every request keyed on the web ingress's envoy (`100.100.0.188`,
+  the `$remote_addr` in nginx's own access log), so the rate limiter held one bucket for the entire
+  internet, the `CREDENTIALS` limit stopped being per-IP, and *Signed-in devices* showed that
+  address for everybody. Counting proxies was the mistake; count the entries that get appended.
 - **`SECURITY_CORS_ALLOWED_ORIGINS` names the web app**, not the API app. nginx forwards the
   browser's `Origin` unchanged, so what Spring sees is the address the person typed. Getting it
   wrong is loud but confusing: every call from the board answers `Invalid CORS request` with a 403

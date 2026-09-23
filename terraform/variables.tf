@@ -253,9 +253,9 @@ variable "extra_tags" {
 }
 
 variable "ingress_trusted_proxy_count" {
-  description = "How many reverse proxies sit in front of the API, counted from the API outwards. Two since the container split - the Container Apps ingress, then nginx - and three if Front Door is ever put in front of that. Leaving it at 1 keys every rate-limit bucket on nginx's own pod address, which is one shared bucket for the entire internet, with nothing logged and nothing failing. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge. Set to 0 to ignore the header entirely."
+  description = "How many X-Forwarded-For entries are appended between the browser and the API, counted from the API outwards. Three since the container split - the web app's ingress appends the client, nginx appends that ingress's envoy (100.100.x.x), and the API's internal ingress appends nginx - and four if Front Door is ever put in front. One too few keys every rate-limit bucket and every signed-in device on the envoy address, which is one shared bucket for the entire internet, with nothing logged and nothing failing. The app reads the X-Forwarded-For entry this many places from the right and ignores everything to its left, which is the part a client can forge. Set to 0 to ignore the header entirely."
   type        = number
-  default     = 2
+  default     = 3
 
   validation {
     condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count
