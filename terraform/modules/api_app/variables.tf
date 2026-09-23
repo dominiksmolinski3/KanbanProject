@@ -146,19 +146,21 @@ variable "captcha_secret" {
 
 variable "ingress_trusted_proxy_count" {
   description = <<-EOT
-    How many reverse proxies sit in front of the app, counted from the app outwards. There are two
-    since the split - the Container Apps ingress, then nginx - and this is the easiest thing in the
-    whole arrangement to get wrong, because getting it wrong fails silently.
+    How many X-Forwarded-For entries are appended between the browser and the app, counted from
+    the app outwards. There are three since the split: the web app's ingress appends the client,
+    nginx appends that ingress's envoy, and this app's internal ingress appends nginx. This is the
+    easiest thing in the whole arrangement to get wrong, because getting it wrong fails silently.
 
     ClientIpResolver reads the X-Forwarded-For entry this many places from the right and ignores
-    everything to its left, which is the part a client can forge. Left at 1 with two proxies in
-    front, every request keys on nginx's own pod address: one shared escalation bucket for the
-    entire internet, and the per-IP CREDENTIALS limit stops existing. Nothing 500s and nothing logs.
+    everything to its left, which is the part a client can forge. At 2 every request keyed on the
+    web ingress's envoy (100.100.0.188 on dev, measured in nginx's own access log): one shared
+    escalation bucket for the entire internet, the per-IP CREDENTIALS limit gone, and that address
+    shown as every signed-in device's. Nothing 500s and nothing logs.
 
     Set to 0 to ignore the header entirely.
   EOT
   type        = number
-  default     = 2
+  default     = 3
 
   validation {
     condition     = var.ingress_trusted_proxy_count >= 0 && floor(var.ingress_trusted_proxy_count) == var.ingress_trusted_proxy_count
