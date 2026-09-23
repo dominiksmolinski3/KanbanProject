@@ -15,7 +15,7 @@ const PREDEFINED_LABELS = [
   { name: 'Documentation', color: '#9C27B0' }
 ];
 
-const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange }) => {
+const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = false }) => {
   const [labels, setLabels] = useState(initialLabels);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -221,27 +221,31 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange }) => {
               style={{ backgroundColor: getLabelColor(label) }}
             ></span>
             <span className="label-text">{label}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemoveLabel(label);
-              }}
-              className="remove-label-button"
-            >
-              ×
-            </button>
+            {!readOnly && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveLabel(label);
+                }}
+                className="remove-label-button"
+              >
+                ×
+              </button>
+            )}
           </span>
         ))}
-        <button
-          ref={buttonRef}
-          className="add-label-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleLabelPicker();
-          }}
-        >
-          {t('taskLabels.addLabel')}
-        </button>
+        {!readOnly && (
+          <button
+            ref={buttonRef}
+            className="add-label-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLabelPicker();
+            }}
+          >
+            {t('taskLabels.addLabel')}
+          </button>
+        )}
       </div>
 
       {showLabelPicker && isPickerReady && createPortal(
