@@ -81,6 +81,20 @@ class TaskColumnHistoryTest {
     }
 
     @Test
+    @DisplayName("an entry whose column was deleted maps with no column id instead of throwing")
+    void aDetachedEntryStillMaps() {
+        var entry = new TaskColumnHistory(task(1, "Write the migration"), column(2, "Doing"));
+        // What ColumnService.deleteColumn leaves behind since V17: the row, its copied name, and no
+        // column. The mapper dereferenced it, so the task's whole history answered 500.
+        entry.setColumn(null);
+
+        var dto = new TaskColumnHistoryMapper().toDTO(entry);
+
+        assertThat(dto.getColumnId()).isNull();
+        assertThat(dto.getColumnName()).isEqualTo("Doing");
+    }
+
+    @Test
     @DisplayName("two entries describing the same move are equal, which is what makes them comparable")
     void equalEntriesCompareEqual() {
         var moved = LocalDateTime.of(2026, 8, 31, 12, 0);

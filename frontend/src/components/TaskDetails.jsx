@@ -9,7 +9,9 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
 function TaskDetails({ task, onClose, onSubtaskUpdate }) {
-  const { refreshTasks } = useKanban();
+  // A viewer sees the whole panel and changes none of it (FEAT-08). The server refuses every write
+  // here regardless; hiding the controls is what stops the panel offering edits that can only fail.
+  const { refreshTasks, readOnly } = useKanban();
   const [users, setUsers] = useState([]);
   const [assignedUsers, setAssignedUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -922,15 +924,17 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         <>
           <h3>{taskTitle || task.title}</h3>
           <div className="panel-actions">
-            <button
-              className="edit-title-btn"
-              onClick={startEditingTaskTitle}
-              title={t('taskActions.editTitle')}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
+            {!readOnly && (
+              <button
+                className="edit-title-btn"
+                onClick={startEditingTaskTitle}
+                title={t('taskActions.editTitle')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
             <button
               className={`history-timeline-btn ${currentView === 'history' ? 'active' : ''}`}
               onClick={() => setCurrentView('history')}
@@ -970,7 +974,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             <div className="task-description-section">
               <div className="description-header">
                 <h4>{t('taskActions.description')}:</h4>
-                {!editingTaskDescription && (
+                {!editingTaskDescription && !readOnly && (
                   <button 
                     onClick={startEditingTaskDescription}
                     className="edit-description-btn"
@@ -1023,6 +1027,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             <div className="subtasks-section">
               <h4>{t('taskActions.subtasks')}</h4>
               
+              {!readOnly && (
               <div className="add-subtask-form">
                 <input
                   type="text"
@@ -1039,7 +1044,8 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                   {t('header.addTask')}
                 </button>
               </div>
-              
+              )}
+
               {subtasks.length > 0 ? (
                 <div className="subtasks-list">
                   {subtasks.map(subtask => (
@@ -1049,7 +1055,8 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                           type="checkbox"
                           checked={subtask.completed}
                           onChange={() => handleToggleSubtask(subtask.id)}
-                          id={`subtask-${subtask.id}`}
+                          disabled={readOnly}
+id={`subtask-${subtask.id}`}
                           className="subtask-checkbox"
                         />
                         <label 
@@ -1070,13 +1077,15 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                             </span>
                             <span className="button-text">{expandedSubtaskId === subtask.id ? t('taskActions.hideDetails') : t('taskActions.showDetails')}</span>
                           </button>
-                          <button
-                            className="delete-subtask-btn"
-                            onClick={() => confirmdeleteSubTask(subtask.id)}
-                            title={t('taskActions.deleteSubTask')}
-                          >
-                            ×
-                          </button>
+                          {!readOnly && (
+                            <button
+                              className="delete-subtask-btn"
+                              onClick={() => confirmdeleteSubTask(subtask.id)}
+                              title={t('taskActions.deleteSubTask')}
+                            >
+                              ×
+                            </button>
+                          )}
                         </div>
                       </div>
                       
@@ -1111,15 +1120,17 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                             <div className="description-display">
                               <div className="description-header">
                                 <h5>{t('taskActions.description')}:</h5>
-                                <button 
-                                  onClick={startEditingSubTaskDescription}
-                                  className="edit-description-btn"
-                                  title={t('taskActions.editSubTaskDescription')}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
+                                {!readOnly && (
+                                  <button
+                                    onClick={startEditingSubTaskDescription}
+                                    className="edit-description-btn"
+                                    title={t('taskActions.editSubTaskDescription')}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                  </button>
+                                )}
                               </div>
                               {subtaskDescription ? (
                                 <p className="description-content">{subtaskDescription}</p>
@@ -1141,12 +1152,13 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             {/* Attachments Section */}
             <div
               className={`attachments-section${draggingFileOver ? ' drop-target' : ''}`}
-              onDragOver={handleAttachmentDragOver}
-              onDragLeave={handleAttachmentDragLeave}
-              onDrop={handleAttachmentDrop}
+              onDragOver={readOnly ? undefined : handleAttachmentDragOver}
+              onDragLeave={readOnly ? undefined : handleAttachmentDragLeave}
+              onDrop={readOnly ? undefined : handleAttachmentDrop}
             >
               <h4>{t('taskActions.attachments')}</h4>
 
+              {!readOnly && (
               <div className="add-attachment-form">
                 <input
                   ref={attachmentInputRef}
@@ -1167,6 +1179,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                 </button>
                 <span className="attachment-hint">{t('taskActions.attachmentHint')}</span>
               </div>
+              )}
 
               {attachments.length > 0 ? (
                 <div className="attachments-list">
@@ -1187,14 +1200,16 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                         {formatFileSize(attachment.sizeBytes)}
                         {attachment.uploadedByName ? ` · ${attachment.uploadedByName}` : ''}
                       </span>
-                      <button
-                        type="button"
-                        className="delete-attachment-btn"
-                        onClick={() => confirmDeleteAttachment(attachment)}
-                        title={t('taskActions.deleteAttachment')}
-                      >
-                        ×
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          className="delete-attachment-btn"
+                          onClick={() => confirmDeleteAttachment(attachment)}
+                          title={t('taskActions.deleteAttachment')}
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1228,19 +1243,22 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                       <div key={user.id} className="assigned-user-card">
                         {renderUserAvatar(user)}
                         <span className="user-name">{user.name}</span>
-                        <button 
-                          className="remove-user-btn-card"
-                          onClick={() => confirmRemoveUser(user.id)}
-                          title={t('forms.deleteUser')}
-                        >
-                          ×
-                        </button>
+                        {!readOnly && (
+                          <button
+                            className="remove-user-btn-card"
+                            onClick={() => confirmRemoveUser(user.id)}
+                            title={t('forms.deleteUser')}
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              {!readOnly && (
               <div className="add-assignment">
                 <h5>{t('taskDetails.assignNewUser')}</h5>
                 <div className="assignment-controls">
@@ -1268,6 +1286,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                   </button>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Parent Task Section */}
@@ -1287,7 +1306,8 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                     <strong>{parentTask.title}</strong>
                     <span className="parent-id">{t('taskDetails.idLabel')} {parentTask.id}</span>
                   </div>
-                  <button 
+                  {!readOnly && (
+                  <button
                     onClick={handleRemoveParent}
                     className="remove-parent-btn"
                     title={t('taskDetails.removeParentLink')}
@@ -1296,6 +1316,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                  )}
                 </div>
               ) : (
                 <div className="no-parent-card">
@@ -1303,14 +1324,16 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                 </div>
               )}
 
-              <button
-                className="manage-parent-btn"
-                onClick={handleShowParentSelector}
-              >
-                {parentTask ? t('taskDetails.changeParentTask') : t('taskDetails.assignParentTask')}
-              </button>
+              {!readOnly && (
+                <button
+                  className="manage-parent-btn"
+                  onClick={handleShowParentSelector}
+                >
+                  {parentTask ? t('taskDetails.changeParentTask') : t('taskDetails.assignParentTask')}
+                </button>
+              )}
 
-              {showParentSelector && (
+              {showParentSelector && !readOnly && (
                 <div className="parent-selector-card">
                   <h5>{t('taskDetails.selectParentTask')}</h5>
                   <select 
@@ -1390,7 +1413,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
                   </svg>
                 </span>
                 <h4>{t('taskActions.deadline')}:</h4>
-                {!editingDeadline && (
+                {!editingDeadline && !readOnly && (
                   <button 
                     onClick={startEditingDeadline}
                     className="edit-description-btn"
@@ -1772,6 +1795,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           taskId={task.id}
           initialLabels={taskLabels}
           onLabelsChange={handleLabelsChange}
+          readOnly={readOnly}
         />
         </div>
 
@@ -1783,13 +1807,15 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
               {assignedUsers.map(user => (
                 <div key={user.id} className="avatar-item" title={user.name}>
                   {renderUserAvatar(user)}
-                  <button 
-                    className="remove-user-btn"
-                    onClick={() => confirmRemoveUser(user.id)}
-                    title={t('forms.deleteUser')}
-                  >
-                    ×
-                  </button>
+                  {!readOnly && (
+                    <button
+                      className="remove-user-btn"
+                      onClick={() => confirmRemoveUser(user.id)}
+                      title={t('forms.deleteUser')}
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
