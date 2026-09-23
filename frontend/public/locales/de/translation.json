@@ -440,6 +440,7 @@
   "devices": {
     "title": "Angemeldete Geräte",
     "intro": "Jede Sitzung, die für dieses Konto noch erneuert werden kann. Das Beenden meldet diesen Browser ab; das Passwort bleibt unverändert.",
+    "demoNotice": "Dies ist ein gemeinsames Demo-Konto, daher wird verborgen, von wo aus sich jede Sitzung anmeldet.",
     "fields": {
       "device": "Gerät",
       "address": "Adresse",
@@ -447,7 +448,8 @@
       "lastSeen": "Zuletzt erneuert",
       "actions": "Aktionen",
       "thisDevice": "Dieses Gerät",
-      "unknownDevice": "Unbekanntes Gerät"
+      "unknownDevice": "Unbekanntes Gerät",
+      "hidden": "Auf dem Demo-Konto verborgen"
     },
     "buttons": {
       "end": "Abmelden",

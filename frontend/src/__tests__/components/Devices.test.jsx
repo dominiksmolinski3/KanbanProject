@@ -65,6 +65,29 @@ describe('Devices', () => {
     expect(screen.getByText('198.51.100.4')).toBeInTheDocument();
   });
 
+  test('a redacted session shows only blurred stand-ins and says why', async () => {
+    authService.listDevices.mockResolvedValue([
+      session({ ipAddress: null, userAgent: null, redacted: true })
+    ]);
+
+    const { container } = render(<Devices />);
+
+    await waitFor(() => expect(screen.getByText('devices.demoNotice')).toBeInTheDocument());
+    expect(screen.getAllByText('devices.fields.hidden')).toHaveLength(2);
+    expect(container.querySelectorAll('.device-redacted-text')).toHaveLength(2);
+    expect(screen.queryByText('devices.fields.unknownDevice')).not.toBeInTheDocument();
+    expect(screen.getByText('devices.fields.thisDevice')).toBeInTheDocument();
+  });
+
+  test('an ordinary account sees no demo notice', async () => {
+    authService.listDevices.mockResolvedValue([session()]);
+
+    render(<Devices />);
+
+    await waitFor(() => expect(screen.getByText('203.0.113.7')).toBeInTheDocument());
+    expect(screen.queryByText('devices.demoNotice')).not.toBeInTheDocument();
+  });
+
   test('marks the row whose id matches the stored session, and only that one', async () => {
     authService.listDevices.mockResolvedValue([session(), session({ id: 13 })]);
 

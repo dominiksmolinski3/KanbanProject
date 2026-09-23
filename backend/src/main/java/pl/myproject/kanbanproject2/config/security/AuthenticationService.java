@@ -16,6 +16,7 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
@@ -39,6 +40,7 @@ public class AuthenticationService {
     private final EmailService emailService;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final DemoAccounts demoAccounts;
 
     @Transactional
     public void signup(RegisterUserDto input) {
@@ -98,8 +100,13 @@ public class AuthenticationService {
         refreshTokenService.revoke(refreshToken);
     }
 
+    // A shared demo account would otherwise show each visitor where the others are signing in from.
     public List<ActiveDeviceDto> listSessions(User user) {
-        return refreshTokenService.listSessionsFor(user);
+        List<ActiveDeviceDto> sessions = refreshTokenService.listSessionsFor(user);
+        if (!demoAccounts.isDemo(user)) {
+            return sessions;
+        }
+        return sessions.stream().map(ActiveDeviceDto::withDetailsRedacted).toList();
     }
 
     public void revokeSession(User user, Long sessionId) {

@@ -15,6 +15,7 @@ public class ActiveDeviceMapper implements Function<RefreshToken, ActiveDeviceDt
                 token.getUserAgent(),
                 token.getChainStartedAt(),
                 token.getIssuedAt(),
-                token.getExpiresAt());
+                token.getExpiresAt(),
+                false);
     }
 }
