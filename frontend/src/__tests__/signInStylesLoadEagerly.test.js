@@ -56,7 +56,7 @@ function classesUsedBy(file) {
 }
 
 const definesClass = (stylesheet, name) =>
-  new RegExp(`\\.${name.replace(/[-]/g, '\\-')}(?![\\w-])`).test(fs.readFileSync(stylesheet, 'utf8'));
+  new RegExp(`\\.${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(fs.readFileSync(stylesheet, 'utf8'));
 
 describe('the sign-in screen', () => {
   const eager = eagerStylesheets();
