@@ -522,9 +522,9 @@ numbers:
   more than 180 with `400 INVALID_FLOW_REQUEST`, the same refusal the other bounded reads make.
 - **"Done" is a column, and arriving at or past it counts.** A card that skips Done for Closed
   has still finished. The start works the same way. Positions are today's, because a history
-  row points at a column and a column has only its current position. The defaults are the
-  board's last column and arrival on the board, which makes the default a lead time; the screen
-  lets people choose both.
+  row points at a column and a column has only its current position. What a read uses is, in
+  order: a column chosen in the request, the board's own definition, and FEAT-07's rule (the
+  last column, and arrival on the board, which makes that default a lead time).
 - **The first finish is the finish.** A card bounced between Review and Done counts once, or
   one card would read as throughput.
 - **What the history cannot say is not guessed.** A deleted card takes its history with it. A
@@ -540,6 +540,31 @@ cycle-time scatter with median and 85th-percentile lines, and throughput bars, i
 with no chart dependency. The eight band colours are a validated categorical palette, and columns
 past eight fold into one "earlier columns" band. Every chart has a table view, because three of
 the light-mode colours sit below 3:1 against the chart surface.
+
+**A board defines its own start and done (`V23`, FLOW-02).** The default board ends `Done, Closed`,
+so measuring to the last column opened the screen on "0 finished" for any team that stops at Done,
+and a column picked on screen lived in one browser tab — two people on the same board could read
+two definitions of done without knowing it. `boards.flow_start_column_id` and
+`flow_done_column_id` hold one definition per board. `PUT /api/flow/definition` sets it, and only
+the owner can (`403 NOT_BOARD_OWNER`), like the name: a member who disagrees can still look through
+other columns, but cannot change everyone's answer. Four details carry it:
+
+- **Only boards this code seeds get a definition up front** — In Progress to Done, in
+  `BoardService.seedDefaultColumns`, where the code wrote the stages and knows which one it meant.
+  Boards older than `V23` stay null rather than being backfilled from a column called "Done",
+  which would be guessing what a team means by it.
+- **The board's half gives way; an explicit contradiction does not.** A reorder can leave a stored
+  start after a stored done, and a request may pick one end that no longer fits the stored other.
+  The stored end drops to the default rather than refusing the screen. Two explicit choices that
+  contradict each other are still `400 INVALID_FLOW_REQUEST`.
+- **`ON DELETE SET NULL`, and cleared in Java as well.** Deleting the chosen column puts the board
+  back on the default. `ColumnService.deleteColumn` and `BoardService.deleteBoard` clear the
+  reference themselves before deleting, so a board already loaded in the transaction cannot flush
+  the deleted id back over what the database just nulled.
+- **The response says what the answer used and what the board says**
+  (`startColumnId`/`doneColumnId` and `definedStartColumnId`/`definedDoneColumnId`). That is how
+  the screen labels its default option "as the board defines it", and offers the owner a save only
+  when the two differ.
 
 The same branch fixed `TaskColumnHistoryMapper`. It dereferenced `history.getColumn()`, which
 `V17` made nullable, so any task that had left a column that was later deleted answered `500` on
