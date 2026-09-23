@@ -917,6 +917,32 @@ and Key Vault already have, authenticated with an access key from `REDIS-ACCESS-
 smallest SKU (`Balanced_B0`) — deliberate, the same way Basic would have been on a classic cache,
 since what it holds is exactly the state the store already fails open on losing.
 
+**Everything else is limited too, in two layers, because until then nothing was.** Measured on the
+compose stack before this: one signed-in account spamming `/api/tasks` drove the API container to
+four cores at 214 requests a second, all answered 200, and 3 000 requests with no token pinned it
+at 100% doing nothing but refusing them. There is no server-side cache of board data, on purpose -
+responses are per caller and change on every move, live sync already says when to re-read, and
+Postgres sat at 16% while the JVM was at 400%, so caching would only have made the spam cheaper.
+
+- **The edge limits by address** (`limit_req` in the nginx template): 50/s with a burst of 200 on
+  `/api/` and `/v3/api-docs`, 5/s on `/ws/`, 20/s on the shell; `/assets/` is immutable and exempt.
+  It is what stops a flood that never authenticates before a JVM parses a header. The key is the
+  **last** `X-Forwarded-For` entry - the one the Container Apps ingress appends - because the first
+  is the client's own text; with no header (compose) it is the socket address. The zones live in
+  each nginx process, so at `web_max_replicas = 5` the edge limit is five times what it says, which
+  is the accepted cost of a cheap layer. A refusal is `@rate_limited`: `429`, `Retry-After: 1`, the
+  application's `{code, message}` body and the security-headers snippet, since Spring never sees it.
+- **The API limits by account** (`ApiRateLimitFilter`, after the JWT filter): a token bucket per
+  account in the rate limiter's Redis, `redis/api-rate-limit.lua`, 20/s with a burst of 100
+  (`security.api-rate-limit.*`). Fleet-wide, since five replicas must not mean five buckets, and by
+  account rather than address, so an office behind one NAT does not share one person's allowance. It
+  fails open on Redis, like the auth limiter, and counts refusals in `kanban.api.ratelimit.refused`.
+  A refused call takes no token, so hammering keeps being refused without lengthening the wait.
+
+`EdgeRateLimitTest` pins the edge's side: every proxying location is limited, the key is the last
+hop, the 429 carries the headers, and the edge's API rate stays above the per-account one - so a
+person meets the fleet-wide limit, with its real `Retry-After`, before the per-replica one.
+
 On the client, [apiInterceptor.js](frontend/src/services/apiInterceptor.js) monkey-patches
 `window.fetch` at module load to attach `Authorization`, skipping the URLs that name an
 unauthenticated auth route. That skip used to be any URL containing `/auth/`, on the assumption that
