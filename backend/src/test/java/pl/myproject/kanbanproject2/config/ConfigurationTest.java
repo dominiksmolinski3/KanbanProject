@@ -10,6 +10,7 @@ import pl.myproject.kanbanproject2.config.websocket.StompRelayProperties;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,6 +62,17 @@ class ConfigurationTest {
     private static final Set<String> EDGE_ENTRYPOINT_PROVIDED = Set.of("NGINX_LOCAL_RESOLVERS");
 
     /**
+     * Variables the Application Insights agent reads rather than Spring, so no placeholder or record
+     * names them. Exempt from "passes nothing unread" only while the backend image still attaches
+     * the agent - {@link #theApiImageAttachesTheAgentItsVariablesAreFor()} - or the exemption would
+     * outlive the thing it exempts, which is exactly MAIL-02's dead configuration.
+     */
+    private static final Set<String> AGENT_READ =
+            Set.of("APPLICATIONINSIGHTS_CONNECTION_STRING", "APPLICATIONINSIGHTS_AUTHENTICATION_STRING");
+
+    private static final Path API_DOCKERFILE = Path.of("Dockerfile");
+
+    /**
      * The records Spring binds, named rather than discovered by scanning - a classpath scan that
      * silently finds one fewer class next time would report a real variable as dead configuration.
      */
@@ -103,10 +115,26 @@ class ConfigurationTest {
     void theContainerAppPassesNothingUnread() throws IOException {
         Set<String> unread = new TreeSet<>(terraformContainerAppEnvironment());
         unread.removeAll(readable());
+        unread.removeAll(AGENT_READ);
 
         assertThat(unread)
                 .as("Terraform supplies these and no property binds them - this is the shape MAIL-02 had")
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("the API image attaches the agent its variables are for, keyed on the one Terraform sets")
+    void theApiImageAttachesTheAgentItsVariablesAreFor() throws IOException {
+        String dockerfile = Files.readString(API_DOCKERFILE, StandardCharsets.UTF_8);
+
+        assertThat(dockerfile)
+                .as("the backend image no longer carries the agent, so %s are read by nothing", AGENT_READ)
+                .contains("applicationinsights-agent.jar")
+                .contains("-javaagent:")
+                .contains("APPLICATIONINSIGHTS_CONNECTION_STRING");
+        assertThat(terraformContainerAppEnvironment())
+                .as("the container app no longer sets what attaches the agent, so no metric reaches an alert")
+                .containsAll(AGENT_READ);
     }
 
     // ------------------------------------------------------------------------------- the edge

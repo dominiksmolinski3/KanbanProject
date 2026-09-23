@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,16 +28,26 @@ import java.util.Optional;
 @Service
 public class MailDeliveryReportService {
 
+    /**
+     * Counts reports that say a message did not arrive, tagged with which of
+     * {@link MailDeliveryStatuses#UNDELIVERED} it was. The bounce alert reads this, so which statuses
+     * count as "did not arrive" is decided here and nowhere else; the alert used to repeat the list
+     * in KQL, with a test to keep the two copies agreeing.
+     */
+    static final String UNDELIVERED_COUNTER = "kanban.mail.delivery.undelivered";
+
     private final OutboxEmailRepository outbox;
+    private final MeterRegistry meterRegistry;
     private final Clock clock;
 
     @Autowired
-    public MailDeliveryReportService(OutboxEmailRepository outbox) {
-        this(outbox, Clock.systemUTC());
+    public MailDeliveryReportService(OutboxEmailRepository outbox, MeterRegistry meterRegistry) {
+        this(outbox, meterRegistry, Clock.systemUTC());
     }
 
-    MailDeliveryReportService(OutboxEmailRepository outbox, Clock clock) {
+    MailDeliveryReportService(OutboxEmailRepository outbox, MeterRegistry meterRegistry, Clock clock) {
         this.outbox = outbox;
+        this.meterRegistry = meterRegistry;
         this.clock = clock;
     }
 
@@ -75,8 +86,11 @@ public class MailDeliveryReportService {
         outbox.save(message);
 
         if (MailDeliveryStatuses.isUndelivered(report.status())) {
-            // Warn because it's the first place somebody would look; the actual alert is the Log
-            // Analytics rule over the provider's own table, this is just the local record.
+            // Counted only once the report is kept, so a stale report that loses to a newer one
+            // on the row cannot count a bounce the row does not show. Tagged with the canonical
+            // spelling rather than the provider's, which keeps one series per status.
+            meterRegistry.counter(UNDELIVERED_COUNTER, "status", MailDeliveryStatuses.canonical(report.status()))
+                    .increment();
             log.warn("Outbox message {} was accepted and then not delivered: {}",
                     message.getId(), report.status());
         } else {

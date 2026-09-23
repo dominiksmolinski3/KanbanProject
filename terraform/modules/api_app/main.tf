@@ -109,6 +109,14 @@ resource "azurerm_container_app" "main" {
   # positionally, so an insertion anywhere but the tail shifts every later block's index and turns a
   # pure addition into a replace-in-place of every secret after it. Harmless in the end state - same
   # Key Vault references, same values - but a needlessly noisy plan for what is one new secret.
+  # Not in Key Vault: with local authentication disabled it is an address, not a credential, and
+  # a vault secret would be a second place for Terraform to write the same value. A container-app
+  # secret still keeps it out of the revision's plain environment listing.
+  secret {
+    name  = "app-insights-connection-string"
+    value = var.app_insights_connection_string
+  }
+
   secret {
     name                = "rabbitmq-password"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "RABBITMQ-PASSWORD")
@@ -274,6 +282,20 @@ resource "azurerm_container_app" "main" {
         value = tostring(max(1, floor(var.db_connection_budget / var.max_replicas)))
       }
 
+      # The Application Insights agent reads these two itself; the backend image attaches it only
+      # when the first is set, so an environment without them runs no agent at all. The second
+      # names the identity the agent signs its ingestion with, which is required: the resource
+      # refuses key-only ingestion. Appended, for the positional reason above.
+      env {
+        name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        secret_name = "app-insights-connection-string"
+      }
+
+      env {
+        name  = "APPLICATIONINSIGHTS_AUTHENTICATION_STRING"
+        value = "Authorization=AAD;ClientId=${azurerm_user_assigned_identity.main.client_id}"
+      }
+
       startup_probe {
         transport               = "HTTP"
         port                    = local.app_port
@@ -368,6 +390,16 @@ resource "time_sleep" "wait_for_secrets_user" {
 # Contributor rather than the narrower Storage Blob Data Reader/Writer pair because creating a
 # container is a container-level operation Writer doesn't grant - and it's the only path in, since
 # shared_access_key_enabled is false and there is no account key to build a connection string from.
+# Lets the agent's ingestion, signed as this identity, into the Application Insights resource. No
+# propagation wait in front of the container app, unlike the two grants here that gate startup: an
+# export refused while the grant propagates is retried by the agent and costs a minute of metrics,
+# never a revision that fails to start.
+resource "azurerm_role_assignment" "monitoring_metrics_publisher" {
+  scope                = var.app_insights_id
+  role_definition_name = "Monitoring Metrics Publisher"
+  principal_id         = azurerm_user_assigned_identity.main.principal_id
+}
+
 resource "azurerm_role_assignment" "storage_blob_contributor" {
   scope                = var.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"

@@ -1,0 +1,38 @@
+{
+  "role": {
+    "name": "kanban-api"
+  },
+  "sampling": {
+    "overrides": [
+      {
+        "telemetryType": "request",
+        "attributes": [
+          {
+            "key": "url.path",
+            "value": "/actuator.*",
+            "matchType": "regexp"
+          }
+        ],
+        "percentage": 0
+      }
+    ]
+  },
+  "instrumentation": {
+    "logging": {
+      "level": "OFF"
+    }
+  },
+  "preview": {
+    "processors": [
+      {
+        "type": "metric-filter",
+        "exclude": {
+          "matchType": "regexp",
+          "metricNames": [
+            "^(?!kanban_).*"
+          ]
+        }
+      }
+    ]
+  }
+}

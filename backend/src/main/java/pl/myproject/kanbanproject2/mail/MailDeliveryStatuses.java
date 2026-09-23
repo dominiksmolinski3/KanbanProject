@@ -11,11 +11,10 @@ import java.util.stream.Collectors;
  * {@code ("Failed", "Suppressed")} and silently excluded {@code Bounced} itself - the word the alert
  * is named after.
  *
- * <p><b>This list exists twice, and a build guard keeps the copies honest.</b> The other copy is the
- * KQL in {@code terraform/modules/diagnostics/main.tf}; edit either alone and everything still
- * compiles and passes while the alert and the table quietly disagree about what counts as a
- * failure. {@code BounceStatusesMatchAlertTest} reads the Terraform and fails the build when they
- * do - same shape as {@link DeadLetterAlertTest}.
+ * <p><b>This list exists once.</b> It used to exist twice - the bounce alert's KQL repeated it, with
+ * a build guard to keep the copies agreeing. The alert now counts
+ * {@code kanban.mail.delivery.undelivered}, which {@code MailDeliveryReportService} increments for
+ * these statuses and no others, so what counts as a failure is decided here alone.
  *
  * <p>Nothing here validates an <em>incoming</em> status: the column stores whatever arrived, and
  * this set only decides what counts as undelivered.
@@ -27,8 +26,8 @@ public final class MailDeliveryStatuses {
 
     /**
      * The statuses that mean a message this application believes it sent did not reach anybody.
-     * Ordered as the alert's KQL orders them, so a reader comparing the two files by eye compares
-     * two lists; the guard itself compares them as sets.
+     * Only this list decides it: the bounce alert counts {@code kanban.mail.delivery.undelivered},
+     * which {@code MailDeliveryReportService} increments for exactly these.
      */
     public static final List<String> UNDELIVERED =
             List.of("Bounced", "Failed", "Quarantined", "FilteredSpam", "Suppressed");
@@ -47,5 +46,10 @@ public final class MailDeliveryStatuses {
      */
     public static boolean isUndelivered(String status) {
         return status != null && UNDELIVERED_LOWERCASE.contains(status.toLowerCase(Locale.ROOT));
+    }
+
+    /** The spelling in {@link #UNDELIVERED} for an undelivered status, whatever case it arrived in. */
+    public static String canonical(String status) {
+        return UNDELIVERED.stream().filter(known -> known.equalsIgnoreCase(status)).findFirst().orElse(status);
     }
 }

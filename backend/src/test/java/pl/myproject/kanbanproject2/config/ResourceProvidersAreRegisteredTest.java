@@ -61,6 +61,7 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_key_vault", "Microsoft.KeyVault");
         put("azurerm_log_analytics_", "Microsoft.OperationalInsights");
         put("azurerm_monitor_", "Microsoft.Insights");
+        put("azurerm_application_insights", "Microsoft.Insights");
         put("azurerm_network_security_group", "Microsoft.Network");
         put("azurerm_postgresql_", "Microsoft.DBforPostgreSQL");
         put("azurerm_private_dns_", "Microsoft.Network");

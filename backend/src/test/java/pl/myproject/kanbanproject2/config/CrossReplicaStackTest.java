@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       thing that runs it is a named step in {@code kanban-ci.yml}'s e2e job.</li>
  * </ul>
  *
- * Same shape as {@link SweepAlarmCoverageTest} and {@code DeadLetterAlertTest}: a rule that has to
+ * Same shape as {@link SweepAlarmCoverageTest} and {@code MetricAlertsMatchTheMetersTest}: a rule that has to
  * live in several files, checked in one.
  */
 class CrossReplicaStackTest {

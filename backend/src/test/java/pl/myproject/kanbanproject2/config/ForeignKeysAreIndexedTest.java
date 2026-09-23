@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * nothing in the application's own suite can see it: the entities are mapped correctly either way
  * and {@code FlywayMigrationsMatchEntitiesTest} compares columns, not access paths.
  *
- * <p>This is therefore the {@code DeadLetterAlertTest} shape applied to the schema - a rule that
+ * <p>This is therefore the {@code MetricAlertsMatchTheMetersTest} shape applied to the schema - a rule that
  * lives in the migrations and is checked nowhere else. What it buys is not the twelve-odd indexes
  * {@code V19} added, which are a one-off, but the next foreign key: adding one now means adding
  * its index in the same migration or failing the build, rather than discovering it on a board with

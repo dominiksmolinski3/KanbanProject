@@ -39,7 +39,7 @@ provider "azurerm" {
     "Microsoft.Cache",               # the rate limiter's Redis instance
     "Microsoft.DBforPostgreSQL",     # flexible server
     "Microsoft.EventGrid",           # mail delivery-report system topic and subscription
-    "Microsoft.Insights",            # action group, metric alerts, scheduled query rules, diagnostics
+    "Microsoft.Insights",            # action group, alerts, scheduled query rules, diagnostics, application insights
     "Microsoft.KeyVault",            # vault and secrets
     "Microsoft.ManagedIdentity",     # the app's user-assigned identity
     "Microsoft.Network",             # vnet, subnets, NSGs, private endpoints, private DNS
