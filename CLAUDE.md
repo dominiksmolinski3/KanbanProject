@@ -1532,6 +1532,15 @@ and reasons in `local.refusal_alerts`.
   is cached on the lockfile hash, which also caches its verified state, and the job no longer
   spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
   logs on failure instead.
+  **Each leg's image builds restore their slow layers from the GitHub Actions cache.**
+  `.github/compose/e2e-build-cache.yml` adds `type=gha` `cache_from`/`cache_to` to the three
+  built services, and the job reads it through `COMPOSE_FILE`, so the
+  `docker compose --profile replicas up -d --build` line `CrossReplicaStackTest` checks for is
+  unchanged and a local `docker compose` never sees it. It needs a BuildKit builder
+  (`setup-buildx-action`, named through `BUILDX_BUILDER`) and the runtime token exposed to `run:`
+  steps (`ghaction-github-runtime`). What makes the API image worth caching is
+  `backend/Dockerfile` resolving Maven's dependencies in a layer keyed on `pom.xml` alone, before
+  `COPY src`; the package step stays online, because `go-offline` misses a few artifacts.
   A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
   both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a

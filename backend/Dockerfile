@@ -8,9 +8,17 @@ COPY mvnw ./
 COPY .mvn ./.mvn/
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
+# Resolve the dependencies and plugins in a layer of their own, keyed on pom.xml alone, so a change
+# to src/ recompiles without downloading them again. That only pays where the layer survives
+# between builds - CI's e2e legs restore it from the GitHub Actions cache - and there it was about
+# two thirds of this stage's time. go-offline misses a few artifacts Maven resolves only at
+# execution time, so the package step stays online and fetches those; building offline would turn
+# this layer from an optimisation into something the build depends on.
+RUN ./mvnw --batch-mode --quiet dependency:go-offline
+
 COPY src ./src/
 
-RUN ./mvnw package -Dmaven.test.skip=true
+RUN ./mvnw --batch-mode package -Dmaven.test.skip=true
 
 # Stage 2: Run the application on a JRE, with only the jar
 FROM eclipse-temurin:25-jre-noble@sha256:d120abd9d8d7dec94520ce974ece62d0e4eed8576eb00bbc84e6128307ab48ef

@@ -143,6 +143,10 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
+      # Every `docker compose` below reads the build-cache override as well - see the file for
+      # what it caches and why. An environment variable rather than `-f` flags, so each compose
+      # command in this job reads the same two files and none of them can forget one.
+      COMPOSE_FILE: docker-compose.yml:.github/compose/e2e-build-cache.yml
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -151,6 +155,21 @@ jobs:
         node-version: 26
         cache: npm
         cache-dependency-path: frontend/package-lock.json
+
+    # The runner's default builder is the docker driver, which cannot export a cache to GitHub
+    # Actions; a BuildKit container can. BUILDX_BUILDER points compose at it explicitly rather than
+    # trusting it to pick up the current builder.
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+    - name: Point compose at the BuildKit builder
+      run: echo "BUILDX_BUILDER=${{ steps.buildx.outputs.name }}" >> "$GITHUB_ENV"
+
+    # The cache service's URL and token are given to actions, not to `run:` steps, and compose is
+    # a `run:` step. This exports them so BuildKit's `type=gha` cache can reach the service.
+    - name: Expose the Actions cache to BuildKit
+      uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
 
     - name: Create .env file for docker-compose
       run: |

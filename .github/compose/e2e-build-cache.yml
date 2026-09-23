@@ -1,0 +1,36 @@
+# Layered over docker-compose.yml by kanban-ci.yml's e2e job, through COMPOSE_FILE, and by nothing
+# else: a local `docker compose up` never reads it, and the GitHub Actions cache it names does not
+# exist outside a workflow run.
+#
+# Each e2e leg builds both images from scratch on a fresh runner, and the slow parts of both builds
+# are layers that almost never change - Maven's dependencies (keyed on pom.xml since the Dockerfile
+# resolves them in a layer of their own) and the web image's `npm ci` (keyed on package-lock.json).
+# Restoring those from the cache leaves a leg compiling and bundling, not downloading.
+#
+# mode=max, because both of those layers are in a build stage rather than the final image, and the
+# default mode exports only the final image's layers. ignore-error on the export, because a cache
+# that fails to save is a slower next run and never a reason to fail this one. The API's scope is
+# written once, by `app`: `app2` is the same build from the same context and restores the same
+# layers, and a second export of them would be upload time spent on nothing.
+#
+# Using the cache is not a claim about correctness: an image built with it is the image built
+# without it, layer for layer, because BuildKit only reuses a layer whose inputs are unchanged.
+services:
+  app:
+    build:
+      cache_from:
+        - type=gha,scope=e2e-api
+      cache_to:
+        - type=gha,scope=e2e-api,mode=max,ignore-error=true
+
+  app2:
+    build:
+      cache_from:
+        - type=gha,scope=e2e-api
+
+  web:
+    build:
+      cache_from:
+        - type=gha,scope=e2e-web
+      cache_to:
+        - type=gha,scope=e2e-web,mode=max,ignore-error=true
