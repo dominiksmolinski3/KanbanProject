@@ -11,11 +11,13 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.service.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +54,8 @@ class AuthenticationServiceEnumerationTest {
         jwtService = mock(JwtService.class);
         refreshTokenService = mock(RefreshTokenService.class);
         service = new AuthenticationService(userRepository, passwordEncoder,
-                authenticationManager, emailService, jwtService, refreshTokenService);
+                authenticationManager, emailService, jwtService, refreshTokenService,
+                new DemoAccounts(List.of()));
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));

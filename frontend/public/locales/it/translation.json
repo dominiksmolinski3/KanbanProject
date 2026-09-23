@@ -440,6 +440,7 @@
     "devices": {
       "title": "Dispositivi connessi",
       "intro": "Tutte le sessioni ancora rinnovabili su questo account. Chiuderne una disconnette quel browser; non cambia la password.",
+      "demoNotice": "Questo è un account demo condiviso, quindi la provenienza di ogni sessione è nascosta.",
       "fields": {
         "device": "Dispositivo",
         "address": "Indirizzo",
@@ -447,7 +448,8 @@
         "lastSeen": "Ultimo rinnovo",
         "actions": "Azioni",
         "thisDevice": "Questo dispositivo",
-        "unknownDevice": "Dispositivo sconosciuto"
+        "unknownDevice": "Dispositivo sconosciuto",
+        "hidden": "Nascosto sull'account demo"
       },
       "buttons": {
         "end": "Disconnetti",

@@ -440,6 +440,7 @@
   "devices": {
     "title": "Zalogowane urządzenia",
     "intro": "Każda sesja, którą można jeszcze odnowić na tym koncie. Zakończenie sesji wylogowuje tę przeglądarkę; nie zmienia hasła.",
+    "demoNotice": "To wspólne konto demonstracyjne, więc miejsce logowania każdej sesji jest ukryte.",
     "fields": {
       "device": "Urządzenie",
       "address": "Adres",
@@ -447,7 +448,8 @@
       "lastSeen": "Ostatnie odnowienie",
       "actions": "Akcje",
       "thisDevice": "To urządzenie",
-      "unknownDevice": "Nieznane urządzenie"
+      "unknownDevice": "Nieznane urządzenie",
+      "hidden": "Ukryte na koncie demonstracyjnym"
     },
     "buttons": {
       "end": "Wyloguj",

@@ -105,3 +105,38 @@
     gap: 0.35rem;
   }
 }
+
+.devices-demo-notice {
+  margin: -0.75rem 0 1.5rem;
+  max-width: 60ch;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  color: var(--text-muted, #5b6b8c);
+}
+
+.device-redacted {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.device-redacted-text {
+  filter: blur(5px);
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.device-redacted-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

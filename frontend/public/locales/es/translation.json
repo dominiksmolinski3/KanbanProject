@@ -440,6 +440,7 @@
     "devices": {
       "title": "Dispositivos con sesión iniciada",
       "intro": "Todas las sesiones que aún pueden renovarse en esta cuenta. Cerrar una desconecta ese navegador; no cambia la contraseña.",
+      "demoNotice": "Esta es una cuenta de demostración compartida, por lo que se oculta desde dónde inicia sesión cada sesión.",
       "fields": {
         "device": "Dispositivo",
         "address": "Dirección",
@@ -447,7 +448,8 @@
         "lastSeen": "Última renovación",
         "actions": "Acciones",
         "thisDevice": "Este dispositivo",
-        "unknownDevice": "Dispositivo desconocido"
+        "unknownDevice": "Dispositivo desconocido",
+        "hidden": "Oculto en la cuenta de demostración"
       },
       "buttons": {
         "end": "Cerrar sesión",

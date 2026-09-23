@@ -294,13 +294,15 @@ class AuthenticationControllerHttpTest {
                 12L, "203.0.113.7", "Mozilla/5.0",
                 Instant.parse("2026-08-01T09:00:00Z"),
                 Instant.parse("2026-09-02T11:30:00Z"),
-                Instant.parse("2026-10-02T11:30:00Z"))));
+                Instant.parse("2026-10-02T11:30:00Z"),
+                false)));
 
         MvcResult listed = mvc.perform(get("/auth/devices"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(12))
                 .andExpect(jsonPath("$[0].ipAddress").value("203.0.113.7"))
                 .andExpect(jsonPath("$[0].signedInAt").exists())
+                .andExpect(jsonPath("$[0].redacted").value(false))
                 .andReturn();
 
         assertThat(listed.getResponse().getContentAsString())
