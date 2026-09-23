@@ -168,10 +168,16 @@ Cypress.Commands.add('setupTaskWithSubtasks', (title, subtasks = []) => {
   cy.createTask(title);
   cy.contains('.task', title).click();
     
+  // Each add waits for its own result before the next one types. Adding a subtask makes the panel
+  // re-read itself, and while it does it swaps the whole form for a loading line - so typing the
+  // next title straight after the click raced that swap, and on a slower machine lost it: Cypress
+  // typed into an input that was already on its way out and reported it disabled. The subtask
+  // appearing in the list, and the input coming back empty, are the two things that say the
+  // re-read has finished.
   subtasks.forEach(subtask => {
-    cy.get('.subtask-input').type(`${subtask}`);
-    cy.wait(300);
+    cy.get('.subtask-input').should('have.value', '').type(`${subtask}`);
     cy.get('.add-subtask-btn').click();
+    cy.contains('.subtask-item', subtask).should('exist');
   });
     
   cy.get('.close-panel-btn').click();
