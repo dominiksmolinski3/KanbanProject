@@ -73,9 +73,18 @@ public class RefreshTokenService {
         return refreshExpiration.toMillis();
     }
 
+    // A sign-in replaces the account's live sessions from the same browser on the same network:
+    // a browser that signs in again has lost its old token, so nothing can present it any more.
     @Transactional
     public Issued issue(User user, DeviceContext device) {
         Instant now = clock.instant();
+        if (device.isIdentifiable()) {
+            int replaced = refreshTokens.revokeLiveForDevice(
+                    user, device.ipAddress(), device.userAgent(), now);
+            if (replaced > 0) {
+                log.info("Replaced {} session(s) from the same device for user {}", replaced, user.getId());
+            }
+        }
         return issueWithin(user, now.plus(absoluteExpiration), now, now, device);
     }
 
