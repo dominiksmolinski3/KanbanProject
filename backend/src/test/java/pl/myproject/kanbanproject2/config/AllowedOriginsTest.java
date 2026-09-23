@@ -106,7 +106,9 @@ class AllowedOriginsTest {
                 mock(AuthRateLimiter.class),
                 mock(ClientIpResolver.class),
                 new ObjectMapper(),
-                origins);
+                origins,
+                mock(pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitProperties.class),
+                mock(pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimiter.class));
 
         var source = (UrlBasedCorsConfigurationSource) security.corsConfigurationSource();
         var request = new MockHttpServletRequest("GET", "/api/tasks");

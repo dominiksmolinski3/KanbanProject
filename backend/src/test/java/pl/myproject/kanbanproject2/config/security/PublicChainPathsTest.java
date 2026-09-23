@@ -19,6 +19,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import pl.myproject.kanbanproject2.config.SpaRoutes;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 
@@ -165,6 +167,11 @@ class PublicChainPathsTest {
             // This suite is about path matching in the security chain, not the escalation itself,
             // so a mock Redis template is enough - nothing here ever calls tryConsume.
             return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
+        }
+
+        @Bean
+        ApiRateLimiter apiRateLimiter(ApiRateLimitProperties properties) {
+            return new ApiRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 
         @Bean

@@ -19,6 +19,9 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitFilter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitFilter;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimitProperties;
+import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 
@@ -73,6 +76,36 @@ class SecurityConfigurationRateLimitWiringTest {
                         .hasStackTraceContaining("credential-attempts-per-ip"));
     }
 
+    @Test
+    @DisplayName("the per-account API limit sits right after the JWT filter, which finds the account it keys on")
+    void apiLimitIsWiredAfterAuthentication() {
+        contextRunner.run(context -> {
+            List<Class<?>> filters = filterTypes(context.getBean(SecurityFilterChain.class));
+
+            assertThat(filters.indexOf(ApiRateLimitFilter.class))
+                    .isEqualTo(filters.indexOf(JwtAuthenticationFilter.class) + 1)
+                    .isGreaterThan(filters.indexOf(CorsFilter.class));
+        });
+    }
+
+    @Test
+    @DisplayName("the per-account API limit can be switched off on its own")
+    void apiLimitCanBeDisabled() {
+        contextRunner.withPropertyValues("security.api-rate-limit.enabled=false").run(context -> {
+            List<Class<?>> filters = filterTypes(context.getBean(SecurityFilterChain.class));
+
+            assertThat(filters).doesNotContain(ApiRateLimitFilter.class).contains(AuthRateLimitFilter.class);
+        });
+    }
+
+    @Test
+    @DisplayName("an API limit of zero stops the context rather than refusing every call")
+    void apiLimitFailsFast() {
+        contextRunner.withPropertyValues("security.api-rate-limit.per-second=0")
+                .run(context -> assertThat(context).hasFailed().getFailure()
+                        .hasStackTraceContaining("security.api-rate-limit.per-second"));
+    }
+
     private static List<Class<?>> filterTypes(SecurityFilterChain chain) {
         return chain.getFilters().stream().<Class<?>>map(Filter::getClass).toList();
     }
@@ -105,6 +138,11 @@ class SecurityConfigurationRateLimitWiringTest {
             // This suite proves the filter's position in the chain, not the escalation itself, so
             // a mock Redis template is enough - nothing here ever calls tryConsume.
             return new AuthRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
+        }
+
+        @Bean
+        ApiRateLimiter apiRateLimiter(ApiRateLimitProperties properties) {
+            return new ApiRateLimiter(properties, mock(StringRedisTemplate.class), new SimpleMeterRegistry());
         }
 
         @Bean

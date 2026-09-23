@@ -43,6 +43,36 @@ log_format edge '$remote_addr - $remote_user [$time_local] "$request" $status '
                 'rid=$edge_request_id upstream_status=$upstream_status '
                 'request_time=$request_time upstream_time=$upstream_response_time';
 
+# ---------------------------------------------------------------------------------------------
+# How fast one client may ask. Until this nothing but the auth routes had a limit: one signed-in
+# account from one machine drove the API container to four cores at 214 requests a second, and
+# 3 000 requests with no token at all pinned it at 100% doing nothing but refusing them. The edge is
+# where the second kind has to stop - before a JVM parses a single header - and the API's own
+# per-account limit (ApiRateLimiter, in Redis) is where the first kind does, since an account can
+# move between addresses and an office shares one.
+#
+# Keyed on the client's address as the Container Apps ingress saw it: the *last* entry of
+# X-Forwarded-For, which the ingress appends. The first entry is whatever the client wrote there
+# itself, so keying on it would let anybody pick a fresh bucket per request. With no header at all -
+# the compose stack, which has no ingress - it is the socket address.
+#
+# These zones live in each nginx process, so at web_max_replicas = 5 the edge's limit is five times
+# what it says. That is the known cost of a limit at this layer; the per-account limit behind it is
+# fleet-wide, and this one exists to be cheap rather than exact.
+map $http_x_forwarded_for $edge_client {
+    "~(?:^|,)\s*(?<last_hop>[^,\s]+)\s*$" $last_hop;
+    default                                 $remote_addr;
+}
+
+# The API: comfortably above the per-account 20/s the application enforces, so that limit is the one
+# a signed-in person meets and this one only ever meets floods and a busy shared address.
+limit_req_zone $edge_client zone=edge_api:10m rate=50r/s;
+# The socket: a SockJS session is a handful of requests, and a reconnect loop is the thing to stop.
+limit_req_zone $edge_client zone=edge_ws:10m rate=5r/s;
+# The shell. Served from disk and cheap, but every copy is egress, and /board was the route asked
+# about. /assets/ is left out: the files are immutable and a browser fetches each once.
+limit_req_zone $edge_client zone=edge_shell:10m rate=20r/s;
+
 server {
     listen 8080;
     server_name _;
@@ -110,6 +140,23 @@ server {
 
     # The web tier's own probe. The JVM's readiness and liveness groups stay on the API app and are
     # probed there directly; nothing about a healthy nginx says anything about them.
+    # One answer for every refusal below: the application's own error shape, so the client's error
+    # handling reads it like any other 429, and the security headers, since this response is
+    # generated here rather than by Spring. Retry-After is one second, the whole-second rounding the
+    # application's own limiters use; nginx has no per-request figure to offer.
+    limit_req_status    429;
+    # Below error_log's default level, so a refusal is not logged twice: the access log already has
+    # a line with status=429 for it, and under a flood a second one per request is billed volume.
+    limit_req_log_level info;
+    error_page 429 = @rate_limited;
+
+    location @rate_limited {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Retry-After 1 always;
+        default_type application/json;
+        return 429 '{"code":"TOO_MANY_REQUESTS","message":"Too many requests, please try again later"}';
+    }
+
     location = /healthz {
         access_log off;
         default_type text/plain;
@@ -117,6 +164,9 @@ server {
     }
 
     location /api/ {
+        # nodelay: a burst is answered at once rather than queued, since a queued request is a held
+        # connection and holding connections is what a flood wants.
+        limit_req zone=edge_api burst=200 nodelay;
         proxy_pass $api_upstream;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
@@ -143,6 +193,7 @@ server {
 
     # STOMP over SockJS. Not under /api: the destinations are resolved by the broker, not by MVC.
     location /ws/ {
+        limit_req zone=edge_ws burst=30 nodelay;
         proxy_pass $api_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host              $proxy_host;
@@ -166,6 +217,7 @@ server {
     # deliberate opposite: it is not proxied, Container Apps probes it on the API app directly, and
     # the deployed-contract sweep asserts the public origin does not answer it.
     location /v3/api-docs {
+        limit_req zone=edge_api burst=200 nodelay;
         proxy_pass $api_upstream;
         proxy_set_header Host              $proxy_host;
         proxy_set_header X-Forwarded-Host  $host;
@@ -203,6 +255,7 @@ server {
     # SpaRoutes.ALL and any future one - with no list to keep in step, which is why the routes are
     # deliberately not enumerated here.
     location / {
+        limit_req zone=edge_shell burst=100 nodelay;
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "no-cache" always;
         try_files $uri /index.html;
