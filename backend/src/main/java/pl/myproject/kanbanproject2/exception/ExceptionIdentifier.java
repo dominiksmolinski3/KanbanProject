@@ -78,6 +78,13 @@ public enum ExceptionIdentifier {
     INVALID_CHAT_REQUEST(BAD_REQUEST, "The chat history cannot be paged as asked"),
 
     /*
+     * The flow metrics' window or column choice (FEAT-07): a window over the limit or running
+     * backwards, a column not on the board, or a start column after the done column. Separate for
+     * the reason the three above are.
+     */
+    INVALID_FLOW_REQUEST(BAD_REQUEST, "The flow metrics cannot be computed as asked"),
+
+    /*
      * The unauthenticated routes answer only three statuses: 202 for signup/resend regardless of
      * the address, 401 for any login failure, 400 for a bad verification code. USER_ALREADY_EXISTS,
      * ACCOUNT_NOT_VERIFIED and ACCOUNT_ALREADY_VERIFIED are gone rather than unused, since each

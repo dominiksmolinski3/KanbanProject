@@ -230,6 +230,7 @@
       "users": "Utenti",
       "logout": "Esci",
       "activity": "Attività",
+      "flow": "Flusso",
       "logoAlt": "Logo Kanban"
     },
     "forms": {
@@ -525,5 +526,40 @@
         "title": "Pagina non trovata",
         "message": "La pagina che stai cercando non esiste.",
         "backHome": "Torna alla home"
+    },
+    "flow": {
+      "heading": "Flusso",
+      "explainer": "Come il lavoro si muove su questa bacheca, letto dalla cronologia degli spostamenti di ogni scheda.",
+      "window": "Periodo",
+      "lastDays": "Ultimi {{count}} giorni",
+      "startsAt": "Il lavoro inizia in",
+      "arrivalOnBoard": "Arrivo sulla bacheca",
+      "doneAt": "Il lavoro è finito in",
+      "lastColumn": "L'ultima colonna",
+      "loading": "Caricamento del flusso…",
+      "failed": "Impossibile caricare le metriche di flusso.",
+      "finished": "Completate",
+      "median": "Tempo mediano",
+      "p85": "L'85% finisce entro",
+      "average": "Tempo medio",
+      "none": "—",
+      "hours": "{{count}} h",
+      "days": "{{count}} g",
+      "otherColumns": "Colonne precedenti",
+      "noColumns": "Questa bacheca non ha ancora colonne.",
+      "cumulativeFlow": "Flusso cumulativo",
+      "cumulativeFlowCaption": "Schede in ogni colonna alla fine di ogni giorno. Una fascia che si allarga è lavoro che si accumula.",
+      "showTable": "Mostra come tabella",
+      "date": "Data",
+      "cycleTime": "Tempo di ciclo",
+      "cycleTimeCaption": "Ogni punto è una scheda completata in questo periodo: quando è stata completata e quanto ha richiesto.",
+      "nothingFinished": "Nessuna scheda completata in questo periodo.",
+      "medianLine": "mediana {{value}}",
+      "p85Line": "85% {{value}}",
+      "took": "Durata",
+      "finishedOn": "Completata",
+      "card": "Scheda",
+      "throughput": "Throughput",
+      "throughputCaption": "Schede completate ogni giorno."
     }
 }
