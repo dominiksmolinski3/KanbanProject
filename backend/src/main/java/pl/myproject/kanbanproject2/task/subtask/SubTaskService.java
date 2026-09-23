@@ -24,6 +24,7 @@ public class SubTaskService {
 
     public SubTaskDto addSubTask(User caller, CreateSubTaskRequest request) {
         var task = findTask(caller, request.task().id());
+        boardService.requireWritable(caller, task.getBoard());
 
         var subTask = new SubTask();
         subTask.setTitle(request.title());
@@ -52,7 +53,9 @@ public class SubTaskService {
     }
 
     public void deleteSubTask(User caller, Integer id) {
-        subTaskRepository.delete(findSubTask(caller, id));
+        var subTask = findSubTask(caller, id);
+        boardService.requireWritable(caller, subTask.getTask().getBoard());
+        subTaskRepository.delete(subTask);
     }
 
     public SubTaskDto getSubTaskById(User caller, Integer id) {
@@ -61,6 +64,7 @@ public class SubTaskService {
 
     public SubTaskDto patchSubTask(User caller, Integer id, PatchSubTaskRequest request) {
         var existingSubTask = findSubTask(caller, id);
+        boardService.requireWritable(caller, existingSubTask.getTask().getBoard());
 
         if (request.title().isPresent()) {
             var title = request.title().get();
@@ -86,7 +90,11 @@ public class SubTaskService {
                 // beyond every board at once - including the caller's own.
                 throw new IllegalArgumentException("A subtask must belong to a task");
             }
-            existingSubTask.setTask(findTask(caller, task.id()));
+            // The destination is written to as well, so it answers the same question: a viewer on
+            // the target board may not have a subtask moved onto it by a member of another.
+            var target = findTask(caller, task.id());
+            boardService.requireWritable(caller, target.getBoard());
+            existingSubTask.setTask(target);
         }
         if (request.position().isPresent()) {
             var position = request.position().get();
@@ -102,6 +110,8 @@ public class SubTaskService {
     public SubTaskDto assignTaskToSubTask(User caller, Integer subTaskId, Integer taskId) {
         var subTask = findSubTask(caller, subTaskId);
         var task = findTask(caller, taskId);
+        boardService.requireWritable(caller, subTask.getTask().getBoard());
+        boardService.requireWritable(caller, task.getBoard());
 
         subTask.setTask(task);
         task.getSubTasks().add(subTask);
@@ -116,12 +126,14 @@ public class SubTaskService {
 
     public SubTaskDto toggleSubTaskCompletion(User caller, Integer id) {
         var subTask = findSubTask(caller, id);
+        boardService.requireWritable(caller, subTask.getTask().getBoard());
         subTask.setCompleted(!subTask.isCompleted());
         return subTaskMapper.toDto(subTaskRepository.save(subTask));
     }
 
     public SubTaskDto updateSubTaskPosition(User caller, Integer id, Integer position) {
         var subTask = findSubTask(caller, id);
+        boardService.requireWritable(caller, subTask.getTask().getBoard());
         subTask.setPosition(position);
         return subTaskMapper.toDto(subTaskRepository.save(subTask));
     }
