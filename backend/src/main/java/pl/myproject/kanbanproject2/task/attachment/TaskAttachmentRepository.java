@@ -24,6 +24,9 @@ public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, 
     /** Everything hanging off a task, for the cascade when the task itself is deleted. */
     List<TaskAttachment> findByTask(Task task);
 
+    /** Everything hanging off a set of tasks, for taking a whole board apart in one query. */
+    List<TaskAttachment> findByTaskIn(List<Task> tasks);
+
     /**
      * How many attachments are on the board, across every task, as one aggregate rather than
      * loading every row to count in Java — read by the quota check before a blob is written.
