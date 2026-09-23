@@ -8,7 +8,6 @@ import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.user.User;
 
@@ -94,11 +93,12 @@ public class RowService {
         var row = findRow(caller, id);
         boardService.requireWritable(caller, row.getBoard());
 
+        // One statement rather than a save per task - see TaskRepository.detachFromRow for the 409
+        // the per-task saves produced against a concurrent column delete. The loaded tasks are left
+        // as they are on purpose: changing them here would make Hibernate write each one back with
+        // the version check this avoids. The collection is emptied so the row goes with nothing in it.
+        taskRepository.detachFromRow(row);
         if (row.getTasks() != null) {
-            for (Task task : List.copyOf(row.getTasks())) {
-                task.setRow(null);
-                taskRepository.save(task);
-            }
             row.getTasks().clear();
         }
 

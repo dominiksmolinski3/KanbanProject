@@ -35,7 +35,7 @@ jest.mock('../../components/EditableText', () => {
 });
 
 describe('Row Component', () => {
-  const mockDeleteRow = jest.fn();
+  const mockDeleteRow = jest.fn(() => Promise.resolve());
   const mockUpdateRowName = jest.fn();
   const mockHandleDragStart = jest.fn();
   const mockHandleDragOver = jest.fn();

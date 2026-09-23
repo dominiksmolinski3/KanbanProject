@@ -21,7 +21,8 @@ function Row({ row, children }) {
   };
 
   const handleConfirmDelete = () => {
-    deleteRow(row.id);
+    // Already toasted by the context on failure; the catch only stops an unhandled rejection.
+    deleteRow(row.id).catch(() => {});
   };
 
   const handleCancelDelete = () => {

@@ -264,9 +264,9 @@ class LayoutServiceTest {
 
             service.deleteRow(CALLER, 1);
 
-            // A task outlives its swimlane: the column is what puts it on the board.
-            assertThat(task.getRow()).isNull();
-            verify(taskRepository).save(task);
+            // A task outlives its swimlane: the column is what puts it on the board. The row is taken
+            // off every task in one statement - see DeleteDetachesReferencesTest for why not per task.
+            verify(taskRepository).detachFromRow(swimlane);
             verify(repository).delete(swimlane);
         }
 
