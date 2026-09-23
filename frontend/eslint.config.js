@@ -37,4 +37,9 @@ export default [
       ],
     },
   },
+  {
+    // Run by node in CI, not bundled for the browser.
+    files: ['cypress/shard.js'],
+    languageOptions: { globals: globals.node },
+  },
 ]
