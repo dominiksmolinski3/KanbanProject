@@ -119,6 +119,13 @@ npm run cypress:run:replicas # the specs that need the two-replica stack (see be
 
 Cypress `baseUrl` is `http://localhost:5173`, so the Vite dev server **and** the backend must both be running before E2E tests.
 
+**The headless scripts name `--browser chromium`**, because Cypress 16 marks its bundled Electron
+default deprecated and CI should not be running on the browser that goes away next. They name it
+rather than leaving it to a default so CI and a person running `npm run cypress:run` get the same
+engine, and a runner that has lost Chromium fails with "browser not found" rather than dropping back
+to Electron without a word. A machine with Chrome and no Chromium overrides it with a second flag,
+which Cypress reads last-wins: `npm run cypress:run -- --browser chrome`.
+
 The README documents these same commands; keep the two in sync when a script is renamed.
 
 ### Full stack via Docker

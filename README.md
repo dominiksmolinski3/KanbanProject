@@ -304,7 +304,7 @@ npm test                  # Run Jest unit tests
 npm run test:coverage     # Generate Jest test coverage report
 npm run lint              # Run ESLint code quality checks
 npm run cypress:open      # Open Cypress test runner for E2E tests
-npm run cypress:run       # Run Cypress tests in headless mode
+npm run cypress:run       # Run Cypress tests headless in Chromium (no Chromium? append: -- --browser chrome)
 npm run cypress:run:replicas   # The specs that need a two-replica stack (see below)
 ```
 
