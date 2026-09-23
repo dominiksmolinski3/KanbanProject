@@ -14,6 +14,7 @@ const ProtectedLayout = lazy(() => import('./components/ProtectedLayout'));
 const BoardPage = lazy(() => import('./components/BoardPage'));
 const UsersManagement = lazy(() => import('./components/UsersManagement'));
 const ActivityFeed = lazy(() => import('./components/ActivityFeed'));
+const FlowMetrics = lazy(() => import('./components/FlowMetrics'));
 const Devices = lazy(() => import('./components/Devices'));
 
 setupApiInterceptors();
@@ -34,6 +35,7 @@ function App() {
             <Route path="/board" element={<Suspense fallback={<PageLoading />}><BoardPage /></Suspense>} />
             <Route path="/users" element={<Suspense fallback={<PageLoading />}><UsersManagement /></Suspense>} />
             <Route path="/activity" element={<Suspense fallback={<PageLoading />}><ActivityFeed /></Suspense>} />
+            <Route path="/flow" element={<Suspense fallback={<PageLoading />}><FlowMetrics /></Suspense>} />
             <Route path="/sessions" element={<Suspense fallback={<PageLoading />}><Devices /></Suspense>} />
           </Route>
           <Route path="*" element={<NotFound />} />

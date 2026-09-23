@@ -1,0 +1,301 @@
+/* The flow screen. The chart tokens are the data-viz reference palette's eight categorical slots,
+   validated (CVD and normal-vision separation, adjacent pairs) against these two surfaces - which is
+   why the chart cards carry their own surface rather than the page's: a palette is only validated
+   against the background it was checked on. Three light slots sit under 3:1 there, so every chart
+   has a table view beside it. */
+
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-grid: #e4e3df;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-series-3: #1baf7a;
+  --viz-series-4: #eda100;
+  --viz-series-5: #e87ba4;
+  --viz-series-6: #008300;
+  --viz-series-7: #4a3aa7;
+  --viz-series-8: #e34948;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    --viz-surface: #1a1a19;
+    --viz-text: #ffffff;
+    --viz-text-secondary: #c3c2b7;
+    --viz-grid: #34332f;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
+    --viz-series-4: #c98500;
+    --viz-series-5: #d55181;
+    --viz-series-6: #008300;
+    --viz-series-7: #9085e9;
+    --viz-series-8: #e66767;
+  }
+}
+
+:root[data-theme="dark"] .viz-root {
+  --viz-surface: #1a1a19;
+  --viz-text: #ffffff;
+  --viz-text-secondary: #c3c2b7;
+  --viz-grid: #34332f;
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+  --viz-series-3: #199e70;
+  --viz-series-4: #c98500;
+  --viz-series-5: #d55181;
+  --viz-series-6: #008300;
+  --viz-series-7: #9085e9;
+  --viz-series-8: #e66767;
+}
+
+.flow-metrics {
+  max-width: 60rem;
+  margin: 0 auto 2rem;
+  padding: 0 1rem;
+}
+
+.flow-header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.flow-explainer,
+.flow-caption {
+  margin: 0 0 1rem;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.flow-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.flow-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.flow-filters select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.flow-empty {
+  padding: 1.5rem;
+  text-align: center;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.flow-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.flow-tile,
+.flow-card {
+  background: var(--viz-surface);
+  color: var(--viz-text);
+  border-radius: 8px;
+  border: 1px solid var(--viz-grid);
+}
+
+.flow-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.flow-tile-label {
+  font-size: 0.8rem;
+  color: var(--viz-text-secondary);
+}
+
+.flow-tile-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-card {
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.flow-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.flow-card .flow-caption {
+  color: var(--viz-text-secondary);
+  opacity: 1;
+}
+
+.flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--viz-text-secondary);
+}
+
+.flow-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.flow-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.flow-chart {
+  position: relative;
+}
+
+.flow-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.flow-axis text,
+.flow-reference text {
+  font-size: 11px;
+  fill: var(--viz-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-grid {
+  stroke: var(--viz-grid);
+  stroke-width: 1;
+}
+
+/* A surface-coloured stroke between bands is the 2px gap that keeps adjacent fills apart. */
+.flow-band {
+  stroke: var(--viz-surface);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.flow-crosshair {
+  stroke: var(--viz-text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.flow-reference line {
+  stroke: var(--viz-text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.flow-dot {
+  fill: var(--viz-series-1);
+  stroke: var(--viz-surface);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.flow-bar {
+  fill: var(--viz-series-1);
+  pointer-events: none;
+}
+
+.flow-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.slot-1 { fill: var(--viz-series-1); background: var(--viz-series-1); }
+.slot-2 { fill: var(--viz-series-2); background: var(--viz-series-2); }
+.slot-3 { fill: var(--viz-series-3); background: var(--viz-series-3); }
+.slot-4 { fill: var(--viz-series-4); background: var(--viz-series-4); }
+.slot-5 { fill: var(--viz-series-5); background: var(--viz-series-5); }
+.slot-6 { fill: var(--viz-series-6); background: var(--viz-series-6); }
+.slot-7 { fill: var(--viz-series-7); background: var(--viz-series-7); }
+.slot-8 { fill: var(--viz-series-8); background: var(--viz-series-8); }
+
+.flow-tooltip {
+  position: absolute;
+  top: 0;
+  min-width: 10rem;
+  max-width: 16rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--viz-surface);
+  color: var(--viz-text);
+  border: 1px solid var(--viz-grid);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  font-size: 0.8rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.flow-tooltip strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.flow-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.flow-tooltip-value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.flow-table {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.flow-table summary {
+  cursor: pointer;
+  color: var(--viz-text-secondary);
+}
+
+.flow-table-scroll {
+  overflow-x: auto;
+  max-height: 20rem;
+  margin-top: 0.5rem;
+}
+
+.flow-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.flow-table th,
+.flow-table td {
+  text-align: left;
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--viz-grid);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

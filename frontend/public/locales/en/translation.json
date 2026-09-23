@@ -230,6 +230,7 @@
     "users": "Users",
     "logout": "Logout",
     "activity": "Activity",
+    "flow": "Flow",
     "logoAlt": "Kanban logo"
   },
   "forms": {
@@ -525,5 +526,40 @@
     "title": "Page not found",
     "message": "The page you're looking for doesn't exist.",
     "backHome": "Back to home"
+  },
+  "flow": {
+    "heading": "Flow",
+    "explainer": "How work moves across this board, read from the history of every card's moves.",
+    "window": "Period",
+    "lastDays": "Last {{count}} days",
+    "startsAt": "Work starts at",
+    "arrivalOnBoard": "Arrival on the board",
+    "doneAt": "Work is done at",
+    "lastColumn": "The last column",
+    "loading": "Loading the flow…",
+    "failed": "The flow metrics could not be loaded.",
+    "finished": "Finished",
+    "median": "Median time",
+    "p85": "85% finish within",
+    "average": "Average time",
+    "none": "—",
+    "hours": "{{count}} h",
+    "days": "{{count}} d",
+    "otherColumns": "Earlier columns",
+    "noColumns": "This board has no columns yet.",
+    "cumulativeFlow": "Cumulative flow",
+    "cumulativeFlowCaption": "Cards in each column at the end of each day. A widening band is work piling up.",
+    "showTable": "Show as a table",
+    "date": "Date",
+    "cycleTime": "Cycle time",
+    "cycleTimeCaption": "Each dot is a card that finished in this period: when it finished and how long it took.",
+    "nothingFinished": "No card finished in this period.",
+    "medianLine": "median {{value}}",
+    "p85Line": "85% {{value}}",
+    "took": "Took",
+    "finishedOn": "Finished",
+    "card": "Card",
+    "throughput": "Throughput",
+    "throughputCaption": "Cards finished each day."
   }
 }

@@ -230,6 +230,7 @@
     "users": "Użytkownicy",
     "logout": "Wyloguj",
     "activity": "Aktywność",
+    "flow": "Przepływ",
     "logoAlt": "Logo Kanban"
   },
   "forms": {
@@ -525,5 +526,40 @@
     "title": "Nie znaleziono strony",
     "message": "Strona, której szukasz, nie istnieje.",
     "backHome": "Powrót do strony głównej"
+  },
+  "flow": {
+    "heading": "Przepływ",
+    "explainer": "Jak praca przesuwa się po tej tablicy, odczytane z historii przesunięć każdej karty.",
+    "window": "Okres",
+    "lastDays": "Ostatnie dni: {{count}}",
+    "startsAt": "Praca zaczyna się w",
+    "arrivalOnBoard": "Pojawienie się na tablicy",
+    "doneAt": "Praca kończy się w",
+    "lastColumn": "Ostatnia kolumna",
+    "loading": "Wczytywanie przepływu…",
+    "failed": "Nie udało się wczytać metryk przepływu.",
+    "finished": "Ukończone",
+    "median": "Mediana czasu",
+    "p85": "85% kończy się w ciągu",
+    "average": "Średni czas",
+    "none": "—",
+    "hours": "{{count}} godz.",
+    "days": "{{count}} dni",
+    "otherColumns": "Wcześniejsze kolumny",
+    "noColumns": "Ta tablica nie ma jeszcze kolumn.",
+    "cumulativeFlow": "Skumulowany przepływ",
+    "cumulativeFlowCaption": "Karty w każdej kolumnie na koniec każdego dnia. Poszerzające się pasmo to narastająca praca.",
+    "showTable": "Pokaż jako tabelę",
+    "date": "Data",
+    "cycleTime": "Czas cyklu",
+    "cycleTimeCaption": "Każda kropka to karta ukończona w tym okresie: kiedy została ukończona i ile trwała.",
+    "nothingFinished": "W tym okresie nie ukończono żadnej karty.",
+    "medianLine": "mediana {{value}}",
+    "p85Line": "85% {{value}}",
+    "took": "Trwało",
+    "finishedOn": "Ukończono",
+    "card": "Karta",
+    "throughput": "Przepustowość",
+    "throughputCaption": "Karty ukończone każdego dnia."
   }
 }

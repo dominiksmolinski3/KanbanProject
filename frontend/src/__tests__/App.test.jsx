@@ -13,11 +13,17 @@ jest.mock('react-i18next', () => ({
 jest.mock('../components/HomePage', () => () => <div>HomePage</div>);
 jest.mock('../components/NotFound', () => () => <div>NotFound</div>);
 jest.mock('../components/PageLoading', () => () => <div>PageLoading</div>);
-jest.mock('../components/ProtectedLayout', () => () => <div>ProtectedLayout</div>);
+// Renders its Outlet, so each protected route's own lazy boundary is actually crossed - a layout
+// mock that swallowed its children proved the route existed and never that it rendered anything.
+jest.mock('../components/ProtectedLayout', () => {
+  const { Outlet } = jest.requireActual('react-router-dom');
+  return () => <div>ProtectedLayout<Outlet /></div>;
+});
 jest.mock('../components/BoardPage', () => () => <div>BoardPage</div>);
 jest.mock('../components/UsersManagement', () => () => <div>UsersManagement</div>);
 jest.mock('../components/ActivityFeed', () => () => <div>ActivityFeed</div>);
 jest.mock('../components/Devices', () => () => <div>Devices</div>);
+jest.mock('../components/FlowMetrics', () => () => <div>FlowMetrics</div>);
 jest.mock('../context/AuthContext', () => ({
   useAuth: jest.fn(),
   AuthProvider: ({ children }) => <div data-testid="auth-provider">{children}</div>,
@@ -46,5 +52,17 @@ describe('App routing', () => {
     navigateTo('/board');
     render(<App />);
     await waitFor(() => expect(screen.getByText('ProtectedLayout')).toBeInTheDocument());
+  });
+
+  test.each([
+    ['/board', 'BoardPage'],
+    ['/users', 'UsersManagement'],
+    ['/activity', 'ActivityFeed'],
+    ['/flow', 'FlowMetrics'],
+    ['/sessions', 'Devices']
+  ])('%s lazily loads %s inside the layout', async (path, screenName) => {
+    navigateTo(path);
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(screenName)).toBeInTheDocument());
   });
 });
