@@ -6,8 +6,14 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 
+import java.time.Duration;
+
 @Configuration
 class RedisRateLimitConfiguration {
+
+    // Both limiters fail open, so this bounds what an unreachable Redis adds to every request.
+    static final Duration CONNECT_TIMEOUT = Duration.ofMillis(250);
+    static final Duration READ_TIMEOUT = Duration.ofMillis(500);
 
     @Bean
     JedisConnectionFactory rateLimitRedisConnectionFactory(AuthRateLimitProperties properties) {
@@ -17,7 +23,9 @@ class RedisRateLimitConfiguration {
             standalone.setPassword(properties.redisPassword());
         }
 
-        JedisClientConfiguration.JedisClientConfigurationBuilder client = JedisClientConfiguration.builder();
+        JedisClientConfiguration.JedisClientConfigurationBuilder client = JedisClientConfiguration.builder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .readTimeout(READ_TIMEOUT);
         if (properties.redisSsl()) {
             client.useSsl();
         }

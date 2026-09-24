@@ -4,6 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitTestSupport.properties;
 
@@ -49,6 +51,16 @@ class RedisRateLimitConfigurationTest {
         JedisConnectionFactory factory = configuration.rateLimitRedisConnectionFactory(withRedis("kanban-redis.privatelink.redis.cache.windows.net", 6380, "s3cret", true));
 
         assertThat(factory.isUseSsl()).isTrue();
+    }
+
+    @Test
+    @DisplayName("an unreachable Redis costs a request a fraction of a second, not Jedis's two-second default")
+    void timeoutsAreShorterThanTheJedisDefault() {
+        JedisConnectionFactory factory = configuration.rateLimitRedisConnectionFactory(withRedis("localhost", 6380, "s3cret", true));
+
+        assertThat(factory.getClientConfiguration().getConnectTimeout()).isEqualTo(RedisRateLimitConfiguration.CONNECT_TIMEOUT);
+        assertThat(factory.getClientConfiguration().getReadTimeout()).isEqualTo(RedisRateLimitConfiguration.READ_TIMEOUT);
+        assertThat(RedisRateLimitConfiguration.CONNECT_TIMEOUT).isLessThan(Duration.ofSeconds(1));
     }
 
     private static AuthRateLimitProperties withRedis(String host, int port, String password, boolean ssl) {
