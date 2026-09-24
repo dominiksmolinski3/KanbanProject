@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SafeReCAPTCHA from './SafeReCAPTCHA';
-import { resetRecaptchaLoader } from '../services/recaptchaLoader';
+import { recaptchaLanguage, resetRecaptchaLoader } from '../services/recaptchaLoader';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authService } from '../services/authService';
@@ -37,6 +37,7 @@ const HomePage = () => {
   const [captchaWarn, setCaptchaWarn] = useState(false);
 
   const { t, i18n } = useTranslation();
+  const captchaLanguage = recaptchaLanguage(i18n);
   const { login, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -491,6 +492,7 @@ const HomePage = () => {
                     key={captchaKey}
                     ref={recaptchaRef}
                     sitekey={siteKey}
+                    hl={captchaLanguage}
                     onChange={(val) => setCaptchaToken(val || '')}
                     onReady={() => setCaptchaReady(true)}
                     onLoadError={() => {
