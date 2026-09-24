@@ -4,10 +4,12 @@ import '../styles/components/Forms.css';
 
 function FormModal({ children, onClose, ariaLabel = 'Dialog' }) {
   const modalRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'Escape') onCloseRef.current?.();
     };
     document.addEventListener('keydown', onKeyDown);
 
@@ -22,7 +24,7 @@ function FormModal({ children, onClose, ariaLabel = 'Dialog' }) {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = originalOverflow;
     };
-  }, [onClose]);
+  }, []);
 
   return createPortal(
     <>
