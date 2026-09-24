@@ -373,6 +373,25 @@
   }
 }
 
+@media (max-width: 480px) {
+  .app-title {
+    display: none;
+  }
+
+  .header-nav {
+    justify-content: space-around;
+    scrollbar-width: none;
+  }
+
+  .header-nav .nav-label {
+    display: none;
+  }
+
+  .header-nav .nav-link svg {
+    margin-right: 0;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .app-header {
     background-color: var(--surface-dark);

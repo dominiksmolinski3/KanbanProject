@@ -55,9 +55,9 @@ function BoardSwitcher() {
         onClick={() => setOpen(!open)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v6h-4z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
-        {activeBoard ? activeBoard.name : t('boards.switcher.label')}
+        <span className="board-switcher-name">{activeBoard ? activeBoard.name : t('boards.switcher.label')}</span>
         {pending > 0 && (
           <span
             className="board-switcher-badge"
@@ -67,6 +67,7 @@ function BoardSwitcher() {
             {pending}
           </span>
         )}
+        <span className="board-switcher-caret" aria-hidden="true">▾</span>
       </button>
 
       {open && (
