@@ -15,7 +15,7 @@ resource "azurerm_managed_redis" "main" {
 
 resource "azurerm_private_dns_zone" "redis" {
   tags                = var.tags
-  name                = "privatelink.redisenterprise.cache.azure.net"
+  name                = "privatelink.redis.azure.net"
   resource_group_name = var.resource_group_name
 }
 
