@@ -17,6 +17,7 @@ class RedisPrivateEndpointReachableTest {
     private static final Path ROOT_MODULE = TERRAFORM.resolve("main.tf");
     private static final Path NSG = TERRAFORM.resolve(Path.of("modules", "vnet", "nsg.tf"));
     private static final Path API_APP = TERRAFORM.resolve(Path.of("modules", "api_app", "main.tf"));
+    private static final Path REDIS = TERRAFORM.resolve(Path.of("modules", "redis", "main.tf"));
 
     private static final String MANAGED_REDIS_PORT = "10000";
 
@@ -27,6 +28,18 @@ class RedisPrivateEndpointReachableTest {
                 .as("modules/redis moved to another subnet, so the NSG rule asserted below is "
                         + "guarding the wrong one")
                 .contains("private_endpoint_subnet_id = module.vnet.private_endpoint_subnet_id");
+    }
+
+    @Test
+    @DisplayName("the private DNS zone is the one Managed Redis hostnames CNAME into")
+    void thePrivateZoneMatchesManagedRedis() throws IOException {
+        String redis = read(REDIS);
+        assertThat(redis)
+                .as("a Managed Redis hostname CNAMEs to <name>.<region>.privatelink.redis.azure.net; any "
+                        + "other zone leaves it resolving to the public address, which public access refuses")
+                .contains("resource \"azurerm_managed_redis\"")
+                .contains("name                = \"privatelink.redis.azure.net\"")
+                .doesNotContain("privatelink.redisenterprise.cache.azure.net");
     }
 
     @Test
