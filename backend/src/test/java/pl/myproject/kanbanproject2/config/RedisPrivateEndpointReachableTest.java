@@ -43,6 +43,18 @@ class RedisPrivateEndpointReachableTest {
     }
 
     @Test
+    @DisplayName("Redis answers on one endpoint, because the client is standalone rather than cluster-aware")
+    void redisUsesTheEnterpriseClusteringPolicy() throws IOException {
+        assertThat(read(REDIS))
+                .as("the OSS cluster policy, Azure's default, answers a standalone client with MOVED to per-shard "
+                        + "ports the NSG does not admit, so every limiter call fails open")
+                .contains("clustering_policy                  = \"EnterpriseCluster\"");
+        assertThat(read(Path.of("src", "main", "java", "pl", "myproject", "kanbanproject2", "config", "security",
+                "ratelimit", "RedisRateLimitConfiguration.java")))
+                .contains("RedisStandaloneConfiguration");
+    }
+
+    @Test
     @DisplayName("the API is told the Managed Redis port, not a classic cache's")
     void theApiConnectsOnTheManagedRedisPort() throws IOException {
         assertThat(read(API_APP))
