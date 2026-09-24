@@ -56,6 +56,7 @@
     "avatarAlt": "Awatar użytkownika"
   },
   "board": {
+    "actions": "Akcje tablicy",
     "loading": "Ładowanie tablicy kanban...",
     "error": "Błąd: {{message}}",
     "addColumn": "Dodaj kolumnę",
@@ -223,6 +224,10 @@
     "add": "Dodaj wiersz"
   },
   "header": {
+    "board": "Tablica",
+    "settings": "Ustawienia",
+    "language": "Język",
+    "navigation": "Nawigacja główna",
     "sessions": "Sesje",
     "addTask": "Dodaj zadanie",
     "wipLimit": "Limit WIP",

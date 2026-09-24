@@ -56,6 +56,7 @@
     "avatarAlt": "Benutzer-Avatar"
   },
   "board": {
+    "actions": "Board-Aktionen",
     "loading": "Kanban-Board wird geladen...",
     "error": "Fehler: {{message}}",
     "addColumn": "Spalte hinzufügen",
@@ -223,6 +224,10 @@
     "add": "Zeile hinzufügen"
   },
   "header": {
+    "board": "Board",
+    "settings": "Einstellungen",
+    "language": "Sprache",
+    "navigation": "Hauptnavigation",
     "sessions": "Sitzungen",
     "addTask": "Aufgabe hinzufügen",
     "wipLimit": "WIP-Limit",

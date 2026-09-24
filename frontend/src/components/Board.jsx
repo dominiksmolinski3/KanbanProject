@@ -8,6 +8,7 @@ import '../styles/components/Board.css';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';
 import TaskSearch from './TaskSearch';
+import BoardActions from './BoardActions';
 
 function Board() {
   const [addContext, setAddContext] = useState({ type: null, columnId: null, rowId: null });
@@ -392,6 +393,7 @@ function Board() {
         </div>
       )}
       <div className="board-toolbar">
+        {!readOnly && <BoardActions />}
         <button
           type="button"
           className={`daily-focus-filter ${dailyFocusOnly ? 'active' : ''}`}

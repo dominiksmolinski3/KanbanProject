@@ -4,6 +4,7 @@ beforeEach(() => {
 
 describe('Logout Functionality', () => {
   it('logs out successfully', () => {
+    cy.get('[data-testid="header-menu-toggle"]').click();
     cy.get('.logout-btn').click();
     
     cy.get(':nth-child(1) > input').should('be.visible');
@@ -11,6 +12,7 @@ describe('Logout Functionality', () => {
   });
 
   it('clears auth token on logout', () => {
+    cy.get('[data-testid="header-menu-toggle"]').click();
     cy.get('.logout-btn').click();
     
     cy.window().then((win) => {
@@ -19,6 +21,7 @@ describe('Logout Functionality', () => {
   });
 
   it('redirects to login when accessing protected route after logout', () => {
+    cy.get('[data-testid="header-menu-toggle"]').click();
     cy.get('.logout-btn').click();
 
     cy.visit('/board');
