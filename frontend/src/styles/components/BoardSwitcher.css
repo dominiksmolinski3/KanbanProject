@@ -5,9 +5,19 @@
 
 .board-switcher-toggle {
   max-width: 14rem;
+  white-space: nowrap;
+}
+
+.board-switcher-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.board-switcher-caret {
+  margin-left: 0.375rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .board-switcher-menu {
