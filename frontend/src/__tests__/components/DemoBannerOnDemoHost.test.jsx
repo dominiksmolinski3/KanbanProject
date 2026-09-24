@@ -24,4 +24,16 @@ describe('DemoBanner on the public demo host', () => {
     fireEvent.click(screen.getByLabelText('demo.dismiss'));
     expect(container).toBeEmptyDOMElement();
   });
+
+  test('publishes its height so the language switcher can sit below it, and withdraws it on dismiss', () => {
+    const height = jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(58);
+    const root = document.documentElement;
+
+    render(<DemoBanner />);
+    expect(root.style.getPropertyValue('--demo-banner-height')).toBe('58px');
+
+    fireEvent.click(screen.getByLabelText('demo.dismiss'));
+    expect(root.style.getPropertyValue('--demo-banner-height')).toBe('');
+    height.mockRestore();
+  });
 });
