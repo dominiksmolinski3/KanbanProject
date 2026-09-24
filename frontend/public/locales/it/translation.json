@@ -56,6 +56,7 @@
       "avatarAlt": "Avatar dell'utente"
     },
     "board": {
+      "actions": "Azioni della bacheca",
       "loading": "Caricamento bacheca kanban...",
       "error": "Errore: {{message}}",
       "addColumn": "Aggiungi colonna",
@@ -223,6 +224,10 @@
       "add": "Aggiungi riga"
     },
     "header": {
+      "board": "Bacheca",
+      "settings": "Impostazioni",
+      "language": "Lingua",
+      "navigation": "Navigazione principale",
       "sessions": "Sessioni",
       "addTask": "Aggiungi attività",
       "wipLimit": "Limite WIP",

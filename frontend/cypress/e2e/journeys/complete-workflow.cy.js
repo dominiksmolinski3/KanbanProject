@@ -29,7 +29,7 @@ describe('Complete User Journey', () => {
     cy.createRow('Bugs', 2);
       
     cy.wait(1000);
-    cy.get('.header-nav > :nth-child(1)').click();
+    cy.get('[data-testid="open-add-task-form"]').click();
     cy.get('#task-title').type('Implement login');
     cy.get('[type="submit"]').click();
       
