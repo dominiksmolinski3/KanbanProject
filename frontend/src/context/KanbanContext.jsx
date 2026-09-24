@@ -91,50 +91,60 @@ export function KanbanProvider({ children }) {
       return;
     }
 
+    let superseded = false;
+
     const loadData = async () => {
       try {
         setLoading(true);
-        const columnsData = await fetchColumns();
+        const [columnsData, rowsData, tasksData] = await Promise.all([
+          fetchColumns(),
+          fetchRows().catch(rowErr => {
+            console.error('Error fetching rows:', rowErr);
+            return [];
+          }),
+          fetchTasks(),
+        ]);
+        if (superseded) {
+          return;
+        }
+
         const sortedColumns = columnsData.sort((a, b) => a.position - b.position);
         const newColumnMap = {};
         sortedColumns.forEach(column => {
           const columnKey = column.name.toLowerCase().replace(/\s+/g, '-');
           newColumnMap[columnKey] = column.id;
         });
-        
+
         setColumns(sortedColumns);
         setColumnMap(newColumnMap);
-        
-        let rowsData = [];
-        try {
-          rowsData = await fetchRows();
-          const sortedRows = rowsData.sort((a, b) => a.position - b.position);
-          setRows(sortedRows);
-        } catch (rowErr) {
-          console.error('Error fetching rows:', rowErr);
-          rowsData = [];
-          setRows([]);
-        }
-        
-        const tasksData = await fetchTasks();
-        if (rowsData.length > 0) {
-          const defaultRowId = rowsData[0].id;
-          const updatedTasks = tasksData.map(task => 
+
+        const sortedRows = rowsData.sort((a, b) => a.position - b.position);
+        setRows(sortedRows);
+
+        if (sortedRows.length > 0) {
+          const defaultRowId = sortedRows[0].id;
+          const updatedTasks = tasksData.map(task =>
             (!task.rowId || task.rowId === null) ? { ...task, rowId: defaultRowId } : task
           );
           setTasks(updatedTasks);
         } else {
           setTasks(tasksData);
         }
-        
+
         setLoading(false);
       } catch (err) {
+        if (superseded) {
+          return;
+        }
         setError(err.message);
         setLoading(false);
       }
     };
-    
+
     loadData();
+    return () => {
+      superseded = true;
+    };
   }, [activeBoardId]);
 
 
@@ -472,10 +482,9 @@ export function KanbanProvider({ children }) {
   const refreshBoard = async () => {
     try {
       setLoading(true);
-      const columnsData = await fetchColumns();
+      const [columnsData, rowsData] = await Promise.all([fetchColumns(), fetchRows()]);
       const sortedColumns = columnsData.sort((a, b) => a.position - b.position);
       setColumns(sortedColumns);
-      const rowsData = await fetchRows();
       const sortedRows = rowsData.sort((a, b) => a.position - b.position);
       setRows(sortedRows);
       refreshTasks();
