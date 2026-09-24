@@ -1,8 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import Header from '../../components/Header';
+
+const mockLogout = jest.fn();
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -16,85 +18,94 @@ jest.mock('../../components/LanguageSwitcher', () => {
   };
 });
 
-jest.mock('../../components/AddTaskForm', () => {
-  return function MockAddTaskForm({ onClose }) {
-    return (
-      <div data-testid="mock-add-task-form">
-        <button onClick={onClose}>Close</button>
-      </div>
-    );
-  };
-});
-
-jest.mock('../../components/WipLimitControl', () => {
-  return function MockWipLimitControl({ onClose }) {
-    return (
-      <div data-testid="mock-wip-limit-control">
-        <button onClick={onClose}>Close</button>
-      </div>
-    );
-  };
-});
-
 jest.mock('../../components/BoardSwitcher', () => {
   return function MockBoardSwitcher() {
     return <div data-testid="mock-board-switcher"></div>;
   };
 });
 
-jest.mock('../../components/AddRowColumnForm', () => {
-  return function MockAddBoardItemForm({ onClose }) {
-    return (
-      <div data-testid="mock-add-board-item-form">
-        <button onClick={onClose}>Close</button>
-      </div>
-    );
-  };
-});
-
 jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(() => ({
-    logout: jest.fn(),
+    logout: mockLogout,
     token: 'fake-token'
   }))
 }));
 
 describe('Header Component', () => {
-  const renderHeader = () => {
+  const renderHeader = (path = '/board') => {
     return render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={[path]}>
         <Header />
-      </BrowserRouter>
+      </MemoryRouter>
     );
   };
 
   beforeEach(() => {
     global.window.scrollY = 0;
+    mockLogout.mockClear();
   });
 
-  test('renders header with logo and navigation links', () => {
+  test('renders the brand, the board switcher and the page links', () => {
     renderHeader();
-    expect(screen.getByText('board.title')).toBeInTheDocument();
-    expect(screen.getByText('header.addTask')).toBeInTheDocument();
-    expect(screen.getByText('header.wipLimit')).toBeInTheDocument();
-    expect(screen.getByText('header.addBoardItem')).toBeInTheDocument();
-    expect(screen.getByText('header.users')).toBeInTheDocument();
+    expect(screen.getByText('board.title').closest('a')).toHaveAttribute('href', '/');
+    expect(screen.getByTestId('mock-board-switcher')).toBeInTheDocument();
+    expect(screen.getByText('header.board').closest('a')).toHaveAttribute('href', '/board');
+    expect(screen.getByText('header.users').closest('a')).toHaveAttribute('href', '/users');
+    expect(screen.getByText('header.activity').closest('a')).toHaveAttribute('href', '/activity');
+    expect(screen.getByText('header.flow').closest('a')).toHaveAttribute('href', '/flow');
   });
 
-  test('opens AddTaskForm when "Dodaj zadanie" is clicked', () => {
+  test('leaves board-only actions to the board toolbar', () => {
     renderHeader();
-    fireEvent.click(screen.getByText('header.addTask'));
-    expect(screen.getByTestId('mock-add-task-form')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Close'));    
-    expect(screen.queryByTestId('mock-add-task-form')).not.toBeInTheDocument();
+    expect(screen.queryByText('header.addTask')).not.toBeInTheDocument();
+    expect(screen.queryByText('header.wipLimit')).not.toBeInTheDocument();
+    expect(screen.queryByText('header.addBoardItem')).not.toBeInTheDocument();
   });
 
-  test('opens WipLimitControl when "Limit WIP" is clicked', () => {
+  test('marks the page being shown', () => {
+    renderHeader('/activity');
+    expect(screen.getByText('header.activity').closest('a')).toHaveClass('active');
+    expect(screen.getByText('header.board').closest('a')).not.toHaveClass('active');
+  });
+
+  test('keeps language, sessions and logout behind the settings menu', () => {
     renderHeader();
-    fireEvent.click(screen.getByText('header.wipLimit'));
-    expect(screen.getByTestId('mock-wip-limit-control')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Close'));
-    expect(screen.queryByTestId('mock-wip-limit-control')).not.toBeInTheDocument();
+    const toggle = screen.getByTestId('header-menu-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('mock-language-switcher')).not.toBeInTheDocument();
+    expect(screen.queryByText('header.logout')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('mock-language-switcher')).toBeInTheDocument();
+    expect(screen.getByText('header.sessions').closest('a')).toHaveAttribute('href', '/sessions');
+    expect(screen.getByText('header.logout')).toBeInTheDocument();
+  });
+
+  test('closes the settings menu on Escape and on a click outside it', () => {
+    renderHeader();
+    fireEvent.click(screen.getByTestId('header-menu-toggle'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByText('header.logout')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('header-menu-toggle'));
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText('header.logout')).not.toBeInTheDocument();
+  });
+
+  test('closes the settings menu when a link in it is followed', () => {
+    renderHeader();
+    fireEvent.click(screen.getByTestId('header-menu-toggle'));
+    fireEvent.click(screen.getByText('header.sessions'));
+    expect(screen.queryByText('header.logout')).not.toBeInTheDocument();
+  });
+
+  test('logs out from the settings menu', () => {
+    renderHeader();
+    fireEvent.click(screen.getByTestId('header-menu-toggle'));
+    fireEvent.click(screen.getByText('header.logout'));
+    expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
   test('makes header sticky on scroll', async () => {
@@ -113,51 +124,12 @@ describe('Header Component', () => {
     expect(header).not.toHaveClass('sticky');
   });
 
-  test('has correct navigation links with proper attributes', () => {
-    renderHeader();
-    
-    const homeLink = screen.getByText('board.title');
-    expect(homeLink).toBeInTheDocument();
-    expect(homeLink.closest('a')).toHaveAttribute('href', '/');
-    
-    const usersLink = screen.getByText('header.users').closest('a');
-    expect(usersLink).toHaveAttribute('href', '/users');
-  });
-
-  test('can only have one form open at a time', () => {
-    renderHeader();
-    
-    fireEvent.click(screen.getByText('header.addTask'));
-    expect(screen.getByTestId('mock-add-task-form')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('header.wipLimit'));
-    expect(screen.queryByTestId('mock-add-task-form')).not.toBeInTheDocument();
-    expect(screen.getByTestId('mock-wip-limit-control')).toBeInTheDocument();
-  });
-
-  test('cleans up scroll event listener on unmount', async () => {
+  test('cleans up scroll event listener on unmount', () => {
     const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
-    
+
     const { unmount } = renderHeader();
     unmount();
     expect(removeEventListenerSpy).toHaveBeenCalledWith('scroll', expect.any(Function));
     removeEventListenerSpy.mockRestore();
   });
-
-  test('opens and closes the AddBoardItemForm when "Add row/column" button is clicked', () => {
-    render(
-      <BrowserRouter>
-        <Header />
-      </BrowserRouter>
-    );
-    
-    const addRowColumnButton = screen.getByText('header.addBoardItem');
-    fireEvent.click(addRowColumnButton);
-    expect(screen.getByTestId('mock-add-board-item-form')).toBeInTheDocument();
-    
-    const closeButton = screen.getByText(/Close/i);
-    fireEvent.click(closeButton);
-    
-    expect(screen.queryByTestId('mock-add-board-item-form')).not.toBeInTheDocument();
-  });
-  
 });

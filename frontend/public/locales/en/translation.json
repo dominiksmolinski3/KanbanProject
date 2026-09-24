@@ -56,6 +56,7 @@
     "avatarAlt": "User avatar"
   },
   "board": {
+    "actions": "Board actions",
     "loading": "Loading kanban board...",
     "error": "Error: {{message}}",
     "addColumn": "Add column",
@@ -223,6 +224,10 @@
     "add": "Add row"
   },
   "header": {
+    "board": "Board",
+    "settings": "Settings",
+    "language": "Language",
+    "navigation": "Main navigation",
     "sessions": "Sessions",
     "addTask": "Add task",
     "wipLimit": "WIP Limit",

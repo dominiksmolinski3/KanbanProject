@@ -19,11 +19,11 @@ afterEach(() => {
 });
 
 describe('Task Creation', () => {
-  it('creates a task with the button in header', () => {
-    cy.get('.header-nav > :nth-child(1)').click();
-    cy.get('#task-title').type('Header Button Task');
+  it('creates a task with the button in the board toolbar', () => {
+    cy.get('[data-testid="open-add-task-form"]').click();
+    cy.get('#task-title').type('Toolbar Button Task');
     cy.get('[type="submit"]').click();
-    cy.contains('.task', 'Header Button Task').should('exist');
+    cy.contains('.task', 'Toolbar Button Task').should('exist');
   });
   
   it('creates a task with the custom command', () => {

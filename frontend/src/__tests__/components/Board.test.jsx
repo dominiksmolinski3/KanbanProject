@@ -574,6 +574,9 @@ describe('Board Component', () => {
       expect(screen.queryByTitle('Add column')).not.toBeInTheDocument();
       expect(screen.queryByTitle('Add row')).not.toBeInTheDocument();
       expect(screen.queryAllByTitle('Add task')).toHaveLength(0);
+      expect(screen.queryByTestId('open-add-task-form')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('open-add-board-item-form')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('open-wip-limit-form')).not.toBeInTheDocument();
     });
 
     test('gets no delete buttons on columns or swimlanes', () => {
@@ -610,6 +613,9 @@ describe('Board Component', () => {
       expect(screen.queryByText('board.readOnlyBanner')).not.toBeInTheDocument();
       expect(screen.getByTitle('Add column')).toBeInTheDocument();
       expect(screen.getByTitle('Add row')).toBeInTheDocument();
+      expect(screen.getByTestId('open-add-task-form')).toBeInTheDocument();
+      expect(screen.getByTestId('open-add-board-item-form')).toBeInTheDocument();
+      expect(screen.getByTestId('open-wip-limit-form')).toBeInTheDocument();
     });
   });
 });
