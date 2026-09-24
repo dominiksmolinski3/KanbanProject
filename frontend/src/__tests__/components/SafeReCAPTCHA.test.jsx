@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, act, waitFor } from '@testing-library/react';
 import SafeReCAPTCHA from '../../components/SafeReCAPTCHA';
-import { resetRecaptchaLoader } from '../../services/recaptchaLoader';
+import { recaptchaLanguage, resetRecaptchaLoader } from '../../services/recaptchaLoader';
 
 function installGrecaptcha() {
   let nextId = 0;
@@ -257,4 +257,23 @@ test('an expiring token is reported as an empty value', async () => {
 
   act(() => grecaptcha.render.mock.calls[0][1]['expired-callback']());
   expect(onChange).toHaveBeenCalledWith(null);
+});
+
+test('asks Google for the widget in the language the page is in, and follows a switch', async () => {
+  const grecaptcha = installGrecaptcha();
+
+  const { container, rerender } = render(<Host show hl="de" />);
+  await waitFor(() => expect(widgets(container)).toBe(1));
+  expect(grecaptcha.render).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ hl: 'de' }));
+
+  rerender(<Host show hl="ja" />);
+  await waitFor(() => expect(grecaptcha.render).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ hl: 'ja' })));
+  expect(widgets(container)).toBe(1);
+});
+
+test('recaptchaLanguage passes Google the language subtag of the resolved i18n language', () => {
+  expect(recaptchaLanguage({ resolvedLanguage: 'pl', language: 'pl-PL' })).toBe('pl');
+  expect(recaptchaLanguage({ language: 'en-US' })).toBe('en');
+  expect(recaptchaLanguage({ language: 'ar' })).toBe('ar');
+  expect(recaptchaLanguage(undefined)).toBe('en');
 });

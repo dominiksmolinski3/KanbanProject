@@ -11,6 +11,11 @@ function apiIfCallable() {
   return grecaptcha && typeof grecaptcha.render === 'function' ? grecaptcha : null;
 }
 
+export function recaptchaLanguage(i18n) {
+  const tag = i18n?.resolvedLanguage || i18n?.language || 'en';
+  return tag.split('-')[0];
+}
+
 export function resetRecaptchaLoader() {
   abandonPending?.();
   abandonPending = null;
