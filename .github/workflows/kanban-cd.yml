@@ -45,6 +45,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Date the base upgrade
+      id: date
+      run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
     - name: Build and Push Docker Image
       id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -54,6 +58,7 @@ jobs:
         push: true
         build-args: |
           VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
+          APK_UPGRADE_DATE=${{ steps.date.outputs.today }}
         tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

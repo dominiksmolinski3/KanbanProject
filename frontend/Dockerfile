@@ -11,6 +11,8 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5
 
 # Numeric UID/GID on both lines: hadolint's DL3066 flags a name a host system may not resolve.
 USER 0
+# CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
+ARG APK_UPGRADE_DATE
 RUN apk upgrade --no-cache
 USER 101
 
