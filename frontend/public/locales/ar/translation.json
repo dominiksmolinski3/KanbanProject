@@ -1,5 +1,19 @@
 {
     "taskActions": {
+      "priority": {
+        "urgent": "عاجل",
+        "high": "عالية",
+        "medium": "متوسطة",
+        "low": "منخفضة"
+      },
+      "priorityTitle": "الأولوية: {{level}}",
+      "assignees": "المكلّفون: {{n}}",
+      "moreAssignees": "مكلّفون آخرون: {{n}}",
+      "moreLabels": "تسميات أخرى: {{n}}",
+      "subtasksOpen": "مهام فرعية مفتوحة: {{n}}",
+      "dueOverdue": "متأخرة منذ {{date}}",
+      "dueSoon": "تستحق قريبًا: {{date}}",
+      "dueLater": "تستحق في {{date}}",
       "delete": "حذف المهمة",
       "deleteSubTask": "حذف المهمة الفرعية",
       "showDetails": "عرض التفاصيل",
@@ -56,6 +70,17 @@
       "avatarAlt": "الصورة الرمزية للمستخدم"
     },
     "board": {
+      "wip": {
+        "count": "البطاقات: {{n}}",
+        "ok": "{{n}} من {{limit}} بطاقات (حد العمل الجاري)",
+        "near": "{{n}} من {{limit}} بطاقات: الاقتراب من حد العمل الجاري",
+        "over": "{{n}} من {{limit}} بطاقات: تم تجاوز حد العمل الجاري"
+      },
+      "lane": {
+        "collapse": "طي المسار {{name}}",
+        "expand": "توسيع المسار {{name}}",
+        "hidden": "مخفية: {{n}}"
+      },
       "actions": "إجراءات اللوحة",
       "loading": "جاري تحميل لوحة كانبان...",
       "error": "خطأ: {{message}}",
@@ -216,6 +241,7 @@
       "add": "إضافة عمود"
     },
     "row": {
+      "cannotDeleteLast": "لا يمكن حذف المسار الأخير.",
       "deleteConfirm": "هل أنت متأكد أنك تريد حذف هذا الصف؟",
       "delete": "حذف الصف",
       "wipLimit": "الحد",

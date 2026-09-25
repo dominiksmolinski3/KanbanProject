@@ -1,5 +1,19 @@
 {
     "taskActions": {
+      "priority": {
+        "urgent": "Urgente",
+        "high": "Haute",
+        "medium": "Moyenne",
+        "low": "Basse"
+      },
+      "priorityTitle": "Priorité : {{level}}",
+      "assignees": "Assignés : {{n}}",
+      "moreAssignees": "{{n}} autres assignés",
+      "moreLabels": "{{n}} autres étiquettes",
+      "subtasksOpen": "{{n}} sous-tâches ouvertes",
+      "dueOverdue": "En retard depuis le {{date}}",
+      "dueSoon": "Échéance proche : {{date}}",
+      "dueLater": "Échéance le {{date}}",
       "delete": "Supprimer la tâche",
       "deleteSubTask": "Supprimer la sous-tâche",
       "showDetails": "Afficher les détails",
@@ -56,6 +70,17 @@
       "avatarAlt": "Avatar de l'utilisateur"
     },
     "board": {
+      "wip": {
+        "count": "{{n}} cartes",
+        "ok": "{{n}} sur {{limit}} cartes (limite WIP)",
+        "near": "{{n}} sur {{limit}} cartes : limite WIP bientôt atteinte",
+        "over": "{{n}} sur {{limit}} cartes : limite WIP dépassée"
+      },
+      "lane": {
+        "collapse": "Replier le couloir {{name}}",
+        "expand": "Déplier le couloir {{name}}",
+        "hidden": "{{n}} masquées"
+      },
       "actions": "Actions du tableau",
       "loading": "Chargement du tableau kanban...",
       "error": "Erreur : {{message}}",
@@ -216,6 +241,7 @@
       "add": "Ajouter une colonne"
     },
     "row": {
+      "cannotDeleteLast": "Impossible de supprimer le dernier couloir.",
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette ligne ?",
       "delete": "Supprimer la ligne",
       "wipLimit": "Limite",

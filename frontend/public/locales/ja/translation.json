@@ -1,5 +1,19 @@
 {
     "taskActions": {
+      "priority": {
+        "urgent": "緊急",
+        "high": "高",
+        "medium": "中",
+        "low": "低"
+      },
+      "priorityTitle": "優先度: {{level}}",
+      "assignees": "担当者: {{n}}",
+      "moreAssignees": "ほか {{n}} 人の担当者",
+      "moreLabels": "ほか {{n}} 件のラベル",
+      "subtasksOpen": "未完了のサブタスク {{n}} 件",
+      "dueOverdue": "{{date}} から期限切れ",
+      "dueSoon": "まもなく期限: {{date}}",
+      "dueLater": "期限 {{date}}",
       "delete": "タスクを削除",
       "deleteSubTask": "サブタスクを削除",
       "showDetails": "詳細を表示",
@@ -56,6 +70,17 @@
       "avatarAlt": "ユーザーのアバター"
     },
     "board": {
+      "wip": {
+        "count": "{{n}} 件のカード",
+        "ok": "{{limit}} 件中 {{n}} 件 (WIP 制限)",
+        "near": "{{limit}} 件中 {{n}} 件: WIP 制限に近づいています",
+        "over": "{{limit}} 件中 {{n}} 件: WIP 制限を超えています"
+      },
+      "lane": {
+        "collapse": "スイムレーン {{name}} を折りたたむ",
+        "expand": "スイムレーン {{name}} を展開",
+        "hidden": "{{n}} 件非表示"
+      },
       "actions": "ボードの操作",
       "loading": "かんばんボードを読み込み中...",
       "error": "エラー: {{message}}",
@@ -216,6 +241,7 @@
       "add": "列を追加"
     },
     "row": {
+      "cannotDeleteLast": "最後のスイムレーンは削除できません。",
       "deleteConfirm": "この行を削除してもよろしいですか？",
       "delete": "行を削除",
       "wipLimit": "制限",

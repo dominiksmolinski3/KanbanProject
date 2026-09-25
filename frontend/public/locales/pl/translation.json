@@ -1,5 +1,19 @@
 {
   "taskActions": {
+    "priority": {
+      "urgent": "Pilny",
+      "high": "Wysoki",
+      "medium": "Średni",
+      "low": "Niski"
+    },
+    "priorityTitle": "Priorytet: {{level}}",
+    "assignees": "Przypisani: {{n}}",
+    "moreAssignees": "Pozostali przypisani: {{n}}",
+    "moreLabels": "Pozostałe etykiety: {{n}}",
+    "subtasksOpen": "Otwarte podzadania: {{n}}",
+    "dueOverdue": "Po terminie od {{date}}",
+    "dueSoon": "Termin wkrótce: {{date}}",
+    "dueLater": "Termin: {{date}}",
     "delete": "Usuń zadanie",
     "deleteSubTask": "Usuń podzadanie",
     "showDetails": "Pokaż szczegóły",
@@ -56,6 +70,17 @@
     "avatarAlt": "Awatar użytkownika"
   },
   "board": {
+    "wip": {
+      "count": "Karty: {{n}}",
+      "ok": "{{n}} z {{limit}} kart (limit WIP)",
+      "near": "{{n}} z {{limit}} kart: zbliża się limit WIP",
+      "over": "{{n}} z {{limit}} kart: przekroczono limit WIP"
+    },
+    "lane": {
+      "collapse": "Zwiń tor {{name}}",
+      "expand": "Rozwiń tor {{name}}",
+      "hidden": "Ukryte: {{n}}"
+    },
     "actions": "Akcje tablicy",
     "loading": "Ładowanie tablicy kanban...",
     "error": "Błąd: {{message}}",
@@ -216,6 +241,7 @@
     "add": "Dodaj kolumnę"
   },
   "row": {
+    "cannotDeleteLast": "Nie można usunąć ostatniego wiersza.",
     "deleteConfirm": "Czy na pewno chcesz usunąć ten wiersz?",
     "delete": "Usuń wiersz",
     "wipLimit": "Limit",

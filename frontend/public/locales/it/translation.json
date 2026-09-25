@@ -1,5 +1,19 @@
 {
     "taskActions": {
+      "priority": {
+        "urgent": "Urgente",
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Bassa"
+      },
+      "priorityTitle": "Priorità: {{level}}",
+      "assignees": "Assegnatari: {{n}}",
+      "moreAssignees": "Altri {{n}} assegnatari",
+      "moreLabels": "Altre {{n}} etichette",
+      "subtasksOpen": "{{n}} sottoattività aperte",
+      "dueOverdue": "Scaduta dal {{date}}",
+      "dueSoon": "In scadenza: {{date}}",
+      "dueLater": "Scadenza {{date}}",
       "delete": "Elimina attività",
       "deleteSubTask": "Elimina sottoattività",
       "showDetails": "Mostra dettagli",
@@ -56,6 +70,17 @@
       "avatarAlt": "Avatar dell'utente"
     },
     "board": {
+      "wip": {
+        "count": "{{n}} schede",
+        "ok": "{{n}} di {{limit}} schede (limite WIP)",
+        "near": "{{n}} di {{limit}} schede: limite WIP quasi raggiunto",
+        "over": "{{n}} di {{limit}} schede: limite WIP superato"
+      },
+      "lane": {
+        "collapse": "Comprimi corsia {{name}}",
+        "expand": "Espandi corsia {{name}}",
+        "hidden": "{{n}} nascoste"
+      },
       "actions": "Azioni della bacheca",
       "loading": "Caricamento bacheca kanban...",
       "error": "Errore: {{message}}",
@@ -216,6 +241,7 @@
       "add": "Aggiungi colonna"
     },
     "row": {
+      "cannotDeleteLast": "Impossibile eliminare l'ultima corsia.",
       "deleteConfirm": "Sei sicuro di voler eliminare questa riga?",
       "delete": "Elimina riga",
       "wipLimit": "Limite",

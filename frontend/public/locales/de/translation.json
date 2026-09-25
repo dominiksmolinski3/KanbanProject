@@ -1,5 +1,19 @@
 {
   "taskActions": {
+    "priority": {
+      "urgent": "Dringend",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig"
+    },
+    "priorityTitle": "Priorität: {{level}}",
+    "assignees": "Zugewiesen: {{n}}",
+    "moreAssignees": "{{n}} weitere Zugewiesene",
+    "moreLabels": "{{n}} weitere Labels",
+    "subtasksOpen": "{{n}} offene Unteraufgaben",
+    "dueOverdue": "Überfällig seit {{date}}",
+    "dueSoon": "Bald fällig: {{date}}",
+    "dueLater": "Fällig am {{date}}",
     "delete": "Aufgabe löschen",
     "deleteSubTask": "Unteraufgabe löschen",
     "showDetails": "Details anzeigen",
@@ -56,6 +70,17 @@
     "avatarAlt": "Benutzer-Avatar"
   },
   "board": {
+    "wip": {
+      "count": "{{n}} Karten",
+      "ok": "{{n}} von {{limit}} Karten (WIP-Limit)",
+      "near": "{{n}} von {{limit}} Karten: WIP-Limit fast erreicht",
+      "over": "{{n}} von {{limit}} Karten: WIP-Limit überschritten"
+    },
+    "lane": {
+      "collapse": "Swimlane {{name}} einklappen",
+      "expand": "Swimlane {{name}} ausklappen",
+      "hidden": "{{n}} ausgeblendet"
+    },
     "actions": "Board-Aktionen",
     "loading": "Kanban-Board wird geladen...",
     "error": "Fehler: {{message}}",
@@ -216,6 +241,7 @@
     "add": "Spalte hinzufügen"
   },
   "row": {
+    "cannotDeleteLast": "Die letzte Swimlane kann nicht gelöscht werden.",
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Zeile löschen möchten?",
     "delete": "Zeile löschen",
     "wipLimit": "Limit",

@@ -153,11 +153,11 @@ describe('Board Component', () => {
         <Board />
       </KanbanContext.Provider>
     );
-    const inProgressColumn = mockColumns[1]; 
-    const inProgressWipText = screen.getByText(`(${1}/${inProgressColumn.wipLimit})`);
-    expect(inProgressWipText).toBeInTheDocument();
-    const doneColumn = mockColumns[2];
-    expect(screen.queryByText(`(${1}/${doneColumn.wipLimit})`)).not.toBeInTheDocument();
+    const inProgressHeader = screen.getByTestId('editable-column-col2').closest('th');
+    expect(inProgressHeader.querySelector('.task-count')).toHaveTextContent('1');
+    expect(inProgressHeader.querySelector('.wip-limit')).toHaveTextContent('/2');
+    const doneHeader = screen.getByTestId('editable-column-col3').closest('th');
+    expect(doneHeader.querySelector('.wip-limit')).toBeNull();
   });
   
   test('handles column drag start correctly', () => {
@@ -255,21 +255,6 @@ describe('Board Component', () => {
     
     expect(toast.info).toHaveBeenCalled();
     expect(mockContextValue.deleteColumn).not.toHaveBeenCalled();
-  });
-        
-  test('shows WIP limits correctly', () => {
-    render(
-      <KanbanContext.Provider value={mockContextValue}>
-        <Board />
-      </KanbanContext.Provider>
-    );
-            
-    const inProgressColumn = mockColumns[1]; 
-    const inProgressWipText = screen.getByText(`(${1}/${inProgressColumn.wipLimit})`);
-    expect(inProgressWipText).toBeInTheDocument();
-            
-    const doneColumn = mockColumns[2]; 
-    expect(screen.queryByText(`(${1}/${doneColumn.wipLimit})`)).not.toBeInTheDocument();
   });
         
   test('handles column drag start correctly', () => {
@@ -423,7 +408,8 @@ describe('Board Component', () => {
             
     const rowWipLimit = featuresRowHeader.querySelector('.wip-limit');
     expect(rowWipLimit).toHaveClass('exceeded');
-    expect(rowWipLimit).toHaveTextContent('(4/2)');
+    expect(rowWipLimit).toHaveTextContent('/2');
+    expect(featuresRowHeader.querySelector('.task-count')).toHaveTextContent('4');
   });
         
   test('handles dragOver on board correctly', () => {
@@ -571,9 +557,9 @@ describe('Board Component', () => {
         </KanbanContext.Provider>
       );
 
-      expect(screen.queryByTitle('Add column')).not.toBeInTheDocument();
-      expect(screen.queryByTitle('Add row')).not.toBeInTheDocument();
-      expect(screen.queryAllByTitle('Add task')).toHaveLength(0);
+      expect(screen.queryByTitle('column.add')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('row.add')).not.toBeInTheDocument();
+      expect(screen.queryAllByTitle('taskActions.addTaskHere')).toHaveLength(0);
       expect(screen.queryByTestId('open-add-task-form')).not.toBeInTheDocument();
       expect(screen.queryByTestId('open-add-board-item-form')).not.toBeInTheDocument();
       expect(screen.queryByTestId('open-wip-limit-form')).not.toBeInTheDocument();
@@ -611,8 +597,8 @@ describe('Board Component', () => {
       );
 
       expect(screen.queryByText('board.readOnlyBanner')).not.toBeInTheDocument();
-      expect(screen.getByTitle('Add column')).toBeInTheDocument();
-      expect(screen.getByTitle('Add row')).toBeInTheDocument();
+      expect(screen.getByTitle('column.add')).toBeInTheDocument();
+      expect(screen.getByTitle('row.add')).toBeInTheDocument();
       expect(screen.getByTestId('open-add-task-form')).toBeInTheDocument();
       expect(screen.getByTestId('open-add-board-item-form')).toBeInTheDocument();
       expect(screen.getByTestId('open-wip-limit-form')).toBeInTheDocument();

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import KanbanContext from '../../context/KanbanContext';
 import Task from '../../components/Task';
 import { getUserAvatar, assignUserToTask, fetchSubTasksByTaskId } from '../../services/api';
+import { clearAvatarCache } from '../../board/useUserAvatar';
 
 jest.mock('../../services/api', () => ({
     getUserAvatar: jest.fn().mockResolvedValue('mocked-avatar-url'),
@@ -14,6 +15,7 @@ jest.mock('../../services/api', () => ({
 describe('Task Component', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        clearAvatarCache();
     });
     const mockTask = {
         id: '1',
@@ -135,9 +137,10 @@ describe('Task Component', () => {
             );
         });
         
-        const labelPill = screen.getByTitle('High Priority');
-        expect(labelPill).toBeInTheDocument();
-        expect(labelPill).toHaveClass('task-label-pill');
+        const priorityPill = screen.getByText('taskActions.priority.high');
+        expect(priorityPill).toHaveClass('task-priority-pill', 'priority-high');
+        expect(priorityPill).toHaveAttribute('data-label', 'High Priority');
+        expect(document.querySelector('.task-label-pill')).toBeNull();
     });
 
     test('handles drag start event correctly', async () => {
@@ -549,16 +552,14 @@ describe('Task Component', () => {
             );
         });
         
-        const highPriorityLabel = screen.getByTitle('High Priority');
         const bugLabel = screen.getByTitle('Bug');
         const frontendLabel = screen.getByTitle('Frontend');
-        
-        expect(highPriorityLabel).toBeInTheDocument();
-        expect(bugLabel).toBeInTheDocument();
-        expect(frontendLabel).toBeInTheDocument();
-        expect(highPriorityLabel).toHaveClass('task-label-pill');
+
+        expect(screen.getByText('taskActions.priority.high')).toHaveClass('task-priority-pill');
         expect(bugLabel).toHaveClass('task-label-pill');
+        expect(bugLabel).toHaveTextContent('Bug');
         expect(frontendLabel).toHaveClass('task-label-pill');
+        expect(frontendLabel).toHaveTextContent('Frontend');
     });
     
     test('renders task with assigned users', async () => {
@@ -576,13 +577,11 @@ describe('Task Component', () => {
         });
         
         await waitFor(() => {
-            expect(getUserAvatar).toHaveBeenCalledTimes(1);
+            expect(getUserAvatar).toHaveBeenCalledTimes(2);
         });
-        
-        const avatar = screen.getByAltText('taskActions.avatarAlt');
-        expect(avatar).toBeInTheDocument();
-        const avatarCount = screen.getByText('+1');
-        expect(avatarCount).toBeInTheDocument();
+
+        expect(await screen.findAllByAltText('taskActions.avatarAlt')).toHaveLength(2);
+        expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
     });
 
     describe('on a read-only board (FEAT-08)', () => {

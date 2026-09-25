@@ -1,5 +1,19 @@
 {
   "taskActions": {
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "priorityTitle": "Priority: {{level}}",
+    "assignees": "Assignees: {{n}}",
+    "moreAssignees": "{{n}} more assignees",
+    "moreLabels": "{{n}} more labels",
+    "subtasksOpen": "{{n}} open subtasks",
+    "dueOverdue": "Overdue since {{date}}",
+    "dueSoon": "Due soon: {{date}}",
+    "dueLater": "Due {{date}}",
     "delete": "Delete task",
     "deleteSubTask": "Delete subtask",
     "showDetails": "Show details",
@@ -56,6 +70,17 @@
     "avatarAlt": "User avatar"
   },
   "board": {
+    "wip": {
+      "count": "{{n}} cards",
+      "ok": "{{n}} of {{limit}} cards (WIP limit)",
+      "near": "{{n}} of {{limit}} cards: approaching the WIP limit",
+      "over": "{{n}} of {{limit}} cards: WIP limit exceeded"
+    },
+    "lane": {
+      "collapse": "Collapse swimlane {{name}}",
+      "expand": "Expand swimlane {{name}}",
+      "hidden": "{{n}} hidden"
+    },
     "actions": "Board actions",
     "loading": "Loading kanban board...",
     "error": "Error: {{message}}",
@@ -216,6 +241,7 @@
     "add": "Add column"
   },
   "row": {
+    "cannotDeleteLast": "The last swimlane cannot be deleted.",
     "deleteConfirm": "Are you sure you want to delete this row?",
     "delete": "Delete row",
     "wipLimit": "Limit",

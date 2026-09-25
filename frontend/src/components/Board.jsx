@@ -1,14 +1,28 @@
 import { useKanban } from '../context/KanbanContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Task from './Task';
 import EditableText from './EditableText';
+import WipMeter from './WipMeter';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import '../styles/components/BoardTokens.css';
 import '../styles/components/Board.css';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';
 import TaskSearch from './TaskSearch';
 import BoardActions from './BoardActions';
+import { buildBoardModel } from '../board/boardModel';
+import useCollapsedLanes from '../board/useCollapsedLanes';
+
+const DROP_TARGET = 'drop-target';
+
+const markDropTarget = (e) => e.currentTarget.classList.add(DROP_TARGET);
+
+const unmarkDropTarget = (e) => {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove(DROP_TARGET);
+  }
+};
 
 function Board() {
   const [addContext, setAddContext] = useState({ type: null, columnId: null, rowId: null });
@@ -27,133 +41,77 @@ function Board() {
     setDailyFocusOnly,
     keyboardMove,
     readOnly,
+    activeBoardId,
   } = useKanban();
-  
+
   const { t } = useTranslation();
   const { handleDragOver } = dragAndDrop;
+  const lanes = useCollapsedLanes(activeBoardId);
+
+  const model = useMemo(
+    () => buildBoardModel({ columns, rows, tasks, dailyFocusOnly }),
+    [columns, rows, tasks, dailyFocusOnly]
+  );
 
   useEffect(() => {
     if (columns.length > 0) {
       document.documentElement.style.setProperty('--column-count', columns.length);
     }
-    
+
     return () => {
       document.documentElement.style.setProperty('--column-count', 3);
     };
   }, [columns.length, rows.length]);
 
+  useEffect(() => {
+    const clearDropTargets = () => {
+      document.querySelectorAll(`.${DROP_TARGET}`).forEach((node) => node.classList.remove(DROP_TARGET));
+    };
+    document.addEventListener('dragend', clearDropTargets);
+    document.addEventListener('drop', clearDropTargets);
+    return () => {
+      document.removeEventListener('dragend', clearDropTargets);
+      document.removeEventListener('drop', clearDropTargets);
+    };
+  }, []);
+
   // Only the first load gates the tree; a background refresh must not unmount an open task panel.
   if (loading && columns.length === 0 && rows.length === 0 && tasks.length === 0) {
     return (
-      <div className="board-loading">
-        <span className="loading-spinner"></span>
+      <div className="board-loading" role="status">
+        <span className="loading-spinner" aria-hidden="true"></span>
         <span className="loading-text">{t('board.loading')}</span>
       </div>
     );
   }
 
   if (error) {
-    return <div className="board-error">{t('board.error', { message: error })}</div>;
+    return <div className="board-error" role="alert">{t('board.error', { message: error })}</div>;
   }
-
-  const visibleTasks = dailyFocusOnly ? tasks.filter(task => task.dailyFocus) : tasks;
-  const dailyFocusCount = tasks.filter(task => task.dailyFocus).length;
-
-  const getTasksByColumnAndRow = (columnId, rowId = null) => {
-    return visibleTasks.filter(task => 
-      task.columnId === columnId && task.rowId === rowId
-    );
-  };
-
-  const calculateTaskCounts = () => {
-    const counts = {};
-    rows.forEach(row => {
-      counts[row.id] = tasks.filter(task => task.rowId === row.id).length;
-    });
-    return counts;
-  };
-
-  const taskCounts = calculateTaskCounts();
-
-  const calculateColumnTaskCounts = () => {
-    const counts = {};
-    columns.forEach(column => {
-      counts[column.id] = tasks.filter(task => task.columnId === column.id).length;
-    });
-    return counts;
-  };
-
-  const columnTaskCounts = calculateColumnTaskCounts();
-
-  const checkRowWipLimits = () => {
-    const rowStatus = {};
-    rows.forEach(row => {
-      if (row.wipLimit > 0) {
-        const rowTaskCount = taskCounts[row.id] || 0;
-        rowStatus[row.id] = rowTaskCount > row.wipLimit;
-      }
-    });
-    return rowStatus;
-  };
-
-  const checkColumnWipLimits = () => {
-    const columnStatus = {};
-    columns.forEach(column => {
-      if (column.wipLimit > 0) {
-        const columnTaskCount = columnTaskCounts[column.id] || 0;
-        columnStatus[column.id] = columnTaskCount > column.wipLimit;
-      }
-    });
-    return columnStatus;
-  };
-
-  const rowWipStatus = checkRowWipLimits();
-  const columnWipStatus = checkColumnWipLimits();
-
-  const enhancedRows = rows.map(row => ({
-    ...row,
-    taskCount: taskCounts[row.id] || 0,
-    isOverLimit: rowWipStatus[row.id] || false
-  }));
-
-  const enhancedColumns = columns.map(column => ({
-    ...column,
-    taskCount: columnTaskCounts[column.id] || 0,
-    isOverLimit: columnWipStatus[column.id] || false
-  }));
 
   const onBoardDragOver = (e) => {
     handleDragOver(e);
-    
+
     if (e.dataTransfer.types.includes('application/column')) {
       e.preventDefault();
     }
   };
 
-  const handleDeleteRowClick = (rowId) => {
-    if (readOnly) return;
-    if (rows.length <= 1) {
-      toast.error(t('row.cannotDeleteLast') || 'Nie można usunąć ostatniego wiersza.');
-      return;
-    }
-
-    const rowName = rows.find(r => r.id === rowId)?.name;
-    const toastId = `delete-row-${rowId}`;
-    
+  const confirmDelete = (toastId, message, onConfirm) => {
     toast.info(
       <div className="toast-confirm">
-        <p>{t('row.deleteConfirm', { name: rowName })}</p>
+        <p>{message}</p>
         <div className="toast-buttons">
-          <button 
+          <button
             onClick={() => {
-              deleteRow(rowId).catch(() => {});
+              onConfirm();
               toast.dismiss(toastId);
             }}
             className="confirm-button"
           >
             {t('taskActions.yes')}
           </button>
-          <button 
+          <button
             onClick={() => toast.dismiss(toastId)}
             className="cancel-button"
           >
@@ -171,70 +129,54 @@ function Board() {
         className: 'confirmation-toast'
       }
     );
+  };
+
+  const handleDeleteRowClick = (rowId) => {
+    if (readOnly) return;
+    if (rows.length <= 1) {
+      toast.error(t('row.cannotDeleteLast'));
+      return;
+    }
+    const rowName = rows.find(r => r.id === rowId)?.name;
+    confirmDelete(`delete-row-${rowId}`, t('row.deleteConfirm', { name: rowName }), () => {
+      deleteRow(rowId).catch(() => {});
+    });
   };
 
   const handleDeleteColumnClick = (columnId) => {
     if (readOnly) return;
     const columnName = columns.find(c => c.id === columnId)?.name;
-    const toastId = `delete-column-${columnId}`;
-    
-    toast.info(
-      <div className="toast-confirm">
-        <p>{t('column.deleteConfirm', { name: columnName })}</p>
-        <div className="toast-buttons">
-          <button 
-            onClick={() => {
-              deleteColumn(columnId);
-              toast.dismiss(toastId);
-            }}
-            className="confirm-button"
-          >
-            {t('taskActions.yes')}
-          </button>
-          <button 
-            onClick={() => toast.dismiss(toastId)}
-            className="cancel-button"
-          >
-            {t('taskActions.no')}
-          </button>
-        </div>
-      </div>,
-      {
-        toastId,
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-        closeButton: true,
-        position: "top-center",
-        className: 'confirmation-toast'
-      }
-    );
+    confirmDelete(`delete-column-${columnId}`, t('column.deleteConfirm', { name: columnName }), () => {
+      deleteColumn(columnId);
+    });
   };
 
   const renderRowHeader = (row) => {
-    const onDragStart = (e) => {
-      dragAndDrop.handleDragStart(e, row.id, 'row');
-    };
-    
-    const onDragOver = (e) => {
-      dragAndDrop.handleDragOver(e);
-    };
-    
-    const onDrop = (e) => {
-      dragAndDrop.handleDrop(e, null, row.id);
-    };
-    
+    const collapsed = lanes.isCollapsed(row.id);
+
     return (
       <td
-        className={`grid-row-header ${row.isOverLimit ? 'wip-exceeded' : ''}`}
+        className={`grid-row-header wip-${row.wipState}${row.isOverLimit ? ' wip-exceeded' : ''}${collapsed ? ' lane-collapsed' : ''}`}
         draggable={!readOnly}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
+        onDragStart={(e) => dragAndDrop.handleDragStart(e, row.id, 'row')}
+        onDragOver={(e) => dragAndDrop.handleDragOver(e)}
+        onDragEnter={markDropTarget}
+        onDragLeave={unmarkDropTarget}
+        onDrop={(e) => dragAndDrop.handleDrop(e, null, row.id)}
         data-row-id={row.id}
       >
         <div className="row-title">
-          {!readOnly && <span className="row-drag-handle">☰</span>}
+          <button
+            type="button"
+            className="lane-toggle"
+            aria-expanded={!collapsed}
+            aria-label={t(collapsed ? 'board.lane.expand' : 'board.lane.collapse', { name: row.name })}
+            title={t(collapsed ? 'board.lane.expand' : 'board.lane.collapse', { name: row.name })}
+            onClick={() => lanes.toggle(row.id)}
+          >
+            <span className="lane-chevron" aria-hidden="true" />
+          </button>
+          {!readOnly && <span className="row-drag-handle" aria-hidden="true">⋮⋮</span>}
           <EditableText
             id={row.id}
             text={row.name}
@@ -245,17 +187,13 @@ function Board() {
             disabled={readOnly}
           />
         </div>
-  <div className="row-actions">
-          <span className="task-count">{row.taskCount || 0}</span>
-          {row.wipLimit > 0 && (
-            <span className={`wip-limit ${row.isOverLimit ? 'exceeded' : ''}`}>
-              ({row.taskCount || 0}/{row.wipLimit})
-            </span>
-          )}
+        <div className="row-actions">
+          <WipMeter count={row.taskCount} limit={row.wipLimit} state={row.wipState} />
           {!readOnly && (
             <button
-              className="delete-row-btn"
-              title={t('row.delete') || "Usuń wiersz"}
+              className="delete-row-btn icon-btn"
+              title={t('row.delete')}
+              aria-label={t('row.delete')}
               onClick={() => handleDeleteRowClick(row.id)}
             >
               ×
@@ -266,34 +204,23 @@ function Board() {
     );
   };
 
-  const renderColumnHeader = (column) => {
-    const columnTaskCount = columnTaskCounts[column.id] || 0;
-    const isOverLimit = column.wipLimit > 0 && columnTaskCount > column.wipLimit;
-    
-    const onDragStart = (e) => {
-      dragAndDrop.handleDragStart(e, column.id, 'column');
-    };
-    
-    const onDragOver = (e) => {
-      dragAndDrop.handleDragOver(e);
-    };
-    
-    const onDrop = (e) => {
-      dragAndDrop.handleDrop(e, column.id);
-    };
-    
-    return (
-      <th
-        key={column.id}
-        className={`grid-column-header ${isOverLimit ? 'wip-exceeded' : ''}`}
-        draggable={!readOnly}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        data-column-id={column.id}
-      >
+  const renderColumnHeader = (column) => (
+    <th
+      key={column.id}
+      className={`grid-column-header wip-${column.wipState}${column.isOverLimit ? ' wip-exceeded' : ''}`}
+      style={{ '--wip-fill': `${column.wipFill}%` }}
+      draggable={!readOnly}
+      onDragStart={(e) => dragAndDrop.handleDragStart(e, column.id, 'column')}
+      onDragOver={(e) => dragAndDrop.handleDragOver(e)}
+      onDragEnter={markDropTarget}
+      onDragLeave={unmarkDropTarget}
+      onDrop={(e) => dragAndDrop.handleDrop(e, column.id)}
+      data-column-id={column.id}
+      scope="col"
+    >
+      <div className="column-header-inner">
         <div className="column-title">
-          {!readOnly && <span className="column-drag-handle">☰</span>}
+          {!readOnly && <span className="column-drag-handle" aria-hidden="true">⋮⋮</span>}
           <EditableText
             id={column.id}
             text={column.name}
@@ -304,80 +231,85 @@ function Board() {
             disabled={readOnly}
           />
         </div>
-  <div className="column-actions">
-          <span className="task-count">{columnTaskCount}</span>
-          {column.wipLimit > 0 && (
-            <span className={`wip-limit ${isOverLimit ? 'exceeded' : ''}`}>
-              ({columnTaskCount}/{column.wipLimit})
-            </span>
-          )}
+        <div className="column-actions">
+          <WipMeter count={column.taskCount} limit={column.wipLimit} state={column.wipState} />
           {!readOnly && (
             <button
-              className="delete-column-btn"
+              className="delete-column-btn icon-btn"
               title={t('column.delete')}
+              aria-label={t('column.delete')}
               onClick={() => handleDeleteColumnClick(column.id)}
             >
               ×
             </button>
           )}
         </div>
-      </th>
-    );
-  };
+      </div>
+      <div className={`wip-bar${column.wipLimit > 0 ? '' : ' wip-bar-empty'}`} aria-hidden="true"><span /></div>
+    </th>
+  );
 
   const renderCell = (column, row) => {
-    const cellTasks = getTasksByColumnAndRow(column.id, row.id);
-    const hasTasksInCell = cellTasks.length > 0;
-    
-    const columnExceedsWip = column.wipLimit > 0 && columnTaskCounts[column.id] > column.wipLimit;
-    const rowExceedsWip = row.wipLimit > 0 && taskCounts[row.id] > row.wipLimit;
-    const shouldHighlight = hasTasksInCell && (columnExceedsWip || rowExceedsWip);
-    
+    const cellTasks = model.tasksIn(column.id, row.id);
+    const collapsed = lanes.isCollapsed(row.id);
+    const shouldHighlight = cellTasks.length > 0 && (column.isOverLimit || row.isOverLimit);
+    const isKeyboardTarget = keyboardMove.isTarget(column.id, row.id);
+
     const onDragOver = (e) => {
       e.preventDefault();
       dragAndDrop.handleDragOver(e);
     };
-    
+
     const onDrop = (e) => {
       e.preventDefault();
+      e.currentTarget.classList.remove(DROP_TARGET);
       dragAndDrop.handleDrop(e, column.id, row.id);
     };
-    
-    const isKeyboardTarget = keyboardMove.isTarget(column.id, row.id);
 
     return (
-      <td 
-        key={`${row.id}-${column.id}`} 
-        className={`grid-cell ${shouldHighlight ? 'wip-exceeded-cell' : ''} ${isKeyboardTarget ? 'keyboard-move-target' : ''}`}
+      <td
+        key={`${row.id}-${column.id}`}
+        className={`grid-cell${shouldHighlight ? ' wip-exceeded-cell' : ''}${isKeyboardTarget ? ' keyboard-move-target' : ''}${collapsed ? ' lane-collapsed-cell' : ''}`}
         data-column-id={column.id}
         data-row-id={row.id}
         data-keyboard-target={isKeyboardTarget ? 'true' : undefined}
         onDragOver={onDragOver}
+        onDragEnter={markDropTarget}
+        onDragLeave={unmarkDropTarget}
         onDrop={onDrop}
       >
-        {cellTasks.map(task => (
-          <Task
-            key={task.id}
-            task={task}
-            columnId={column.id}
-            rowId={row.id}
-          />
-        ))}
-        {!readOnly && (
-          <button
-            className="add-task-placeholder"
-            onClick={() => setAddContext({ type: 'task', columnId: column.id, rowId: row.id })}
-            title={t('taskActions.addTaskHere', 'Add task')}
-            aria-label={t('taskActions.addTaskHere', 'Add task')}
-          >
-            {t('taskActions.addTaskHere', 'Add task')}
-          </button>
+        {collapsed ? (
+          cellTasks.length > 0 && (
+            <span className="lane-hidden-count">{t('board.lane.hidden', { n: cellTasks.length })}</span>
+          )
+        ) : (
+          <div className="cell-stack">
+            {cellTasks.map(task => (
+              <Task
+                key={task.id}
+                task={task}
+                columnId={column.id}
+                rowId={row.id}
+              />
+            ))}
+            {!readOnly && (
+              <button
+                className="add-task-placeholder"
+                onClick={() => setAddContext({ type: 'task', columnId: column.id, rowId: row.id })}
+                title={t('taskActions.addTaskHere')}
+                aria-label={t('taskActions.addTaskHere')}
+              >
+                {t('taskActions.addTaskHere')}
+              </button>
+            )}
+          </div>
         )}
       </td>
     );
   };
 
   const announcement = keyboardMove.announcement;
+  const closeForm = () => setAddContext({ type: null, columnId: null, rowId: null });
 
   return (
     <div className="board-grid" onDragOver={onBoardDragOver}>
@@ -400,79 +332,75 @@ function Board() {
           aria-pressed={dailyFocusOnly}
           onClick={() => setDailyFocusOnly(!dailyFocusOnly)}
         >
-          ★ {t('board.dailyFocus')}
-          <span className="daily-focus-count">{dailyFocusCount}</span>
+          <span aria-hidden="true">★</span> {t('board.dailyFocus')}
+          <span className="daily-focus-count">{model.dailyFocusCount}</span>
         </button>
-        {dailyFocusOnly && dailyFocusCount === 0 && (
+        {dailyFocusOnly && model.dailyFocusCount === 0 && (
           <span className="daily-focus-empty">{t('board.dailyFocusEmpty')}</span>
         )}
         <TaskSearch />
       </div>
-      <table className="kanban-table">
-        <thead>
-          <tr>
-            <th className="grid-corner"></th>
-
-            {enhancedColumns.map(column => renderColumnHeader(column))}
-            {!readOnly && (
-              <th className="grid-column-header add-placeholder-header">
-                <button
-                  className="add-column-btn"
-                  title={t('column.add', 'Add column')}
-                  onClick={() => setAddContext({ type: 'column', columnId: null, rowId: null })}
-                >
-                  + {t('column.add', 'Add column')}
-                </button>
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {enhancedRows.map(row => (
-            <tr key={row.id}>
-              {renderRowHeader(row)}
-
-              {enhancedColumns.map(column => renderCell(column, row))}
-              <td className="grid-cell" />
-            </tr>
-          ))}
-          {!readOnly && (
+      <div className="board-scroller">
+        <table className="kanban-table">
+          <thead>
             <tr>
-              <td className="grid-row-header add-placeholder-row">
-                <button
-                  className="add-row-btn"
-                  title={t('row.add', 'Add row')}
-                  onClick={() => setAddContext({ type: 'row', columnId: null, rowId: null })}
-                >
-                  + {t('row.add', 'Add row')}
-                </button>
-              </td>
-              {enhancedColumns.map((column) => (
-                <td key={`add-row-empty-${column.id}`} className="grid-cell"/>
-              ))}
-              <td className="grid-cell" />
+              <th className="grid-corner" aria-hidden="true"></th>
+
+              {model.columns.map(column => renderColumnHeader(column))}
+              {!readOnly && (
+                <th className="grid-column-header add-placeholder-header">
+                  <button
+                    className="add-column-btn"
+                    title={t('column.add')}
+                    onClick={() => setAddContext({ type: 'column', columnId: null, rowId: null })}
+                  >
+                    <span aria-hidden="true">+</span> {t('column.add')}
+                  </button>
+                </th>
+              )}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {model.rows.map(row => (
+              <tr key={row.id} className={lanes.isCollapsed(row.id) ? 'lane-row collapsed' : 'lane-row'}>
+                {renderRowHeader(row)}
+
+                {model.columns.map(column => renderCell(column, row))}
+                <td className="grid-cell grid-filler" />
+              </tr>
+            ))}
+            {!readOnly && (
+              <tr>
+                <td className="grid-row-header add-placeholder-row">
+                  <button
+                    className="add-row-btn"
+                    title={t('row.add')}
+                    onClick={() => setAddContext({ type: 'row', columnId: null, rowId: null })}
+                  >
+                    <span aria-hidden="true">+</span> {t('row.add')}
+                  </button>
+                </td>
+                {model.columns.map((column) => (
+                  <td key={`add-row-empty-${column.id}`} className="grid-cell grid-filler"/>
+                ))}
+                <td className="grid-cell grid-filler" />
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
       {addContext.type === 'task' && (
         <AddTaskForm
-          onClose={() => setAddContext({ type: null, columnId: null, rowId: null })}
+          onClose={closeForm}
           defaultColumnId={addContext.columnId || ''}
           defaultRowId={addContext.rowId || ''}
         />
       )}
       {addContext.type === 'column' && (
-        <AddRowColumnForm
-          onClose={() => setAddContext({ type: null, columnId: null, rowId: null })}
-          defaultTab="column"
-        />
+        <AddRowColumnForm onClose={closeForm} defaultTab="column" />
       )}
       {addContext.type === 'row' && (
-        <AddRowColumnForm
-          onClose={() => setAddContext({ type: null, columnId: null, rowId: null })}
-          defaultTab="row"
-        />
+        <AddRowColumnForm onClose={closeForm} defaultTab="row" />
       )}
     </div>
   );
