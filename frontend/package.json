@@ -50,7 +50,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "babel-jest": "^30.5.1",
+    "babel-jest": "^30.5.2",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "cypress": "^16.0.0",
     "eslint": "^10.11.0",
