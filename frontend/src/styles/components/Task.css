@@ -108,10 +108,9 @@
   min-width: 0;
   font-weight: 500;
   color: var(--kb-text);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .task-title-input {
