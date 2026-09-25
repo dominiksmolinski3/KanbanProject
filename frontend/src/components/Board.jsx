@@ -147,7 +147,7 @@ function Board() {
     if (readOnly) return;
     const columnName = columns.find(c => c.id === columnId)?.name;
     confirmDelete(`delete-column-${columnId}`, t('column.deleteConfirm', { name: columnName }), () => {
-      deleteColumn(columnId);
+      deleteColumn(columnId).catch(() => {});
     });
   };
 
