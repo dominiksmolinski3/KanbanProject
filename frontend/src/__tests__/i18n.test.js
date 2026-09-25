@@ -156,3 +156,27 @@ describe('nothing on screen bypasses t()', () => {
       .toBeGreaterThan(20);
   });
 });
+
+describe('every key the client names exists', () => {
+  const LITERAL_KEY = /\bt\(\s*(['"])([A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\1/g;
+  const english = new Set(flatten(readLocale('en')));
+  const isKey = (key) => english.has(key) || [...english].some((name) => name.startsWith(`${key}.`));
+
+  test('a literal t() key resolves in the English bundle', () => {
+    const missing = [];
+    let seen = 0;
+
+    for (const file of sourceFiles(SOURCE_DIR)) {
+      const source = fs.readFileSync(file, 'utf8');
+      for (const match of source.matchAll(LITERAL_KEY)) {
+        seen += 1;
+        if (!isKey(match[2])) {
+          missing.push(`${path.relative(process.cwd(), file)}: ${match[2]}`);
+        }
+      }
+    }
+
+    expect(seen).toBeGreaterThan(100);
+    expect(missing).toEqual([]);
+  });
+});

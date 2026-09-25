@@ -2,12 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import TaskDetails from './TaskDetails';
 import EditableText from './EditableText';
+import AvatarStack from './AvatarStack';
+import TaskCardMeta from './TaskCardMeta';
 import Xarrow from "react-xarrows";
-import { getUserAvatar, assignUserToTask, fetchSubTasksByTaskId, fetchTask, getChildTasks, WipLimitExceededError } from '../services/api';
+import { assignUserToTask, fetchSubTasksByTaskId, fetchTask, WipLimitExceededError } from '../services/api';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import { deadlineState } from '../board/cardModel';
+import '../styles/components/BoardTokens.css';
 import '../styles/components/Task.css';
+
+const TILT_GHOST_CLASS = 'task-drag-ghost';
+
+function setTiltedDragImage(e, source) {
+  if (!source || typeof e.dataTransfer.setDragImage !== 'function') return;
+  const rect = source.getBoundingClientRect();
+  const ghost = source.cloneNode(true);
+  ghost.removeAttribute('id');
+  ghost.classList.add(TILT_GHOST_CLASS);
+  ghost.style.width = `${rect.width}px`;
+  document.body.appendChild(ghost);
+  e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+  // The browser snapshots the ghost during dragstart, so it can leave the DOM on the next frame.
+  requestAnimationFrame(() => ghost.remove());
+}
 
 function Task({ task, columnId, rowId }) {
   const {
@@ -19,9 +38,9 @@ function Task({ task, columnId, rowId }) {
     updateTaskCompletion,
     setDailyFocus,
     readOnly,
+    activeBoard,
   } = useKanban();
   const [showDetails, setShowDetails] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [assignmentError, setAssignmentError] = useState(null);
@@ -32,38 +51,27 @@ function Task({ task, columnId, rowId }) {
   const [isParentTask] = useState(false); 
   const [childColumns] = useState(new Set());
   const [isDragging, setIsDragging] = useState(false);
-  const [relationshipData, setRelationshipData] = useState({ children: [], parent: null });
   const [taskSubtasks, setTaskSubtasks] = useState([]);
  
   const descriptionBtnRef = useRef(null);
   const taskRef = useRef(null);
   const warningTimeoutRef = useRef(null);
-  const isDeadlineExpired = task.deadline && new Date(task.deadline) < new Date();
-  const isDeadlineUpcoming = task.deadline && !isDeadlineExpired && 
-    (new Date(task.deadline) - new Date()) < 24 * 60 * 60 * 1000;
+  const dueState = deadlineState(task.deadline);
+  const isDeadlineExpired = dueState === 'overdue';
+  const isDeadlineUpcoming = dueState === 'soon';
+  const childTaskIds = task.childTaskIds || [];
+  const isOnBoard = (id) => Boolean(document.getElementById(`task-${id}`));
+  const parentTaskId = task.parentTaskId ?? null;
 
   const { t } = useTranslation();
 
   const hasUnfinishedSubtasks = (task.openSubtasks ?? 0) > 0;
 
-  useEffect(() => {
-    if (task.userIds && task.userIds.length > 0) {
-      getUserAvatar(task.userIds[0]).then(url => {
-        if (url) {
-          setAvatarUrl(url);
-        }
-      });
+  useEffect(() => () => {
+    if (warningTimeoutRef.current) {
+      clearTimeout(warningTimeoutRef.current);
     }
-
-    return () => {
-      if (avatarUrl && avatarUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarUrl);
-      }
-      if (warningTimeoutRef.current) {
-        clearTimeout(warningTimeoutRef.current);
-      }
-    };
-  }, [task.userIds, task.id]);
+  }, []);
 
   useEffect(() => {
     setTaskSubtasks([]);
@@ -136,24 +144,6 @@ function Task({ task, columnId, rowId }) {
     };
   }, [task.id]);
 
-  useEffect(() => {
-    const loadRelationships = async () => {
-      try {
-        const childTasks = await getChildTasks(task.id);
-        const taskData = await fetchTask(task.id);
-        
-        setRelationshipData({
-          children: childTasks || [],
-          parent: taskData.parentTaskId || null
-        });
-      } catch (error) {
-        console.error('Error loading task relationships:', error);
-      }
-    };
-    
-    loadRelationships();
-  }, [task.id]);
-
   const handleTaskClick = (e) => {
     if (e.target.className === 'delete-btn' || 
         e.target.className === 'confirm-delete-btn' || 
@@ -164,6 +154,7 @@ function Task({ task, columnId, rowId }) {
         e.target.classList.contains('task-complete-checkbox') ||
         e.target.classList.contains('daily-focus-btn') ||
         e.target.classList.contains('description-dropdown-btn') ||
+        e.target.closest('.description-dropdown-btn') ||
         e.target.closest('.task-description-dropdown')) return;
     setShowDetails(!showDetails);
   };
@@ -210,37 +201,11 @@ function Task({ task, columnId, rowId }) {
     setIsConfirmingDelete(false);
   };
 
-  const renderUserAvatar = () => {
-    const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"%3E%3C/path%3E%3C/svg%3E';
-    
-    if (!task.userIds || task.userIds.length === 0) {
-      return null;
-    }
-    
-    return (
-      <div className="task-avatar">
-        <img 
-          src={avatarUrl || defaultAvatar} 
-          alt={t('taskActions.avatarAlt')}
-          className="avatar-preview"
-          onError={(e) => {
-            e.target.src = defaultAvatar;
-          }}
-        />
-        {task.userIds.length > 1 && (
-          <span className="avatar-count">+{task.userIds.length - 1}</span>
-        )}
-      </div>
-    );
-  };
-
   const onDragStartHandler = (e) => {
     if (readOnly) {
       e.preventDefault();
       return;
     }
-    console.log('Task drag start:', { taskId: task.id, columnId, isParentTask });
-
     const data = {
       id: task.id,
       type: 'task',
@@ -255,7 +220,8 @@ function Task({ task, columnId, rowId }) {
     e.dataTransfer.setData('taskId', task.id);
     e.dataTransfer.setData('columnId', columnId);
     e.dataTransfer.effectAllowed = 'move';
-    
+    setTiltedDragImage(e, taskRef.current);
+
     if (taskRef.current) {
       taskRef.current.classList.add('dragging');
     }
@@ -365,17 +331,10 @@ function Task({ task, columnId, rowId }) {
         
         if (userData.type === 'user') {
           const userId = userData.userId;
-          const userName = userData.userName || 'Unknown User';
-          
-          console.log(`Attempting to assign user ${userId} to task ${task.id}`);
+          const userName = userData.userName || String(userId);
           
           try {
             await assignUserToTask(task.id, parseInt(userId));
-            const updatedUserIds = task.userIds ? [...task.userIds] : [];
-            if (!updatedUserIds.includes(userId)) {
-              updatedUserIds.push(userId);
-            }
-            
             refreshTasks();
             setAssignmentError(null);
             
@@ -400,7 +359,6 @@ function Task({ task, columnId, rowId }) {
   };
   
   const onDragEndHandler = () => {
-    console.log('Task drag end');
     setShowWarning(false);
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
@@ -421,70 +379,21 @@ function Task({ task, columnId, rowId }) {
     }
   };
 
-  const renderTaskLabels = () => {
-    if (!task.labels || task.labels.length === 0) return null;
-    const visibleLabels = task.labels.slice(0, 3);
-    const remainingCount = task.labels.length - 3;
-    
-    return (
-      <div className="task-labels-preview">
-        {visibleLabels.map((label) => {
-          const labelColor = getLabelColor(label);
-          return (
-            <div 
-              key={label} 
-              className="task-label-pill" 
-              title={label}
-              data-tooltip={label}
-            >
-              <span 
-                className="label-dot" 
-                style={{ backgroundColor: labelColor }}
-              ></span>
-            </div>
-          );
-        })}
-        {remainingCount > 0 && (
-          <div className="task-label-count" title={`${remainingCount} more label(s)`}>
-            +{remainingCount}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const getLabelColor = (labelName) => {
-    const storedColors = localStorage.getItem('labelColors');
-    
-    if (storedColors) {
-      const colorMap = JSON.parse(storedColors);
-      if (colorMap[labelName]) return colorMap[labelName];
-    }
-
-    const colorMap = {
-      'High Priority': '#FF4D4D',
-      'Medium Priority': '#FFA500',
-      'Low Priority': '#4CAF50',
-      'Bug': '#FF0000',
-      'Feature': '#2196F3',
-      'Documentation': '#9C27B0'
-    };
-  
-    return colorMap[labelName] || '#888888';
-  };
-
   return (
     <>
       <div
         ref={taskRef}
         id={`task-${task.id}`}
-        className={`task ${isDragOver ? 'user-drag-over' : ''} 
-          ${heldByKeyboard ? 'keyboard-held' : ''} 
-          ${isParentTask ? 'parent-task' : ''} 
-          ${task.completed ? 'task-completed' : ''} 
-          ${task.dailyFocus ? 'daily-focus' : ''} 
-          ${isDeadlineExpired ? 'deadline-expired' : ''} 
-          ${isDeadlineUpcoming ? 'deadline-upcoming' : ''}`}
+        className={[
+          'task',
+          isDragOver && 'user-drag-over',
+          heldByKeyboard && 'keyboard-held',
+          isParentTask && 'parent-task',
+          task.completed && 'task-completed',
+          task.dailyFocus && 'daily-focus',
+          isDeadlineExpired && 'deadline-expired',
+          isDeadlineUpcoming && 'deadline-upcoming',
+        ].filter(Boolean).join(' ')}
         draggable={!readOnly}
         tabIndex={0}
         role="button"
@@ -516,23 +425,22 @@ function Task({ task, columnId, rowId }) {
           <div className="task-content">
             <EditableText
               id={task.id}
-              text={task.title || "Untitled Task"}
+              text={task.title || t('board.keyboardMove.untitled')}
               onUpdate={updateTaskName}
               className="task-title"
               inputClassName="task-title-input"
               type="task"
               disabled={readOnly}
             />
-            <div className="task-info-container">
-              {renderTaskLabels()}
-              {renderUserAvatar()}
-            </div>
           </div>
-          
+
           <div className="task-header-actions">
             <button
               className={`daily-focus-btn ${task.dailyFocus ? 'active' : ''}`}
               title={task.dailyFocus
+                ? t('taskActions.removeFromDailyFocus')
+                : t('taskActions.addToDailyFocus')}
+              aria-label={task.dailyFocus
                 ? t('taskActions.removeFromDailyFocus')
                 : t('taskActions.addToDailyFocus')}
               aria-pressed={Boolean(task.dailyFocus)}
@@ -544,6 +452,7 @@ function Task({ task, columnId, rowId }) {
               <button
                 className="delete-btn"
                 title={t('taskActions.delete')}
+                aria-label={t('taskActions.delete')}
                 onClick={handleDeleteClick}
               >
                 ×
@@ -552,26 +461,23 @@ function Task({ task, columnId, rowId }) {
           </div>
         </div>
 
-        {(isDeadlineExpired || isDeadlineUpcoming) && (
-          <div className={`deadline-indicator ${isDeadlineExpired ? 'expired' : 'upcoming'}`}>
-            <span className="deadline-icon">⏰</span>
-            <span className="deadline-text">
-              {isDeadlineExpired ? t('taskActions.expired') : t('taskActions.upcoming')}
-            </span>
-          </div>
-        )}
-        
+        <TaskCardMeta task={task} dueState={dueState} />
+
         <div className="task-footer">
-          <button 
+          <button
             ref={descriptionBtnRef}
+            type="button"
             className="description-dropdown-btn"
             title={showDescription ? t('taskActions.hideDetails') : t('taskActions.showDetails')}
+            aria-expanded={showDescription}
             onClick={handleDescriptionToggle}
           >
-            {showDescription ? `${t('taskActions.hideDetails')} ▲` : `${t('taskActions.showDetails')} ▼`}
+            <span className="description-dropdown-caret" aria-hidden="true">{showDescription ? '▴' : '▾'}</span>
+            {showDescription ? t('taskActions.hideDetails') : t('taskActions.showDetails')}
           </button>
+          <AvatarStack userIds={task.userIds || []} members={activeBoard?.members || []} />
         </div>
-        
+
         {assignmentError && (
           <div className="assignment-error">
             {assignmentError}
@@ -594,11 +500,11 @@ function Task({ task, columnId, rowId }) {
         )}
       </div>
 
-      {isDragging && relationshipData.children.map(child => (
+      {isDragging && childTaskIds.filter(isOnBoard).map(childId => (
         <Xarrow
-          key={`arrow-${task.id}-${child.id}`}
+          key={`arrow-${task.id}-${childId}`}
           start={`task-${task.id}`}
-          end={`task-${child.id}`}
+          end={`task-${childId}`}
           color="#86d6ff"
           strokeWidth={3}
           path="smooth"
@@ -621,10 +527,10 @@ function Task({ task, columnId, rowId }) {
         />
       ))}
 
-      {isDragging && relationshipData.parent && (
+      {isDragging && parentTaskId !== null && isOnBoard(parentTaskId) && (
         <Xarrow
-          key={`arrow-${relationshipData.parent}-${task.id}`}
-          start={`task-${relationshipData.parent}`}
+          key={`arrow-${parentTaskId}-${task.id}`}
+          start={`task-${parentTaskId}`}
           end={`task-${task.id}`}
           color="#0e1b36"
           strokeWidth={3}
