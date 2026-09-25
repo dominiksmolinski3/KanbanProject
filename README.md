@@ -208,8 +208,9 @@ The project is organized as follows:
    - /src/main/java - Java source code
    - /src/main/resources - config files
    - /src/test - test classes
-- `/frontend` - React.js web application
+- `/frontend` - React.js web application ([frontend/README.md](frontend/README.md) covers the board UI and its design tokens)
    - /src/components - React components
+   - /src/board - board view model and hooks (WIP state, card metadata, swimlane collapse)
    - /src/services - API services
    - /src/styles - CSS and styling
 - `/terraform` - Azure infrastructure as code
