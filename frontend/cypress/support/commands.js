@@ -155,6 +155,7 @@ Cypress.Commands.add('deleteColumns', () => {
       cy.get('th').eq(1).find('.delete-column-btn').click({ force: true });
       cy.get('.confirm-button').first().click({ force: true });
       cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
+      cy.get('th', { timeout: 10000 }).should('have.length', $columns.length - 1);
       cy.deleteColumns();
     }
   });
@@ -167,6 +168,7 @@ Cypress.Commands.add('deleteRows', () => {
       cy.get('.grid-row-header').eq(0).find('.delete-row-btn').click({ force: true });
       cy.get('.confirm-button').first().click({ force: true });
       cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
+      cy.get('.grid-row-header', { timeout: 10000 }).should('have.length', $rowHeaders.length - 1);
       cy.deleteRows();
     }
   });
