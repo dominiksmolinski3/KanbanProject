@@ -1,5 +1,19 @@
 {
     "taskActions": {
+      "priority": {
+        "urgent": "Urgente",
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Baja"
+      },
+      "priorityTitle": "Prioridad: {{level}}",
+      "assignees": "Asignados: {{n}}",
+      "moreAssignees": "{{n}} asignados más",
+      "moreLabels": "{{n}} etiquetas más",
+      "subtasksOpen": "{{n}} subtareas abiertas",
+      "dueOverdue": "Vencida desde {{date}}",
+      "dueSoon": "Vence pronto: {{date}}",
+      "dueLater": "Vence el {{date}}",
       "delete": "Eliminar tarea",
       "deleteSubTask": "Eliminar subtarea",
       "showDetails": "Mostrar detalles",
@@ -56,6 +70,17 @@
       "avatarAlt": "Avatar del usuario"
     },
     "board": {
+      "wip": {
+        "count": "{{n}} tarjetas",
+        "ok": "{{n}} de {{limit}} tarjetas (límite WIP)",
+        "near": "{{n}} de {{limit}} tarjetas: cerca del límite WIP",
+        "over": "{{n}} de {{limit}} tarjetas: límite WIP superado"
+      },
+      "lane": {
+        "collapse": "Contraer carril {{name}}",
+        "expand": "Expandir carril {{name}}",
+        "hidden": "{{n}} ocultas"
+      },
       "actions": "Acciones del tablero",
       "loading": "Cargando tablero kanban...",
       "error": "Error: {{message}}",
@@ -216,6 +241,7 @@
       "add": "Añadir columna"
     },
     "row": {
+      "cannotDeleteLast": "No se puede eliminar el último carril.",
       "deleteConfirm": "¿Está seguro de que desea eliminar esta fila?",
       "delete": "Eliminar fila",
       "wipLimit": "Límite",
