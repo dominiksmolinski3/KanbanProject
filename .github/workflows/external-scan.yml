@@ -50,12 +50,32 @@ jobs:
             exit 1
           fi
 
+      # testssl.sh exits 0 on almost anything it finds, so the run has to be read
+      # rather than merely printed. A scan whose output nothing asserts on is the
+      # failure this workflow was already fixed for once.
       - name: TLS configuration scan
         env:
           HOST: ${{ steps.target.outputs.host }}
         run: |
-          docker run --rm drwetter/testssl.sh@sha256:1abaabba5905a25feab459c444407b2ec04f6d9096b22c933a9ae88194183ee2 \
-            --quiet --color 0 "https://$HOST" | tee testssl-report.txt
+          set -euo pipefail
+          docker run --rm -v "$PWD:/out" \
+            drwetter/testssl.sh@sha256:1abaabba5905a25feab459c444407b2ec04f6d9096b22c933a9ae88194183ee2 \
+            --quiet --color 0 --jsonfile /out/testssl.json "https://$HOST" | tee testssl-report.txt
+
+          test -s testssl.json || {
+            echo "::error::testssl produced no JSON - the scan did not run"
+            exit 1
+          }
+
+          jq -r "[.[] | select(.severity == \"HIGH\" or .severity == \"CRITICAL\")]" testssl.json > testssl-bad.json
+          count=$(jq "length" testssl-bad.json)
+          if [ "$count" -gt 0 ]; then
+            jq -r '.[] | "\(.severity)  \(.id)  \(.finding)"' testssl-bad.json
+            jq -r '.[] | "::error title=TLS \(.severity): \(.id)::\(.finding)"' testssl-bad.json
+            echo "::error::$count HIGH or CRITICAL TLS finding(s) on $HOST"
+            exit 1
+          fi
+          echo "no HIGH or CRITICAL TLS findings on $HOST"
 
       - name: Security headers check
         env:
@@ -80,6 +100,7 @@ jobs:
           path: |
             nmap-report.txt
             testssl-report.txt
+            testssl.json
             headers.txt
           if-no-files-found: warn
 
