@@ -1,11 +1,17 @@
 directory:
-  - terraform
+  - .
 
 framework:
   - terraform
+  - dockerfile
+  - github_actions
 
 skip-path:
   - '\.terraform'
+  - 'node_modules'
+  - 'frontend/dist'
+  - 'frontend/coverage'
+  - 'backend/target'
 
 compact: true
 quiet: true
@@ -16,3 +22,6 @@ skip-check:
   - CKV2_AZURE_57
   - CKV_AZURE_33
   - CKV2_AZURE_1
+  - CKV_DOCKER_4
+  - CKV_GHA_7
+  - CKV2_GHA_1

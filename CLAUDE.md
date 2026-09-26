@@ -1684,8 +1684,14 @@ and reasons in `local.refusal_alerts`.
   not do its work must not report that it passed*, which is the alarm's own `skipped`-is-red rule
   read one level in — is pinned by `SweepAlarmCoverageTest`, which fails the build on a swept
   workflow that writes a `skip=true` flag or gates a step on one.
-- `terraform-ci.yml` — on changes under `terraform/`: `fmt -check`, `init -backend=false`,
-  `validate`, then **a blocking Checkov scan**. The scan reads [.checkov.yaml](.checkov.yaml),
+- `terraform-ci.yml` ("Infrastructure CI") — on changes under `terraform/`, to either
+  Dockerfile, to any workflow or to `.checkov.yaml`: `fmt -check`, `init -backend=false`,
+  `validate`, then **a blocking Checkov scan**. It used to scan `terraform/` alone —
+  `.checkov.yaml` pinned both `directory` and `framework` to it — so Checkov's `dockerfile`
+  and `github_actions` frameworks never ran, and the workflow's `paths:` filter meant a
+  Dockerfile change could not have started it anyway. Widening the config without widening
+  the trigger would have been the more dangerous half-fix of the two, since the scan would
+  then pass by never running. The two have to stay as wide as each other. The scan reads [.checkov.yaml](.checkov.yaml),
   which single-sources the invocation so `checkov --config-file .checkov.yaml` reproduces CI
   exactly — worth having now that a failure stops the build. **Every skip lives in that file**,
   one line each, and the reasoning is here rather than beside them: `CKV_AZURE_41`, because an
@@ -1698,6 +1704,15 @@ and reasons in `local.refusal_alerts`.
   there is no queue service on that account to log, and `CKV2_AZURE_1`, customer-managed encryption
   keys, which is the same trade `CKV_AZURE_41` names — a key nothing rotates buys the appearance of
   control and a scheduled outage.
+  The wider scope adds three more, and all three are the scanner being wrong rather than
+  this repository being lax: `CKV_DOCKER_4` (prefer `COPY` to `ADD`), because the one `ADD`
+  is the Application Insights agent fetched by URL with `--checksum=sha256:…`, which `COPY`
+  cannot do at all and which is the safer form rather than the laxer one; `CKV_GHA_7`
+  (`workflow_dispatch` inputs must be empty), because the inputs are the `target` and
+  `origin` overrides the sweeps are dispatched with, and removing them would mean editing a
+  repository variable to scan anything by hand; and `CKV2_GHA_1` (top-level permissions must
+  not be `write-all`), which fires on `codeql.yml` and `kanban-cd.yml` for **job-level**
+  blocks that are neither top-level nor `write-all` — it is reading the wrong thing.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
