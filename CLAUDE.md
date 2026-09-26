@@ -96,8 +96,9 @@ All backend commands run from `backend/`, all frontend commands from `frontend/`
 ### Backend (Java 21 language level / Spring Boot 4.1.1 / Maven wrapper)
 
 The `pom.xml` pins `<java.version>21</java.version>`, so the bytecode target stays 21, but CI
-(`kanban-ci.yml`) and `backend/Dockerfile` both build and run on **JDK 25** (`eclipse-temurin:25`) — one
-toolchain across both, which is what Stage 3 of the audit meant by "pin one JDK". The frontend build
+(`kanban-ci.yml`), `codeql.yml` and `backend/Dockerfile` all build and run on **JDK 25**
+(`eclipse-temurin:25`) — one toolchain across all three, which is what Stage 3 of the audit meant
+by "pin one JDK". CodeQL was the one that had drifted, on 23, which is a third JDK nobody chose. The frontend build
 image is Node 26, matching `node-version: 26` in CI.
 
 ```bash
@@ -1651,7 +1652,11 @@ and reasons in `local.refusal_alerts`.
 - `hadolint.yml` — Dockerfile lint, on push and PR, as a matrix over `backend/Dockerfile` and
   `frontend/Dockerfile`. A matrix rather than two steps so a failure names the image it is about,
   and so a third image is a line rather than a copied block.
-- `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR (comment only).
+- `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR, commenting the
+  summary and **failing at `high` or above**. It is a gate, not a note. The action's default
+  `fail-on-severity` is `low`, which it had been running on while this file called it comment
+  only — so a low advisory in any transitive dependency stopped work, and nothing said so.
+  `high` is the line worth blocking a merge on; anything below it is in the PR comment.
 - `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI, and **only
   `semver-patch` and `semver-minor`**: majors are held for a person. That rule has held every time
   it mattered — Spring Boot 4, azurerm 5 and the jjwt 0.12 API rewrite were each opened by a human
