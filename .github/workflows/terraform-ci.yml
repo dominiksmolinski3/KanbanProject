@@ -1,16 +1,22 @@
-name: Terraform CI
+name: Infrastructure CI
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'terraform/**'
-      - '.github/workflows/terraform-ci.yml'
+      - 'backend/Dockerfile'
+      - 'frontend/Dockerfile'
+      - '.github/workflows/**'
+      - '.checkov.yaml'
   pull_request:
     branches: [ main ]
     paths:
       - 'terraform/**'
-      - '.github/workflows/terraform-ci.yml'
+      - 'backend/Dockerfile'
+      - 'frontend/Dockerfile'
+      - '.github/workflows/**'
+      - '.checkov.yaml'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +51,8 @@ jobs:
       with:
         python-version: '3.13'
 
+    # Checkov covers terraform/, both Dockerfiles and the workflows; its scope is
+    # .checkov.yaml, so the triggers above have to stay as wide as that file.
     - name: Scan with Checkov
       working-directory: .
       run: |
