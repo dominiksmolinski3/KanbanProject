@@ -10,7 +10,7 @@
       "assignees": "المكلّفون: {{n}}",
       "moreAssignees": "مكلّفون آخرون: {{n}}",
       "moreLabels": "تسميات أخرى: {{n}}",
-      "subtasksOpen": "مهام فرعية مفتوحة: {{n}}",
+      "subtaskProgress": "المهام الفرعية المكتملة: {{done}} من {{total}}",
       "dueOverdue": "متأخرة منذ {{date}}",
       "dueSoon": "تستحق قريبًا: {{date}}",
       "dueLater": "تستحق في {{date}}",

@@ -48,6 +48,7 @@ public class TaskMapper implements Function<Task, TaskDto> {
 
         Set<String> labels = task.getLabels() == null ? null : new HashSet<>(task.getLabels());
 
+        int subtaskCount = task.getSubTasks() == null ? 0 : task.getSubTasks().size();
         int openSubtasks = task.getSubTasks() == null ? 0 : (int) task.getSubTasks().stream()
                 .filter(subTask -> !subTask.isCompleted())
                 .count();
@@ -68,7 +69,8 @@ public class TaskMapper implements Function<Task, TaskDto> {
                 task.getDeadline(),
                 task.isExpired(),
                 task.isDailyFocus(),
-                openSubtasks
+                openSubtasks,
+                subtaskCount
         );
     }
 }

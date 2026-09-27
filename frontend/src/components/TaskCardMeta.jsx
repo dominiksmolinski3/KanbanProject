@@ -18,10 +18,12 @@ function TaskCardMeta({ task, dueState }) {
   const { priority, priorityLabel, labels } = useMemo(() => splitPriority(task.labels || []), [task.labels]);
   const storedColors = labels.length > 0 ? readStoredLabelColors() : {};
   const openSubtasks = task.openSubtasks ?? 0;
+  const totalSubtasks = Math.max(task.subtaskCount ?? 0, openSubtasks);
+  const doneSubtasks = totalSubtasks - openSubtasks;
   const visibleLabels = labels.slice(0, MAX_LABELS);
   const hiddenLabels = labels.length - visibleLabels.length;
 
-  if (!priority && labels.length === 0 && !dueState && openSubtasks === 0) return null;
+  if (!priority && labels.length === 0 && !dueState && totalSubtasks === 0) return null;
 
   const due = dueState ? formatDue(task.deadline, i18n?.language) : null;
   const dueKey = { overdue: 'taskActions.dueOverdue', soon: 'taskActions.dueSoon', later: 'taskActions.dueLater' }[dueState];
@@ -61,7 +63,7 @@ function TaskCardMeta({ task, dueState }) {
         </div>
       )}
 
-      {(dueState || openSubtasks > 0) && (
+      {(dueState || totalSubtasks > 0) && (
         <div className="task-signals">
           {dueState && (
             <span className={`due-chip due-${dueState}`} title={t(dueKey, { date: due })}>
@@ -70,11 +72,19 @@ function TaskCardMeta({ task, dueState }) {
               <span aria-hidden="true">{due}</span>
             </span>
           )}
-          {openSubtasks > 0 && (
-            <span className="subtask-chip" title={t('taskActions.subtasksOpen', { n: openSubtasks })}>
+          {totalSubtasks > 0 && (
+            <span
+              className={`subtask-chip${openSubtasks === 0 ? ' subtask-done' : ''}`}
+              title={t('taskActions.subtaskProgress', { done: doneSubtasks, total: totalSubtasks })}
+            >
               <span className="subtask-icon" aria-hidden="true" />
-              <span className="visually-hidden">{t('taskActions.subtasksOpen', { n: openSubtasks })}</span>
-              <span aria-hidden="true">{openSubtasks}</span>
+              <span className="visually-hidden">
+                {t('taskActions.subtaskProgress', { done: doneSubtasks, total: totalSubtasks })}
+              </span>
+              <span aria-hidden="true">{doneSubtasks}/{totalSubtasks}</span>
+              <span className="subtask-bar" aria-hidden="true">
+                <span style={{ width: `${Math.round((doneSubtasks / totalSubtasks) * 100)}%` }} />
+              </span>
             </span>
           )}
         </div>

@@ -10,7 +10,7 @@
     "assignees": "Assignees: {{n}}",
     "moreAssignees": "{{n}} more assignees",
     "moreLabels": "{{n}} more labels",
-    "subtasksOpen": "{{n}} open subtasks",
+    "subtaskProgress": "{{done}} of {{total}} subtasks done",
     "dueOverdue": "Overdue since {{date}}",
     "dueSoon": "Due soon: {{date}}",
     "dueLater": "Due {{date}}",

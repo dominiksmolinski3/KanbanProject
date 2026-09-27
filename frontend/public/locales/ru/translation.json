@@ -10,7 +10,7 @@
       "assignees": "Исполнители: {{n}}",
       "moreAssignees": "Ещё исполнителей: {{n}}",
       "moreLabels": "Ещё меток: {{n}}",
-      "subtasksOpen": "Открытых подзадач: {{n}}",
+      "subtaskProgress": "Выполнено подзадач: {{done}} из {{total}}",
       "dueOverdue": "Просрочено с {{date}}",
       "dueSoon": "Скоро срок: {{date}}",
       "dueLater": "Срок: {{date}}",

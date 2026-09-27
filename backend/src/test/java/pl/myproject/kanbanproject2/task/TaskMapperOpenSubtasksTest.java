@@ -22,6 +22,20 @@ class TaskMapperOpenSubtasksTest {
     }
 
     @Test
+    @DisplayName("carries the total beside the open count, so a card can show done of total")
+    void carriesTheTotal() {
+        var task = new Task();
+        task.setSubTasks(new ArrayList<>(List.of(subTask(false), subTask(true), subTask(true))));
+        var bare = new Task();
+        bare.setSubTasks(null);
+
+        var dto = mapper.apply(task);
+        assertThat(dto.subtaskCount()).isEqualTo(3);
+        assertThat(dto.subtaskCount() - dto.openSubtasks()).isEqualTo(2);
+        assertThat(mapper.apply(bare).subtaskCount()).isZero();
+    }
+
+    @Test
     @DisplayName("a card with every subtask done, or none at all, has nothing open")
     void nothingOpen() {
         var finished = new Task();

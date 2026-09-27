@@ -10,7 +10,7 @@
       "assignees": "Asignados: {{n}}",
       "moreAssignees": "{{n}} asignados más",
       "moreLabels": "{{n}} etiquetas más",
-      "subtasksOpen": "{{n}} subtareas abiertas",
+      "subtaskProgress": "{{done}} de {{total}} subtareas completadas",
       "dueOverdue": "Vencida desde {{date}}",
       "dueSoon": "Vence pronto: {{date}}",
       "dueLater": "Vence el {{date}}",

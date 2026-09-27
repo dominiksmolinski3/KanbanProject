@@ -10,7 +10,7 @@
       "assignees": "担当者: {{n}}",
       "moreAssignees": "ほか {{n}} 人の担当者",
       "moreLabels": "ほか {{n}} 件のラベル",
-      "subtasksOpen": "未完了のサブタスク {{n}} 件",
+      "subtaskProgress": "サブタスク {{total}} 件中 {{done}} 件完了",
       "dueOverdue": "{{date}} から期限切れ",
       "dueSoon": "まもなく期限: {{date}}",
       "dueLater": "期限 {{date}}",

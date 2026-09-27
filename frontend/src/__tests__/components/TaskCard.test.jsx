@@ -94,10 +94,19 @@ describe('task card', () => {
     expect(document.querySelector('.task')).toHaveClass('deadline-upcoming');
   });
 
-  test('open subtasks are shown as a count', async () => {
-    await renderCard({ openSubtasks: 3 });
-    expect(document.querySelector('.subtask-chip')).toHaveTextContent('3');
-    expect(screen.getByText('taskActions.subtasksOpen')).toHaveClass('visually-hidden');
+  test('subtasks are shown as done of total with a proportional bar', async () => {
+    await renderCard({ openSubtasks: 1, subtaskCount: 4 });
+    const chip = document.querySelector('.subtask-chip');
+    expect(chip).toHaveTextContent('3/4');
+    expect(chip).not.toHaveClass('subtask-done');
+    expect(chip.querySelector('.subtask-bar > span')).toHaveStyle({ width: '75%' });
+    expect(screen.getByText('taskActions.subtaskProgress')).toHaveClass('visually-hidden');
+  });
+
+  test('a card whose subtasks are all done still shows them, marked done', async () => {
+    await renderCard({ openSubtasks: 0, subtaskCount: 2 });
+    expect(document.querySelector('.subtask-chip')).toHaveClass('subtask-done');
+    expect(document.querySelector('.subtask-chip')).toHaveTextContent('2/2');
   });
 
   test('labels beyond three collapse into a count and a priority label becomes the priority pill', async () => {
