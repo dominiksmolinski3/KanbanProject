@@ -58,6 +58,7 @@ public class TaskService {
     public TaskDto addTask(User caller, Integer boardId, CreateTaskRequest request) {
         var board = boardService.resolve(caller, boardId);
         boardService.requireWritable(caller, board);
+        TaskLabels.requireValid(request.labels());
         var column = request.column() != null ? findColumn(caller, board, request.column().id()) : null;
         var row = request.row() != null ? findRow(caller, board, request.row().id()) : null;
 
@@ -202,6 +203,7 @@ public class TaskService {
 
         if (request.labels().isPresent()) {
             var labels = request.labels().get();
+            TaskLabels.requireValid(labels);
             existingTask.setLabels(labels == null ? new HashSet<>() : new HashSet<>(labels));
         }
 
@@ -348,10 +350,10 @@ public class TaskService {
     public TaskDto addLabelToTask(User caller, Integer taskId, String label) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
-        if (task.getLabels() == null) {
-            task.setLabels(new HashSet<>());
-        }
-        task.getLabels().add(label);
+        var labels = task.getLabels() == null ? new HashSet<String>() : new HashSet<>(task.getLabels());
+        labels.add(label);
+        TaskLabels.requireValid(labels);
+        task.setLabels(labels);
         return saveAndAnnounce(task);
     }
 
@@ -368,6 +370,7 @@ public class TaskService {
     public TaskDto updateTaskLabels(User caller, Integer taskId, Set<String> labels) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
+        TaskLabels.requireValid(labels);
         task.setLabels(labels);
         return saveAndAnnounce(task);
     }

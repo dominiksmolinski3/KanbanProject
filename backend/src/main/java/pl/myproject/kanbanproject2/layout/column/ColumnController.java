@@ -36,7 +36,7 @@ public class ColumnController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ColumnDto> patchColumn(@RequestBody ColumnDto column,
+    public ResponseEntity<ColumnDto> patchColumn(@Valid @RequestBody PatchColumnRequest column,
                                                  @PathVariable Integer id,
                                                  @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(columnService.patchColumn(currentUser, column, id));

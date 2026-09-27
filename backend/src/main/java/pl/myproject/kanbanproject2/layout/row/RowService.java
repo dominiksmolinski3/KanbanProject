@@ -57,7 +57,7 @@ public class RowService {
         return rowRepository.findMaxPosition(board).orElse(0) + 1;
     }
 
-    public RowDto patchRow(User caller, RowDto rowDto, Integer id) {
+    public RowDto patchRow(User caller, PatchRowRequest rowDto, Integer id) {
         var existingRow = findRow(caller, id);
         boardService.requireWritable(caller, existingRow.getBoard());
 

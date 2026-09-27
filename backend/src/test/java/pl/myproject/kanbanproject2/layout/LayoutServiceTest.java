@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.layout;
 
+import pl.myproject.kanbanproject2.layout.row.PatchRowRequest;
+import pl.myproject.kanbanproject2.layout.column.PatchColumnRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -113,7 +115,7 @@ class LayoutServiceTest {
             when(repository.findById(1)).thenReturn(Optional.of(existing));
             when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
 
-            var patched = service.patchColumn(CALLER, new ColumnDto(null, "Doing", null, null, null), 1);
+            var patched = service.patchColumn(CALLER, new PatchColumnRequest("Doing", null, null), 1);
 
             assertThat(patched.name()).isEqualTo("Doing");
             assertThat(patched.wipLimit()).isEqualTo(3);
@@ -219,7 +221,7 @@ class LayoutServiceTest {
             when(repository.findById(1)).thenReturn(Optional.of(existing));
             when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
 
-            var patched = service.patchRow(CALLER, new RowDto(null, null, 6, null, null), 1);
+            var patched = service.patchRow(CALLER, new PatchRowRequest(null, 6, null), 1);
 
             assertThat(patched.position()).isEqualTo(6);
             assertThat(patched.name()).isEqualTo("Features");
