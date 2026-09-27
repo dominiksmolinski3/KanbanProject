@@ -53,10 +53,10 @@ public class UserController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<UserDto> patchUser(@PathVariable Integer id,
-                                             @RequestBody UserDto userDto,
+                                             @Valid @RequestBody PatchUserRequest request,
                                              @AuthenticationPrincipal User currentUser) {
         requireSelf(id, currentUser);
-        return ResponseEntity.ok(userService.patchUser(userDto, id));
+        return ResponseEntity.ok(userService.patchUser(request, id));
     }
 
     @PatchMapping("/{id}/password")

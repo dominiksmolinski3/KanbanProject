@@ -68,23 +68,20 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    public UserDto patchUser(UserDto userDto, Integer id) {
+    public UserDto patchUser(PatchUserRequest request, Integer id) {
         var existingUser = userRepository.findById(id).orElseThrow(() -> userNotFound(id));
 
-        if (userDto.email() != null) {
-            existingUser.setEmail(userDto.email());
+        if (request.name() != null) {
+            existingUser.setName(request.name().trim());
         }
-        if (userDto.name() != null) {
-            existingUser.setName(userDto.name());
+        if (request.wipLimit() != null) {
+            existingUser.setWipLimit(request.wipLimit());
         }
-        if (userDto.wipLimit() != null) {
-            existingUser.setWipLimit(userDto.wipLimit());
-        }
-        if (userDto.locale() != null) {
-            if (!SupportedLocales.isSupported(userDto.locale())) {
+        if (request.locale() != null) {
+            if (!SupportedLocales.isSupported(request.locale())) {
                 throw new GlobalException(ExceptionIdentifier.UNSUPPORTED_LOCALE);
             }
-            existingUser.setLocale(SupportedLocales.normalise(userDto.locale()));
+            existingUser.setLocale(SupportedLocales.normalise(request.locale()));
         }
         return userMapper.apply(userRepository.save(existingUser));
     }

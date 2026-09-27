@@ -42,7 +42,7 @@ class UserServiceLocaleTest {
     @Test
     @DisplayName("a supported language is stored, and comes back on the account")
     void aSupportedLanguageIsStored() {
-        UserDto patched = userService.patchUser(new UserDto(null, null, null, null, "ja"), USER_ID);
+        UserDto patched = userService.patchUser(new PatchUserRequest(null, null, "ja"), USER_ID);
 
         assertThat(account.getLocale()).isEqualTo("ja");
         assertThat(patched.locale()).isEqualTo("ja");
@@ -51,7 +51,7 @@ class UserServiceLocaleTest {
     @Test
     @DisplayName("a regional tag is stored as its language, because that is all nine bundles distinguish")
     void aRegionalTagIsStoredAsItsLanguage() {
-        userService.patchUser(new UserDto(null, null, null, null, "de-AT"), USER_ID);
+        userService.patchUser(new PatchUserRequest(null, null, "de-AT"), USER_ID);
 
         assertThat(account.getLocale()).isEqualTo("de");
     }
@@ -60,7 +60,7 @@ class UserServiceLocaleTest {
     @DisplayName("a language with no messages is refused rather than silently turned into English")
     void anUnsupportedLanguageIsRefused() {
         assertThatThrownBy(() ->
-                userService.patchUser(new UserDto(null, null, null, null, "is"), USER_ID))
+                userService.patchUser(new PatchUserRequest(null, null, "is"), USER_ID))
                 .isInstanceOf(GlobalException.class)
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.UNSUPPORTED_LOCALE);
@@ -72,9 +72,24 @@ class UserServiceLocaleTest {
     @Test
     @DisplayName("a patch that says nothing about the language leaves it alone")
     void anAbsentLanguageIsLeftAlone() {
-        userService.patchUser(new UserDto(null, null, "Renamed", null, null), USER_ID);
+        userService.patchUser(new PatchUserRequest("Renamed", null, null), USER_ID);
 
         assertThat(account.getLocale()).isEqualTo("en");
+        assertThat(account.getName()).isEqualTo("Renamed");
+    }
+
+    @Test
+    @DisplayName("no patch can change the address, because invitations are matched on it")
+    void thePatchRecordCarriesNoEmail() {
+        account.setEmail("owner@example.test");
+
+        assertThat(PatchUserRequest.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .doesNotContain("email");
+
+        userService.patchUser(new PatchUserRequest("  Renamed  ", 4, "pl"), USER_ID);
+
+        assertThat(account.getEmail()).isEqualTo("owner@example.test");
         assertThat(account.getName()).isEqualTo("Renamed");
     }
 }

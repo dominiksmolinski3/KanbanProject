@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.user;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -68,7 +69,8 @@ class UserControllerHttpTest {
         mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
-                .setMessageConverters(new MappingJackson2HttpMessageConverter(new ObjectMapper()))
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(
+                        new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)))
                 .build();
     }
 
@@ -93,6 +95,34 @@ class UserControllerHttpTest {
                         .content("{\"email\":\"attacker@evil.test\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_ACCOUNT_OWNER"));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("an email in the patch body is dropped before the service, so an address cannot be taken over")
+    void emailInThePatchBodyIsIgnored() throws Exception {
+        when(userService.patchUser(any(), eq(CALLER_ID)))
+                .thenReturn(new UserDto(CALLER_ID, "owner@example.test", "Renamed", null, "en"));
+
+        mvc.perform(patch("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"invited@example.test\",\"name\":\"Renamed\"}"))
+                .andExpect(status().isOk());
+
+        verify(userService).patchUser(new PatchUserRequest("Renamed", null, null), CALLER_ID);
+    }
+
+    @Test
+    @DisplayName("a negative WIP limit or a blank name is a 400 VALIDATION_ERROR, and the service is not called")
+    void invalidPatchBodiesAre400() throws Exception {
+        for (String body : List.of("{\"wipLimit\":-1}", "{\"name\":\"   \"}", "{\"name\":\"ab\"}")) {
+            mvc.perform(patch("/users/" + CALLER_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        }
 
         verifyNoInteractions(userService);
     }
