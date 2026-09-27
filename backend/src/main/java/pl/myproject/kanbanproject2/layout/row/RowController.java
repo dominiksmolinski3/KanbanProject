@@ -49,7 +49,7 @@ public class RowController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<RowDto> updateRow(@RequestBody RowDto row, @PathVariable Integer id,
+    public ResponseEntity<RowDto> updateRow(@Valid @RequestBody PatchRowRequest row, @PathVariable Integer id,
                                             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(rowService.patchRow(currentUser, row, id));
     }

@@ -1,6 +1,7 @@
 package pl.myproject.kanbanproject2.user;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -70,7 +71,7 @@ public class UserController {
 
     @PatchMapping("/{id}/wip-limit")
     public ResponseEntity<UserDto> updateWipLimit(@PathVariable Integer id,
-                                                  @RequestBody Integer wipLimit,
+                                                  @RequestBody @PositiveOrZero Integer wipLimit,
                                                   @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(userService.updateWipLimit(currentUser, id, wipLimit));
     }
