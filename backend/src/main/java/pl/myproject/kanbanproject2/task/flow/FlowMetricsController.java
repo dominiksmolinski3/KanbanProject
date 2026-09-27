@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.task.flow;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +36,7 @@ public class FlowMetricsController {
     @PutMapping("/definition")
     public ResponseEntity<FlowDefinitionDto> define(
             @RequestParam(required = false) Integer boardId,
-            @RequestBody FlowDefinitionRequest request,
+            @Valid @RequestBody FlowDefinitionRequest request,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(flowMetricsService.define(currentUser, boardId, request));
     }

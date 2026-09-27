@@ -61,7 +61,7 @@ public class ColumnService {
         return columnRepository.findMaxPosition(board).orElse(0) + 1;
     }
 
-    public ColumnDto patchColumn(User caller, ColumnDto columnDto, Integer id) {
+    public ColumnDto patchColumn(User caller, PatchColumnRequest columnDto, Integer id) {
         var existingColumn = findColumn(caller, id);
         boardService.requireWritable(caller, existingColumn.getBoard());
 

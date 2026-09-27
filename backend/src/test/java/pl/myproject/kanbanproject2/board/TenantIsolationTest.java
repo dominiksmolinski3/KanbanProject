@@ -283,9 +283,9 @@ class TenantIsolationTest {
         }
 
         private static final class ColumnDtoStub {
-            pl.myproject.kanbanproject2.layout.column.ColumnDto dto() {
-                return new pl.myproject.kanbanproject2.layout.column.ColumnDto(
-                        null, "renamed", null, null, List.of());
+            pl.myproject.kanbanproject2.layout.column.PatchColumnRequest dto() {
+                return new pl.myproject.kanbanproject2.layout.column.PatchColumnRequest(
+                        "renamed", null, null);
             }
         }
     }

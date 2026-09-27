@@ -180,6 +180,45 @@ class TaskServiceRequestBindingTest {
         assertThat(patched.version()).isEqualTo(7);
     }
 
+    @Test
+    @DisplayName("every label route refuses an over-long label, and nothing is saved")
+    void everyLabelRouteChecksTheLabels() {
+        Task task = existingTask(1);
+        task.setLabels(new java.util.HashSet<>(Set.of("kept")));
+        String overlong = "x".repeat(TaskLabels.MAX_LENGTH + 1);
+
+        List<Runnable> routes = List.of(
+                () -> taskService.addLabelToTask(caller, 1, overlong),
+                () -> taskService.updateTaskLabels(caller, 1, Set.of(overlong)),
+                () -> taskService.patchTask(caller, 1, patch(p -> p.labels = JsonNullable.of(Set.of(overlong)))),
+                () -> taskService.addTask(caller, null, new CreateTaskRequest(
+                        "t", null, null, null, Set.of(overlong), null, null)));
+        for (Runnable route : routes) {
+            assertThatThrownBy(route::run)
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_LABELS);
+        }
+
+        assertThat(task.getLabels()).containsExactly("kept");
+        Mockito.verify(taskRepository, Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("adding one label past the limit is refused and leaves the task's labels as they were")
+    void addingPastTheLimitIsRefused() {
+        Task task = existingTask(1);
+        var full = new java.util.HashSet<String>();
+        for (int i = 0; i < TaskLabels.MAX_COUNT; i++) {
+            full.add("l" + i);
+        }
+        task.setLabels(full);
+
+        assertThatThrownBy(() -> taskService.addLabelToTask(caller, 1, "one-too-many"))
+                .isInstanceOf(GlobalException.class);
+        assertThat(task.getLabels()).hasSize(TaskLabels.MAX_COUNT).doesNotContain("one-too-many");
+    }
+
     private Task existingTask(int id) {
         Task task = new Task();
         task.setId(id);

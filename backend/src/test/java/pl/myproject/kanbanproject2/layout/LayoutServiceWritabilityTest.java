@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.layout;
 
+import pl.myproject.kanbanproject2.layout.row.PatchRowRequest;
+import pl.myproject.kanbanproject2.layout.column.PatchColumnRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -97,7 +99,7 @@ class LayoutServiceWritabilityTest {
         @DisplayName("a viewer cannot rename a column they can see")
         void cannotPatch() {
             column(1);
-            expectReadOnly(() -> service.patchColumn(caller, new ColumnDto(null, "Doing", null, null, null), 1));
+            expectReadOnly(() -> service.patchColumn(caller, new PatchColumnRequest("Doing", null, null), 1));
             verify(repository, never()).save(any());
         }
 
@@ -152,7 +154,7 @@ class LayoutServiceWritabilityTest {
         @DisplayName("a viewer cannot rename a swimlane they can see")
         void cannotPatch() {
             row(1);
-            expectReadOnly(() -> service.patchRow(caller, new RowDto(null, null, 2, null, null), 1));
+            expectReadOnly(() -> service.patchRow(caller, new PatchRowRequest(null, 2, null), 1));
             verify(repository, never()).save(any());
         }
 

@@ -62,6 +62,7 @@ public enum ExceptionIdentifier {
     ROW_NOT_FOUND(NOT_FOUND, "Row not found"),
 
     INVALID_REORDER(BAD_REQUEST, "The requested order cannot be applied"),
+    INVALID_LABELS(BAD_REQUEST, "Labels must be 1 to 255 characters, at most 20 per task"),
 
     BOARD_NOT_FOUND(NOT_FOUND, "Board not found"),
     NOT_BOARD_OWNER(FORBIDDEN, "Only the board owner can do that"),
@@ -75,6 +76,7 @@ public enum ExceptionIdentifier {
     UNSUPPORTED_LOCALE(BAD_REQUEST, "That language is not one this application can write mail in"),
 
     CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
+    DATA_CONFLICT(CONFLICT, "That value conflicts with data that is already stored"),
 
     MAIL_DELIVERY_REPORT_NOT_FOUND(NOT_FOUND, "Not found");
 

@@ -8,6 +8,7 @@ import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -53,6 +54,18 @@ class ClientErrorStatusTest {
         @GetMapping("/search")
         public String search(@RequestParam String term) {
             return term;
+        }
+
+        @PostMapping("/limit")
+        public String limit(@RequestBody @jakarta.validation.constraints.PositiveOrZero Integer value) {
+            return String.valueOf(value);
+        }
+
+        @PostMapping("/conflict")
+        public String conflict() {
+            throw new DataIntegrityViolationException(
+                    "duplicate key value violates unique constraint \"users_email_key\": "
+                            + "Key (email)=(taken@example.test) already exists");
         }
     }
 
@@ -139,6 +152,28 @@ class ClientErrorStatusTest {
         mvc.perform(post("/probe").contentType(MediaType.TEXT_PLAIN).content("hello"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
+    @Test
+    @DisplayName("a constraint on a scalar body is 400 VALIDATION_ERROR, not the catch-all 500")
+    void methodValidationIs400() throws Exception {
+        mvc.perform(post("/probe/limit").contentType(MediaType.APPLICATION_JSON).content("-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mvc.perform(post("/probe/limit").contentType(MediaType.APPLICATION_JSON).content("0"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("a write the database refuses is 409 DATA_CONFLICT and repeats none of the stored values")
+    void dataIntegrityViolationIs409() throws Exception {
+        var body = mvc.perform(post("/probe/conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DATA_CONFLICT"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("taken@example.test").doesNotContain("users_email_key");
     }
 
     @Test

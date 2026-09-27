@@ -1,6 +1,7 @@
 package pl.myproject.kanbanproject2.task;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -130,7 +131,7 @@ public class TaskController {
     @PatchMapping("/{taskId}/labels")
     public ResponseEntity<TaskDto> updateTaskLabels(
             @PathVariable Integer taskId,
-            @RequestBody Set<String> labels,
+            @RequestBody @NotNull Set<String> labels,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(taskService.updateTaskLabels(currentUser, taskId, labels));
     }
