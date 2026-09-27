@@ -5,19 +5,15 @@
 <h1 align="center">KanbanProject</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version 1.0.0"/>
+  <img src="https://img.shields.io/badge/version-0.0.1--SNAPSHOT-blue" alt="Version 0.0.1-SNAPSHOT"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT"/>
   <img src="https://img.shields.io/badge/java-21-orange" alt="Java 21"/>
-  <img src="https://img.shields.io/badge/react-latest-61DAFB" alt="React"/>
+  <img src="https://img.shields.io/badge/react-19-61DAFB" alt="React 19"/>
   <img src="https://img.shields.io/github/actions/workflow/status/dominiksmolinski3/KanbanProject/kanban-ci.yml?branch=main" alt="Build Status"/>
 </p>
 
 <p align="center">
   A flexible Kanban board application designed to help teams visualize and manage their workflow efficiently. This project provides an interactive drag-and-drop interface for task management with support for multiple views, columns, rows, and WIP limits.
-</p>
-
-<p align="center">
-  <a href="https://docs.kanbanproject.pl/" target="_blank">📘 User Guide</a>
 </p>
 
 ## 📋 Table of Contents
@@ -52,7 +48,7 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 - 👤 User assignments to tasks
 - 🏷️ Labels for task categorization
 - 📎 File attachments on tasks, streamed to and from Azure Blob Storage
-- 🌙 Dark mode support
+- 🌙 Dark mode that follows the operating system setting
 
 ## 🛠️ Technologies
 
@@ -64,11 +60,14 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 
 ## 📦 Prerequisites
 
-- [Java 21](https://www.oracle.com/java/technologies/downloads/)
-- [Node.js 20.19](https://nodejs.org/) or higher - Vite 8 refuses to start below it; CI and the
-  Docker build both use 26
+- A JDK, 21 or newer - the code targets Java 21, and CI and the Docker build use
+  [Temurin 25](https://adoptium.net/)
+- [Node.js 26](https://nodejs.org/) - what CI and the Docker build use. Vite 8 starts on 20.19 and
+  up, but the Jest suite is only run on 26, and on Node 22 seven `HomePage.test.jsx` tests fail
 - [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
-- [PostgreSQL](https://www.postgresql.org/) (if running locally)
+- [PostgreSQL](https://www.postgresql.org/), [Redis 7](https://redis.io/) and
+  [RabbitMQ 4](https://www.rabbitmq.com/) with the STOMP plugin (if running the backend outside
+  Docker - see [Running Locally](#-running-locally))
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (if using containers)
 
 ## 💻 Installation
@@ -156,11 +155,29 @@ cp .env.example .env
    | `JWT_SECRET_KEY` | JWT signing key -- generate one, e.g. `openssl rand -base64 32` |
    | `ACS_EMAIL_CONNECTION_STRING` | Azure Communication Services connection string (portal -> your resource -> Keys). Empty turns mail off |
    | `ACS_EMAIL_SENDER_ADDRESS` | MailFrom address on the linked domain, e.g. `DoNotReply@<guid>.azurecomm.net` |
+   | `SECURITY_RATE_LIMIT_REDIS_HOST` / `_PORT` | Redis for the rate limiters. Defaults to `localhost:6379` |
+   | `STOMP_RELAY_HOST` / `_PORT` | RabbitMQ's STOMP listener. Defaults to `localhost:61613` |
+   | `STOMP_RELAY_USERNAME` / `_PASSWORD` | Broker login. The default `guest`/`guest` only works from the broker's own host, so a broker in Docker needs a real user |
 
    `.env` is gitignored. Docker Compose uses its own `.env` in the repository root -- see
    [Using Docker](#-using-docker).
 
-3. Build and run the backend:
+3. Start Redis and RabbitMQ. The API needs both: Redis holds the rate limiters and RabbitMQ relays
+   live board sync and chat. Without Redis the limiters fail open. Without the broker the API still
+   starts, but no board updates or chat messages reach other screens and nothing on the page says
+   why. The quickest way is two containers:
+
+```bash
+docker run -d --name kanban-redis -p 6379:6379 redis:7-alpine
+docker run -d --name kanban-rabbitmq -p 61613:61613 \
+  -e RABBITMQ_DEFAULT_USER=kanban -e RABBITMQ_DEFAULT_PASS=kanban \
+  rabbitmq:4-alpine sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && exec docker-entrypoint.sh rabbitmq-server"
+```
+
+   and set `STOMP_RELAY_USERNAME=kanban` and `STOMP_RELAY_PASSWORD=kanban` in `.env`. If something
+   already listens on 6379, publish Redis on another port and set `SECURITY_RATE_LIMIT_REDIS_PORT`.
+
+4. Build and run the backend:
 
 ```bash
 ./mvnw clean package

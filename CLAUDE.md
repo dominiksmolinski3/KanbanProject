@@ -452,10 +452,7 @@ board from the object. `BoardService.defaultFor` provisions a board (with the de
 `V3`) for any account that has none — including the first account to open one on a fresh install,
 which **adopts** the ownerless board `V5` created for the seeded columns.
 
-`GET /api/users` lists only accounts the caller shares a board with, not the whole `users` table, and
-`File` carries an `owner_id` that `FileService` checks on read and delete. A file with no owner —
-anything uploaded before that column existed, other than an avatar, whose owner `V5` recovers from
-`users.avatar_id` — belongs to nobody rather than to everybody.
+`GET /api/users` lists only accounts the caller shares a board with, not the whole `users` table.
 
 ### The board model
 
@@ -1009,7 +1006,7 @@ not fire on every lapsed session. Kicking an idle-but-present user to the sign-i
 nothing here — the refresh token is in the same `localStorage` either way — so the client never
 does it while a renewal is possible.
 
-CORS allowed origins live in one place — [AllowedOriginsProperties](backend/src/main/java/pl/myproject/kanbanproject2/config/AllowedOriginsProperties.java), a `@ConfigurationProperties` record bound from `security.cors.allowed-origins` (`SECURITY_CORS_ALLOWED_ORIGINS`, comma-separated), which both [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java) read. The two used to hold a copy each and had drifted — the WebSocket list additionally allowed the `http://` variants of `kanbanproject.pl` — which is why the list is single-sourced now, with `AllowedOriginsTest` as the guard and the stricter (HTTPS-only) set kept as the default. Terraform passes `SECURITY_CORS_ALLOWED_ORIGINS` to the container app, so a new deployment origin is a tfvars change rather than a rebuild.
+CORS allowed origins live in one place — [AllowedOriginsProperties](backend/src/main/java/pl/myproject/kanbanproject2/config/AllowedOriginsProperties.java), a `@ConfigurationProperties` record bound from `security.cors.allowed-origins` (`SECURITY_CORS_ALLOWED_ORIGINS`, comma-separated), which both [SecurityConfiguration](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java) read. The two used to hold a copy each and had drifted — the WebSocket list additionally allowed the `http://` variants of `kanbanproject.pl` — which is why the list is single-sourced now, with `AllowedOriginsTest` as the guard. The compiled default is the two HTTPS `kanbanproject.pl` origins plus the local development ones (`http://localhost` on 5173, 5174, 3000, 8080 and 80, `http://127.0.0.1:8080` and `http://app:8080`), so a deployment must always set the variable rather than rely on it. Terraform passes `SECURITY_CORS_ALLOWED_ORIGINS` to the container app, so a new deployment origin is a tfvars change rather than a rebuild.
 
 **The browser is told what this application may load, and the policy lives in
 [SecurityHeaders](backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityHeaders.java).**
