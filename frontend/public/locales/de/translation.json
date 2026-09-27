@@ -10,7 +10,7 @@
     "assignees": "Zugewiesen: {{n}}",
     "moreAssignees": "{{n}} weitere Zugewiesene",
     "moreLabels": "{{n}} weitere Labels",
-    "subtasksOpen": "{{n}} offene Unteraufgaben",
+    "subtaskProgress": "{{done}} von {{total}} Unteraufgaben erledigt",
     "dueOverdue": "Überfällig seit {{date}}",
     "dueSoon": "Bald fällig: {{date}}",
     "dueLater": "Fällig am {{date}}",

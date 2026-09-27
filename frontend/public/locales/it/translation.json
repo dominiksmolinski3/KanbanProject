@@ -10,7 +10,7 @@
       "assignees": "Assegnatari: {{n}}",
       "moreAssignees": "Altri {{n}} assegnatari",
       "moreLabels": "Altre {{n}} etichette",
-      "subtasksOpen": "{{n}} sottoattività aperte",
+      "subtaskProgress": "{{done}} di {{total}} sottoattività completate",
       "dueOverdue": "Scaduta dal {{date}}",
       "dueSoon": "In scadenza: {{date}}",
       "dueLater": "Scadenza {{date}}",
