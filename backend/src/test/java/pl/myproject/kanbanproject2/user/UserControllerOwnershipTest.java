@@ -47,7 +47,7 @@ class UserControllerOwnershipTest {
     @Test
     @DisplayName("rewriting another user's email is refused - it is the JWT subject")
     void patchRejectsOtherAccounts() {
-        var takeover = new UserDto(VICTIM_ID, "attacker@evil.tld", "x", null, null);
+        var takeover = new PatchUserRequest("attacker", null, null);
 
         assertThatThrownBy(() -> controller.patchUser(VICTIM_ID, takeover, caller))
                 .isInstanceOf(GlobalException.class)
@@ -70,10 +70,11 @@ class UserControllerOwnershipTest {
     @DisplayName("the caller can still delete and patch their own account")
     void ownAccountStillMutable() {
         var own = new UserDto(OWNER_ID, "owner@example.com", "Owner", 3, "en");
-        when(userService.patchUser(own, OWNER_ID)).thenReturn(own);
+        var rename = new PatchUserRequest("Owner", 3, "en");
+        when(userService.patchUser(rename, OWNER_ID)).thenReturn(own);
 
         controller.deleteUser(OWNER_ID, caller);
-        var patched = controller.patchUser(OWNER_ID, own, caller);
+        var patched = controller.patchUser(OWNER_ID, rename, caller);
 
         verify(userService).deleteUser(OWNER_ID);
         assertThat(patched.getBody()).isEqualTo(own);
