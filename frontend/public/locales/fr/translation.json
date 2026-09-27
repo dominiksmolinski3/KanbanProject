@@ -10,7 +10,7 @@
       "assignees": "Assignés : {{n}}",
       "moreAssignees": "{{n}} autres assignés",
       "moreLabels": "{{n}} autres étiquettes",
-      "subtasksOpen": "{{n}} sous-tâches ouvertes",
+      "subtaskProgress": "{{done}} sur {{total}} sous-tâches terminées",
       "dueOverdue": "En retard depuis le {{date}}",
       "dueSoon": "Échéance proche : {{date}}",
       "dueLater": "Échéance le {{date}}",

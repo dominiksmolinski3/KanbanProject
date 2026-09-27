@@ -10,7 +10,7 @@
     "assignees": "Przypisani: {{n}}",
     "moreAssignees": "Pozostali przypisani: {{n}}",
     "moreLabels": "Pozostałe etykiety: {{n}}",
-    "subtasksOpen": "Otwarte podzadania: {{n}}",
+    "subtaskProgress": "Ukończone podzadania: {{done}} z {{total}}",
     "dueOverdue": "Po terminie od {{date}}",
     "dueSoon": "Termin wkrótce: {{date}}",
     "dueLater": "Termin: {{date}}",

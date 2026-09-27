@@ -6,5 +6,5 @@ import java.util.Set;
 public record TaskDto(Integer id, Integer version, String title, Integer position, Integer columnId, Integer rowId,
                       Set<Integer> userIds, Set<String> labels, boolean completed, String description,
                       Integer parentTaskId, Set<Integer> childTaskIds, LocalDateTime deadline, boolean expired,
-                      boolean dailyFocus, int openSubtasks) {
+                      boolean dailyFocus, int openSubtasks, int subtaskCount) {
 }
