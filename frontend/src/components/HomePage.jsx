@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import DemoBanner from './DemoBanner';
+import { useDocumentTheme } from '../theme/useDocumentTheme';
 import '../styles/HomePage.css';
 
 const EyeIcon = ({ crossed }) => (
@@ -46,6 +47,7 @@ const HomePage = () => {
 
   const { t, i18n } = useTranslation();
   const captchaLanguage = recaptchaLanguage(i18n);
+  const documentTheme = useDocumentTheme();
   const { login, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -500,6 +502,7 @@ const HomePage = () => {
                     key={captchaKey}
                     ref={recaptchaRef}
                     sitekey={siteKey}
+                    theme={documentTheme}
                     hl={captchaLanguage}
                     onChange={(val) => setCaptchaToken(val || '')}
                     onReady={() => setCaptchaReady(true)}
@@ -515,13 +518,13 @@ const HomePage = () => {
                   />
                 </div>
                 {captchaWarn && captchaReady && (
-                  <div className="captcha-warning" style={{ marginTop: '8px', fontSize: '0.8rem', color: '#c0392b' }}>
+                  <div className="captcha-warning">
                     {t('auth.captchaBlocked')}
                   </div>
                 )}
                 {captchaLoadError && (
-                  <div style={{ marginTop: '6px', fontSize: '0.75rem', color: '#b03a2e' }}>
-                    {t('auth.captchaLoadError')} <button type="button" style={{ textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#007bff', padding: 0 }} onClick={() => {
+                  <div className="captcha-load-error">
+                    {t('auth.captchaLoadError')} <button type="button" className="captcha-retry" onClick={() => {
                       setCaptchaLoadError(false);
                       setCaptchaWarn(false);
                       setCaptchaReady(false);
