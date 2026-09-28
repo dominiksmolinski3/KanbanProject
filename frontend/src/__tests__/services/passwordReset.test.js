@@ -109,5 +109,43 @@ describe('authService password reset', () => {
       await expect(authService.changePassword(7, 'wrong', 'a-new-password'))
         .rejects.toThrow('Invalid email or password');
     });
+
+    test('the error carries the server code, so the screen can say which field was wrong', async () => {
+      window.fetch.mockResolvedValue(
+        rejected(400, JSON.stringify({ code: 'WRONG_PASSWORD', message: 'The current password is not correct' })));
+
+      await expect(authService.changePassword(7, 'wrong', 'a-new-password'))
+        .rejects.toMatchObject({ code: 'WRONG_PASSWORD' });
+    });
+  });
+
+  describe('changing the email address', () => {
+    test('asks for a code with the new address and the password in the body', async () => {
+      window.fetch.mockResolvedValue(accepted());
+
+      await authService.requestEmailChange(7, 'new@example.test', 'pw');
+
+      const [url, options] = window.fetch.mock.calls[0];
+      expect(url).toBe('/api/users/7/email-change');
+      expect(options.method).toBe('POST');
+      expect(JSON.parse(options.body)).toEqual({ newEmail: 'new@example.test', currentPassword: 'pw' });
+    });
+
+    test('confirming answers the new session', async () => {
+      const session = { token: 'jwt', sessionId: 3 };
+      window.fetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(session) });
+
+      await expect(authService.confirmEmailChange(7, '123456')).resolves.toEqual(session);
+      const [url, options] = window.fetch.mock.calls[0];
+      expect(url).toBe('/api/users/7/email-change/confirm');
+      expect(JSON.parse(options.body)).toEqual({ code: '123456' });
+    });
+
+    test('a refused code rejects with the server code', async () => {
+      window.fetch.mockResolvedValue(rejected(400, JSON.stringify({ code: 'INVALID_VERIFICATION_CODE' })));
+
+      await expect(authService.confirmEmailChange(7, '000000'))
+        .rejects.toMatchObject({ code: 'INVALID_VERIFICATION_CODE' });
+    });
   });
 });

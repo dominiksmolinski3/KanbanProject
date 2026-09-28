@@ -257,7 +257,7 @@ class PasswordResetServiceTest {
                     new ChangePasswordRequest("not-the-password", "a-new-password")))
                     .isInstanceOf(GlobalException.class)
                     .extracting(e -> ((GlobalException) e).getIdentifier())
-                    .isEqualTo(ExceptionIdentifier.INVALID_CREDENTIALS);
+                    .isEqualTo(ExceptionIdentifier.WRONG_PASSWORD);
 
             assertThat(existing.getPassword()).isEqualTo(before);
             verify(userRepository, never()).save(any());

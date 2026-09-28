@@ -18,7 +18,7 @@ import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDateTime;
-import java.util.Locale;
+import pl.myproject.kanbanproject2.user.EmailAddresses;
 
 @NoArgsConstructor
 @Setter
@@ -68,7 +68,7 @@ public class BoardInvitation {
     }
 
     public static String normaliseEmail(String email) {
-        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+        return EmailAddresses.normalise(email);
     }
 
     public void resolveAs(InvitationStatus outcome) {

@@ -1,0 +1,78 @@
+.account-page {
+  max-width: 40rem;
+}
+
+.account-card {
+  background: var(--surface-light);
+  border: 1px solid var(--gray-200);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.account-card h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.account-muted {
+  color: var(--text-muted, #5b6b8c);
+  margin: 0 0 1rem;
+  overflow-wrap: anywhere;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.account-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
+}
+
+.account-form input {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  max-width: 24rem;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.account-submit,
+.account-secondary {
+  align-self: flex-start;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.account-submit {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #0e1b36;
+  font-weight: 600;
+}
+
+.account-secondary {
+  border: 1px solid var(--gray-300);
+  background: transparent;
+  color: inherit;
+}
+
+.account-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -57,12 +57,28 @@ public class User implements UserDetails {
     private Long avatarSizeBytes;
     @Column(name = "avatar_uploaded_at")
     private Instant avatarUploadedAt;
+    @Column(name = "pending_email")
+    private String pendingEmail;
+    @Column(name = "email_change_code")
+    private String emailChangeCode;
+    @Column(name = "email_change_expiration")
+    private LocalDateTime emailChangeExpiresAt;
+    @Column(name = "email_change_attempts", nullable = false)
+    private int emailChangeAttempts;
 
 
     public User(String name, String email, String password) {
         this.name = name;
-        this.email = email;
+        this.email = EmailAddresses.normalise(email);
         this.password = password;
+    }
+
+    public void setEmail(String email) {
+        this.email = EmailAddresses.normalise(email);
+    }
+
+    public void setPendingEmail(String pendingEmail) {
+        this.pendingEmail = EmailAddresses.normalise(pendingEmail);
     }
 
 

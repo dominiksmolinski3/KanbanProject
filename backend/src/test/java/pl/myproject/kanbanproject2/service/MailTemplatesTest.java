@@ -161,6 +161,7 @@ class MailTemplatesTest {
             List<EmailMessage> messages = List.of(
                     MailTemplates.verification("someone@example.test", "123456", 15, locale),
                     MailTemplates.passwordReset("someone@example.test", "654321", 10, locale),
+                    MailTemplates.emailChange("someone@example.test", "246810", 15, locale),
                     MailTemplates.taskOverdue("someone@example.test", "Ship it", "Delivery", DEADLINE, locale),
                     MailTemplates.taskOverdue("someone@example.test", null, null, null, locale),
                     MailTemplates.boardInvitation("someone@example.test", "Delivery", "Ada", true, locale),

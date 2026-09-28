@@ -1,5 +1,21 @@
 const API_BASE_URL = '/api';
 
+function parseJson(text) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function accountError(response, fallback) {
+  const text = await response.text();
+  const body = parseJson(text);
+  const error = new Error((body && body.message) || text || fallback);
+  error.code = body && body.code;
+  return error;
+}
+
 export const authService = {
   register: async (userData) => {
     const payload = { ...userData };
@@ -109,9 +125,38 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not change the password');
+      throw await accountError(response, 'Could not change the password');
     }
+  },
+
+  requestEmailChange: async (userId, newEmail, currentPassword) => {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/email-change`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ newEmail, currentPassword }),
+    });
+
+    if (!response.ok) {
+      throw await accountError(response, 'Could not start the email change');
+    }
+  },
+
+  confirmEmailChange: async (userId, code) => {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/email-change/confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
+
+    if (!response.ok) {
+      throw await accountError(response, 'Could not confirm the email change');
+    }
+
+    return await response.json();
   },
 
   refresh: async (refreshToken) => {

@@ -31,6 +31,15 @@ final class MailTemplates {
                 text(heading, intro, say(locale, "mail.reset.codeText", code), footnote));
     }
 
+    static EmailMessage emailChange(String to, String code, long expiresInMinutes, Locale locale) {
+        String intro = say(locale, "mail.emailChange.intro", expiresInMinutes);
+        String heading = say(locale, "mail.emailChange.heading");
+        String footnote = say(locale, "mail.emailChange.footnote");
+        return new EmailMessage(to, say(locale, "mail.emailChange.subject"),
+                html(locale, heading, intro, say(locale, "mail.emailChange.codeLabel"), code, footnote),
+                text(heading, intro, say(locale, "mail.emailChange.codeText", code), footnote));
+    }
+
     static EmailMessage taskOverdue(String to, String taskTitle, String boardName,
                                     LocalDateTime deadline, Locale locale) {
         String title = blank(taskTitle) ? say(locale, "mail.overdue.untitled") : taskTitle;

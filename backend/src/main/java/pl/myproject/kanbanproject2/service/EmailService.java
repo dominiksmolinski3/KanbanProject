@@ -20,6 +20,10 @@ public class EmailService {
         emailSender.send(MailTemplates.passwordReset(to, code, expiresInMinutes, locale));
     }
 
+    public void sendEmailChangeCode(String to, String code, long expiresInMinutes, Locale locale) {
+        emailSender.send(MailTemplates.emailChange(to, code, expiresInMinutes, locale));
+    }
+
     public void sendTaskOverdue(String to, String taskTitle, String boardName,
                                 LocalDateTime deadline, Locale locale) {
         emailSender.send(MailTemplates.taskOverdue(to, taskTitle, boardName, deadline, locale));
