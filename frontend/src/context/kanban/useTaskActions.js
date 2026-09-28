@@ -22,7 +22,7 @@ export function useTaskActions({
     if (blockIfReadOnly()) return false;
     try {
       await updateTaskName(taskId, newName);
-      setTasks(tasks.map(task =>
+      setTasks(previous => previous.map(task =>
         task.id === taskId ? { ...task, title: newName } : task
       ));
       toast.success(t('notifications.taskUpdated'));
@@ -243,7 +243,7 @@ export function useTaskActions({
     refuseIfReadOnly();
     try {
       await deleteTask(taskId);
-      setTasks(tasks.filter(task => task.id !== taskId));
+      setTasks(previous => previous.filter(task => task.id !== taskId));
       toast.success(t('notifications.taskDeleted'));
     } catch (err) {
       setError(err.message);

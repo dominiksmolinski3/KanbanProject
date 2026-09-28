@@ -9,6 +9,13 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
   const [tasks, setTasks] = useState([]);
   const [rows, setRows] = useState([]);
   const [columnMap, setColumnMap] = useState({});
+  const refreshes = useRef(0);
+  const localChanges = useRef(0);
+
+  const setTasksLocally = (update) => {
+    localChanges.current += 1;
+    setTasks(update);
+  };
 
   useEffect(() => {
     if (activeBoardId === null) {
@@ -72,9 +79,14 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
   }, [activeBoardId, setLoading, setError]);
 
   const refreshTasks = async () => {
+    const started = ++refreshes.current;
+    const changesAtStart = localChanges.current;
     try {
       const tasksData = await fetchTasks();
-      setTasks(tasksData);
+      const stillCurrent = started === refreshes.current && changesAtStart === localChanges.current;
+      if (stillCurrent) {
+        setTasks(tasksData);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Error refreshing tasks:', err);
@@ -151,7 +163,7 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
 
   return {
     columns, setColumns,
-    tasks, setTasks,
+    tasks, setTasks: setTasksLocally,
     rows, setRows,
     columnMap, setColumnMap,
     refreshTasks,
