@@ -11,6 +11,7 @@
     "moreAssignees": "{{n}} more assignees",
     "moreLabels": "{{n}} more labels",
     "subtaskProgress": "{{done}} of {{total}} subtasks done",
+    "open": "Open {{title}}",
     "dueOverdue": "Overdue since {{date}}",
     "dueSoon": "Due soon: {{date}}",
     "dueLater": "Due {{date}}",
@@ -122,6 +123,7 @@
     },
     "keyboardMove": {
       "roleDescription": "movable task",
+      "grip": "Move {{title}}",
       "untitled": "Untitled task",
       "help": "Press Space to pick this task up, then the arrow keys to choose a column and swimlane. Press Space or Enter to drop it there, or Escape to leave it where it was. Press Enter to open the task.",
       "grabbed": "Picked up {{title}}. Use the arrow keys to choose a cell, then Space to drop it.",

@@ -244,10 +244,7 @@ function Task({ task, columnId, rowId }) {
 
   const heldByKeyboard = keyboardMove.isHeld(task.id);
 
-  const onKeyDown = (e) => {
-    if (e.target !== e.currentTarget) {
-      return;
-    }
+  const onGripKeyDown = (e) => {
     if (heldByKeyboard) {
       const direction = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
       if (direction) {
@@ -276,9 +273,17 @@ function Task({ task, columnId, rowId }) {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      setShowDetails(shown => !shown);
+      setShowDetails(true);
     }
   };
+
+  const openDetails = (e) => {
+    e.stopPropagation();
+    setShowDetails(true);
+  };
+
+  const titleId = `task-title-${task.id}`;
+  const title = task.title || t('board.keyboardMove.untitled');
 
   const onDragOver = (e) => {
     e.preventDefault();
@@ -381,7 +386,7 @@ function Task({ task, columnId, rowId }) {
 
   return (
     <>
-      <div
+      <article
         ref={taskRef}
         id={`task-${task.id}`}
         className={[
@@ -395,13 +400,8 @@ function Task({ task, columnId, rowId }) {
           isDeadlineUpcoming && 'deadline-upcoming',
         ].filter(Boolean).join(' ')}
         draggable={!readOnly}
-        tabIndex={0}
-        role="button"
-        aria-roledescription={t('board.keyboardMove.roleDescription')}
-        aria-label={task.title || t('board.keyboardMove.untitled')}
-        aria-describedby="board-keyboard-move-help"
+        aria-labelledby={titleId}
         onClick={handleTaskClick}
-        onKeyDown={onKeyDown}
         onDragStart={onDragStartHandler}
         onDragEnd={onDragEndHandler}
         onDragOver={onDragOver}
@@ -413,6 +413,20 @@ function Task({ task, columnId, rowId }) {
         data-is-parent={isParentTask}
       >
         <div className="task-header">
+          {!readOnly && (
+            <button
+              type="button"
+              className="task-grip"
+              aria-roledescription={t('board.keyboardMove.roleDescription')}
+              aria-label={t('board.keyboardMove.grip', { title })}
+              aria-describedby="board-keyboard-move-help"
+              aria-pressed={heldByKeyboard}
+              onKeyDown={onGripKeyDown}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span aria-hidden="true">⠿</span>
+            </button>
+          )}
           <input
             type="checkbox"
             className="task-complete-checkbox"
@@ -422,10 +436,10 @@ function Task({ task, columnId, rowId }) {
             title={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
             aria-label={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
           />
-          <div className="task-content">
+          <div className="task-content" id={titleId}>
             <EditableText
               id={task.id}
-              text={task.title || t('board.keyboardMove.untitled')}
+              text={title}
               onUpdate={updateTaskName}
               className="task-title"
               inputClassName="task-title-input"
@@ -435,6 +449,15 @@ function Task({ task, columnId, rowId }) {
           </div>
 
           <div className="task-header-actions">
+            <button
+              type="button"
+              className="task-open-btn"
+              title={t('taskActions.open', { title })}
+              aria-label={t('taskActions.open', { title })}
+              onClick={openDetails}
+            >
+              <span aria-hidden="true">↗</span>
+            </button>
             <button
               className={`daily-focus-btn ${task.dailyFocus ? 'active' : ''}`}
               title={task.dailyFocus
@@ -498,7 +521,7 @@ function Task({ task, columnId, rowId }) {
           </button>
           </div>
         )}
-      </div>
+      </article>
 
       {isDragging && childTaskIds.filter(isOnBoard).map(childId => (
         <Xarrow
