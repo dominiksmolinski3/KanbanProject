@@ -49,8 +49,13 @@ async function loadHistory(taskId) {
     return [];
   }
 
-  const columns = await fetchColumns().catch(() => []);
-  const columnNames = Object.fromEntries((columns || []).map(column => [column.id, column.name]));
+  let columns = [];
+  try {
+    columns = (await fetchColumns()) || [];
+  } catch {
+    columns = [];
+  }
+  const columnNames = Object.fromEntries(columns.map(column => [column.id, column.name]));
 
   return history
     .map(item => ({
@@ -141,8 +146,8 @@ function TaskColumnHistory({ taskId }) {
                 <div className="timeline-content">
                   <div className="timeline-column-name">
                     {item.columnName || t('taskDetails.unknownColumn')}
-                    {isCurrent && <span className="current-badge">{t('taskDetails.startBadge')}</span>}
-                    {isStart && <span className="start-badge">{t('taskDetails.currentBadge')}</span>}
+                    {isCurrent && <span className="current-badge">{t('taskDetails.currentBadge')}</span>}
+                    {isStart && <span className="start-badge">{t('taskDetails.startBadge')}</span>}
                   </div>
                   <div className="timeline-date">
                     {t('taskDetails.dateAtTime', {

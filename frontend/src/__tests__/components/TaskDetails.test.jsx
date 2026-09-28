@@ -896,6 +896,22 @@ describe('TaskDetails Component', () => {
     expect(api.fetchTask).not.toHaveBeenCalled();
   });
 
+  test('the column history labels its first move Start and its last Current', async () => {
+    api.getTaskColumnHistory.mockResolvedValue([
+      { id: 10, columnId: 1, columnName: 'To Do', changedAt: '2026-09-01T10:00:00Z' },
+      { id: 11, columnId: 2, columnName: 'In Progress', changedAt: '2026-09-02T10:00:00Z' }
+    ]);
+    api.getTaskColumnTimeSpentSummary.mockResolvedValue([]);
+    renderTaskDetails();
+
+    fireEvent.click(await screen.findByTitle('taskDetails.historyAndTimeline'));
+
+    const first = (await screen.findByText('To Do')).closest('.timeline-column-name');
+    const last = screen.getByText('In Progress').closest('.timeline-column-name');
+    expect(within(first).getByText('taskDetails.startBadge')).toHaveClass('start-badge');
+    expect(within(last).getByText('taskDetails.currentBadge')).toHaveClass('current-badge');
+  });
+
   test('handles escape key press to close panel', async () => {
     renderTaskDetails();
     
