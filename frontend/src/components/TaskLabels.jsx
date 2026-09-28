@@ -325,12 +325,7 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
             position: 'fixed',
             top: `${formPosition.top}px`,
             left: `${formPosition.left}px`,
-            zIndex: 3000,
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-            minWidth: '300px'
+            zIndex: 3000
           }}
           onClick={handleFormClick}
         >
