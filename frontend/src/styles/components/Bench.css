@@ -27,8 +27,8 @@
   top: 50%;
   width: 30px;
   height: 60px;
-  background-color: #86d6ff;
-  color: #0e1b36;
+  background-color: var(--kb-fill);
+  color: var(--kb-on-fill);
   border: none;
   border-radius: 0 5px 5px 0;
   cursor: pointer;
@@ -36,14 +36,15 @@
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  box-shadow: 2px 0 5px rgba(14, 27, 54, 0.2);
+  box-shadow: var(--kb-shadow-card);
 }
 
 .bench {
   width: 200px;
   height: 100%;
-  background-color: #e2e2e2;
-  box-shadow: 2px 0 10px rgba(14, 27, 54, 0.1);
+  background-color: var(--kb-card);
+  border-right: 1px solid var(--kb-border);
+  box-shadow: var(--kb-shadow-pop);
   padding: 15px;
   overflow-y: auto;
   display: flex;
@@ -53,8 +54,8 @@
 .bench h3 {
   margin-top: 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid #d1d1d1;
-  color: #0e1b36;
+  border-bottom: 1px solid var(--kb-border);
+  color: var(--kb-text);
 }
 
 .user-list {
@@ -68,15 +69,15 @@
   display: flex;
   align-items: center;
   padding: 10px;
-  background-color: rgba(134, 214, 255, 0.3);
+  background-color: var(--kb-accent-soft);
   border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(14, 27, 54, 0.1);
+  box-shadow: var(--kb-shadow-card);
   cursor: grab;
   transition: all 0.2s;
 }
 
 .user-card:hover {
-  box-shadow: 0 3px 6px rgba(14, 27, 54, 0.2);
+  box-shadow: var(--kb-shadow-hover);
 }
 
 .user-card:active {
@@ -89,7 +90,7 @@
   border-radius: 50%;
   overflow: hidden;
   margin-right: 10px;
-  background-color: #86d6ff;
+  background-color: var(--kb-lane-strong);
 }
 
 .avatar {
@@ -104,44 +105,24 @@
 
 .user-name {
   font-weight: 500;
-  color: #0e1b36;
+  color: var(--kb-text);
 }
 
 .user-role {
   font-size: 0.8rem;
-  color: #76777c;
+  color: var(--kb-text-muted);
 }
 
 .loading, .error {
   padding: 15px;
   text-align: center;
-  color: #76777c;
+  color: var(--kb-text-muted);
 }
 
 .error {
-  color: #0e1b36;
+  color: var(--kb-danger);
 }
 
-:where([data-theme="dark"]) .bench {
-  background-color: #0e1b36;
-}
-
-:where([data-theme="dark"]) .bench h3 {
-  border-bottom-color: #232429;
-  color: #e2e2e2;
-}
-
-:where([data-theme="dark"]) .user-card {
-  background-color: #152442;
-}
-
-:where([data-theme="dark"]) .user-name {
-  color: #e2e2e2;
-}
-
-:where([data-theme="dark"]) .avatar {
-  background-color: #86d6ff;
-}
 .user-wip-limit {
   margin-top: 5px;
   font-size: 0.8rem;
@@ -158,7 +139,7 @@
 }
 
 .wip-limit-display:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--kb-hover);
 }
 
 .edit-wip-btn {
@@ -167,11 +148,11 @@
   font-size: 14px;
   cursor: pointer;
   margin-left: 5px;
-  color: #666;
+  color: var(--kb-text-muted);
 }
 
 .edit-wip-btn:hover {
-  color: #007bff;
+  color: var(--kb-accent);
 }
 
 .wip-limit-editor {
@@ -182,8 +163,10 @@
 .wip-limit-editor input {
   width: 40px;
   text-align: center;
-  border: 1px solid #ccc;
+  border: 1px solid var(--kb-border-strong);
   border-radius: 3px;
+  background: var(--kb-field);
+  color: var(--kb-text);
   padding: 2px;
 }
 
@@ -198,28 +181,28 @@
 }
 
 .save-wip-btn {
-  color: #28a745;
+  color: var(--kb-ok);
 }
 
 .save-wip-btn:hover {
-  color: #218838;
+  color: color-mix(in srgb, var(--kb-ok) 80%, var(--kb-text));
 }
 
 .cancel-wip-btn {
-  color: #dc3545;
+  color: var(--kb-danger);
 }
 
 .cancel-wip-btn:hover {
-  color: #c82333;
+  color: color-mix(in srgb, var(--kb-danger) 80%, var(--kb-text));
 }
 
 .user-task-count {
   margin-top: 3px;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--kb-text-muted);
 }
 
 .user-task-count.limit-reached {
-  color: #dc3545;
+  color: var(--kb-danger);
   font-weight: bold;
 }
