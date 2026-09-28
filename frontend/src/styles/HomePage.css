@@ -3,13 +3,13 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #f5f5f5;
+    background-color: var(--kb-canvas);
   }
   
   .auth-container {
-    background: white;
+    background: var(--kb-card);
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--kb-shadow-hover);
     padding: 2rem;
     width: 400px;
     max-width: 90%;
@@ -18,7 +18,7 @@
   .auth-container h1 {
     text-align: center;
     margin-bottom: 2rem;
-    color: #333;
+    color: var(--kb-text);
   }
   
   .tabs {
@@ -33,13 +33,14 @@
     padding: 10px;
     font-size: 16px;
     cursor: pointer;
-    border-bottom: 2px solid #ddd;
+    color: var(--kb-text-muted);
+    border-bottom: 2px solid var(--kb-border-strong);
     transition: all 0.3s;
   }
   
   .tabs button.active {
-    border-bottom-color: #007bff;
-    color: #007bff;
+    border-bottom-color: var(--kb-accent);
+    color: var(--kb-accent);
   }
   
   .form-group {
@@ -49,11 +50,11 @@
   .auth-container .form-group input {
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--kb-border-strong);
     border-radius: 4px;
     font-size: 16px;
-    background: #fff;
-    color: #333;
+    background: var(--kb-field);
+    color: var(--kb-text);
     box-sizing: border-box;
     display: block;
     line-height: 1.2;
@@ -66,14 +67,14 @@
   .auth-container .form-group input:-webkit-autofill,
   .auth-container .form-group input:-webkit-autofill:hover,
   .auth-container .form-group input:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 1000px #fff inset;
-    box-shadow: 0 0 0 1000px #fff inset;
-    -webkit-text-fill-color: #333;
-    caret-color: #333;
+    -webkit-box-shadow: 0 0 0 1000px var(--kb-field) inset;
+    box-shadow: 0 0 0 1000px var(--kb-field) inset;
+    -webkit-text-fill-color: var(--kb-text);
+    caret-color: var(--kb-text);
   }
 
   .auth-container .form-group input:focus {
-    border-color: #007bff;
+    border-color: var(--kb-accent);
     outline: none;
   }
 
@@ -96,11 +97,11 @@
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
-    color: #666;
+    color: var(--kb-text-muted);
   }
 
   .password-toggle:hover {
-    color: #333;
+    color: var(--kb-text);
   }
 
   .recaptcha-wrapper {
@@ -132,8 +133,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,0.7);
-    border: 1px solid #e0e0e0;
+    background: color-mix(in srgb, var(--kb-card) 70%, transparent);
+    border: 1px solid var(--kb-border);
     border-radius: 4px;
     z-index: 2;
   }
@@ -143,6 +144,27 @@
     min-height: 0;
     overflow: hidden;
     padding: 0 12px;
+  }
+
+  .captcha-warning {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--kb-danger);
+  }
+
+  .captcha-load-error {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--kb-danger);
+  }
+
+  .captcha-retry {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--kb-accent);
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .recaptcha-wrapper.hidden > div { opacity: 0 !important; pointer-events: none; }
@@ -155,8 +177,8 @@
   button[type="submit"] {
     width: 100%;
     padding: 12px;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--kb-fill);
+    color: var(--kb-on-fill);
     border: none;
     border-radius: 4px;
     font-size: 16px;
@@ -165,19 +187,20 @@
   }
   
   button[type="submit"]:hover {
-    background-color: #0056b3;
+    background-color: var(--kb-fill-hover);
   }
   
   button[type="submit"]:disabled {
-    background-color: #cccccc;
+    background-color: var(--kb-lane-strong);
+    color: var(--kb-text-subtle);
     cursor: not-allowed;
   }
 
   .auth-button {
     width: 100%;
     padding: 12px 14px;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--kb-fill);
+    color: var(--kb-on-fill);
     border: none;
     border-radius: 4px;
     font-size: 16px;
@@ -197,11 +220,11 @@
 
   .shared-submit { margin-top: 4px; }
 
-  .auth-button:hover { background-color: #0056b3; }
-  .auth-button:disabled { background-color: #cccccc; cursor: not-allowed; }
+  .auth-button:hover { background-color: var(--kb-fill-hover); }
+  .auth-button:disabled { background-color: var(--kb-lane-strong); color: var(--kb-text-subtle); cursor: not-allowed; }
   
   .error-message {
-    color: #dc3545;
+    color: var(--kb-danger);
     margin-bottom: 1rem;
     font-size: 14px;
   }
@@ -216,7 +239,7 @@
   
   .verification-form p {
     margin-bottom: 2rem;
-    color: #666;
+    color: var(--kb-text-muted);
   }
   
   .resend-link {
@@ -225,7 +248,7 @@
   }
   
   .resend-link span {
-    color: #007bff;
+    color: var(--kb-accent);
     cursor: pointer;
     text-decoration: underline;
   }
@@ -234,9 +257,9 @@
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
     border-radius: 50%;
-    border-top-color: #fff;
+    border-top-color: currentColor;
     animation: spin 1s ease-in-out infinite;
     margin-right: 8px;
     vertical-align: middle;
@@ -254,7 +277,7 @@
   .long-loading-message {
     font-size: 0.8rem;
     margin-top: 8px;
-    color: #888;
+    color: var(--kb-text-subtle);
     animation: pulse 1.5s infinite;
   }
   
