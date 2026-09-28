@@ -112,65 +112,40 @@ describe('TaskDetails Component', () => {
 
   test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
     renderTaskDetails();
-    const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
+    await waitFor(() => expect(screen.queryByText('board.loading')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByTitle('taskDetails.parentAndChildTasks'));
 
     let finishReread;
     api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
 
-    fireEvent.change(input, { target: { value: 'New Subtask' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
     await act(async () => {
-      fireEvent.click(screen.getByText('header.addTask'));
+      fireEvent.click(screen.getByRole('button', { name: 'taskActions.assign' }));
     });
 
     await waitFor(() => expect(finishReread).toBeDefined());
     expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
 
     await act(async () => {
       finishReread({ ...mockTask });
     });
   });
 
-  test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
+  test('adding a subtask re-reads the subtasks, not the whole task', async () => {
     renderTaskDetails();
     const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
-
-    let finishReread;
-    api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
+    api.fetchTask.mockClear();
+    api.fetchSubTasksByTaskId.mockClear();
 
     fireEvent.change(input, { target: { value: 'New Subtask' } });
     await act(async () => {
       fireEvent.click(screen.getByText('header.addTask'));
     });
 
-    await waitFor(() => expect(finishReread).toBeDefined());
-    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
-
-    await act(async () => {
-      finishReread({ ...mockTask });
-    });
-  });
-
-  test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
-    renderTaskDetails();
-    const input = await screen.findByPlaceholderText('taskActions.shadowDescription');
-
-    let finishReread;
-    api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
-
-    fireEvent.change(input, { target: { value: 'New Subtask' } });
-    await act(async () => {
-      fireEvent.click(screen.getByText('header.addTask'));
-    });
-
-    await waitFor(() => expect(finishReread).toBeDefined());
-    expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('taskActions.shadowDescription')).toBeInTheDocument();
-
-    await act(async () => {
-      finishReread({ ...mockTask });
-    });
+    await waitFor(() => expect(api.fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id));
+    expect(api.fetchTask).not.toHaveBeenCalled();
+    expect(onSubtaskUpdateMock).toHaveBeenCalled();
   });
 
   test('loads and displays task data correctly', async () => {
@@ -593,10 +568,11 @@ describe('TaskDetails Component', () => {
     await waitFor(() => {
       expect(api.fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
       expect(console.error).toHaveBeenCalledWith(
-        'Error loading task data:',
+        'Error refreshing subtasks:',
         expect.any(Error)
       );
     });
+    expect(screen.getByText(mockTask.description)).toBeInTheDocument();
   });
 
   test('handles error when updating subtask description', async () => {
@@ -817,6 +793,37 @@ describe('TaskDetails Component', () => {
     expect(api.deleteSubTask).not.toHaveBeenCalled();
   });
   
+  test('Escape with a confirmation open closes the confirmation and keeps the panel', async () => {
+    renderTaskDetails();
+
+    fireEvent.click((await screen.findAllByTitle('taskActions.deleteSubTask'))[0]);
+    await screen.findByText('taskActions.confirmDeleteSubTask');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() =>
+      expect(screen.queryByText('taskActions.confirmDeleteSubTask')).not.toBeInTheDocument());
+    expect(onCloseMock).not.toHaveBeenCalled();
+    expect(api.deleteSubTask).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCloseMock).toHaveBeenCalled();
+  });
+
+  test('clicking outside the remove-assignee confirmation cancels it', async () => {
+    api.fetchTask.mockResolvedValue({ ...mockTask, userIds: [1, 3] });
+    renderTaskDetails();
+
+    fireEvent.click((await screen.findAllByTitle('forms.deleteUser'))[0]);
+    const title = await screen.findByText('taskActions.confirmDeleteAssignedUser');
+
+    fireEvent.click(title.closest('.delete-confirmation-overlay'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('taskActions.confirmDeleteAssignedUser')).not.toBeInTheDocument());
+    expect(api.removeUserFromTask).not.toHaveBeenCalled();
+  });
+
   test('handles keyboard escape key to close modals', async () => {
     renderTaskDetails();
     
