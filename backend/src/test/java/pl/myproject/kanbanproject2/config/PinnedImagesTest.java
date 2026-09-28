@@ -18,7 +18,9 @@ class PinnedImagesTest {
 
     private static final Pattern COMPOSE_IMAGE = Pattern.compile("(?m)^\\s+image:\\s*(\\S+)\\s*$");
     private static final Pattern TERRAFORM_IMAGE = Pattern.compile("(?m)^\\s+image\\s*=\\s*\"([^\"]+)\"");
-    private static final Pattern PINNED = Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
+    private static final Path POSTGRES = REPO.resolve(Path.of("terraform", "modules", "postgres", "main.tf"));
+    private static final Pattern SERVER_VERSION = Pattern.compile("(?m)^\\s+version\\s*=\\s*\"(\\d+)\"");
+    private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
 
     @Test
     @DisplayName("every image docker-compose pulls names a tag and the digest it resolved to")
@@ -44,6 +46,21 @@ class PinnedImagesTest {
                 .as("Dependabot bumps the digest in docker-compose.yml only; move modules/broker with it, "
                         + "or the deployment runs a broker no CI run has used")
                 .containsExactly(composeBroker);
+    }
+
+    @Test
+    @DisplayName("the local stack runs the Postgres major version the deployed server runs")
+    void composePostgresMatchesTheServer() throws IOException {
+        String composePostgres = imagesIn(COMPOSE, COMPOSE_IMAGE).stream()
+                .filter(image -> image.startsWith("postgres:"))
+                .findFirst()
+                .orElseThrow();
+        String composeMajor = composePostgres.substring("postgres:".length()).split("[.@-]")[0];
+
+        assertThat(imagesIn(POSTGRES, SERVER_VERSION))
+                .as("every migration and query is tested against the compose Postgres; a different major "
+                        + "than the Flexible Server's is a database no deploy runs on")
+                .containsExactly(composeMajor);
     }
 
     private static List<String> imagesIn(Path file, Pattern pattern) throws IOException {
