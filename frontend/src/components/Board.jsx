@@ -5,7 +5,6 @@ import EditableText from './EditableText';
 import WipMeter from './WipMeter';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import '../styles/components/BoardTokens.css';
 import '../styles/components/Board.css';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';

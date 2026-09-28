@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { deadlineState } from '../board/cardModel';
-import '../styles/components/BoardTokens.css';
 import '../styles/components/Task.css';
 
 const TILT_GHOST_CLASS = 'task-drag-ghost';

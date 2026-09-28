@@ -39,6 +39,63 @@ describe('one dark-mode convention', () => {
   });
 });
 
+const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgb|hsl)a?\((?![^)]*var\()[^)]*\)|(?<![\w-])(?:white|black)\b/i;
+
+function declarations(css) {
+  const uncommented = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return [...uncommented.matchAll(/\{([^{}]*)\}/g)].flatMap(([, block]) =>
+    block.split(';').map((line) => line.trim()).filter((line) => line.includes(':')).map((line) => {
+      const colon = line.indexOf(':');
+      return { property: line.slice(0, colon).trim(), value: line.slice(colon + 1).trim() };
+    }));
+}
+
+function olderPalette() {
+  const index = fs.readFileSync(path.join(STYLES, 'index.css'), 'utf8');
+  const definitions = declarations(index.match(/:root\s*\{[^}]*\}/)[0])
+    .filter(({ property }) => property.startsWith('--'));
+  const names = new Set();
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const { property, value } of definitions) {
+      const name = property.slice(2);
+      const readsPalette = [...value.matchAll(/var\(--([\w-]+)/g)].some(([, used]) => names.has(used));
+      if (!names.has(name) && (COLOUR_LITERAL.test(value) || readsPalette)) {
+        names.add(name);
+        grew = true;
+      }
+    }
+  }
+  return names;
+}
+
+describe('a stylesheet on the --kb-* tokens takes every colour from them', () => {
+  const tokenised = stylesheets()
+    .map((file) => ({ name: path.relative(STYLES, file).replace(/\\/g, '/'), css: fs.readFileSync(file, 'utf8') }))
+    .filter(({ css }) => /var\(--kb-/.test(css));
+  const older = olderPalette();
+  const offending = (matches) => tokenised.flatMap(({ name, css }) => declarations(css)
+    .filter(({ property, value }) => !property.startsWith('--') && matches(value))
+    .map(({ property, value }) => `${name}: ${property}: ${value}`));
+
+  test('the scan finds the board and the older palette it replaces', () => {
+    expect(tokenised.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['components/Board.css', 'components/Task.css']));
+    expect([...older]).toEqual(expect.arrayContaining(['text-dark', 'surface-light', 'primary']));
+    expect(older.has('spacing-md')).toBe(false);
+  });
+
+  test('it writes no colour of its own, which the theme switch could not reach', () => {
+    expect(offending((value) => COLOUR_LITERAL.test(value))).toEqual([]);
+  });
+
+  test('it reads nothing from the older palette in index.css', () => {
+    expect(offending((value) => [...value.matchAll(/var\(--([\w-]+)/g)].some(([, name]) => older.has(name))))
+      .toEqual([]);
+  });
+});
+
 describe('the pre-paint theme script', () => {
   const source = fs.readFileSync(INIT_SCRIPT, 'utf8');
   let systemDark;

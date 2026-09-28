@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { THEME_PREFERENCES, readThemePreference, writeThemePreference } from '../theme/themePreference';
-import '../styles/components/BoardTokens.css';
 import '../styles/components/ThemeSwitcher.css';
 
 const LABEL_KEYS = {

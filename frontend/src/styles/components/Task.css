@@ -462,7 +462,7 @@
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #fff;
+  color: var(--kb-on-swatch);
   background: hsl(var(--avatar-hue, 210) 55% 46%);
 }
 
@@ -534,7 +534,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(15, 23, 42, 0.45);
+  background-color: var(--kb-overlay);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: var(--z-modal);
@@ -577,11 +577,11 @@
 
 .confirm-delete-btn {
   background-color: var(--kb-danger);
-  color: #fff;
+  color: var(--kb-on-fill);
 }
 
 .confirm-delete-btn:hover {
-  background-color: color-mix(in srgb, var(--kb-danger) 85%, #000);
+  background-color: color-mix(in srgb, var(--kb-danger) 85%, var(--kb-text));
 }
 
 .cancel-delete-btn {
@@ -681,7 +681,7 @@
   border-radius: 4px;
   margin-right: var(--spacing-sm);
   background-color: var(--kb-card);
-  color: #fff;
+  color: var(--kb-on-fill);
   font-size: 0.625rem;
 }
 

@@ -485,7 +485,7 @@
   width: min(600px, calc(100vw - 2rem));
   padding: 12px !important;
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--kb-shadow-pop);
 }
 
 .toast-confirm {
@@ -513,21 +513,21 @@
 }
 
 .confirm-button {
-  background-color: #d32f2f;
-  color: white;
+  background-color: var(--kb-danger);
+  color: var(--kb-on-fill);
 }
 
 .confirm-button:hover {
-  background-color: #b71c1c;
+  background-color: color-mix(in srgb, var(--kb-danger) 85%, var(--kb-text));
 }
 
 .cancel-button {
-  background-color: #e0e0e0;
-  color: #424242;
+  background-color: var(--kb-lane-strong);
+  color: var(--kb-text);
 }
 
 .cancel-button:hover {
-  background-color: #bdbdbd;
+  background-color: var(--kb-border-strong);
 }
 
 .board-readonly-banner {
@@ -576,15 +576,15 @@
 }
 
 .board-action.primary {
-  border-color: var(--primary-700);
-  background-color: var(--primary-700);
-  color: var(--white);
+  border-color: var(--kb-fill);
+  background-color: var(--kb-fill);
+  color: var(--kb-on-fill);
 }
 
 .board-action.primary:hover {
-  border-color: var(--primary-800);
-  background-color: var(--primary-800);
-  color: var(--white);
+  border-color: var(--kb-fill-hover);
+  background-color: var(--kb-fill-hover);
+  color: var(--kb-on-fill);
 }
 
 .board-action:focus-visible,
