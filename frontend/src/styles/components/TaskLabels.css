@@ -79,28 +79,26 @@
     font-weight: 600;
   }
   
-  @media (prefers-color-scheme: dark) {
-    .label {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-    
-    .label:hover {
-      background-color: rgba(255, 255, 255, 0.15);
-    }
-    
-    .section-title {
-      color: #aaa;
-    }
-    
-    .label-picker {
-      background-color: #1a2944;
-      border-color: #444;
-    }
-    
-    .label-option:hover {
-      background-color: #2a3a54;
-    }
-  }
+:where([data-theme="dark"]) .label {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:where([data-theme="dark"]) .label:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+:where([data-theme="dark"]) .section-title {
+  color: #aaa;
+}
+
+:where([data-theme="dark"]) .label-picker {
+  background-color: #1a2944;
+  border-color: #444;
+}
+
+:where([data-theme="dark"]) .label-option:hover {
+  background-color: #2a3a54;
+}
   
   [data-tooltip] {
     position: relative;
