@@ -49,7 +49,7 @@ async function loadHistory(taskId) {
     return [];
   }
 
-  let columns = [];
+  let columns;
   try {
     columns = (await fetchColumns()) || [];
   } catch {
