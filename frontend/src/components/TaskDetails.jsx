@@ -203,7 +203,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             ) === index;
           });
   
-          console.log('Enhanced history:', uniqueHistory);
           setColumnHistory(uniqueHistory);
         } else {
           setColumnHistory([]);

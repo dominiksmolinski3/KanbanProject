@@ -1196,23 +1196,6 @@ describe('API Services', () => {
       expect(result).toBeNull();
     });
 
-    test('uploadUserAvatar should upload user avatar', async () => {
-      const mockFile = new File(['file content'], 'avatar.jpg', { type: 'image/jpeg' });
-      
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => 'Avatar uploaded successfully!'
-      });
-
-      const result = await api.uploadUserAvatar('123', mockFile);
-
-      expect(fetch).toHaveBeenCalledWith('/api/users/123/avatar', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-      expect(result).toBe('Avatar uploaded successfully!');
-    });
-
     test('fetchUsers should return users when successful', async () => {
       const mockUsers = [
         { id: 'user1', name: 'John Doe', email: 'john@example.com' },
@@ -1271,24 +1254,6 @@ describe('API Services', () => {
       expect(result).toBe(true);
     });
       
-    test('uploadUserAvatar should upload a user avatar', async () => {
-      const userId = 'user1';
-      const file = new File(['dummy content'], 'avatar.png', { type: 'image/png' });
-      const mockResponse = 'Avatar uploaded successfully';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => mockResponse
-      });
-      
-      const result = await api.uploadUserAvatar(userId, file);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', {
-        method: 'POST',
-        body: expect.any(FormData)
-      });
-      expect(result).toBe(mockResponse);
-    });
       
     test('getUserAvatar should return blob URL when successful', async () => {
       const userId = 'user1';
@@ -1325,31 +1290,6 @@ describe('API Services', () => {
       expect(result).toBeNull();
     });
       
-    test('deleteUserAvatar should delete a user avatar', async () => {
-      const userId = 'user1';
-      const mockResponse = 'Avatar deleted successfully';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => mockResponse
-      });
-      
-      const result = await api.deleteUserAvatar(userId);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', {
-        method: 'DELETE'
-      });
-      expect(result).toBe(mockResponse);
-    });
-
-    test('deleteUserAvatar should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500
-      });
-        
-      await expect(api.deleteUserAvatar('user1')).rejects.toThrow('Error deleting avatar: 500');
-    });
       
     test('updateUserWipLimit should update user WIP limit', async () => {
       const userId = 'user1';
@@ -1651,25 +1591,6 @@ describe('API Services', () => {
   });
 
   describe('Avatar Uploads', () => {
-    test('uploadUserAvatar should use proper FormData with file contents', async () => {
-      const file = new File(['avatar content'], 'avatar.png', { type: 'image/png' });
-        
-      fetch.mockImplementationOnce((url, options) => {
-        const formData = options.body;
-        expect(formData instanceof FormData).toBe(true);
-          
-        const fileFromForm = formData.get('file');
-        expect(fileFromForm).toBe(file);
-          
-        return Promise.resolve({
-          ok: true,
-          text: async () => 'Success'
-        });
-      });
-        
-      await api.uploadUserAvatar('user1', file);
-      expect(fetch).toHaveBeenCalledWith('/api/users/user1/avatar', expect.any(Object));
-    });
     
   });
 

@@ -889,27 +889,6 @@ export const deleteUser = async (userId) => {
   }
 };
 
-export const uploadUserAvatar = async (userId, file) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error uploading avatar: ${response.status}`);
-    }
-    
-    return await response.text();
-  } catch (error) {
-    console.error(`Error uploading avatar for user ${userId}:`, error);
-    throw error;
-  }
-};
-
 export const getUserAvatar = async (userId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {
@@ -929,23 +908,6 @@ export const getUserAvatar = async (userId) => {
   } catch (error) {
     console.warn(`Error fetching avatar for user ${userId}:`, error);
     return null;
-  }
-};
-
-export const deleteUserAvatar = async (userId) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error deleting avatar: ${response.status}`);
-    }
-    
-    return await response.text();
-  } catch (error) {
-    console.error(`Error deleting avatar for user ${userId}:`, error);
-    throw error;
   }
 };
 

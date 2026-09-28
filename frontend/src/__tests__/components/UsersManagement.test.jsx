@@ -111,7 +111,7 @@ describe('UsersManagement', () => {
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 
-  test('avatar upload: a file over 10MB is rejected client-side', async () => {
+  test('avatar upload: a file over the 1 MB server cap is rejected client-side', async () => {
     global.fetch = jest.fn((url) => {
       if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
       if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
@@ -122,7 +122,7 @@ describe('UsersManagement', () => {
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
     global.fetch.mockClear();
 
-    const bigFile = new File([new ArrayBuffer(11 * 1024 * 1024)], 'big.png', { type: 'image/png' });
+    const bigFile = new File([new ArrayBuffer(1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
     const input = document.getElementById('avatar-input-1');
     fireEvent.change(input, { target: { files: [bigFile] } });
 
@@ -141,7 +141,7 @@ describe('UsersManagement', () => {
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
     global.fetch.mockClear();
 
-    const badFile = new File(['x'], 'file.gif', { type: 'image/gif' });
+    const badFile = new File(['x'], 'file.bmp', { type: 'image/bmp' });
     const input = document.getElementById('avatar-input-1');
     fireEvent.change(input, { target: { files: [badFile] } });
 

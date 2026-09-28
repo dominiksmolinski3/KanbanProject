@@ -430,8 +430,8 @@
       "messages": {
         "deleteConfirm": "Sei sicuro di voler eliminare questo utente?",
         "deleteError": "Si è verificato un errore durante l'eliminazione dell'utente",
-        "fileTooLarge": "Il file è troppo grande. La dimensione massima è 10MB.",
-        "fileTypeError": "Sono consentiti solo file JPG e PNG.",
+        "fileTooLarge": "Il file è troppo grande. La dimensione massima è 1 MB.",
+        "fileTypeError": "Sono consentiti solo file JPG, PNG, WebP e GIF.",
         "avatarUpdated": "Avatar aggiornato con successo",
         "avatarError": "Si è verificato un errore durante il caricamento dell'avatar:",
         "loadError": "Si è verificato un errore durante il caricamento degli utenti"
