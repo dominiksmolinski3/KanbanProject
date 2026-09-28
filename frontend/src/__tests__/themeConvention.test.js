@@ -50,48 +50,25 @@ function declarations(css) {
     }));
 }
 
-function olderPalette() {
-  const index = fs.readFileSync(path.join(STYLES, 'index.css'), 'utf8');
-  const definitions = declarations(index.match(/:root\s*\{[^}]*\}/)[0])
-    .filter(({ property }) => property.startsWith('--'));
-  const names = new Set();
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const { property, value } of definitions) {
-      const name = property.slice(2);
-      const readsPalette = [...value.matchAll(/var\(--([\w-]+)/g)].some(([, used]) => names.has(used));
-      if (!names.has(name) && (COLOUR_LITERAL.test(value) || readsPalette)) {
-        names.add(name);
-        grew = true;
-      }
-    }
-  }
-  return names;
-}
-
-describe('a stylesheet on the --kb-* tokens takes every colour from them', () => {
-  const tokenised = stylesheets()
-    .map((file) => ({ name: path.relative(STYLES, file).replace(/\\/g, '/'), css: fs.readFileSync(file, 'utf8') }))
-    .filter(({ css }) => /var\(--kb-/.test(css));
-  const older = olderPalette();
-  const offending = (matches) => tokenised.flatMap(({ name, css }) => declarations(css)
-    .filter(({ property, value }) => !property.startsWith('--') && matches(value))
+describe('every stylesheet takes its colours from the --kb-* tokens', () => {
+  const sheets = stylesheets()
+    .map((file) => ({ name: path.relative(STYLES, file).replace(/\\/g, '/'), css: fs.readFileSync(file, 'utf8') }));
+  const offending = (matches, within = sheets) => within.flatMap(({ name, css }) => declarations(css)
+    .filter(({ property, value }) => matches(property, value))
     .map(({ property, value }) => `${name}: ${property}: ${value}`));
 
-  test('the scan finds the board and the older palette it replaces', () => {
-    expect(tokenised.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(['components/Board.css', 'components/Task.css']));
-    expect([...older]).toEqual(expect.arrayContaining(['text-dark', 'surface-light', 'primary']));
-    expect(older.has('spacing-md')).toBe(false);
+  test('the scan finds every stylesheet, the tokens and index.css among them', () => {
+    expect(sheets.map(({ name }) => name)).toEqual(expect.arrayContaining(
+      ['index.css', 'components/BoardTokens.css', 'components/Board.css', 'components/TaskDetails.css']));
   });
 
-  test('it writes no colour of its own, which the theme switch could not reach', () => {
-    expect(offending((value) => COLOUR_LITERAL.test(value))).toEqual([]);
+  test('none writes a colour of its own, which the theme switch could not reach', () => {
+    expect(offending((property, value) => !property.startsWith('--') && COLOUR_LITERAL.test(value))).toEqual([]);
   });
 
-  test('it reads nothing from the older palette in index.css', () => {
-    expect(offending((value) => [...value.matchAll(/var\(--([\w-]+)/g)].some(([, name]) => older.has(name))))
+  test('index.css defines no second palette beside the tokens', () => {
+    const index = sheets.filter(({ name }) => name === 'index.css');
+    expect(offending((property, value) => property.startsWith('--') && COLOUR_LITERAL.test(value), index))
       .toEqual([]);
   });
 });
