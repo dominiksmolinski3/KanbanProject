@@ -138,33 +138,31 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .language-switcher-button {
-    color: var(--gray-300);
-  }
-  
-  .language-switcher-button:hover {
-    background-color: rgba(134, 214, 255, 0.15);
-    color: var(--primary);
-  }
-  
-  .language-dropdown {
-    background-color: var(--surface-dark);
-    border-color: var(--gray-800);
-  }
-  
-  .language-dropdown button {
-    color: var(--gray-300);
-    border-bottom-color: var(--gray-800);
-  }
-  
-  .language-dropdown button:hover {
-    background-color: rgba(134, 214, 255, 0.15);
-    color: var(--primary);
-  }
-  
-  .language-dropdown button.active {
-    background-color: rgba(134, 214, 255, 0.1);
-    color: var(--primary);
-  }
+:where([data-theme="dark"]) .language-switcher-button {
+  color: var(--gray-300);
+}
+
+:where([data-theme="dark"]) .language-switcher-button:hover {
+  background-color: rgba(134, 214, 255, 0.15);
+  color: var(--primary);
+}
+
+:where([data-theme="dark"]) .language-dropdown {
+  background-color: var(--surface-dark);
+  border-color: var(--gray-800);
+}
+
+:where([data-theme="dark"]) .language-dropdown button {
+  color: var(--gray-300);
+  border-bottom-color: var(--gray-800);
+}
+
+:where([data-theme="dark"]) .language-dropdown button:hover {
+  background-color: rgba(134, 214, 255, 0.15);
+  color: var(--primary);
+}
+
+:where([data-theme="dark"]) .language-dropdown button.active {
+  background-color: rgba(134, 214, 255, 0.1);
+  color: var(--primary);
 }

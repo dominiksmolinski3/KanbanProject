@@ -447,101 +447,99 @@
   .form-modal { width: 96vw; max-width: 520px; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .form-container {
-    background: #1a1f2b;
-    border: 1px solid rgba(58, 134, 255, 0.15);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-container:hover {
-    box-shadow: 0 15px 35px rgba(58, 134, 255, 0.2);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-header h3 {
-    color: #f0f4f8;
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-group label {
-    color: #e2e8f0;
-  }
-  
-  :root:where(:not([data-theme="light"])) .help-text {
-    color: #9ca3af;
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-group input,
-  :root:where(:not([data-theme="light"])) .form-group select {
-    background-color: #273045;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #f0f4f8;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-group input:focus,
-  :root:where(:not([data-theme="light"])) .form-group select:focus {
-    border-color: #4cc9f0;
-    box-shadow: 0 0 0 4px rgba(76, 201, 240, 0.2);
-    background-color: #1e293b;
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-group input:hover,
-  :root:where(:not([data-theme="light"])) .form-group select:hover {
-    border-color: rgba(76, 201, 240, 0.6);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-group input:disabled,
-  :root:where(:not([data-theme="light"])) .form-group select:disabled {
-    background-color: #1a2236;
-    opacity: 0.6;
-  }
-  
-  :root:where(:not([data-theme="light"])) .error-message {
-    background-color: rgba(220, 38, 38, 0.15);
-    color: #f87171;
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-actions button:hover,
-  :root:where(:not([data-theme="light"])) .toggle-form-btn:hover {
-    box-shadow: 0 8px 20px rgba(76, 201, 240, 0.3);
-  }
-  
-  :root:where(:not([data-theme="light"])) .form-actions button:disabled {
-    background: #1a2236;
-    color: #64748b;
-  }
-  
-  :root:where(:not([data-theme="light"])) .tab-container {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-  
-  :root:where(:not([data-theme="light"])) .tab-btn {
-    color: #9ca3af;
-  }
-  
-  :root:where(:not([data-theme="light"])) .tab-btn.active {
-    color: #f0f4f8;
-  }
-  
-  :root:where(:not([data-theme="light"])) .add-task-container {
-    background: linear-gradient(135deg, rgba(58, 134, 255, 0.1), rgba(76, 201, 240, 0.15));
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(76, 201, 240, 0.2);
-  }
-  
-  :root:where(:not([data-theme="light"])) .add-task-container:hover {
-    box-shadow: 0 10px 30px rgba(76, 201, 240, 0.2);
-  }
-  
-  :root:where(:not([data-theme="light"])) .add-task-container h3 {
-    color: #f0f4f8;
-  }
-  
-  :root:where(:not([data-theme="light"])) .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.7);
-  }
+:root:where([data-theme="dark"]) .form-container {
+  background: #1a1f2b;
+  border: 1px solid rgba(58, 134, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+:root:where([data-theme="dark"]) .form-container:hover {
+  box-shadow: 0 15px 35px rgba(58, 134, 255, 0.2);
+}
+
+:root:where([data-theme="dark"]) .form-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root:where([data-theme="dark"]) .form-header h3 {
+  color: #f0f4f8;
+}
+
+:root:where([data-theme="dark"]) .form-group label {
+  color: #e2e8f0;
+}
+
+:root:where([data-theme="dark"]) .help-text {
+  color: #9ca3af;
+}
+
+:root:where([data-theme="dark"]) .form-group input,
+:root:where([data-theme="dark"]) .form-group select {
+  background-color: #273045;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f0f4f8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+:root:where([data-theme="dark"]) .form-group input:focus,
+:root:where([data-theme="dark"]) .form-group select:focus {
+  border-color: #4cc9f0;
+  box-shadow: 0 0 0 4px rgba(76, 201, 240, 0.2);
+  background-color: #1e293b;
+}
+
+:root:where([data-theme="dark"]) .form-group input:hover,
+:root:where([data-theme="dark"]) .form-group select:hover {
+  border-color: rgba(76, 201, 240, 0.6);
+}
+
+:root:where([data-theme="dark"]) .form-group input:disabled,
+:root:where([data-theme="dark"]) .form-group select:disabled {
+  background-color: #1a2236;
+  opacity: 0.6;
+}
+
+:root:where([data-theme="dark"]) .error-message {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+}
+
+:root:where([data-theme="dark"]) .form-actions button:hover,
+:root:where([data-theme="dark"]) .toggle-form-btn:hover {
+  box-shadow: 0 8px 20px rgba(76, 201, 240, 0.3);
+}
+
+:root:where([data-theme="dark"]) .form-actions button:disabled {
+  background: #1a2236;
+  color: #64748b;
+}
+
+:root:where([data-theme="dark"]) .tab-container {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root:where([data-theme="dark"]) .tab-btn {
+  color: #9ca3af;
+}
+
+:root:where([data-theme="dark"]) .tab-btn.active {
+  color: #f0f4f8;
+}
+
+:root:where([data-theme="dark"]) .add-task-container {
+  background: linear-gradient(135deg, rgba(58, 134, 255, 0.1), rgba(76, 201, 240, 0.15));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(76, 201, 240, 0.2);
+}
+
+:root:where([data-theme="dark"]) .add-task-container:hover {
+  box-shadow: 0 10px 30px rgba(76, 201, 240, 0.2);
+}
+
+:root:where([data-theme="dark"]) .add-task-container h3 {
+  color: #f0f4f8;
+}
+
+:root:where([data-theme="dark"]) .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
 }

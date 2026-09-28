@@ -13,24 +13,7 @@
   --viz-series-8: #e34948;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .viz-root {
-    --viz-surface: #1a1a19;
-    --viz-text: #ffffff;
-    --viz-text-secondary: #c3c2b7;
-    --viz-grid: #34332f;
-    --viz-series-1: #3987e5;
-    --viz-series-2: #d95926;
-    --viz-series-3: #199e70;
-    --viz-series-4: #c98500;
-    --viz-series-5: #d55181;
-    --viz-series-6: #008300;
-    --viz-series-7: #9085e9;
-    --viz-series-8: #e66767;
-  }
-}
-
-:root[data-theme="dark"] .viz-root {
+:root:where([data-theme="dark"]) .viz-root {
   --viz-surface: #1a1a19;
   --viz-text: #ffffff;
   --viz-text-secondary: #c3c2b7;

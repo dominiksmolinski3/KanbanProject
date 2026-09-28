@@ -392,92 +392,91 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .app-header {
-    background-color: var(--surface-dark);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  }
-  
-  .app-title {
-    background: linear-gradient(135deg, #ffffff, #a0a0a0);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-  
-  .nav-link {
-    color: var(--gray-300);
-  }
+:where([data-theme="dark"]) .app-header {
+  background-color: var(--surface-dark);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
 
-  .nav-link.active {
-    color: var(--primary);
-    background-color: rgba(134, 214, 255, 0.15);
-  }
+:where([data-theme="dark"]) .app-title {
+  background: linear-gradient(135deg, #ffffff, #a0a0a0);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
 
-  .header-menu-panel {
-    background: var(--surface-dark);
-    border-color: var(--gray-700);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
+:where([data-theme="dark"]) .nav-link {
+  color: var(--gray-300);
+}
 
-  .header-menu-row {
-    border-bottom-color: var(--gray-700);
-  }
+:where([data-theme="dark"]) .nav-link.active {
+  color: var(--primary);
+  background-color: rgba(134, 214, 255, 0.15);
+}
 
-  .header-menu-label {
-    color: var(--gray-400);
-  }
+:where([data-theme="dark"]) .header-menu-panel {
+  background: var(--surface-dark);
+  border-color: var(--gray-700);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
 
-  .header-menu-item {
-    color: var(--gray-300);
-  }
+:where([data-theme="dark"]) .header-menu-row {
+  border-bottom-color: var(--gray-700);
+}
 
-  .header-menu-item:hover {
-    background-color: rgba(134, 214, 255, 0.15);
-    color: var(--primary);
-  }
-  
-  .nav-link:hover {
-    background-color: rgba(134, 214, 255, 0.15);
-    color: var(--primary);
-  }
-  
-  .app-footer {
-    background-color: var(--surface-dark);
-    border-top-color: var(--gray-800);
-  }
-  
-  .footer-info, .footer-link {
-    color: var(--gray-400);
-  }
-  
-  .footer-link:hover {
-    color: var(--primary);
-  }
-  
-  .card {
-    background-color: var(--surface-dark);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  }
-  
-  .card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  }
-  
-  .read-the-docs {
-    color: var(--gray-400);
-  }
-  
-  .menu-controls {
-    background: var(--surface-dark);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
-  .menu-item {
-    color: var(--text-light);
-  }
-  
-  .menu-item:hover {
-    background: rgba(134, 214, 255, 0.15);
-    color: var(--primary);
-  }
+:where([data-theme="dark"]) .header-menu-label {
+  color: var(--gray-400);
+}
+
+:where([data-theme="dark"]) .header-menu-item {
+  color: var(--gray-300);
+}
+
+:where([data-theme="dark"]) .header-menu-item:hover {
+  background-color: rgba(134, 214, 255, 0.15);
+  color: var(--primary);
+}
+
+:where([data-theme="dark"]) .nav-link:hover {
+  background-color: rgba(134, 214, 255, 0.15);
+  color: var(--primary);
+}
+
+:where([data-theme="dark"]) .app-footer {
+  background-color: var(--surface-dark);
+  border-top-color: var(--gray-800);
+}
+
+:where([data-theme="dark"]) .footer-info,
+:where([data-theme="dark"]) .footer-link {
+  color: var(--gray-400);
+}
+
+:where([data-theme="dark"]) .footer-link:hover {
+  color: var(--primary);
+}
+
+:where([data-theme="dark"]) .card {
+  background-color: var(--surface-dark);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+:where([data-theme="dark"]) .card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+:where([data-theme="dark"]) .read-the-docs {
+  color: var(--gray-400);
+}
+
+:where([data-theme="dark"]) .menu-controls {
+  background: var(--surface-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+:where([data-theme="dark"]) .menu-item {
+  color: var(--text-light);
+}
+
+:where([data-theme="dark"]) .menu-item:hover {
+  background: rgba(134, 214, 255, 0.15);
+  color: var(--primary);
 }

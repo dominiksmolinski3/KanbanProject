@@ -197,63 +197,62 @@ input:focus, input[type="password"]:focus {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .users-container {
-    background-color: var(--surface-dark);
-    border-color: var(--gray-700);
-  }
-  
-  .users-header {
-    background-color: var(--surface-dark-hover);
-    border-color: var(--gray-700);
-    color: var(--text-light);
-  }
-  
-  .user-item {
-    border-color: var(--gray-700);
-    color: var(--text-light);
-  }
-  
-  .user-item:hover {
-    background-color: var(--surface-dark-hover);
-  }
-  
-  input, input[type="password"] {
-    background-color: var(--surface-dark-hover);
-    border-color: var(--gray-700);
-    color: var(--text-light);
-  }
-  
-  .avatar-preview {
-    border-color: var(--gray-600);
-  }
-  
-  .upload-avatar-btn {
-    background-color: rgba(30, 30, 30, 0.8);
-    border-color: var(--gray-700);
-    color: var(--text-light);
-  }
-  
-  .upload-avatar-btn:hover {
-    background-color: var(--primary-transparent);
-    color: var(--primary-light);
-    border-color: var(--primary);
-  }
-  
-  .delete-user-btn {
-    background-color: var(--surface-dark-hover);
-    color: var(--text-light);
-    border-color: var(--gray-700);
-  }
-  
-  .back-btn {
-    background-color: var(--surface-dark);
-    color: var(--text-light);
-    border-color: var(--gray-700);
-  }
-  
-  .back-btn:hover {
-    background-color: var(--surface-dark-hover);
-    color: var(--primary-light);
-  }
+:where([data-theme="dark"]) .users-container {
+  background-color: var(--surface-dark);
+  border-color: var(--gray-700);
+}
+
+:where([data-theme="dark"]) .users-header {
+  background-color: var(--surface-dark-hover);
+  border-color: var(--gray-700);
+  color: var(--text-light);
+}
+
+:where([data-theme="dark"]) .user-item {
+  border-color: var(--gray-700);
+  color: var(--text-light);
+}
+
+:where([data-theme="dark"]) .user-item:hover {
+  background-color: var(--surface-dark-hover);
+}
+
+:where([data-theme="dark"]) input,
+:where([data-theme="dark"]) input[type="password"] {
+  background-color: var(--surface-dark-hover);
+  border-color: var(--gray-700);
+  color: var(--text-light);
+}
+
+:where([data-theme="dark"]) .avatar-preview {
+  border-color: var(--gray-600);
+}
+
+:where([data-theme="dark"]) .upload-avatar-btn {
+  background-color: rgba(30, 30, 30, 0.8);
+  border-color: var(--gray-700);
+  color: var(--text-light);
+}
+
+:where([data-theme="dark"]) .upload-avatar-btn:hover {
+  background-color: var(--primary-transparent);
+  color: var(--primary-light);
+  border-color: var(--primary);
+}
+
+:where([data-theme="dark"]) .delete-user-btn {
+  background-color: var(--surface-dark-hover);
+  color: var(--text-light);
+  border-color: var(--gray-700);
+}
+
+:where([data-theme="dark"]) .back-btn {
+  background-color: var(--surface-dark);
+  color: var(--text-light);
+  border-color: var(--gray-700);
+}
+
+:where([data-theme="dark"]) .back-btn:hover {
+  background-color: var(--surface-dark-hover);
+  color: var(--primary-light);
 }
