@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './styles/components/BoardTokens.css'
 import './styles/index.css'
 import App from './App.jsx'
 import { ToastContainer } from 'react-toastify';
