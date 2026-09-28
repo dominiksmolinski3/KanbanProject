@@ -255,6 +255,7 @@
     "language": "Sprache",
     "navigation": "Hauptnavigation",
     "sessions": "Sitzungen",
+    "account": "Konto",
     "addTask": "Aufgabe hinzufügen",
     "wipLimit": "WIP-Limit",
     "addBoardItem": "Zeile/Spalte hinzufügen",
@@ -620,5 +621,35 @@
     "edited": "(bearbeitet)",
     "formerMember": "Ehemaliges Mitglied",
     "remaining": "Noch {{count}} Zeichen"
+  },
+  "account": {
+    "title": "Konto",
+    "email": {
+      "heading": "E-Mail-Adresse",
+      "current": "Aktuelle Adresse: {{email}}",
+      "newLabel": "Neue E-Mail-Adresse",
+      "send": "Bestätigungscode senden",
+      "sent": "Wenn {{email}} verwendet werden kann, ist ein 6-stelliger Code dorthin unterwegs. Er läuft in 15 Minuten ab.",
+      "codeLabel": "Bestätigungscode",
+      "confirm": "Adresse ändern",
+      "cancel": "Abbrechen",
+      "changed": "Ihre E-Mail-Adresse wurde geändert."
+    },
+    "password": {
+      "heading": "Passwort",
+      "intro": "Eine Passwortänderung meldet Sie überall ab, auch hier.",
+      "currentLabel": "Aktuelles Passwort",
+      "newLabel": "Neues Passwort (8 bis 72 Zeichen)",
+      "submit": "Passwort ändern",
+      "changed": "Passwort geändert. Melden Sie sich mit dem neuen erneut an."
+    },
+    "errors": {
+      "wrongPassword": "Das aktuelle Passwort ist nicht korrekt.",
+      "unchanged": "Das ist bereits Ihre Adresse.",
+      "invalidCode": "Dieser Code ist nicht korrekt.",
+      "expiredCode": "Dieser Code ist abgelaufen. Fordern Sie einen neuen an.",
+      "invalid": "Prüfen Sie die Felder und versuchen Sie es erneut.",
+      "generic": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    }
   }
 }

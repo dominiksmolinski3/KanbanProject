@@ -113,6 +113,10 @@ public class AuthenticationService {
         refreshTokenService.revokeSession(user, sessionId);
     }
 
+    public LoginResponse startSession(User user, DeviceContext device) {
+        return issueSession(user, device);
+    }
+
     private LoginResponse issueSession(User user, DeviceContext device) {
         RefreshTokenService.Issued issued = refreshTokenService.issue(user, device);
         return respondWith(user, issued.token(), issued.sessionId());

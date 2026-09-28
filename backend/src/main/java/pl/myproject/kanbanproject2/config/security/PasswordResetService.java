@@ -81,7 +81,7 @@ public class PasswordResetService {
 
     public void changePassword(User currentUser, ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
-            throw new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS);
+            throw new GlobalException(ExceptionIdentifier.WRONG_PASSWORD);
         }
 
         User user = userRepository.findById(currentUser.getId())

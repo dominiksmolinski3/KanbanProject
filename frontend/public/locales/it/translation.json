@@ -255,6 +255,7 @@
       "language": "Lingua",
       "navigation": "Navigazione principale",
       "sessions": "Sessioni",
+      "account": "Account",
       "addTask": "Aggiungi attività",
       "wipLimit": "Limite WIP",
       "addBoardItem": "Aggiungi riga/colonna",
@@ -620,5 +621,35 @@
       "edited": "(modificato)",
       "formerMember": "Ex membro",
       "remaining": "{{count}} caratteri rimanenti"
+    },
+    "account": {
+      "title": "Account",
+      "email": {
+        "heading": "Indirizzo email",
+        "current": "Indirizzo attuale: {{email}}",
+        "newLabel": "Nuovo indirizzo email",
+        "send": "Invia codice di conferma",
+        "sent": "Se {{email}} può essere usato, gli abbiamo inviato un codice di 6 cifre. Scade tra 15 minuti.",
+        "codeLabel": "Codice di conferma",
+        "confirm": "Cambia indirizzo",
+        "cancel": "Annulla",
+        "changed": "Il tuo indirizzo email è stato cambiato."
+      },
+      "password": {
+        "heading": "Password",
+        "intro": "Cambiare la password ti disconnette ovunque, anche qui.",
+        "currentLabel": "Password attuale",
+        "newLabel": "Nuova password (da 8 a 72 caratteri)",
+        "submit": "Cambia password",
+        "changed": "Password cambiata. Accedi di nuovo con quella nuova."
+      },
+      "errors": {
+        "wrongPassword": "La password attuale non è corretta.",
+        "unchanged": "Questo è già il tuo indirizzo.",
+        "invalidCode": "Il codice non è corretto.",
+        "expiredCode": "Il codice è scaduto. Richiedine uno nuovo.",
+        "invalid": "Controlla i campi e riprova.",
+        "generic": "Qualcosa è andato storto. Riprova."
+      }
     }
 }
