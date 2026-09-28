@@ -1683,7 +1683,8 @@ and reasons in `local.refusal_alerts`.
   react-router warning string. An issue that re-files the same five decisions every Monday is one
   nobody opens by the third, which is how the first one sat for eight days. So each is an `IGNORE`
   line with its reason, the action drops them before filing, and an issue that appears means
-  something new. `-j` adds the AJAX spider, which is what the "Modern Web Application" alert was
+  something new. The action also closes the open report on the first run with nothing new, which
+  is how #283 was closed, so the issue tracks the scan rather than accumulating. `-j` adds the AJAX spider, which is what the "Modern Web Application" alert was
   asking for: the classic spider finds no links in a React shell and scans only `/`. Its first run
   raised one alert the classic spider cannot, "Information in Browser localStorage", on
   `i18nextLng` alone; it is ignored too, because an anonymous scan never sees the tokens and
