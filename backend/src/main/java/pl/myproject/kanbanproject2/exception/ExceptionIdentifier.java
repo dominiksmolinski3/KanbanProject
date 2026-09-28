@@ -41,6 +41,8 @@ public enum ExceptionIdentifier {
     INVALID_FLOW_REQUEST(BAD_REQUEST, "The flow metrics cannot be computed as asked"),
 
     INVALID_CREDENTIALS(UNAUTHORIZED, "Invalid email or password"),
+    WRONG_PASSWORD(BAD_REQUEST, "The current password is not correct"),
+    EMAIL_UNCHANGED(BAD_REQUEST, "That is already the address on this account"),
     SESSION_NOT_FOUND(NOT_FOUND, "Session not found"),
     VERIFICATION_CODE_EXPIRED(BAD_REQUEST, "The verification code has expired"),
     INVALID_VERIFICATION_CODE(BAD_REQUEST, "Invalid verification code"),

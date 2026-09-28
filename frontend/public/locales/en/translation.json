@@ -257,6 +257,7 @@
     "language": "Language",
     "navigation": "Main navigation",
     "sessions": "Sessions",
+    "account": "Account",
     "addTask": "Add task",
     "wipLimit": "WIP Limit",
     "addBoardItem": "Add row/column",
@@ -622,5 +623,35 @@
     "edited": "(edited)",
     "formerMember": "Former member",
     "remaining": "{{count}} characters left"
+  },
+  "account": {
+    "title": "Account",
+    "email": {
+      "heading": "Email address",
+      "current": "Current address: {{email}}",
+      "newLabel": "New email address",
+      "send": "Send confirmation code",
+      "sent": "If {{email}} can be used, a 6-digit code is on its way to it. It expires in 15 minutes.",
+      "codeLabel": "Confirmation code",
+      "confirm": "Change address",
+      "cancel": "Cancel",
+      "changed": "Your email address has been changed."
+    },
+    "password": {
+      "heading": "Password",
+      "intro": "Changing the password signs you out everywhere, including here.",
+      "currentLabel": "Current password",
+      "newLabel": "New password (8 to 72 characters)",
+      "submit": "Change password",
+      "changed": "Password changed. Sign in again with the new one."
+    },
+    "errors": {
+      "wrongPassword": "The current password is not correct.",
+      "unchanged": "That is already your address.",
+      "invalidCode": "That code is not correct.",
+      "expiredCode": "That code has expired. Ask for a new one.",
+      "invalid": "Check the fields and try again.",
+      "generic": "Something went wrong. Try again."
+    }
   }
 }

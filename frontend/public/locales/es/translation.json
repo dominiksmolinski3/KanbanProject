@@ -257,6 +257,7 @@
       "language": "Idioma",
       "navigation": "Navegación principal",
       "sessions": "Sesiones",
+      "account": "Cuenta",
       "addTask": "Añadir tarea",
       "wipLimit": "Límite WIP",
       "addBoardItem": "Añadir fila/columna",
@@ -622,5 +623,35 @@
       "edited": "(editado)",
       "formerMember": "Antiguo miembro",
       "remaining": "Quedan {{count}} caracteres"
+    },
+    "account": {
+      "title": "Cuenta",
+      "email": {
+        "heading": "Dirección de correo",
+        "current": "Dirección actual: {{email}}",
+        "newLabel": "Nueva dirección de correo",
+        "send": "Enviar código de confirmación",
+        "sent": "Si {{email}} se puede usar, le hemos enviado un código de 6 dígitos. Caduca en 15 minutos.",
+        "codeLabel": "Código de confirmación",
+        "confirm": "Cambiar dirección",
+        "cancel": "Cancelar",
+        "changed": "Tu dirección de correo se ha cambiado."
+      },
+      "password": {
+        "heading": "Contraseña",
+        "intro": "Cambiar la contraseña cierra tu sesión en todas partes, también aquí.",
+        "currentLabel": "Contraseña actual",
+        "newLabel": "Nueva contraseña (de 8 a 72 caracteres)",
+        "submit": "Cambiar contraseña",
+        "changed": "Contraseña cambiada. Vuelve a iniciar sesión con la nueva."
+      },
+      "errors": {
+        "wrongPassword": "La contraseña actual no es correcta.",
+        "unchanged": "Esa ya es tu dirección.",
+        "invalidCode": "Ese código no es correcto.",
+        "expiredCode": "Ese código ha caducado. Pide uno nuevo.",
+        "invalid": "Revisa los campos e inténtalo de nuevo.",
+        "generic": "Algo ha salido mal. Inténtalo de nuevo."
+      }
     }
 }

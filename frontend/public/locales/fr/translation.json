@@ -257,6 +257,7 @@
       "language": "Langue",
       "navigation": "Navigation principale",
       "sessions": "Sessions",
+      "account": "Compte",
       "addTask": "Ajouter une tâche",
       "wipLimit": "Limite WIP",
       "addBoardItem": "Ajouter ligne/colonne",
@@ -622,5 +623,35 @@
       "edited": "(modifié)",
       "formerMember": "Ancien membre",
       "remaining": "{{count}} caractères restants"
+    },
+    "account": {
+      "title": "Compte",
+      "email": {
+        "heading": "Adresse e-mail",
+        "current": "Adresse actuelle : {{email}}",
+        "newLabel": "Nouvelle adresse e-mail",
+        "send": "Envoyer le code de confirmation",
+        "sent": "Si {{email}} peut être utilisée, un code à 6 chiffres lui a été envoyé. Il expire dans 15 minutes.",
+        "codeLabel": "Code de confirmation",
+        "confirm": "Changer d'adresse",
+        "cancel": "Annuler",
+        "changed": "Votre adresse e-mail a été modifiée."
+      },
+      "password": {
+        "heading": "Mot de passe",
+        "intro": "Changer le mot de passe vous déconnecte partout, y compris ici.",
+        "currentLabel": "Mot de passe actuel",
+        "newLabel": "Nouveau mot de passe (8 à 72 caractères)",
+        "submit": "Changer le mot de passe",
+        "changed": "Mot de passe modifié. Reconnectez-vous avec le nouveau."
+      },
+      "errors": {
+        "wrongPassword": "Le mot de passe actuel est incorrect.",
+        "unchanged": "C'est déjà votre adresse.",
+        "invalidCode": "Ce code est incorrect.",
+        "expiredCode": "Ce code a expiré. Demandez-en un nouveau.",
+        "invalid": "Vérifiez les champs et réessayez.",
+        "generic": "Une erreur s'est produite. Réessayez."
+      }
     }
 }

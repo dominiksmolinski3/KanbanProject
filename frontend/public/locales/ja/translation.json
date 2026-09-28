@@ -257,6 +257,7 @@
       "language": "言語",
       "navigation": "メインナビゲーション",
       "sessions": "セッション",
+      "account": "アカウント",
       "addTask": "タスクを追加",
       "wipLimit": "WIP制限",
       "addBoardItem": "行/カラムを追加",
@@ -622,5 +623,35 @@
       "edited": "（編集済み）",
       "formerMember": "元メンバー",
       "remaining": "残り {{count}} 文字"
+    },
+    "account": {
+      "title": "アカウント",
+      "email": {
+        "heading": "メールアドレス",
+        "current": "現在のアドレス: {{email}}",
+        "newLabel": "新しいメールアドレス",
+        "send": "確認コードを送信",
+        "sent": "{{email}} が使用可能な場合、6 桁のコードを送信しました。15 分で期限切れになります。",
+        "codeLabel": "確認コード",
+        "confirm": "アドレスを変更",
+        "cancel": "キャンセル",
+        "changed": "メールアドレスを変更しました。"
+      },
+      "password": {
+        "heading": "パスワード",
+        "intro": "パスワードを変更すると、この端末を含むすべての場所からログアウトします。",
+        "currentLabel": "現在のパスワード",
+        "newLabel": "新しいパスワード (8〜72 文字)",
+        "submit": "パスワードを変更",
+        "changed": "パスワードを変更しました。新しいパスワードで再度ログインしてください。"
+      },
+      "errors": {
+        "wrongPassword": "現在のパスワードが正しくありません。",
+        "unchanged": "すでにこのアドレスを使用しています。",
+        "invalidCode": "コードが正しくありません。",
+        "expiredCode": "コードの有効期限が切れています。新しいコードを請求してください。",
+        "invalid": "入力内容を確認して、もう一度お試しください。",
+        "generic": "問題が発生しました。もう一度お試しください。"
+      }
     }
 }

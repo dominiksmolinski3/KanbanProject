@@ -257,6 +257,7 @@
     "language": "Język",
     "navigation": "Nawigacja główna",
     "sessions": "Sesje",
+    "account": "Konto",
     "addTask": "Dodaj zadanie",
     "wipLimit": "Limit WIP",
     "addBoardItem": "Dodaj wiersz/kolumnę",
@@ -622,5 +623,35 @@
     "edited": "(edytowano)",
     "formerMember": "Były członek",
     "remaining": "Pozostało znaków: {{count}}"
+  },
+  "account": {
+    "title": "Konto",
+    "email": {
+      "heading": "Adres e-mail",
+      "current": "Obecny adres: {{email}}",
+      "newLabel": "Nowy adres e-mail",
+      "send": "Wyślij kod potwierdzający",
+      "sent": "Jeśli adresu {{email}} można użyć, wysłaliśmy na niego 6-cyfrowy kod. Wygasa za 15 minut.",
+      "codeLabel": "Kod potwierdzający",
+      "confirm": "Zmień adres",
+      "cancel": "Anuluj",
+      "changed": "Adres e-mail został zmieniony."
+    },
+    "password": {
+      "heading": "Hasło",
+      "intro": "Zmiana hasła wylogowuje Cię wszędzie, także tutaj.",
+      "currentLabel": "Obecne hasło",
+      "newLabel": "Nowe hasło (od 8 do 72 znaków)",
+      "submit": "Zmień hasło",
+      "changed": "Hasło zostało zmienione. Zaloguj się ponownie nowym hasłem."
+    },
+    "errors": {
+      "wrongPassword": "Obecne hasło jest nieprawidłowe.",
+      "unchanged": "To już jest Twój adres.",
+      "invalidCode": "Ten kod jest nieprawidłowy.",
+      "expiredCode": "Ten kod wygasł. Poproś o nowy.",
+      "invalid": "Sprawdź pola i spróbuj ponownie.",
+      "generic": "Coś poszło nie tak. Spróbuj ponownie."
+    }
   }
 }
