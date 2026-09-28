@@ -40,6 +40,23 @@ class StompRelayPropertiesBindingTest {
     }
 
     @Test
+    @DisplayName("the guest login is refused for a broker that is not on loopback, where it could never log in")
+    void refusesGuestForARemoteBroker() {
+        assertThatThrownBy(() -> new StompRelayProperties("kanban-broker-dev", 61613, "guest", "guest"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("STOMP_RELAY_USERNAME");
+        assertThatThrownBy(() -> bind(Map.of("STOMP_RELAY_HOST", "rabbitmq")))
+                .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("the guest login stays the default for a broker on loopback, which RabbitMQ allows")
+    void allowsGuestOnLoopback() {
+        assertThat(new StompRelayProperties("127.0.0.1", 61613, "guest", "guest").username()).isEqualTo("guest");
+        assertThat(new StompRelayProperties("rabbitmq", 61613, "kanban", "kanban").host()).isEqualTo("rabbitmq");
+    }
+
+    @Test
     @DisplayName("a blank host is refused rather than silently relaying nowhere")
     void refusesABlankHost() {
         assertThatThrownBy(() -> new StompRelayProperties(" ", 61613, "guest", "guest"))
