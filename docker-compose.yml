@@ -70,7 +70,7 @@ services:
 
   # image scan and hadolint to cover. Published on loopback only, for `curl :8099/summary` and for
   appinsights-sink:
-    image: node:24-alpine
+    image: node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
     restart: unless-stopped
     command: node /sink/server.mjs
     volumes:
@@ -88,7 +88,7 @@ services:
           memory: 64M
 
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:latest
+    image: mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
     restart: unless-stopped
     command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
     volumes:
@@ -105,7 +105,7 @@ services:
           memory: 256M
 
   postgres:
-    image: postgres:17
+    image: postgres:17@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${SPRING_DATASOURCE_DB}
@@ -127,7 +127,7 @@ services:
           memory: 1G
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -141,7 +141,7 @@ services:
           memory: 128M
 
   rabbitmq:
-    image: rabbitmq:4-alpine
+    image: rabbitmq:4-alpine@sha256:2531fe16e1cb4ec4086d3eaa63118c8f074dd98620d55f022f453a397b18f037
     restart: unless-stopped
     command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && exec docker-entrypoint.sh rabbitmq-server"
     environment:

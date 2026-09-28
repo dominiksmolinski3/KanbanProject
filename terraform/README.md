@@ -808,8 +808,11 @@ Four decisions carry it:
   JDK HTTP client already made elsewhere. Losing the broker loses in-flight board/chat frames, not
   data: nothing here is durable, and a reconnecting client re-subscribes and re-reads rather than
   replaying a queue.
-- **The stock `rabbitmq:4-alpine` image, with the STOMP plugin turned on at container start rather
-  than baked into a custom one.** The image ships with the plugin off; the container's `command`
+- **The stock `rabbitmq:4-alpine` image, pinned by digest, with the STOMP plugin turned on at
+  container start rather than baked into a custom one.** A bare tag lets a restart pull a different
+  image, which is the drift `app_image_tag` is a full SHA to prevent. Dependabot bumps the digest
+  in `docker-compose.yml`, and `PinnedImagesTest` fails the build until this module names the same
+  one, so the local stack and the deployment move together. The image ships with the plugin off; the container's `command`
   runs `rabbitmq-plugins enable --offline rabbitmq_stomp` (needs no running broker) and then hands
   off to the image's own entrypoint. A purpose-built image was declined — one `RUN` line does not
   justify a third image in the CD build/scan/promote matrix.
