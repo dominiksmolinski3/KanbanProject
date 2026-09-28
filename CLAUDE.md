@@ -195,7 +195,7 @@ WebSocket. **No JavaScript changed when the deployment split, and none should ha
 
 The edge config is [frontend/nginx/default.conf.template](frontend/nginx/default.conf.template),
 rendered by the stock nginx entrypoint's `envsubst` at container start so the upstream is a
-deployment fact (`API_UPSTREAM`) rather than something baked into the image. Six things in it are
+deployment fact (`API_UPSTREAM`) rather than something baked into the image. These things in it are
 load-bearing, and each corresponds to something in this application that would otherwise break:
 
 - **`proxy_pass` goes through a variable**, with the resolver read from the container's own
@@ -244,6 +244,14 @@ load-bearing, and each corresponds to something in this application that would o
   the internet. Measured on the compose stack before that block existed, and the deployed-contract
   sweep now asserts the refusal. Container Apps probes the API container directly, so nothing needs
   it proxied.
+- **A path that ends in an extension is a file, and a missing one is a `404`.** The same
+  `try_files` fallback answered `/robots.txt`, `/sitemap.xml` and a missing locale bundle with the
+  shell and a `200`, which the ZAP baseline reported as content and i18next reads as JSON that will
+  not parse. `location ~ \.[A-Za-z0-9]+$` answers `try_files $uri =404` instead. **Every proxying
+  location is `^~` because of it**: a regex location beats a plain prefix, so without that SockJS's
+  `/ws/iframe.html` and any `/api` path ending in a dotted segment (a label named `v1.2`) would be
+  404'd at the edge. `EdgeMissingFileTest` pins both, and fails when a client route in `SpaRoutes`
+  would match the pattern.
 
 Splitting the tier is also what makes the bundle cacheable at last: Spring Security sends `no-store`
 on everything it serves, so the hashed assets had never once been cached. `/assets/` is `immutable`
