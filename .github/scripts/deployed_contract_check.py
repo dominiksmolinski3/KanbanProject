@@ -148,6 +148,11 @@ def main(origin):
               "answered " + str(status) + " - try_files at the edge answers every path with the "
               "shell, so this failing means the edge is not serving the bundle at all")
 
+    status, _, body = get(origin + "/no-such-file.txt")
+    check("a missing file is a 404, not the shell", status == 404 and b'<div id="root">' not in body,
+          "answered " + str(status) + " - the edge's extension location is gone, so try_files "
+          "answers a file that does not exist with index.html")
+
     status, _, _ = get(origin + "/api/columns")
     check("/api/columns refuses an anonymous caller", status in (401, 403), "answered " + str(status))
 

@@ -220,6 +220,7 @@ jobs:
         curl -fsS http://localhost:8080/v3/api-docs | grep -q '"openapi"'
         curl -fsSI http://localhost:8080/ | grep -qi '^content-security-policy:'
         test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health)" = "404"
+        test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/no-such-file.txt)" = "404"
         case "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/columns)" in
           401|403) ;;
           *) echo "/api is not reaching the API container" >&2; exit 1 ;;
