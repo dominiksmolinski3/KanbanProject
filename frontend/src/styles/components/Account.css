@@ -74,6 +74,11 @@
   color: var(--kb-text);
 }
 
+.account-submit:hover:not(:disabled) {
+  border-color: var(--kb-fill-hover);
+  background: var(--kb-fill-hover);
+}
+
 .account-submit:disabled {
   opacity: 0.6;
   cursor: default;

@@ -174,28 +174,6 @@
   }
   
   
-  button[type="submit"] {
-    width: 100%;
-    padding: 12px;
-    background-color: var(--kb-fill);
-    color: var(--kb-on-fill);
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  button[type="submit"]:hover {
-    background-color: var(--kb-fill-hover);
-  }
-  
-  button[type="submit"]:disabled {
-    background-color: var(--kb-lane-strong);
-    color: var(--kb-text-subtle);
-    cursor: not-allowed;
-  }
-
   .auth-button {
     width: 100%;
     padding: 12px 14px;
