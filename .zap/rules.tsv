@@ -2,4 +2,5 @@
 10049	IGNORE	(Storable and Cacheable Content: /assets/ is immutable and the shell is no-cache, which is the cache policy the edge was split to get)
 10055	IGNORE	(CSP style-src unsafe-inline: deliberate, since removing it means nonces and a server-rendered shell this application does not have)
 10109	IGNORE	(Modern Web Application: informational, and answered by running the AJAX spider with -j)
+120000	IGNORE	(Information in Browser localStorage: an anonymous scan sees only i18nextLng; the tokens kept there are the trade-off the Auth section of CLAUDE.md makes, which this rule does not decide)
 90004	IGNORE	(Cross-Origin-Embedder-Policy missing: declined, since require-corp breaks the reCAPTCHA frame; SecurityHeadersTest asserts its absence)

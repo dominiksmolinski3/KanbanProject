@@ -1692,7 +1692,10 @@ and reasons in `local.refusal_alerts`.
   nobody opens by the third, which is how the first one sat for eight days. So each is an `IGNORE`
   line with its reason, the action drops them before filing, and an issue that appears means
   something new. `-j` adds the AJAX spider, which is what the "Modern Web Application" alert was
-  asking for: the classic spider finds no links in a React shell and scans only `/`.
+  asking for: the classic spider finds no links in a React shell and scans only `/`. Its first run
+  raised one alert the classic spider cannot, "Information in Browser localStorage", on
+  `i18nextLng` alone; it is ignored too, because an anonymous scan never sees the tokens and
+  whether they belong in `localStorage` is the Auth section's question, not a scanner's.
   **`external-scan.yml` needed a third thing, which is that it had never scanned anything.** Its
   target came from a `PROD_HOSTNAME` repository variable that was never set — prod was retired
   before it existed — so every step carried `if: skip == false`, every step skipped, and the job
