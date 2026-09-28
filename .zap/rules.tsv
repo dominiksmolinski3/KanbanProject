@@ -1,0 +1,5 @@
+10027	IGNORE	(Suspicious Comments: matches \bUSER\b in minified vendor strings, such as react-router's "in response to some user interaction" warning, after a // inside a regex)
+10049	IGNORE	(Storable and Cacheable Content: /assets/ is immutable and the shell is no-cache, which is the cache policy the edge was split to get)
+10055	IGNORE	(CSP style-src unsafe-inline: deliberate, since removing it means nonces and a server-rendered shell this application does not have)
+10109	IGNORE	(Modern Web Application: informational, and answered by running the AJAX spider with -j)
+90004	IGNORE	(Cross-Origin-Embedder-Policy missing: declined, since require-corp breaks the reCAPTCHA frame; SecurityHeadersTest asserts its absence)

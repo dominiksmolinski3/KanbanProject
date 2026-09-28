@@ -1684,6 +1684,15 @@ and reasons in `local.refusal_alerts`.
   finding. That is the same shape as the dead-letter queue MAIL-04 was filed over, and it cost the
   same. The assignment step is `continue-on-error`, deliberately: the scan has already run and its
   report is already filed by the time it executes, so it must not turn a green sweep red.
+  **A finding that is a decision is written down in [.zap/rules.tsv](.zap/rules.tsv), not left in
+  the issue.** The second report (#283) held nothing new, only this file's own decisions read back
+  to it: `style-src 'unsafe-inline'` and the absent COEP (both argued in the CSP section), the
+  asset cache policy the edge split was for, and a "suspicious comment" that is `user` in a
+  react-router warning string. An issue that re-files the same five decisions every Monday is one
+  nobody opens by the third, which is how the first one sat for eight days. So each is an `IGNORE`
+  line with its reason, the action drops them before filing, and an issue that appears means
+  something new. `-j` adds the AJAX spider, which is what the "Modern Web Application" alert was
+  asking for: the classic spider finds no links in a React shell and scans only `/`.
   **`external-scan.yml` needed a third thing, which is that it had never scanned anything.** Its
   target came from a `PROD_HOSTNAME` repository variable that was never set — prod was retired
   before it existed — so every step carried `if: skip == false`, every step skipped, and the job
