@@ -23,17 +23,17 @@ describe('Moving a task with the keyboard', () => {
     cy.contains('.task', 'Keyboard Movable Task').should('be.visible');
 
     columnOf('Keyboard Movable Task').then((before) => {
-      cy.contains('.task', 'Keyboard Movable Task').focus();
-      cy.focused().should('have.class', 'task');
+      cy.contains('.task', 'Keyboard Movable Task').find('.task-grip').focus();
+      cy.focused().should('have.class', 'task-grip');
 
       cy.focused().type(' ');
       cy.contains('.task', 'Keyboard Movable Task').should('have.class', 'keyboard-held');
       cy.get('.grid-cell.keyboard-move-target').should('have.length', 1);
 
-      cy.contains('.task', 'Keyboard Movable Task').type('{rightarrow}');
+      cy.focused().type('{rightarrow}');
       cy.get('.grid-cell.keyboard-move-target').should('have.length', 1);
 
-      cy.contains('.task', 'Keyboard Movable Task').type(' ');
+      cy.focused().type(' ');
       cy.wait(500);
 
       cy.get('.task.keyboard-held').should('not.exist');
@@ -49,9 +49,9 @@ describe('Moving a task with the keyboard', () => {
     cy.contains('.task', 'Unmoved Task').should('be.visible');
 
     columnOf('Unmoved Task').then((before) => {
-      cy.contains('.task', 'Unmoved Task').focus().type(' ');
-      cy.contains('.task', 'Unmoved Task').type('{rightarrow}');
-      cy.contains('.task', 'Unmoved Task').type('{esc}');
+      cy.contains('.task', 'Unmoved Task').find('.task-grip').focus().type(' ');
+      cy.focused().type('{rightarrow}');
+      cy.focused().type('{esc}');
       cy.wait(500);
 
       cy.get('.task.keyboard-held').should('not.exist');
