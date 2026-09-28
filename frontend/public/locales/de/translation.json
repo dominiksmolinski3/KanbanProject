@@ -11,6 +11,7 @@
     "moreAssignees": "{{n}} weitere Zugewiesene",
     "moreLabels": "{{n}} weitere Labels",
     "subtaskProgress": "{{done}} von {{total}} Unteraufgaben erledigt",
+    "open": "{{title}} öffnen",
     "dueOverdue": "Überfällig seit {{date}}",
     "dueSoon": "Bald fällig: {{date}}",
     "dueLater": "Fällig am {{date}}",
@@ -122,6 +123,7 @@
     },
     "keyboardMove": {
       "roleDescription": "verschiebbare Aufgabe",
+      "grip": "{{title}} verschieben",
       "untitled": "Aufgabe ohne Titel",
       "help": "Drücken Sie die Leertaste, um diese Aufgabe aufzunehmen, und wählen Sie dann mit den Pfeiltasten Spalte und Zeile. Leertaste oder Eingabetaste legt sie dort ab, Escape lässt sie an ihrem Platz. Die Eingabetaste öffnet die Aufgabe.",
       "grabbed": "{{title}} aufgenommen. Wählen Sie mit den Pfeiltasten eine Zelle und legen Sie sie mit der Leertaste ab.",
@@ -429,8 +431,8 @@
     "messages": {
       "deleteConfirm": "Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?",
       "deleteError": "Beim Löschen des Benutzers ist ein Fehler aufgetreten",
-      "fileTooLarge": "Die Datei ist zu groß. Maximale Größe ist 10MB.",
-      "fileTypeError": "Nur JPG- und PNG-Dateien sind erlaubt.",
+      "fileTooLarge": "Die Datei ist zu groß. Maximale Größe ist 1 MB.",
+      "fileTypeError": "Nur JPG-, PNG-, WebP- und GIF-Dateien sind erlaubt.",
       "avatarUpdated": "Avatar wurde erfolgreich aktualisiert",
       "avatarError": "Beim Hochladen des Avatars ist ein Fehler aufgetreten:",
       "loadError": "Beim Laden der Benutzer ist ein Fehler aufgetreten"

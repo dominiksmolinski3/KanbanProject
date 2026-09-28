@@ -11,6 +11,7 @@
       "moreAssignees": "Altri {{n}} assegnatari",
       "moreLabels": "Altre {{n}} etichette",
       "subtaskProgress": "{{done}} di {{total}} sottoattività completate",
+      "open": "Apri {{title}}",
       "dueOverdue": "Scaduta dal {{date}}",
       "dueSoon": "In scadenza: {{date}}",
       "dueLater": "Scadenza {{date}}",
@@ -122,6 +123,7 @@
       },
       "keyboardMove": {
         "roleDescription": "attività spostabile",
+        "grip": "Sposta {{title}}",
         "untitled": "Attività senza titolo",
         "help": "Premi Spazio per prendere questa attività, poi usa le frecce per scegliere colonna e riga. Spazio o Invio la rilascia, Esc la lascia dov'era. Invio apre l'attività.",
         "grabbed": "{{title}} presa. Usa le frecce per scegliere una cella, poi Spazio per rilasciarla.",
@@ -429,8 +431,8 @@
       "messages": {
         "deleteConfirm": "Sei sicuro di voler eliminare questo utente?",
         "deleteError": "Si è verificato un errore durante l'eliminazione dell'utente",
-        "fileTooLarge": "Il file è troppo grande. La dimensione massima è 10MB.",
-        "fileTypeError": "Sono consentiti solo file JPG e PNG.",
+        "fileTooLarge": "Il file è troppo grande. La dimensione massima è 1 MB.",
+        "fileTypeError": "Sono consentiti solo file JPG, PNG, WebP e GIF.",
         "avatarUpdated": "Avatar aggiornato con successo",
         "avatarError": "Si è verificato un errore durante il caricamento dell'avatar:",
         "loadError": "Si è verificato un errore durante il caricamento degli utenti"

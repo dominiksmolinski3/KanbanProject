@@ -11,6 +11,7 @@
       "moreAssignees": "ほか {{n}} 人の担当者",
       "moreLabels": "ほか {{n}} 件のラベル",
       "subtaskProgress": "サブタスク {{total}} 件中 {{done}} 件完了",
+      "open": "{{title}} を開く",
       "dueOverdue": "{{date}} から期限切れ",
       "dueSoon": "まもなく期限: {{date}}",
       "dueLater": "期限 {{date}}",
@@ -122,6 +123,7 @@
       },
       "keyboardMove": {
         "roleDescription": "移動できるタスク",
+        "grip": "{{title}} を移動",
         "untitled": "無題のタスク",
         "help": "スペースキーでこのタスクを持ち上げ、矢印キーで列とレーンを選びます。スペースキーまたは Enter で置き、Escape で元の場所に戻します。Enter でタスクを開きます。",
         "grabbed": "{{title}} を持ち上げました。矢印キーでセルを選び、スペースキーで置いてください。",
@@ -429,8 +431,8 @@
       "messages": {
         "deleteConfirm": "このユーザーを削除してもよろしいですか？",
         "deleteError": "ユーザーの削除中にエラーが発生しました",
-        "fileTooLarge": "ファイルが大きすぎます。最大サイズは10MBです。",
-        "fileTypeError": "JPGとPNGファイルのみ許可されています。",
+        "fileTooLarge": "ファイルが大きすぎます。最大サイズは1MBです。",
+        "fileTypeError": "JPG、PNG、WebP、GIFファイルのみ許可されています。",
         "avatarUpdated": "アバターが正常に更新されました",
         "avatarError": "アバターのアップロード中にエラーが発生しました:",
         "loadError": "ユーザーの読み込み中にエラーが発生しました"

@@ -11,6 +11,7 @@
     "moreAssignees": "Pozostali przypisani: {{n}}",
     "moreLabels": "Pozostałe etykiety: {{n}}",
     "subtaskProgress": "Ukończone podzadania: {{done}} z {{total}}",
+    "open": "Otwórz: {{title}}",
     "dueOverdue": "Po terminie od {{date}}",
     "dueSoon": "Termin wkrótce: {{date}}",
     "dueLater": "Termin: {{date}}",
@@ -122,6 +123,7 @@
     },
     "keyboardMove": {
       "roleDescription": "zadanie do przeniesienia",
+      "grip": "Przenieś: {{title}}",
       "untitled": "Zadanie bez tytułu",
       "help": "Naciśnij spację, aby podnieść to zadanie, a następnie użyj strzałek, by wybrać kolumnę i wiersz. Naciśnij spację lub Enter, aby je upuścić, albo Escape, aby zostawić je na miejscu. Naciśnij Enter, aby otworzyć zadanie.",
       "grabbed": "Podniesiono {{title}}. Użyj strzałek, aby wybrać komórkę, a potem spacji, aby upuścić.",
@@ -429,8 +431,8 @@
     "messages": {
       "deleteConfirm": "Czy na pewno chcesz usunąć tego użytkownika?",
       "deleteError": "Wystąpił błąd podczas usuwania użytkownika",
-      "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 10MB.",
-      "fileTypeError": "Dozwolone są tylko pliki JPG i PNG.",
+      "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 1 MB.",
+      "fileTypeError": "Dozwolone są tylko pliki JPG, PNG, WebP i GIF.",
       "avatarUpdated": "Avatar został pomyślnie zaktualizowany",
       "avatarError": "Wystąpił błąd podczas uploadu avatara:",
       "loadError": "Wystąpił błąd podczas ładowania użytkowników"

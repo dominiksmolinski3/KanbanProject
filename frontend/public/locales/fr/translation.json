@@ -11,6 +11,7 @@
       "moreAssignees": "{{n}} autres assignés",
       "moreLabels": "{{n}} autres étiquettes",
       "subtaskProgress": "{{done}} sur {{total}} sous-tâches terminées",
+      "open": "Ouvrir {{title}}",
       "dueOverdue": "En retard depuis le {{date}}",
       "dueSoon": "Échéance proche : {{date}}",
       "dueLater": "Échéance le {{date}}",
@@ -122,6 +123,7 @@
       },
       "keyboardMove": {
         "roleDescription": "tâche déplaçable",
+        "grip": "Déplacer {{title}}",
         "untitled": "Tâche sans titre",
         "help": "Appuyez sur Espace pour prendre cette tâche, puis utilisez les flèches pour choisir une colonne et une ligne. Espace ou Entrée la dépose, Échap la laisse où elle était. Entrée ouvre la tâche.",
         "grabbed": "{{title}} prise. Utilisez les flèches pour choisir une cellule, puis Espace pour la déposer.",
@@ -429,8 +431,8 @@
       "messages": {
         "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cet utilisateur ?",
         "deleteError": "Une erreur s'est produite lors de la suppression de l'utilisateur",
-        "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 10 Mo.",
-        "fileTypeError": "Seuls les fichiers JPG et PNG sont autorisés.",
+        "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 1 Mo.",
+        "fileTypeError": "Seuls les fichiers JPG, PNG, WebP et GIF sont autorisés.",
         "avatarUpdated": "L'avatar a été mis à jour avec succès",
         "avatarError": "Une erreur s'est produite lors du téléchargement de l'avatar :",
         "loadError": "Une erreur s'est produite lors du chargement des utilisateurs"

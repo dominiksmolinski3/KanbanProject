@@ -11,6 +11,7 @@
       "moreAssignees": "{{n}} asignados más",
       "moreLabels": "{{n}} etiquetas más",
       "subtaskProgress": "{{done}} de {{total}} subtareas completadas",
+      "open": "Abrir {{title}}",
       "dueOverdue": "Vencida desde {{date}}",
       "dueSoon": "Vence pronto: {{date}}",
       "dueLater": "Vence el {{date}}",
@@ -122,6 +123,7 @@
       },
       "keyboardMove": {
         "roleDescription": "tarea movible",
+        "grip": "Mover {{title}}",
         "untitled": "Tarea sin título",
         "help": "Pulsa Espacio para tomar esta tarea y luego usa las flechas para elegir columna y fila. Pulsa Espacio o Intro para soltarla ahí, o Escape para dejarla donde estaba. Pulsa Intro para abrir la tarea.",
         "grabbed": "{{title}} tomada. Usa las flechas para elegir una celda y Espacio para soltarla.",
@@ -429,8 +431,8 @@
       "messages": {
         "deleteConfirm": "¿Está seguro de que desea eliminar este usuario?",
         "deleteError": "Ocurrió un error al eliminar el usuario",
-        "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es 10MB.",
-        "fileTypeError": "Solo se permiten archivos JPG y PNG.",
+        "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es 1 MB.",
+        "fileTypeError": "Solo se permiten archivos JPG, PNG, WebP y GIF.",
         "avatarUpdated": "El avatar ha sido actualizado exitosamente",
         "avatarError": "Ocurrió un error al cargar el avatar:",
         "loadError": "Ocurrió un error al cargar los usuarios"
