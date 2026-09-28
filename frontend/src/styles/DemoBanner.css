@@ -9,9 +9,9 @@
   justify-content: center;
   gap: 12px;
   padding: 10px 40px 10px 16px;
-  background-color: #fff3cd;
-  color: #664d03;
-  border-bottom: 1px solid #ffe69c;
+  background-color: color-mix(in srgb, var(--kb-warn) 16%, var(--kb-card));
+  color: var(--kb-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--kb-warn) 40%, transparent);
   font-size: 14px;
   text-align: center;
 }
@@ -29,12 +29,12 @@
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  color: #664d03;
+  color: var(--kb-text-muted);
   padding: 4px;
 }
 
 .demo-banner-close:hover {
-  color: #40390f;
+  color: var(--kb-text);
 }
 
 @media (max-width: 600px) {
