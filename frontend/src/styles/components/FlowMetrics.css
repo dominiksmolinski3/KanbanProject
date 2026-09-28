@@ -1,8 +1,8 @@
 .viz-root {
-  --viz-surface: #fcfcfb;
-  --viz-text: #0b0b0b;
-  --viz-text-secondary: #52514e;
-  --viz-grid: #e4e3df;
+  --viz-surface: var(--kb-card);
+  --viz-text: var(--kb-text);
+  --viz-text-secondary: var(--kb-text-muted);
+  --viz-grid: var(--kb-border-strong);
   --viz-series-1: #2a78d6;
   --viz-series-2: #eb6834;
   --viz-series-3: #1baf7a;
@@ -14,10 +14,6 @@
 }
 
 :root:where([data-theme="dark"]) .viz-root {
-  --viz-surface: #1a1a19;
-  --viz-text: #ffffff;
-  --viz-text-secondary: #c3c2b7;
-  --viz-grid: #34332f;
   --viz-series-1: #3987e5;
   --viz-series-2: #d95926;
   --viz-series-3: #199e70;
@@ -246,7 +242,7 @@
   color: var(--viz-text);
   border: 1px solid var(--viz-grid);
   border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--kb-shadow-pop);
   font-size: 0.8rem;
   pointer-events: none;
   z-index: 2;

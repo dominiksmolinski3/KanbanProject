@@ -3,8 +3,8 @@
 }
 
 .account-card {
-  background: var(--surface-light);
-  border: 1px solid var(--gray-200);
+  background: var(--kb-card);
+  border: 1px solid var(--kb-border);
   border-radius: 0.75rem;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
@@ -13,10 +13,11 @@
 .account-card h2 {
   margin: 0 0 0.25rem;
   font-size: 1.15rem;
+  color: var(--kb-text);
 }
 
 .account-muted {
-  color: var(--text-muted, #5b6b8c);
+  color: var(--kb-text-muted);
   margin: 0 0 1rem;
   overflow-wrap: anywhere;
 }
@@ -31,15 +32,16 @@
   font-size: 0.85rem;
   font-weight: 600;
   margin-top: 0.4rem;
+  color: var(--kb-text);
 }
 
 .account-form input {
   font: inherit;
   padding: 0.5rem 0.65rem;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--kb-border-strong);
   border-radius: 0.375rem;
-  background: transparent;
-  color: inherit;
+  background: var(--kb-field);
+  color: var(--kb-text);
   max-width: 24rem;
 }
 
@@ -60,16 +62,16 @@
 }
 
 .account-submit {
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: #0e1b36;
+  border: 1px solid var(--kb-fill);
+  background: var(--kb-fill);
+  color: var(--kb-on-fill);
   font-weight: 600;
 }
 
 .account-secondary {
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--kb-border-strong);
   background: transparent;
-  color: inherit;
+  color: var(--kb-text);
 }
 
 .account-submit:disabled {

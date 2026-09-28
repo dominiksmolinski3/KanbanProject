@@ -5,6 +5,7 @@
 
 .activity-header h2 {
   margin: 0 0 0.25rem;
+  color: var(--kb-text);
 }
 
 .activity-explainer {
@@ -26,7 +27,7 @@
   justify-content: space-between;
   gap: 0.5rem 1rem;
   padding: 0.6rem 0.25rem;
-  border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+  border-bottom: 1px solid var(--kb-border);
 }
 
 .activity-entry.activity-deleted .activity-what {

@@ -1,9 +1,9 @@
 .board-panel {
   margin: 0 0 1.75rem;
   padding: 1.1rem 1.25rem 1.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--kb-border);
   border-radius: 0.6rem;
-  background: #fff;
+  background: var(--kb-card);
 }
 
 .board-panel-header {
@@ -16,14 +16,16 @@
 .board-panel-header h2 {
   margin: 0;
   font-size: 1.25rem;
+  color: var(--kb-text);
 }
 
 .board-panel-action {
   margin-left: auto;
   padding: 0.3rem 0.6rem;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--kb-border-strong);
   border-radius: 0.35rem;
   background: transparent;
+  color: var(--kb-text);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -32,29 +34,29 @@
 .board-panel-explainer {
   margin: 0.5rem 0 1rem;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--kb-text-muted);
   max-width: 62ch;
 }
 
 .board-role {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.07);
+  background: var(--kb-lane-strong);
   font-size: 0.72rem;
-  color: #4b5563;
+  color: var(--kb-text-muted);
   white-space: nowrap;
 }
 
 .board-role.owner {
-  background: rgba(37, 99, 235, 0.12);
-  color: #1d4ed8;
+  background: var(--kb-accent-soft);
+  color: var(--kb-accent);
 }
 
 .board-member-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  border-top: 1px solid var(--kb-border);
 }
 
 .board-member {
@@ -63,25 +65,26 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.55rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  border-bottom: 1px solid var(--kb-border);
 }
 
 .board-member-name {
   font-weight: 500;
+  color: var(--kb-text);
 }
 
 .board-member-you {
   margin-left: 0.4rem;
   font-size: 0.72rem;
   font-weight: 400;
-  color: #6b7280;
+  color: var(--kb-text-muted);
 }
 
 .board-member-email {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #4b5563;
+  color: var(--kb-text-muted);
   font-size: 0.9rem;
 }
 
@@ -90,8 +93,8 @@
   height: 1.7rem;
   border: 0;
   border-radius: 999px;
-  background: rgba(220, 38, 38, 0.1);
-  color: #b91c1c;
+  background: var(--kb-danger-soft);
+  color: var(--kb-danger);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
@@ -117,8 +120,10 @@
   flex: 1 1 18rem;
   min-width: 0;
   padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--kb-border-strong);
   border-radius: 0.35rem;
+  background: var(--kb-field);
+  color: var(--kb-text);
   font: inherit;
 }
 
@@ -126,8 +131,8 @@
   padding: 0.45rem 0.9rem;
   border: 0;
   border-radius: 0.35rem;
-  background: #2563eb;
-  color: #fff;
+  background: var(--kb-fill);
+  color: var(--kb-on-fill);
   font: inherit;
   cursor: pointer;
 }
@@ -140,7 +145,7 @@
 .board-invite-note {
   margin: 0.4rem 0 0;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--kb-text-muted);
   max-width: 62ch;
 }
 
@@ -154,16 +159,19 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 0.4rem 0.6rem;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--kb-border-strong);
   border-radius: 0.35rem;
+  background: var(--kb-field);
+  color: var(--kb-text);
   font: inherit;
 }
 
 .board-rename button {
   padding: 0.4rem 0.8rem;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--kb-border-strong);
   border-radius: 0.35rem;
   background: transparent;
+  color: var(--kb-text);
   font: inherit;
   cursor: pointer;
 }
@@ -171,10 +179,10 @@
 .board-delete {
   margin-top: 1.1rem;
   padding: 0.4rem 0.8rem;
-  border: 1px solid rgba(220, 38, 38, 0.35);
+  border: 1px solid color-mix(in srgb, var(--kb-danger) 35%, transparent);
   border-radius: 0.35rem;
   background: transparent;
-  color: #b91c1c;
+  color: var(--kb-danger);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -184,6 +192,7 @@
   margin: 1.25rem 0 0.5rem;
   font-size: 0.95rem;
   font-weight: 600;
+  color: var(--kb-text);
 }
 
 .board-invitation-list {
@@ -197,7 +206,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+  border-bottom: 1px solid var(--kb-border);
 }
 
 .board-invitation-accept,

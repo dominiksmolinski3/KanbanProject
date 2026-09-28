@@ -1,0 +1,28 @@
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.navigation {
+  display: flex;
+  justify-content: center;
+}
+
+.back-btn {
+  display: inline-block;
+  padding: 0.6em 1.2em;
+  background: var(--kb-card);
+  color: var(--kb-text);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  border: 1px solid var(--kb-border-strong);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.back-btn:hover {
+  background: var(--kb-hover);
+  color: var(--kb-accent);
+  border-color: var(--kb-accent);
+  transform: translateY(-2px);
+}
