@@ -6,6 +6,7 @@ import HomePage from './components/HomePage';
 import NotFound from './components/NotFound';
 import PageLoading from './components/PageLoading';
 import './styles/App.css';
+import './styles/pages.css';
 
 const ProtectedLayout = lazy(() => import('./components/ProtectedLayout'));
 const BoardPage = lazy(() => import('./components/BoardPage'));
