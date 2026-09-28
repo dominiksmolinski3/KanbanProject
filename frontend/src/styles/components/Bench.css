@@ -122,27 +122,25 @@
   color: #0e1b36;
 }
 
-@media (prefers-color-scheme: dark) {
-  .bench {
-    background-color: #0e1b36;
-  }
-  
-  .bench h3 {
-    border-bottom-color: #232429;
-    color: #e2e2e2;
-  }
-  
-  .user-card {
-    background-color: #152442;
-  }
-  
-  .user-name {
-    color: #e2e2e2;
-  }
-  
-  .avatar {
-    background-color: #86d6ff;
-  }
+:where([data-theme="dark"]) .bench {
+  background-color: #0e1b36;
+}
+
+:where([data-theme="dark"]) .bench h3 {
+  border-bottom-color: #232429;
+  color: #e2e2e2;
+}
+
+:where([data-theme="dark"]) .user-card {
+  background-color: #152442;
+}
+
+:where([data-theme="dark"]) .user-name {
+  color: #e2e2e2;
+}
+
+:where([data-theme="dark"]) .avatar {
+  background-color: #86d6ff;
 }
 .user-wip-limit {
   margin-top: 5px;

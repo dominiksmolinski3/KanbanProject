@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 import BoardSwitcher from './BoardSwitcher';
 import { useAuth } from '../context/AuthContext';
 
@@ -110,6 +111,10 @@ function Header() {
             <div className="header-menu-row">
               <span className="header-menu-label">{t('header.language')}</span>
               <LanguageSwitcher />
+            </div>
+            <div className="header-menu-row">
+              <span className="header-menu-label">{t('header.theme')}</span>
+              <ThemeSwitcher />
             </div>
             <Link to="/account" className="header-menu-item" onClick={() => setMenuOpen(false)}>
               <svg {...ICON_PROPS}>

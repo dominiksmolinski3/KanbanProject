@@ -1315,20 +1315,18 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .history-nav-btn {
-    background-color: #2a2a2a;
-    border-color: #444;
-    color: #eee;
-  }
-  
-  .time-spent-item {
-    background-color: #2a2a2a;
-  }
-  
-  .column-time {
-    color: #aaa;
-  }
+:where([data-theme="dark"]) .history-nav-btn {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: #eee;
+}
+
+:where([data-theme="dark"]) .time-spent-item {
+  background-color: #2a2a2a;
+}
+
+:where([data-theme="dark"]) .column-time {
+  color: #aaa;
 }
 
 h3, h4 {

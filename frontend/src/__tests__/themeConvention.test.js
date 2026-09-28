@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { THEME_CHANGE_EVENT, THEME_STORAGE_KEY, writeThemePreference } from '../theme/themePreference';
 
+const FRONTEND = path.resolve(__dirname, '..', '..');
 const STYLES = path.resolve(__dirname, '..', 'styles');
+const INIT_SCRIPT = path.join(FRONTEND, 'public', 'theme-init.js');
 
 function stylesheets(dir = STYLES) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -16,16 +19,79 @@ describe('one dark-mode convention', () => {
     name: path.relative(STYLES, file),
     css: fs.readFileSync(file, 'utf8'),
   }));
+  const offenders = (pattern) => sheets.filter(({ css }) => pattern.test(css)).map(({ name }) => name);
 
   test('the scan finds the stylesheets', () => {
     expect(sheets.length).toBeGreaterThan(10);
   });
 
   test('no stylesheet keys dark mode on a class nothing sets', () => {
-    const offenders = sheets
-      .filter(({ css }) => /html\.(dark|light)\b|:not\(\.(light|dark)\)/.test(css))
-      .map(({ name }) => name);
+    expect(offenders(/html\.(dark|light)\b|:not\(\.(light|dark)\)/)).toEqual([]);
+  });
 
-    expect(offenders).toEqual([]);
+  test('no stylesheet reads the system setting itself, so the switch reaches every screen', () => {
+    expect(offenders(/prefers-color-scheme/)).toEqual([]);
+    expect(offenders(/data-theme="light"/)).toEqual([]);
+  });
+
+  test('dark rules keep the specificity the media query gave them', () => {
+    expect(offenders(/(?<!:where\()\[data-theme="dark"\]/)).toEqual([]);
+  });
+});
+
+describe('the pre-paint theme script', () => {
+  const source = fs.readFileSync(INIT_SCRIPT, 'utf8');
+  let systemDark;
+  let systemListeners;
+
+  const run = () => {
+    // eslint-disable-next-line no-new-func
+    new Function(source)();
+  };
+
+  beforeEach(() => {
+    systemDark = false;
+    systemListeners = [];
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    window.matchMedia = jest.fn(() => ({
+      get matches() { return systemDark; },
+      addEventListener: (_, listener) => systemListeners.push(listener),
+    }));
+  });
+
+  test('is loaded as a classic script in the head, before the bundle', () => {
+    const html = fs.readFileSync(path.join(FRONTEND, 'index.html'), 'utf8');
+    const head = html.slice(0, html.indexOf('</head>'));
+    expect(head).toMatch(/<script src="\/theme-init\.js"><\/script>/);
+  });
+
+  test('agrees with the switch on the storage key and the change event', () => {
+    expect(source).toContain(`'${THEME_STORAGE_KEY}'`);
+    expect(source).toContain(`'${THEME_CHANGE_EVENT}'`);
+  });
+
+  test('follows the system when nothing is chosen, including a later change', () => {
+    systemDark = true;
+    run();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+
+    systemDark = false;
+    systemListeners.forEach((listener) => listener());
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
+  test('a stored choice wins over the system, and the switch applies a new one at once', () => {
+    systemDark = true;
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    run();
+    expect(document.documentElement.dataset.theme).toBe('light');
+
+    writeThemePreference('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+
+    writeThemePreference('system');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });
