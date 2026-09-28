@@ -105,7 +105,7 @@ services:
           memory: 256M
 
   postgres:
-    image: postgres:17@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${SPRING_DATASOURCE_DB}
@@ -127,7 +127,7 @@ services:
           memory: 1G
 
   redis:
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
