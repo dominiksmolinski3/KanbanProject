@@ -58,7 +58,8 @@ jobs:
           HOST: ${{ steps.target.outputs.host }}
         run: |
           set -euo pipefail
-          docker run --rm -v "$PWD:/out" \
+          # The image runs as uid 1000 and the workspace belongs to the runner's uid, so --jsonfile needs the runner's.
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/out" \
             drwetter/testssl.sh@sha256:1abaabba5905a25feab459c444407b2ec04f6d9096b22c933a9ae88194183ee2 \
             --quiet --color 0 --jsonfile /out/testssl.json "https://$HOST" | tee testssl-report.txt
 
