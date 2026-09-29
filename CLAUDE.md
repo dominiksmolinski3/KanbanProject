@@ -1565,7 +1565,11 @@ and reasons in `local.refusal_alerts`.
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
   round-robin from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep
   in step and a new spec cannot land in no leg; an empty share is a failure, because an empty
-  `--spec` means *every* spec to Cypress. The cross-replica spec runs on leg 1. The Cypress binary
+  `--spec` means *every* spec to Cypress.
+  **Both Cypress steps retry once, and only when Chromium never connected**
+  (`cypress/retry-browser-connect.js`): about 0.8% of e2e jobs died that way before any test ran,
+  on Cypress 16.0 and 16.1 alike. The match is Cypress's own `Timed out waiting for the browser to
+  connect` line, so a failing test is never retried, and a retry leaves a `::warning` on the run. The cross-replica spec runs on leg 1. The Cypress binary
   is cached on the lockfile hash, which also caches its verified state, and the job no longer
   spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
   logs on failure instead.
