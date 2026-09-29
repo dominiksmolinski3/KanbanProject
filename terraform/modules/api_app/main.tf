@@ -1,6 +1,9 @@
 locals {
   app_port = 8080
 
+  cpu_cores  = 0.5
+  memory_gib = 1
+
   ghcr_credentials_configured = var.ghcr_token != ""
   acs_mail_configured         = var.acs_email_connection_string != ""
   delivery_reports_configured = var.mail_delivery_report_key != ""
@@ -115,8 +118,8 @@ resource "azurerm_container_app" "main" {
     container {
       name   = "kanban-api"
       image  = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
-      cpu    = 0.5
-      memory = "1Gi"
+      cpu    = local.cpu_cores
+      memory = "${local.memory_gib}Gi"
 
       env {
         name        = "SPRING_DATASOURCE_URL"
