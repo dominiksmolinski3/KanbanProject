@@ -52,6 +52,13 @@ resource "azurerm_storage_account" "attachments" {
   }
 }
 
+resource "azurerm_management_lock" "attachments" {
+  name       = "lock-${azurerm_storage_account.attachments.name}"
+  scope      = azurerm_storage_account.attachments.id
+  lock_level = "CanNotDelete"
+  notes      = "prevent_destroy only stops Terraform; this stops the portal and the CLI. Blob deletes are data-plane calls and are not affected."
+}
+
 resource "azurerm_private_dns_zone" "blob" {
   tags                = var.tags
   name                = "privatelink.blob.core.windows.net"
