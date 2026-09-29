@@ -117,7 +117,8 @@ resource "azurerm_application_insights_standard_web_test" "public_origin" {
     ssl_cert_remaining_lifetime = 7
 
     content {
-      content_match = "\"openapi\""
+      content_match      = "\"openapi\""
+      pass_if_text_found = true
     }
   }
 }
