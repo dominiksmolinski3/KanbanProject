@@ -59,6 +59,13 @@ resource "azurerm_postgresql_flexible_server" "main" {
   }
 }
 
+resource "azurerm_management_lock" "server" {
+  name       = "lock-${azurerm_postgresql_flexible_server.main.name}"
+  scope      = azurerm_postgresql_flexible_server.main.id
+  lock_level = "CanNotDelete"
+  notes      = "prevent_destroy only stops Terraform; this stops the portal and the CLI. Remove the lock first to delete the server on purpose."
+}
+
 resource "azurerm_postgresql_flexible_server_database" "main" {
   name      = "kanban"
   server_id = azurerm_postgresql_flexible_server.main.id
