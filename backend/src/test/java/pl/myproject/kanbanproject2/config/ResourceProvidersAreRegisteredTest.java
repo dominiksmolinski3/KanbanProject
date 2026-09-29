@@ -43,6 +43,7 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_private_dns_", "Microsoft.Network");
         put("azurerm_private_endpoint", "Microsoft.Network");
         put("azurerm_managed_redis", "Microsoft.Cache");
+        put("azurerm_management_lock", "Microsoft.Authorization");
         put("azurerm_resource_group", "Microsoft.Resources");
         put("azurerm_role_assignment", "Microsoft.Authorization");
         put("azurerm_storage_", "Microsoft.Storage");
