@@ -38,6 +38,7 @@ provider "azurerm" {
     "Microsoft.ManagedIdentity",
     "Microsoft.Network",
     "Microsoft.OperationalInsights",
+    "Microsoft.PolicyInsights",
     "Microsoft.Storage",
   ]
 
