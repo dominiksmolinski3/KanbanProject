@@ -75,7 +75,7 @@ resource "azurerm_monitor_metric_alert" "container_app_high_cpu" {
   name                = "kanban-${var.env}-high-cpu"
   resource_group_name = var.resource_group_name
   scopes              = [var.container_app_id]
-  description         = "Average CPU usage is close to the configured limit."
+  description         = "Average CPU usage is above 80% of one replica's limit."
   severity            = 2
   enabled             = true
 
@@ -87,7 +87,7 @@ resource "azurerm_monitor_metric_alert" "container_app_high_cpu" {
     metric_name      = "UsageNanoCores"
     aggregation      = "Average"
     operator         = "GreaterThan"
-    threshold        = 200000000
+    threshold        = floor(var.container_cpu_cores * 0.8 * 1000000000)
   }
 
   action {
@@ -101,7 +101,7 @@ resource "azurerm_monitor_metric_alert" "container_app_high_memory" {
   name                = "kanban-${var.env}-high-memory"
   resource_group_name = var.resource_group_name
   scopes              = [var.container_app_id]
-  description         = "Average memory working set is close to the configured limit."
+  description         = "Average memory working set is above 95% of one replica's limit, which is where an OOM kill comes next. The JVM normally sits around 90%."
   severity            = 2
   enabled             = true
 
@@ -113,7 +113,7 @@ resource "azurerm_monitor_metric_alert" "container_app_high_memory" {
     metric_name      = "WorkingSetBytes"
     aggregation      = "Average"
     operator         = "GreaterThan"
-    threshold        = 450000000
+    threshold        = floor(var.container_memory_bytes * 0.95)
   }
 
   action {

@@ -252,6 +252,8 @@ module "diagnostics" {
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   container_app_id           = module.api_app.container_app_id
+  container_cpu_cores        = module.api_app.cpu_cores
+  container_memory_bytes     = module.api_app.memory_bytes
   container_app_env_id       = module.vnet.container_app_env_id
   resource_group_name        = azurerm_resource_group.main.name
   alert_email                = var.alert_email

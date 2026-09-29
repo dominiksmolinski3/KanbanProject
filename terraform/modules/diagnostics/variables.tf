@@ -13,6 +13,16 @@ variable "container_app_id" {
   description = "Resource ID of the Azure Container App."
 }
 
+variable "container_cpu_cores" {
+  type        = number
+  description = "CPU limit of one replica of container_app_id. The CPU alert fires at a share of it."
+}
+
+variable "container_memory_bytes" {
+  type        = number
+  description = "Memory limit of one replica of container_app_id, in bytes. The memory alert fires at a share of it."
+}
+
 variable "container_app_env_id" {
   type        = string
   description = "Resource ID of the Azure Container Apps Environment."
