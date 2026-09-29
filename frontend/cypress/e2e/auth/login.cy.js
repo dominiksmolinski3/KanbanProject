@@ -16,7 +16,11 @@ describe('Login Functionality', () => {
     cy.get('input[type="email"]').first().type('wrong@example.com');
     cy.get('input[type="password"]').first().type('wrongpassword');
     cy.contains('button', 'Sign In').click();
-    cy.contains('Invalid email or password').should('be.visible');
+    cy.readFile('public/locales/en/translation.json').then((en) => {
+      cy.get('.error-message')
+        .should('have.text', en.errors.codes.INVALID_CREDENTIALS)
+        .and('not.contain', '{');
+    });
     cy.url().should('not.include', '/board');
   });
 
