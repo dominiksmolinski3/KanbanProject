@@ -32,6 +32,7 @@ class ResourceProvidersAreRegisteredTest {
     private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
 
     private static final Map<String, String> NAMESPACES = new LinkedHashMap<>() {{
+        put("azurerm_consumption_", "Microsoft.Consumption");
         put("azurerm_container_app", "Microsoft.App");
         put("azurerm_eventgrid_", "Microsoft.EventGrid");
         put("azurerm_key_vault", "Microsoft.KeyVault");

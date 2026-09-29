@@ -18,3 +18,5 @@ web_max_replicas = 5
 api_max_replicas = 5
 
 api_db_connection_budget = 30
+
+monthly_budget = 40
