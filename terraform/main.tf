@@ -5,6 +5,7 @@ locals {
       application = "kanban"
       managed_by  = "terraform"
       owner       = var.owner_tag
+      repository  = "github.com/${var.github_repository_owner}/KanbanProject"
     },
     var.extra_tags,
   )
