@@ -246,14 +246,14 @@ jobs:
       run: |
         specs=$(node cypress/shard.js "$SHARD" "$SHARDS")
         echo "shard $SHARD of $SHARDS: $specs"
-        npm run cypress:run -- --spec "$specs"
+        node cypress/retry-browser-connect.js npm run cypress:run -- --spec "$specs"
 
     - name: Run the cross-replica board-sync spec
       if: matrix.shard == 1
       working-directory: frontend
       env:
         CYPRESS_BASE_URL: http://localhost:8080
-      run: npm run cypress:run:replicas
+      run: node cypress/retry-browser-connect.js npm run cypress:run:replicas
 
     - name: Check what the Application Insights agent exported
       run: node observability/appinsights-sink/assert-exported.mjs http://127.0.0.1:8099 2
