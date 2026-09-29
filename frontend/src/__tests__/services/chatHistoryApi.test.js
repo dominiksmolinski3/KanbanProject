@@ -35,7 +35,7 @@ describe('chatHistoryApi', () => {
     test('a refused request throws rather than resolving to nothing', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-      await expect(fetchBoardChatHistory({ boardId: 7 })).rejects.toThrow('404');
+      await expect(fetchBoardChatHistory({ boardId: 7 })).rejects.toMatchObject({ status: 404 });
     });
   });
 
@@ -55,7 +55,7 @@ describe('chatHistoryApi', () => {
     test('a peer sharing no board throws on the 404', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-      await expect(fetchDirectChatHistory({ peer: 'nobody@example.com' })).rejects.toThrow('404');
+      await expect(fetchDirectChatHistory({ peer: 'nobody@example.com' })).rejects.toMatchObject({ status: 404 });
     });
   });
 });

@@ -45,12 +45,12 @@ describe('authService registration and resend', () => {
     window.fetch.mockResolvedValue({
       ok: false,
       status: 429,
-      text: () => Promise.resolve('Too many requests'),
+      text: () => Promise.resolve(JSON.stringify({ code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later' })),
     });
 
     await expect(
       authService.register({ username: 'a', email: 'a@example.test', password: 'correct-horse' })
-    ).rejects.toThrow('Too many requests');
+    ).rejects.toMatchObject({ status: 429, code: 'TOO_MANY_REQUESTS' });
   });
 
   test('resend posts the address as a query parameter and resolves on 202', async () => {
@@ -129,11 +129,11 @@ describe('authService verification', () => {
     window.fetch.mockResolvedValue({
       ok: false,
       status: 400,
-      text: () => Promise.resolve('Invalid verification code'),
+      text: () => Promise.resolve(JSON.stringify({ code: 'INVALID_VERIFICATION_CODE', message: 'Invalid verification code' })),
     });
 
     await expect(
       authService.verifyAccount({ email: 'a@example.test', verificationCode: '222222' })
-    ).rejects.toThrow('Invalid verification code');
+    ).rejects.toMatchObject({ code: 'INVALID_VERIFICATION_CODE', message: 'Invalid verification code' });
   });
 });

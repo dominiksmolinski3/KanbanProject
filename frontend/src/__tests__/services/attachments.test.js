@@ -21,7 +21,7 @@ describe('task attachments', () => {
     test('a failure is an error rather than an empty list', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
-      await expect(api.fetchTaskAttachments(7)).rejects.toThrow('500');
+      await expect(api.fetchTaskAttachments(7)).rejects.toMatchObject({ status: 500 });
     });
   });
 
@@ -120,14 +120,14 @@ describe('task attachments', () => {
     test('a refused download creates no object URL', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toThrow('404');
+      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toMatchObject({ status: 404 });
       expect(URL.createObjectURL).not.toHaveBeenCalled();
     });
 
     test('a refusal is not retried, because the next answer would be the same one', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toThrow('404');
+      await expect(api.downloadTaskAttachment(7, 3, 'report.pdf')).rejects.toMatchObject({ status: 404 });
       expect(fetch).toHaveBeenCalledTimes(1);
     });
   });
@@ -237,7 +237,7 @@ describe('task attachments', () => {
     test('any other failure is reported', async () => {
       fetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
-      await expect(api.deleteTaskAttachment(7, 3)).rejects.toThrow('500');
+      await expect(api.deleteTaskAttachment(7, 3)).rejects.toMatchObject({ status: 500 });
     });
   });
 });

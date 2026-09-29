@@ -24,7 +24,7 @@ describe('task comments', () => {
   test('a thread that will not load is an error', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-    await expect(api.fetchTaskComments(7)).rejects.toThrow('404');
+    await expect(api.fetchTaskComments(7)).rejects.toMatchObject({ status: 404 });
   });
 
   test('posts the body as JSON', async () => {
@@ -41,7 +41,7 @@ describe('task comments', () => {
   test('a refused post is an error, so the draft is kept', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    await expect(api.addTaskComment(7, 'hello')).rejects.toThrow('403');
+    await expect(api.addTaskComment(7, 'hello')).rejects.toMatchObject({ status: 403 });
   });
 
   test('an edit patches the one comment', async () => {
@@ -58,7 +58,7 @@ describe('task comments', () => {
   test("a refused edit - somebody else's comment - is an error", async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    await expect(api.editTaskComment(7, 3, 'x')).rejects.toThrow('403');
+    await expect(api.editTaskComment(7, 3, 'x')).rejects.toMatchObject({ status: 403 });
   });
 
   test('a delete succeeds, and so does deleting one that is already gone', async () => {
@@ -72,6 +72,6 @@ describe('task comments', () => {
   test('any other refused delete is an error', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    await expect(api.deleteTaskComment(7, 3)).rejects.toThrow('403');
+    await expect(api.deleteTaskComment(7, 3)).rejects.toMatchObject({ status: 403 });
   });
 });

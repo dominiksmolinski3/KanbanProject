@@ -25,7 +25,7 @@ describe('fetchFlowMetrics', () => {
   test('throws on a refusal so the screen can say so', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 400 });
 
-    await expect(fetchFlowMetrics({})).rejects.toThrow('400');
+    await expect(fetchFlowMetrics({})).rejects.toMatchObject({ status: 400 });
   });
 });
 
@@ -53,6 +53,6 @@ describe('defineFlow', () => {
   test('throws on a refusal so the screen can say so', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 403 });
 
-    await expect(defineFlow({ boardId: 3 })).rejects.toThrow('403');
+    await expect(defineFlow({ boardId: 3 })).rejects.toMatchObject({ status: 403 });
   });
 });

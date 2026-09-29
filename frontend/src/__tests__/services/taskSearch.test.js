@@ -78,7 +78,7 @@ describe('searching tasks', () => {
   test('a refused search is an error rather than an empty result set', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 400 });
 
-    await expect(api.searchTasks({ q: 'x' })).rejects.toThrow('400');
+    await expect(api.searchTasks({ q: 'x' })).rejects.toMatchObject({ status: 400 });
   });
 
   test('the results come back as the server sent them', async () => {

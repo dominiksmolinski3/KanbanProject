@@ -54,10 +54,10 @@ describe('authService password reset', () => {
     });
 
     test('a rate limit still surfaces as an error', async () => {
-      window.fetch.mockResolvedValue(rejected(429, 'Too many requests'));
+      window.fetch.mockResolvedValue(rejected(429, JSON.stringify({ code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later' })));
 
       await expect(authService.requestPasswordReset('a@example.test'))
-        .rejects.toThrow('Too many requests');
+        .rejects.toMatchObject({ status: 429, code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later' });
     });
   });
 
@@ -77,10 +77,10 @@ describe('authService password reset', () => {
     });
 
     test('a wrong code surfaces the server message', async () => {
-      window.fetch.mockResolvedValue(rejected(400, 'Invalid password reset code'));
+      window.fetch.mockResolvedValue(rejected(400, JSON.stringify({ code: 'INVALID_RESET_CODE', message: 'Invalid password reset code' })));
 
       await expect(authService.resetPassword('a@example.test', '000000', 'brand-new-password'))
-        .rejects.toThrow('Invalid password reset code');
+        .rejects.toMatchObject({ code: 'INVALID_RESET_CODE', message: 'Invalid password reset code' });
     });
   });
 
@@ -104,10 +104,10 @@ describe('authService password reset', () => {
     });
 
     test('a wrong current password surfaces as an error rather than resolving', async () => {
-      window.fetch.mockResolvedValue(rejected(401, 'Invalid email or password'));
+      window.fetch.mockResolvedValue(rejected(401, JSON.stringify({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' })));
 
       await expect(authService.changePassword(7, 'wrong', 'a-new-password'))
-        .rejects.toThrow('Invalid email or password');
+        .rejects.toMatchObject({ status: 401, code: 'INVALID_CREDENTIALS' });
     });
 
     test('the error carries the server code, so the screen can say which field was wrong', async () => {
