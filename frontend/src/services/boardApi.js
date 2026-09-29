@@ -1,20 +1,22 @@
+import { apiError } from './apiError';
+
 const BOARDS = '/api/boards';
 
-const read = async (response, what) => {
+const read = async (response) => {
   if (!response.ok) {
-    throw new Error(`Error ${what}: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
 
 export const fetchBoards = async () => {
   const response = await fetch(BOARDS);
-  return read(response, 'fetching boards');
+  return read(response);
 };
 
 export const fetchCurrentBoard = async () => {
   const response = await fetch(`${BOARDS}/current`);
-  return read(response, 'fetching the current board');
+  return read(response);
 };
 
 export const createBoard = async (name) => {
@@ -23,7 +25,7 @@ export const createBoard = async (name) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name })
   });
-  return read(response, 'creating a board');
+  return read(response);
 };
 
 export const renameBoard = async (boardId, name) => {
@@ -32,13 +34,13 @@ export const renameBoard = async (boardId, name) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name })
   });
-  return read(response, 'renaming the board');
+  return read(response);
 };
 
 export const deleteBoard = async (boardId) => {
   const response = await fetch(`${BOARDS}/${boardId}`, { method: 'DELETE' });
   if (!response.ok) {
-    throw new Error(`Error deleting the board: ${response.status}`);
+    throw await apiError(response);
   }
   return true;
 };
@@ -49,12 +51,12 @@ export const inviteToBoard = async (boardId, email, role) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(role ? { email, role } : { email })
   });
-  return read(response, 'sending an invitation');
+  return read(response);
 };
 
 export const fetchBoardInvitations = async (boardId) => {
   const response = await fetch(`${BOARDS}/${boardId}/invitations`);
-  return read(response, 'fetching invitations');
+  return read(response);
 };
 
 export const revokeBoardInvitation = async (boardId, invitationId) => {
@@ -62,7 +64,7 @@ export const revokeBoardInvitation = async (boardId, invitationId) => {
     method: 'DELETE'
   });
   if (!response.ok) {
-    throw new Error(`Error revoking the invitation: ${response.status}`);
+    throw await apiError(response);
   }
   return true;
 };
@@ -71,23 +73,23 @@ const INVITATIONS = '/api/invitations';
 
 export const fetchMyInvitations = async () => {
   const response = await fetch(INVITATIONS);
-  return read(response, 'fetching your invitations');
+  return read(response);
 };
 
 export const acceptInvitation = async (invitationId) => {
   const response = await fetch(`${INVITATIONS}/${invitationId}/accept`, { method: 'POST' });
-  return read(response, 'accepting the invitation');
+  return read(response);
 };
 
 export const declineInvitation = async (invitationId) => {
   const response = await fetch(`${INVITATIONS}/${invitationId}/decline`, { method: 'POST' });
   if (!response.ok) {
-    throw new Error(`Error declining the invitation: ${response.status}`);
+    throw await apiError(response);
   }
   return true;
 };
 
 export const removeBoardMember = async (boardId, userId) => {
   const response = await fetch(`${BOARDS}/${boardId}/members/${userId}`, { method: 'DELETE' });
-  return read(response, 'removing a member');
+  return read(response);
 };
