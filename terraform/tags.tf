@@ -48,6 +48,8 @@ resource "azurerm_resource_group_policy_remediation" "inherit_tag" {
   name                 = "inherit-tag-${each.key}"
   resource_group_id    = azurerm_resource_group.main.id
   policy_assignment_id = azurerm_resource_group_policy_assignment.inherit_tag[each.key].id
+  # A new assignment has no compliance data yet, so the default mode finds nothing to fix.
+  resource_discovery_mode = "ReEvaluateCompliance"
 
   depends_on = [time_sleep.wait_for_inherit_tag_roles]
 }
