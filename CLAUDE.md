@@ -1810,6 +1810,14 @@ Most of the Polish leaks needed no new wording at all — `taskActions.descripti
 beside the hardcoded string. That is the argument for the guard rather than for the fixes: the
 keys were never the hard part.
 
+**A server error reaches the screen as a sentence keyed by its `code`, never as its body.** Every
+service throws through `services/apiError.js`, which translates `errors.codes.<CODE>` and falls
+back by status, then to `errors.generic`. Before that, most calls threw
+`new Error(await response.text())`, so a wrong password showed
+`{"code":"INVALID_CREDENTIALS",...}` in the sign-in box. **A new `ExceptionIdentifier` needs a
+sentence in all nine bundles**: `ErrorCodesAreTranslatedTest` reads the enum, the literal codes in
+`GlobalExceptionHandler` and the nginx template, and fails the build on one with no key.
+
 **Mail is the tenth bundle set, and it is on the server (`V11`).** The client picks its own language;
 the two moments mail is composed have no client to ask — a verification code is written by a route
 whose browser may never be seen again, and an overdue notice by a scheduler with no request at all —
