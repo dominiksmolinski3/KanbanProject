@@ -12,3 +12,8 @@ output "username" {
   description = "The one account WebSocketConfig's client and system logins both use. Not a secret - RABBITMQ-PASSWORD is."
   value       = local.username
 }
+
+output "container_app_id" {
+  description = "Resource ID of the broker Container App, for its diagnostics and restart alert."
+  value       = azurerm_container_app.main.id
+}
