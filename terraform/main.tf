@@ -265,4 +265,8 @@ module "diagnostics" {
 
   container_app_url        = module.web_app.container_app_url
   mail_delivery_report_key = var.mail_delivery_report_key
+
+  web_container_app_id    = module.web_app.container_app_id
+  broker_container_app_id = module.broker.container_app_id
+  app_insights_id         = azurerm_application_insights.main.id
 }

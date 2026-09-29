@@ -76,3 +76,18 @@ variable "mail_delivery_report_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "web_container_app_id" {
+  type        = string
+  description = "Resource ID of the edge Container App, the only one with a public ingress."
+}
+
+variable "broker_container_app_id" {
+  type        = string
+  description = "Resource ID of the RabbitMQ broker Container App."
+}
+
+variable "app_insights_id" {
+  type        = string
+  description = "Resource ID of the Application Insights component the availability test reports to."
+}
