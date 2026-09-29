@@ -30,6 +30,7 @@ provider "azurerm" {
   resource_providers_to_register = [
     "Microsoft.App",
     "Microsoft.Cache",
+    "Microsoft.Consumption",
     "Microsoft.DBforPostgreSQL",
     "Microsoft.EventGrid",
     "Microsoft.Insights",

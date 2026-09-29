@@ -198,6 +198,17 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "monthly_budget" {
+  description = "Monthly cost budget for the resource group, in the subscription's billing currency. Owners and alert_email are mailed at 50, 80 and 100% of actual spend and when the forecast crosses 100%. Null creates no budget."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.monthly_budget == null || try(var.monthly_budget > 0, false)
+    error_message = "monthly_budget must be a positive amount, or null for no budget."
+  }
+}
 variable "postgres_sku_name" {
   description = "Compute SKU for the Postgres flexible server. Burstable (B_) tiers throttle once CPU credits run out and cannot run high availability."
   type        = string
