@@ -55,7 +55,7 @@ describe('reorder helpers', () => {
   test('any other failure stays an ordinary error', async () => {
     window.fetch.mockResolvedValue({ ok: false, status: 400 });
 
-    await expect(reorderTasks([1, 1])).rejects.toThrow('Error reordering tasks: 400');
+    await expect(reorderTasks([1, 1])).rejects.toMatchObject({ status: 400 });
     await expect(reorderTasks([1, 1])).rejects.not.toBeInstanceOf(ConcurrentModificationError);
   });
 });

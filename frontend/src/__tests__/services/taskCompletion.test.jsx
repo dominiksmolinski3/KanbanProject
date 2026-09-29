@@ -46,7 +46,7 @@ describe('task completion', () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ code: 'TASK_NOT_FOUND' }) });
 
     const failure = updateTaskCompletion(7, true);
-    await expect(failure).rejects.toThrow('404');
+    await expect(failure).rejects.toMatchObject({ status: 404 });
     await expect(failure).rejects.not.toBeInstanceOf(ParentTaskNotCompletedError);
   });
 
@@ -63,7 +63,7 @@ describe('task completion', () => {
       json: async () => { throw new SyntaxError('not json'); }
     });
 
-    await expect(updateTaskCompletion(7, true)).rejects.toThrow('500');
+    await expect(updateTaskCompletion(7, true)).rejects.toMatchObject({ status: 500 });
   });
 });
 
@@ -94,7 +94,7 @@ describe('daily focus', () => {
   test('a failed update throws rather than resolving undefined', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-    await expect(setTaskDailyFocus(3, true)).rejects.toThrow('404');
+    await expect(setTaskDailyFocus(3, true)).rejects.toMatchObject({ status: 404 });
   });
 
   test('the list route is read from the collection, not per task', async () => {

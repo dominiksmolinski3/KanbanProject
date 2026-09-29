@@ -83,7 +83,7 @@ describe('boardApi', () => {
   test('a refused request throws rather than resolving to nothing', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    await expect(boardApi.renameBoard(3, 'Nope')).rejects.toThrow('403');
+    await expect(boardApi.renameBoard(3, 'Nope')).rejects.toMatchObject({ status: 403 });
   });
 });
 

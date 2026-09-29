@@ -1,20 +1,6 @@
+import { apiError } from './apiError';
+
 const API_BASE_URL = '/api';
-
-function parseJson(text) {
-  try {
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function accountError(response, fallback) {
-  const text = await response.text();
-  const body = parseJson(text);
-  const error = new Error((body && body.message) || text || fallback);
-  error.code = body && body.code;
-  return error;
-}
 
 export const authService = {
   register: async (userData) => {
@@ -33,8 +19,7 @@ export const authService = {
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Registration failed');
+      throw await apiError(response);
     }
 
     return undefined;
@@ -56,8 +41,7 @@ export const authService = {
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Invalid email or password');
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -73,8 +57,7 @@ export const authService = {
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Verification failed');
+      throw await apiError(response);
     }
     
     const contentType = response.headers.get('content-type');
@@ -95,8 +78,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not request a password reset');
+      throw await apiError(response);
     }
   },
 
@@ -110,8 +92,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not reset the password');
+      throw await apiError(response);
     }
   },
 
@@ -125,7 +106,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      throw await accountError(response, 'Could not change the password');
+      throw await apiError(response);
     }
   },
 
@@ -139,7 +120,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      throw await accountError(response, 'Could not start the email change');
+      throw await apiError(response);
     }
   },
 
@@ -153,7 +134,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      throw await accountError(response, 'Could not confirm the email change');
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -169,8 +150,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not renew the session');
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -186,8 +166,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not end the session');
+      throw await apiError(response);
     }
   },
 
@@ -195,8 +174,7 @@ export const authService = {
     const response = await fetch(`${API_BASE_URL}/auth/devices`);
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not load the active sessions');
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -208,8 +186,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Could not end that session');
+      throw await apiError(response);
     }
   },
 
@@ -219,8 +196,7 @@ export const authService = {
     });
     
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || 'Failed to resend verification code');
+      throw await apiError(response);
     }
     
     return await response.text();

@@ -32,6 +32,6 @@ describe('activityApi', () => {
   test('a refused request throws rather than resolving to nothing', async () => {
     fetch.mockResolvedValueOnce({ ok: false, status: 400 });
 
-    await expect(fetchActivity({ boardId: 3 })).rejects.toThrow('400');
+    await expect(fetchActivity({ boardId: 3 })).rejects.toMatchObject({ status: 400 });
   });
 });

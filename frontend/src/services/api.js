@@ -1,3 +1,5 @@
+import { apiError, errorFromBody } from './apiError';
+
 const API_ENDPOINTS = {
   BOARDS: '/api/boards',
   COLUMNS: '/api/columns',
@@ -35,7 +37,7 @@ export const fetchColumns = async (retries = 3) => {
     try {
       const response = await fetch(onActiveBoard(API_ENDPOINTS.COLUMNS));
       if (!response.ok) {
-        throw new Error(`Error fetching columns: ${response.status}`);
+        throw await apiError(response);
       }
       return await response.json();
     } catch (error) {
@@ -61,7 +63,7 @@ export const addColumn = async (name, wipLimit) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error adding column: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -95,7 +97,7 @@ export const updateColumnWipLimit = async (columnId, wipLimit) => {
       }
     }
 
-    throw new Error(`Error updating WIP limit: ${response.status}`);
+    throw await apiError(response);
   } catch (error) {
     console.error(`Error updating WIP limit for column ${columnId}:`, error);
     throw error;
@@ -112,7 +114,7 @@ export const updateColumnPosition = async (columnId, position) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error updating column position: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -129,7 +131,7 @@ export const deleteColumn = async (columnId) => {
     });
     
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Error deleting column: ${response.status}`);
+      throw await apiError(response);
     }
     
     return true;
@@ -150,7 +152,7 @@ export const updateColumnName = async (id, name) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to update column: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -164,7 +166,7 @@ export const fetchTasks = async () => {
   try {
     const response = await fetch(onActiveBoard(API_ENDPOINTS.TASKS));
     if (!response.ok) {
-      throw new Error(`Error fetching tasks: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -177,7 +179,7 @@ export const fetchTask = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}`);
     if (!response.ok) {
-      throw new Error(`Error fetching task: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -203,7 +205,7 @@ export const addTask = async (title, columnId, deadline = null) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error adding task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -227,7 +229,7 @@ export const updateTask = async (taskId, taskData) => {
       throw new ConcurrentModificationError('task');
     }
     if (!response.ok) {
-      throw new Error(`Error updating task: ${response.status}`);
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -252,19 +254,7 @@ export const updateTaskColumn = async (taskId, columnId) => {
     });
     
     if (!response.ok) {
-      try {
-        const errorData = await response.json();
-        console.error("Error details:", errorData);
-        throw new Error(`Error updating task column: ${response.status} - ${errorData.message || 'Unknown error'}`);
-      } catch (parseError) {
-        console.warn("Failed to parse error response:", parseError.message);
-        
-        if (response.status === 400) {
-          throw new Error(`Error updating task column: ${response.status} - Column WIP limit exceeded`, { cause: parseError });
-        } else {
-          throw new Error(`Error updating task column: ${response.status} - Unknown error`, { cause: parseError });
-        }
-      }
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -284,7 +274,7 @@ export const updateTaskPosition = async (taskId, position) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error updating task position: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -314,7 +304,7 @@ const reorder = async (endpoint, orderedIds, what) => {
     throw new ConcurrentModificationError(what);
   }
   if (!response.ok) {
-    throw new Error(`Error reordering ${what}s: ${response.status}`);
+    throw await apiError(response);
   }
 
   return await response.json();
@@ -353,7 +343,7 @@ export const assignUserToTask = async (taskId, userId) => {
       throw new WipLimitExceededError(wipStatus);
     }
 
-    throw new Error(`${response.status}: Failed to assign user to task`);
+    throw errorFromBody(response.status, errorData);
   }
 
   return await response.json();
@@ -364,7 +354,7 @@ export async function getUserWipStatus(userId) {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/wip-status`);
 
     if (!response.ok) {
-      throw new Error('Failed to check user WIP status');
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -385,7 +375,7 @@ export async function updateUserWipLimit(userId, wipLimit) {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update user WIP limit');
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -405,7 +395,7 @@ export async function updateUserLocale(userId, locale) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update the account language');
+    throw await apiError(response);
   }
 
   return await response.json();
@@ -421,7 +411,7 @@ export const removeUserFromTask = async (taskId, userId) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error removing user: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -441,7 +431,7 @@ export const addLabelToTask = async (taskId, label) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error adding label to task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -461,7 +451,7 @@ export const removeLabelFromTask = async (taskId, label) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error removing label from task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -482,7 +472,7 @@ export const updateTaskLabels = async (taskId, labels) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error updating task labels: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -496,7 +486,7 @@ export const getAllLabels = async () => {
   try {
     const response = await fetch(onActiveBoard(`${API_ENDPOINTS.TASKS}/get/all/labels`));
     if (!response.ok) {
-      throw new Error(`Error fetching labels: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -548,7 +538,7 @@ export const searchTasks = async (filters = {}) => {
   );
 
   if (!response.ok) {
-    throw new Error(`Error searching tasks: ${response.status}`);
+    throw await apiError(response);
   }
 
   return await response.json();
@@ -561,7 +551,7 @@ export const deleteTask = async (taskId) => {
     });
     
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Error deleting task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return true;
@@ -586,23 +576,7 @@ export const updateTaskRow = async (taskId, rowId) => {
     });
     
     if (!response.ok) {
-      try {
-        const errorData = await response.json();
-        console.error("Error details:", errorData);
-        if (errorData.message === "Row not found" && response.status === 404) {
-          throw new Error(`Error updating task row: ${response.status} - Row not found`);
-        } else {
-          throw new Error(`Error updating task row: ${response.status} - ${errorData.message || 'Unknown error'}`);
-        }
-      } catch (parseError) {
-        console.warn("Failed to parse error response:", parseError.message);
-        
-        if (response.status === 404) {
-          throw new Error(`Error updating task row: ${response.status} - Row not found`, { cause: parseError });
-        } else {
-          throw new Error(`Error updating task row: ${response.status} - Unknown error`, { cause: parseError });
-        }
-      }
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -623,7 +597,7 @@ export const updateTaskName = async (id, name) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to update task: ${response.status}`);
+      throw await apiError(response);
     }
     
     const contentType = response.headers?.get?.('content-type');
@@ -721,7 +695,7 @@ export const fetchRows = async (retries = 3) => {
     try {
       const response = await fetch(onActiveBoard(API_ENDPOINTS.ROWS));
       if (!response.ok) {
-        throw new Error(`Error fetching rows: ${response.status}`);
+        throw await apiError(response);
       }
       return await response.json();
     } catch (error) {
@@ -747,7 +721,7 @@ export const addRow = async (name, wipLimit) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error adding row: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -781,7 +755,7 @@ export const updateRowWipLimit = async (rowId, wipLimit) => {
       }
     }
 
-    throw new Error(`Error updating row WIP limit: ${response.status}`);
+    throw await apiError(response);
   } catch (error) {
     console.error(`Error updating WIP limit for row ${rowId}:`, error);
     throw error;
@@ -798,7 +772,7 @@ export const updateRowPosition = async (rowId, position) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error updating row position: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -815,7 +789,7 @@ export const deleteRow = async (rowId) => {
     });
     
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Error deleting row: ${response.status}`);
+      throw await apiError(response);
     }
     
     return true;
@@ -836,7 +810,7 @@ export const updateRowName = async (id, name) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to update row: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -850,7 +824,7 @@ export const fetchUsers = async () => {
   try {
     const response = await fetch(API_ENDPOINTS.USERS);
     if (!response.ok) {
-      throw new Error(`Error fetching users: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -863,7 +837,7 @@ export const fetchUser = async (userId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`);
     if (!response.ok) {
-      throw new Error(`Error fetching user: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -879,7 +853,7 @@ export const deleteUser = async (userId) => {
     });
     
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Error deleting user: ${response.status}`);
+      throw await apiError(response);
     }
     
     return true;
@@ -921,7 +895,7 @@ export const assignParentTask = async (childTaskId, parentTaskId) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error assigning parent task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -941,7 +915,7 @@ export const removeParentTask = async (childTaskId) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error removing parent task: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -955,7 +929,7 @@ export const getChildTasks = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/children`);
     if (!response.ok) {
-      throw new Error(`Error fetching child tasks: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -968,7 +942,7 @@ export const canTaskBeCompleted = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/can-complete`);
     if (!response.ok) {
-      throw new Error(`Error checking if task can be completed: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -1000,7 +974,7 @@ export const updateTaskCompletion = async (taskId, completed) => {
       throw new ParentTaskNotCompletedError(taskId);
     }
 
-    throw new Error(`${response.status}: Failed to update completion for task ${taskId}`);
+    throw errorFromBody(response.status, errorData);
   }
 
   return await response.json();
@@ -1010,7 +984,7 @@ export const fetchDailyFocusTasks = async () => {
   try {
     const response = await fetch(onActiveBoard(`${API_ENDPOINTS.TASKS}/daily-focus`));
     if (!response.ok) {
-      throw new Error(`Error fetching daily focus tasks: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -1029,7 +1003,7 @@ export const setTaskDailyFocus = async (taskId, dailyFocus) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Error updating daily focus: ${response.status}`);
+      throw await apiError(response);
     }
 
     return await response.json();
@@ -1043,7 +1017,7 @@ export const getTaskColumnHistory = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/column-history`);
     if (!response.ok) {
-      throw new Error(`Error fetching task column history: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -1056,7 +1030,7 @@ export const fetchSubTask = async (subTaskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/${subTaskId}`);
     if (!response.ok) {
-      throw new Error(`Error fetching subtask: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -1069,7 +1043,7 @@ export const fetchSubTasksByTaskId = async (taskId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.SUBTASKS}/task/${taskId}`);
     if (!response.ok) {
-      throw new Error(`Error fetching subtasks for task: ${response.status}`);
+      throw await apiError(response);
     }
     return await response.json();
   } catch (error) {
@@ -1095,7 +1069,7 @@ export const addSubTask = async (taskId, title) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error adding subtask: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -1116,7 +1090,7 @@ export const updateSubTask = async (subTaskId, subTaskData) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error updating subtask: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -1136,7 +1110,7 @@ export const toggleSubTaskCompletion = async (subTaskId) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Error toggling subtask completion: ${response.status}`);
+      throw await apiError(response);
     }
     
     return await response.json();
@@ -1153,7 +1127,7 @@ export const deleteSubTask = async (subTaskId) => {
     });
     
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Error deleting subtask: ${response.status}`);
+      throw await apiError(response);
     }
     
     return true;
@@ -1180,7 +1154,7 @@ export const fetchTaskAttachments = async (taskId) => {
   const response = await fetch(attachmentsOf(taskId));
 
   if (!response.ok) {
-    throw new Error(`Error fetching attachments: ${response.status}`);
+    throw await apiError(response);
   }
 
   return await response.json();
@@ -1222,7 +1196,7 @@ const collectInto = async (url, state) => {
     : await fetch(url);
 
   if (!response.ok) {
-    const error = new Error(`Error downloading the attachment: ${response.status}`);
+    const error = await apiError(response);
     error.fatal = true;
     throw error;
   }
@@ -1287,7 +1261,7 @@ export const deleteTaskAttachment = async (taskId, attachmentId) => {
   });
 
   if (!response.ok && response.status !== 404) {
-    throw new Error(`Error deleting attachment: ${response.status}`);
+    throw await apiError(response);
   }
 
   return true;
@@ -1306,7 +1280,7 @@ export const fetchTaskComments = async (taskId, { page = 0, size = COMMENT_PAGE_
 
   const response = await fetch(`${commentsOf(taskId)}?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`Error fetching comments: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
@@ -1318,7 +1292,7 @@ export const addTaskComment = async (taskId, body) => {
     body: JSON.stringify({ body })
   });
   if (!response.ok) {
-    throw new Error(`Error adding comment: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
@@ -1330,7 +1304,7 @@ export const editTaskComment = async (taskId, commentId, body) => {
     body: JSON.stringify({ body })
   });
   if (!response.ok) {
-    throw new Error(`Error editing comment: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
@@ -1340,7 +1314,7 @@ export const deleteTaskComment = async (taskId, commentId) => {
     method: 'DELETE'
   });
   if (!response.ok && response.status !== 404) {
-    throw new Error(`Error deleting comment: ${response.status}`);
+    throw await apiError(response);
   }
   return true;
 };

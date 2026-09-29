@@ -1,3 +1,5 @@
+import { apiError } from './apiError';
+
 const FLOW = '/api/flow';
 
 export const MAX_FLOW_DAYS = 180;
@@ -17,7 +19,7 @@ export const fetchFlowMetrics = async ({ boardId, from, to, start, done } = {}) 
 
   const response = await fetch(`${FLOW}?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`Error fetching the flow metrics: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
@@ -33,7 +35,7 @@ export const defineFlow = async ({ boardId, start = null, done = null } = {}) =>
     body: JSON.stringify({ startColumnId: start, doneColumnId: done })
   });
   if (!response.ok) {
-    throw new Error(`Error saving the flow definition: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };

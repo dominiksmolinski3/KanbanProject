@@ -55,7 +55,7 @@ describe('API Services', () => {
         status: 500
       });
 
-      await expect(api.fetchColumns(2)).rejects.toThrow('Error fetching columns: 500');
+      await expect(api.fetchColumns(2)).rejects.toMatchObject({ status: 500 });
       expect(fetch).toHaveBeenCalledTimes(2);
     });
 
@@ -186,7 +186,7 @@ describe('API Services', () => {
         status: 500
       });
       
-      await expect(api.deleteColumn('col1')).rejects.toThrow('Error deleting column: 500');
+      await expect(api.deleteColumn('col1')).rejects.toMatchObject({ status: 500 });
       
       expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
         method: 'DELETE'
@@ -199,7 +199,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.addColumn('Column', 5)).rejects.toThrow('Error adding column: 400');
+      await expect(api.addColumn('Column', 5)).rejects.toMatchObject({ status: 400 });
     });
       
     test('updateColumnWipLimit should handle error responses', async () => {
@@ -207,7 +207,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.updateColumnWipLimit('col1', 5)).rejects.toThrow('Error updating WIP limit: 400');
+      await expect(api.updateColumnWipLimit('col1', 5)).rejects.toMatchObject({ status: 400 });
     });
 
     test('updateColumnName should handle error responses', async () => {
@@ -216,7 +216,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.updateColumnName('col1', 'New Name')).rejects.toThrow('Failed to update column: 400');
+      await expect(api.updateColumnName('col1', 'New Name')).rejects.toMatchObject({ status: 400 });
     });
 
   });
@@ -393,9 +393,7 @@ describe('API Services', () => {
         json: async () => errorResponse
       });
       
-      await expect(api.updateTaskColumn('1', 'col2')).rejects.toThrow(
-        'Error updating task column: 400 - Column WIP limit exceeded'
-      );
+      await expect(api.updateTaskColumn('1', 'col2')).rejects.toMatchObject({ status: 400 });
       
       expect(fetch).toHaveBeenCalledWith('/api/tasks/1', expect.any(Object));
     });
@@ -472,7 +470,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.addLabelToTask('1', 'bug')).rejects.toThrow('Error adding label to task: 400');
+      await expect(api.addLabelToTask('1', 'bug')).rejects.toMatchObject({ status: 400 });
     });
 
     test('removeLabelFromTask should remove a label from task', async () => {
@@ -501,7 +499,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.removeLabelFromTask('1', 'bug')).rejects.toThrow('Error removing label from task: 400');
+      await expect(api.removeLabelFromTask('1', 'bug')).rejects.toMatchObject({ status: 400 });
     });
       
     test('updateTaskLabels should update all task labels', async () => {
@@ -533,7 +531,7 @@ describe('API Services', () => {
         json: async () => ({ message: 'Bad request' })
       });
         
-      await expect(api.updateTaskLabels('1', ['bug', 'feature'])).rejects.toThrow('Error updating task labels: 400');
+      await expect(api.updateTaskLabels('1', ['bug', 'feature'])).rejects.toMatchObject({ status: 400 });
     });
       
     test('getAllLabels should return all available labels', async () => {
@@ -640,9 +638,7 @@ describe('API Services', () => {
         json: async () => errorResponse
       });
       
-      await expect(api.updateTaskRow('1', 'row2')).rejects.toThrow(
-        'Error updating task row: 404 - Row not found'
-      );
+      await expect(api.updateTaskRow('1', 'row2')).rejects.toMatchObject({ status: 404 });
       
       expect(fetch).toHaveBeenCalledWith('/api/tasks/1', expect.any(Object));
     });
@@ -653,7 +649,7 @@ describe('API Services', () => {
         status: 400
       });
 
-      await expect(api.updateTask('task1', { title: 'Updated' })).rejects.toThrow('Error updating task: 400');
+      await expect(api.updateTask('task1', { title: 'Updated' })).rejects.toMatchObject({ status: 400 });
     });
 
     test('updateTask should raise ConcurrentModificationError on a 409', async () => {
@@ -671,7 +667,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.updateTaskName('task1', 'New Name')).rejects.toThrow('Failed to update task: 400');
+      await expect(api.updateTaskName('task1', 'New Name')).rejects.toMatchObject({ status: 400 });
     });
       
     test('fetchTask should handle error responses', async () => {
@@ -680,7 +676,7 @@ describe('API Services', () => {
         status: 404
       });
         
-      await expect(api.fetchTask('task1')).rejects.toThrow('Error fetching task: 404');
+      await expect(api.fetchTask('task1')).rejects.toMatchObject({ status: 404 });
     });
       
     test('addTask should handle error responses', async () => {
@@ -689,7 +685,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.addTask('Task', 'col1')).rejects.toThrow('Error adding task: 400');
+      await expect(api.addTask('Task', 'col1')).rejects.toMatchObject({ status: 400 });
     });
 
     test('updateTaskRow should handle error with no error data', async () => {
@@ -699,9 +695,7 @@ describe('API Services', () => {
         json: async () => { throw new Error('Invalid JSON'); }
       });
         
-      await expect(api.updateTaskRow('task1', 'row1')).rejects.toThrow(
-        'Error updating task row: 500 - Unknown error'
-      );
+      await expect(api.updateTaskRow('task1', 'row1')).rejects.toMatchObject({ status: 500 });
     });
 
     test('updateTaskColumn should handle error with no error data', async () => {
@@ -711,9 +705,7 @@ describe('API Services', () => {
           json: async () => { throw new Error('Invalid JSON'); }
         });
         
-        await expect(api.updateTaskColumn('task1', 'col1')).rejects.toThrow(
-          'Error updating task column: 500 - Unknown error'
-        );
+        await expect(api.updateTaskColumn('task1', 'col1')).rejects.toMatchObject({ status: 500 });
     });
 
     test('assignUserToTask reports a network failure as itself, not as a WIP limit', async () => {
@@ -747,7 +739,7 @@ describe('API Services', () => {
       const error = await api.assignUserToTask('task1', 'user1').catch(e => e);
 
       expect(error).not.toBeInstanceOf(api.WipLimitExceededError);
-      expect(error.message).toBe('404: Failed to assign user to task');
+      expect(error).toMatchObject({ status: 404, code: 'TASK_NOT_FOUND', message: 'Task not found' });
     });
 
     test('assignUserToTask maps the server WIP refusal onto WipLimitExceededError', async () => {
@@ -962,7 +954,7 @@ describe('API Services', () => {
           status: 500
         });
       
-        await expect(api.fetchRows(2)).rejects.toThrow('Error fetching rows: 500');
+        await expect(api.fetchRows(2)).rejects.toMatchObject({ status: 500 });
         expect(fetch).toHaveBeenCalledTimes(2);
     });
       
@@ -1108,9 +1100,7 @@ describe('API Services', () => {
           status: 500
         });
       
-        await expect(api.updateRowName('row1', 'Updated Team Name')).rejects.toThrow(
-          'Failed to update row: 500'
-        );
+        await expect(api.updateRowName('row1', 'Updated Team Name')).rejects.toMatchObject({ status: 500 });
       
         expect(fetch).toHaveBeenCalledWith('/api/rows/row1', expect.any(Object));
     });
@@ -1121,7 +1111,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.addRow('Row', 5)).rejects.toThrow('Error adding row: 400');
+      await expect(api.addRow('Row', 5)).rejects.toMatchObject({ status: 400 });
     });
 
     test('deleteRow should handle error not related to 404', async () => {
@@ -1130,7 +1120,7 @@ describe('API Services', () => {
         status: 500
       });
         
-      await expect(api.deleteRow('row1')).rejects.toThrow('Error deleting row: 500');
+      await expect(api.deleteRow('row1')).rejects.toMatchObject({ status: 500 });
     });
 
     test('fetchRows should throw error on fetch failure', async () => {
@@ -1359,9 +1349,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.updateUserWipLimit('user1', 5)).rejects.toThrow(
-        'Failed to update user WIP limit'
-      );
+      await expect(api.updateUserWipLimit('user1', 5)).rejects.toMatchObject({ status: 400 });
     });
 
     test('getUserWipStatus should handle response with status 400', async () => {
@@ -1370,9 +1358,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.getUserWipStatus('user1')).rejects.toThrow(
-        'Failed to check user WIP status'
-      );
+      await expect(api.getUserWipStatus('user1')).rejects.toMatchObject({ status: 400 });
     });
 
     test('getUserAvatar should handle connection errors gracefully', async () => {
@@ -1539,7 +1525,7 @@ describe('API Services', () => {
         status: 400
       });
         
-      await expect(api.updateTaskPosition('1', 2)).rejects.toThrow('Error updating task position: 400');
+      await expect(api.updateTaskPosition('1', 2)).rejects.toMatchObject({ status: 400 });
     });
       
     test('deleteSubTask should delete a subtask', async () => {
@@ -1581,7 +1567,7 @@ describe('API Services', () => {
         status: 500
       });
       
-      await expect(api.deleteSubTask(subTaskId)).rejects.toThrow('Error deleting subtask: 500');
+      await expect(api.deleteSubTask(subTaskId)).rejects.toMatchObject({ status: 500 });
       
       expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1', {
         method: 'DELETE'
@@ -1611,7 +1597,7 @@ describe('API Services', () => {
         status: 500
       });
       
-      await expect(api.fetchColumns(3)).rejects.toThrow('Error fetching columns: 500');
+      await expect(api.fetchColumns(3)).rejects.toMatchObject({ status: 500 });
       expect(fetch).toHaveBeenCalledTimes(3);
     });
     
@@ -1643,7 +1629,7 @@ describe('API Services', () => {
         json: async () => ({ message: 'Bad request details' })
       });
         
-      await expect(api.updateTaskLabels('1', [])).rejects.toThrow('Error updating task labels: 400');
+      await expect(api.updateTaskLabels('1', [])).rejects.toMatchObject({ status: 400 });
     });
       
     test('makeRequest should handle JSON parse errors without error details', async () => {
@@ -1653,7 +1639,7 @@ describe('API Services', () => {
         json: async () => { throw new Error('Invalid JSON'); }
       });
         
-      await expect(api.updateTaskLabels('1', [])).rejects.toThrow('Error updating task labels: 400');
+      await expect(api.updateTaskLabels('1', [])).rejects.toMatchObject({ status: 400 });
     });
     
   });

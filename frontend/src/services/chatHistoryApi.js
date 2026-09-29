@@ -1,3 +1,5 @@
+import { apiError } from './apiError';
+
 const CHAT = '/api/chat';
 const CHAT_DIRECT = '/api/chat/direct';
 
@@ -13,7 +15,7 @@ export const fetchBoardChatHistory = async ({ boardId, page: pageNumber = 0, siz
 
   const response = await fetch(`${CHAT}?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`Error fetching the board conversation: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
@@ -26,7 +28,7 @@ export const fetchDirectChatHistory = async ({ peer, page: pageNumber = 0, size 
 
   const response = await fetch(`${CHAT_DIRECT}?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`Error fetching the direct thread: ${response.status}`);
+    throw await apiError(response);
   }
   return response.json();
 };
