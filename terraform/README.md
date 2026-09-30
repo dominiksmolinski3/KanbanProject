@@ -384,7 +384,7 @@ says nothing gets the cheap shape.
 | `postgres_sku_name` | `B_Standard_B1ms` | `GP_Standard_D2ds_v4` |
 | `postgres_storage_mb` | 32768 (32 GiB) | 131072 (128 GiB) |
 | `postgres_high_availability_mode` | null | `ZoneRedundant` |
-| `postgres_backup_retention_days` | 7 / 14 | 35 |
+| `postgres_backup_retention_days` | 35 | 35 |
 | `postgres_geo_redundant_backup_enabled` | false | true |
 
 Five things about that table are worth knowing before changing it.
@@ -411,7 +411,8 @@ one that dropped the table. Point-in-time restore is the control that answers a 
 migration, and `postgres_backup_retention_days` is how far back it reaches. Left unset,
 Azure gives 7 days. `postgres_geo_redundant_backup_enabled` copies those backups to the
 paired region, and Azure fixes it at create time — turning it on later replaces the
-server, so decide it before the environment carries anything.
+server, so decide it before the environment carries anything. Poland Central has no
+pair, so dev cannot have it at all.
 
 **The server refuses to be destroyed.** The module carries
 `lifecycle { prevent_destroy = true }`, because several attributes here force
@@ -424,6 +425,37 @@ Changing the SKU or storage on a live server is an in-place scale with a restart
 expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
+
+### Database dumps
+
+Point-in-time restore lives inside the server's blast radius: deleting the server, its
+resource group or the subscription takes the backups with it, and they cannot be
+exported. `modules/backup` keeps a copy that survives all of that except the
+subscription.
+
+- A Container Apps job (`kanban-<env>-pg-dump`) runs nightly at 02:15 UTC in the
+  existing environment. An init container runs `pg_dump --format=custom`; the main
+  container uploads it with the job's managed identity.
+- The dumps go to a GRS account in **its own resource group in `backup_location`**
+  (`swedencentral`), which the subscription's region policy allows and which is not
+  the database's region.
+- The job's identity has a custom role that can **add blobs and nothing else**: no
+  read, no delete, no overwrite. The container has a 14-day time-based immutability
+  policy, so even a compromised job cannot remove a recent dump. The policy is
+  unlocked on purpose: locking it is irreversible.
+- Lifecycle rules keep `daily/` 14 days, `weekly/` (Sundays) 8 weeks and `monthly/`
+  (the 1st) a year, moving monthly dumps to Cool after 30 days.
+- The account has no private endpoint. `snet-backend` carries a
+  `Microsoft.Storage.Global` service endpoint, which is what lets a subnet in one
+  region be named in the network rules of an account in another, and the account
+  denies everything else.
+- `kanban-<env>-backup-stale` fires when no `BACKUP_OK` line has appeared in the job's
+  console logs for 26 hours.
+
+To run it now: `az containerapp job start -g kanban-dev-rg -n kanban-dev-pg-dump`.
+To restore: download a dump and `pg_restore --no-owner --dbname=<target>`; it
+restores into the local compose Postgres as well as a new server. The dump holds no
+attachments, which live in blob storage.
 
 ### Two container apps
 

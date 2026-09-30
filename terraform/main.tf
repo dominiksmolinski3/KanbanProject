@@ -135,6 +135,27 @@ module "storage" {
   retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
 }
 
+module "backup" {
+  source                     = "./modules/backup"
+  env                        = var.env
+  location                   = var.backup_location
+  tags                       = local.tags
+  job_resource_group_name    = azurerm_resource_group.main.name
+  job_location               = azurerm_resource_group.main.location
+  container_app_env_id       = module.vnet.container_app_env_id
+  writer_subnet_id           = module.vnet.backend_subnet_id
+  key_vault_id               = module.key_vault.id
+  key_vault_uri              = module.key_vault.uri
+  postgres_fqdn              = module.postgres.fqdn
+  postgres_database          = module.postgres.postgres_db_name
+  rbac_propagation_delay     = var.rbac_propagation_delay
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  alerts_enabled             = var.alert_email != ""
+  action_group_id            = module.diagnostics.action_group_id
+
+  depends_on = [module.postgres]
+}
+
 module "redis" {
   source                     = "./modules/redis"
   resource_group_name        = azurerm_resource_group.main.name

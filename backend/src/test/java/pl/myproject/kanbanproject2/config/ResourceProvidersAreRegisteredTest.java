@@ -49,6 +49,7 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_resource_group_policy_assignment", "Microsoft.Authorization");
         put("azurerm_resource_group_policy_remediation", "Microsoft.PolicyInsights");
         put("azurerm_role_assignment", "Microsoft.Authorization");
+        put("azurerm_role_definition", "Microsoft.Authorization");
         put("azurerm_storage_", "Microsoft.Storage");
         put("azurerm_subnet", "Microsoft.Network");
         put("azurerm_user_assigned_identity", "Microsoft.ManagedIdentity");

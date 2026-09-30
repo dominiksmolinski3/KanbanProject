@@ -20,6 +20,7 @@ class PinnedImagesTest {
     private static final Pattern TERRAFORM_IMAGE = Pattern.compile("(?m)^\\s+image\\s*=\\s*\"([^\"]+)\"");
     private static final Path POSTGRES = REPO.resolve(Path.of("terraform", "modules", "postgres", "main.tf"));
     private static final Pattern SERVER_VERSION = Pattern.compile("(?m)^\\s+version\\s*=\\s*\"(\\d+)\"");
+    private static final Path BACKUP = REPO.resolve(Path.of("terraform", "modules", "backup", "main.tf"));
     private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
 
     @Test
@@ -61,6 +62,20 @@ class PinnedImagesTest {
                 .as("every migration and query is tested against the compose Postgres; a different major "
                         + "than the Flexible Server's is a database no deploy runs on")
                 .containsExactly(composeMajor);
+    }
+
+    @Test
+    @DisplayName("the backup job pins its images and dumps with the server's major version")
+    void theBackupJobMatchesTheServer() throws IOException {
+        List<String> images = imagesIn(BACKUP, TERRAFORM_IMAGE);
+        String dumper = images.stream().filter(image -> image.startsWith("postgres:")).findFirst().orElseThrow();
+        String dumperMajor = dumper.substring("postgres:".length()).split("[.@-]")[0];
+
+        assertThat(images).allMatch(image -> PINNED.matcher(image).matches());
+        assertThat(imagesIn(POSTGRES, SERVER_VERSION))
+                .as("pg_dump refuses a server newer than itself, so a server upgrade without this is a "
+                        + "nightly backup that fails from that night on")
+                .containsExactly(dumperMajor);
     }
 
     private static List<String> imagesIn(Path file, Pattern pattern) throws IOException {
