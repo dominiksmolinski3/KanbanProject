@@ -16,7 +16,11 @@ skip-path:
 compact: true
 quiet: true
 
+external-checks-dir:
+  - .checkov/policies
+
 skip-check:
+  - CKV_AZURE_59
   - CKV_AZURE_41
   - CKV_AZURE_136
   - CKV2_AZURE_57

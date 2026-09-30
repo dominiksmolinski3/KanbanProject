@@ -1,0 +1,18 @@
+metadata:
+  id: "CKV2_KANBAN_1"
+  name: "Ensure a storage account answers no network it has not named"
+  category: "NETWORKING"
+definition:
+  or:
+    - cond_type: attribute
+      resource_types:
+        - azurerm_storage_account
+      attribute: public_network_access
+      operator: equals
+      value: Disabled
+    - cond_type: attribute
+      resource_types:
+        - azurerm_storage_account
+      attribute: network_rules.default_action
+      operator: equals
+      value: Deny

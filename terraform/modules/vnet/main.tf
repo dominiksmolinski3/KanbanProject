@@ -24,6 +24,10 @@ resource "azurerm_subnet" "backend" {
     service = "Microsoft.KeyVault"
   }
 
+  service_endpoint {
+    service = "Microsoft.Storage.Global"
+  }
+
   delegation {
     name = "cae"
     service_delegation {

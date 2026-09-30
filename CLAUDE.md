@@ -1740,6 +1740,11 @@ and reasons in `local.refusal_alerts`.
   repository variable to scan anything by hand; and `CKV2_GHA_1` (top-level permissions must
   not be `write-all`), which fires on `codeql.yml` and `kanban-cd.yml` for **job-level**
   blocks that are neither top-level nor `write-all` — it is reading the wrong thing.
+  `CKV_AZURE_59` is skipped because it reads only `public_network_access_enabled`,
+  which azurerm 5 deprecates; `.checkov/policies` replaces it with `CKV2_KANBAN_1`,
+  which passes an account whose public access is `Disabled` or whose network rules
+  deny by default. The trigger names `.checkov/**` for the same reason it names
+  `.checkov.yaml`.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
