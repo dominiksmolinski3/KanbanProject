@@ -270,4 +270,8 @@ module "diagnostics" {
   web_container_app_id    = module.web_app.container_app_id
   broker_container_app_id = module.broker.container_app_id
   app_insights_id         = azurerm_application_insights.main.id
+
+  storage_account_id = module.storage.id
+  redis_cluster_id   = module.redis.id
+  postgres_burstable = startswith(var.postgres_sku_name, "B_")
 }
