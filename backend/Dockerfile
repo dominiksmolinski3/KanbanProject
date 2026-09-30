@@ -13,6 +13,12 @@ RUN ./mvnw package -Dmaven.test.skip=true
 FROM eclipse-temurin:25-jre-noble@sha256:d120abd9d8d7dec94520ce974ece62d0e4eed8576eb00bbc84e6128307ab48ef
 WORKDIR /app
 
+# CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
+ARG APT_UPGRADE_DATE
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system --gid 10001 appuser \
  && useradd --system --uid 10001 --gid 10001 --no-create-home appuser
 

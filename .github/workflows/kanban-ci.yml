@@ -312,6 +312,7 @@ jobs:
         build-args: |
           VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
           APK_UPGRADE_DATE=${{ steps.date.outputs.today }}
+          APT_UPGRADE_DATE=${{ steps.date.outputs.today }}
         tags: ${{ matrix.image }}:pr-${{ github.sha }}
 
     - name: Scan image for vulnerabilities
