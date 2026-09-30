@@ -1,8 +1,8 @@
 locals {
   app_port = 8080
 
-  cpu_cores  = 0.5
-  memory_gib = 1
+  cpu_cores  = 1
+  memory_gib = 2
 
   ghcr_credentials_configured = var.ghcr_token != ""
   acs_mail_configured         = var.acs_email_connection_string != ""
