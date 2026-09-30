@@ -9,6 +9,7 @@ on:
       - 'frontend/Dockerfile'
       - '.github/workflows/**'
       - '.checkov.yaml'
+      - '.checkov/**'
   pull_request:
     branches: [ main ]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'frontend/Dockerfile'
       - '.github/workflows/**'
       - '.checkov.yaml'
+      - '.checkov/**'
   workflow_dispatch:
 
 permissions:

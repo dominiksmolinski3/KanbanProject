@@ -25,7 +25,7 @@ resource "azurerm_storage_account" "attachments" {
   sftp_enabled                    = false
   default_to_oauth_authentication = true
 
-  public_network_access_enabled = false
+  public_network_access = "Disabled"
 
   network_rules {
     default_action = "Deny"

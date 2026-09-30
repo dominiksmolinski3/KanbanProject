@@ -187,6 +187,17 @@ variable "attachment_retention_days" {
   default     = null
 }
 
+variable "backup_location" {
+  description = "Region for the database dumps. Poland Central has no paired region, and the subscription's policy allows only polandcentral, norwayeast, francecentral, swedencentral and uksouth."
+  type        = string
+  default     = "swedencentral"
+
+  validation {
+    condition     = lower(replace(var.backup_location, " ", "")) != lower(replace(var.location, " ", ""))
+    error_message = "backup_location must not be the database's own region; the point of the copy is to survive that region."
+  }
+}
+
 variable "storage_replication_type" {
   description = "Replication for the task-attachment storage account. GRS keeps a copy in the paired region and is what an environment holding somebody's files should have; dev and uat set LRS. Unlike the Postgres geo-redundancy flag, Azure lets this be changed later."
   type        = string
