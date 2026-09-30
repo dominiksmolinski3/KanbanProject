@@ -91,3 +91,24 @@ variable "app_insights_id" {
   type        = string
   description = "Resource ID of the Application Insights component the availability test reports to."
 }
+
+variable "storage_account_id" {
+  type        = string
+  description = "Resource ID of the attachment storage account. Its blob service's read, write and delete logs are the audit of who touched which file."
+}
+
+variable "redis_cluster_id" {
+  type        = string
+  description = "Resource ID of the Managed Redis cluster. Metrics live on the cluster, connection events on its default database."
+}
+
+variable "postgres_burstable" {
+  type        = bool
+  description = "Whether the Postgres server is on a Burstable SKU. Only those have CPU credits to run out of."
+}
+
+variable "postgres_cpu_credits_threshold" {
+  type        = number
+  description = "Alert when fewer CPU credits than this remain. B1ms banks at most 144, so 30 leaves about half an hour of full load before throttling."
+  default     = 30
+}
