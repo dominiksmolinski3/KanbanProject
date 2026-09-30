@@ -297,9 +297,9 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "stale" {
 
   criteria {
     query                   = <<-KQL
-      ContainerAppConsoleLogs
+      ContainerAppConsoleLogs_CL
       | where TimeGenerated > ago(26h)
-      | where JobName == "${local.job_name}" and Log has "BACKUP_OK"
+      | where ContainerJobName_s == "${local.job_name}" and Log_s has "BACKUP_OK"
       | summarize Succeeded = count()
     KQL
     time_aggregation_method = "Total"
