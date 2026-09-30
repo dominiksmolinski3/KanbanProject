@@ -59,6 +59,7 @@ jobs:
         build-args: |
           VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
           APK_UPGRADE_DATE=${{ steps.date.outputs.today }}
+          APT_UPGRADE_DATE=${{ steps.date.outputs.today }}
         tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
