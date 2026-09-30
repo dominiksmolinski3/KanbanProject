@@ -284,15 +284,16 @@ locals {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
-  count               = var.alert_email != "" ? 1 : 0
-  tags                = var.tags
-  name                = "kanban-${var.env}-mail-dead-letters"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  scopes              = local.metric_alert_scope
-  description         = "The mail relay gave up on a message. Nobody is being told their verification code."
-  severity            = 1
-  enabled             = true
+  count                   = var.alert_email != "" ? 1 : 0
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-mail-dead-letters"
+  resource_group_name     = var.resource_group_name
+  location                = var.location
+  scopes                  = local.metric_alert_scope
+  description             = "The mail relay gave up on a message. Nobody is being told their verification code."
+  severity                = 1
+  enabled                 = true
+  auto_mitigation_enabled = true
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT15M"
@@ -320,15 +321,16 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead_letters" {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_backlog" {
-  count               = var.alert_email != "" ? 1 : 0
-  tags                = var.tags
-  name                = "kanban-${var.env}-mail-backlog"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  scopes              = local.metric_alert_scope
-  description         = "Outbound mail has been waiting for an hour without the queue emptying once. The relay is stuck or the provider is refusing everything."
-  severity            = 2
-  enabled             = true
+  count                   = var.alert_email != "" ? 1 : 0
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-mail-backlog"
+  resource_group_name     = var.resource_group_name
+  location                = var.location
+  scopes                  = local.metric_alert_scope
+  description             = "Outbound mail has been waiting for an hour without the queue emptying once. The relay is stuck or the provider is refusing everything."
+  severity                = 2
+  enabled                 = true
+  auto_mitigation_enabled = true
 
   evaluation_frequency = "PT15M"
   window_duration      = "PT1H"
@@ -381,15 +383,16 @@ locals {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "refusals" {
-  for_each            = var.alert_email != "" ? local.refusal_alerts : {}
-  tags                = var.tags
-  name                = "kanban-${var.env}-${each.key}"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  scopes              = local.metric_alert_scope
-  description         = each.value.description
-  severity            = 3
-  enabled             = true
+  for_each                = var.alert_email != "" ? local.refusal_alerts : {}
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-${each.key}"
+  resource_group_name     = var.resource_group_name
+  location                = var.location
+  scopes                  = local.metric_alert_scope
+  description             = each.value.description
+  severity                = 3
+  enabled                 = true
+  auto_mitigation_enabled = true
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT15M"
@@ -443,15 +446,16 @@ resource "azurerm_monitor_diagnostic_setting" "acs" {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
-  count               = var.alert_email != "" && var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
-  tags                = var.tags
-  name                = "kanban-${var.env}-mail-bounces"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  scopes              = local.metric_alert_scope
-  description         = "ACS is reporting a message it accepted did not reach a recipient - a hard bounce, a spam rejection, or an address that does not exist. The application never learns this on its own."
-  severity            = 2
-  enabled             = true
+  count                   = var.alert_email != "" && var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-mail-bounces"
+  resource_group_name     = var.resource_group_name
+  location                = var.location
+  scopes                  = local.metric_alert_scope
+  description             = "ACS is reporting a message it accepted did not reach a recipient - a hard bounce, a spam rejection, or an address that does not exist. The application never learns this on its own."
+  severity                = 2
+  enabled                 = true
+  auto_mitigation_enabled = true
 
   evaluation_frequency = "PT15M"
   window_duration      = "PT1H"

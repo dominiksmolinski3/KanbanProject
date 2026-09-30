@@ -282,15 +282,16 @@ resource "azurerm_container_app_job" "pg_dump" {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "stale" {
-  count               = var.alerts_enabled ? 1 : 0
-  tags                = var.tags
-  name                = "kanban-${var.env}-backup-stale"
-  resource_group_name = var.job_resource_group_name
-  location            = var.job_location
-  scopes              = [var.log_analytics_workspace_id]
-  description         = "No database dump has reached the backup account in 26 hours. The nightly job failed, or stopped being scheduled."
-  severity            = 1
-  enabled             = true
+  count                   = var.alerts_enabled ? 1 : 0
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-backup-stale"
+  resource_group_name     = var.job_resource_group_name
+  location                = var.job_location
+  scopes                  = [var.log_analytics_workspace_id]
+  description             = "No database dump has reached the backup account in 26 hours. The nightly job failed, or stopped being scheduled."
+  severity                = 1
+  enabled                 = true
+  auto_mitigation_enabled = true
 
   evaluation_frequency = "PT1H"
   window_duration      = "P2D"
