@@ -4,10 +4,12 @@ import com.azure.core.util.Context;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import com.azure.storage.blob.models.BlobRange;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.options.BlobInputStreamOptions;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 
 import java.io.InputStream;
+import java.util.List;
 
 public class AzureBlobStore implements BlobStore {
     private final BlobContainerClient container;
@@ -45,6 +47,17 @@ public class AzureBlobStore implements BlobStore {
                     new BlobInputStreamOptions().setRange(new BlobRange(offset, length)));
         } catch (RuntimeException e) {
             throw new BlobStoreException("could not open blob " + blobName, e);
+        }
+    }
+
+    @Override
+    public List<StoredBlob> list(String prefix) {
+        try {
+            return container.listBlobs(new ListBlobsOptions().setPrefix(prefix), null).stream()
+                    .map(item -> new StoredBlob(item.getName(), item.getProperties().getLastModified().toInstant()))
+                    .toList();
+        } catch (RuntimeException e) {
+            throw new BlobStoreException("could not list blobs under " + prefix, e);
         }
     }
 

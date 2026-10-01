@@ -31,6 +31,12 @@ class DisabledBlobStoreTest {
     }
 
     @Test
+    @DisplayName("lists nothing, so the orphan sweep has nothing to remove")
+    void listsNothing() {
+        assertThat(store.list("tasks/")).isEmpty();
+    }
+
+    @Test
     @DisplayName("a download is refused for the same reason")
     void refusesReads() {
         assertThatThrownBy(() -> store.read("tasks/1/abc"))
