@@ -23,3 +23,11 @@ output "usable_connections" {
     error_message = "No max_connections recorded for sku_name ${var.sku_name}. Add it to local.max_connections_by_sku in modules/postgres/main.tf - Azure sizes the limit from the SKU and does not publish it as an attribute, so there is nothing to read it from."
   }
 }
+
+output "tenant_id" {
+  value = azurerm_postgresql_flexible_server.main.authentication[0].tenant_id
+}
+
+output "password_auth_enabled" {
+  value = azurerm_postgresql_flexible_server.main.authentication[0].password_auth_enabled
+}
