@@ -272,6 +272,10 @@
       "logoAlt": "شعار كانبان"
     },
     "forms": {
+      "textLimit": {
+        "remaining": "تبقى {{count}} حرفًا",
+        "atLimit": "تم بلوغ الحد: {{max}} حرفًا"
+      },
       "wipLimit": {
         "title": "تعيين حد العمل قيد التنفيذ",
         "close": "إغلاق النموذج",

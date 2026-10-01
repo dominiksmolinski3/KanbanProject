@@ -272,6 +272,10 @@
     "logoAlt": "Logo Kanban"
   },
   "forms": {
+    "textLimit": {
+      "remaining": "Pozostało znaków: {{count}}",
+      "atLimit": "Osiągnięto limit: {{max}} znaków"
+    },
     "wipLimit": {
       "title": "Ustaw limit WIP",
       "close": "Zamknij formularz",
