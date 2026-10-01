@@ -18,7 +18,7 @@ import {
 } from '../../services/api';
 
 export function useLayoutActions({
-  t, setError, blockIfReadOnly, refuseIfReadOnly,
+  t, blockIfReadOnly, refuseIfReadOnly,
   columns, setColumns, rows, setRows, tasks, setTasks, columnMap, setColumnMap,
   refreshTasks, refreshBoard,
 }) {
@@ -49,7 +49,6 @@ export function useLayoutActions({
       return true;
     } catch (err) {
       console.error('Error updating column name:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       return false;
     }
@@ -66,7 +65,6 @@ export function useLayoutActions({
       return true;
     } catch (err) {
       console.error('Error updating row name:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       return false;
     }
@@ -86,7 +84,6 @@ export function useLayoutActions({
       toast.success(t('notifications.columnAdded', { name }));
       return newColumn;
     } catch (err) {
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       throw err;
     }
@@ -115,7 +112,6 @@ export function useLayoutActions({
       toast.success(t('notifications.rowAdded', { name }));
       return newRow;
     } catch (err) {
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       throw err;
     }
@@ -135,7 +131,6 @@ export function useLayoutActions({
       toast.success(t('notifications.wipLimitUpdated', { name: columnName, limit: newLimit }));
     } catch (err) {
       console.error('Failed to update WIP limit:', err);
-      setError('Failed to update WIP limit. Please try again.');
       toast.error(t('notifications.errorOccurred', { message: err.message }));
     }
   };
@@ -154,7 +149,6 @@ export function useLayoutActions({
       toast.success(t('notifications.rowWipLimitUpdated', { name: rowName, limit: newLimit }));
     } catch (err) {
       console.error('Failed to update row WIP limit:', err);
-      setError('Failed to update row WIP limit. Please try again.');
       toast.error(t('notifications.errorOccurred', { message: err.message }));
     }
   };
@@ -206,8 +200,8 @@ export function useLayoutActions({
 
     } catch (err) {
       console.error('Error deleting column:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
+      await refreshBoard();
       throw err;
     }
   };
@@ -265,8 +259,8 @@ export function useLayoutActions({
       }
     } catch (err) {
       console.error('Error deleting row:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
+      await refreshBoard();
       throw err;
     }
   };
@@ -300,9 +294,8 @@ export function useLayoutActions({
       toast.success(t('notifications.columnMoved', { name: movedColumn.name }));
     } catch (err) {
       console.error('Error moving column:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
-      throw err;
+      await refreshBoard();
     }
   };
 
@@ -336,9 +329,8 @@ export function useLayoutActions({
       toast.success(t('notifications.rowMoved', { name: movedRow.name }));
     } catch (err) {
       console.error('Error moving row:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
-      throw err;
+      await refreshBoard();
     }
   };
 
