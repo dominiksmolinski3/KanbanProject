@@ -420,12 +420,12 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "refusals" {
 }
 
 data "azurerm_monitor_diagnostic_categories" "acs" {
-  count       = var.acs_communication_service_id != "" ? 1 : 0
+  count       = var.acs_configured ? 1 : 0
   resource_id = var.acs_communication_service_id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "acs" {
-  count                      = var.acs_communication_service_id != "" ? 1 : 0
+  count                      = var.acs_configured ? 1 : 0
   name                       = "diag-kanban-acs-${var.env}"
   target_resource_id         = var.acs_communication_service_id
   log_analytics_workspace_id = var.log_analytics_workspace_id
@@ -446,7 +446,7 @@ resource "azurerm_monitor_diagnostic_setting" "acs" {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
-  count                   = var.alert_email != "" && var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+  count                   = var.alert_email != "" && var.acs_configured && var.mail_delivery_report_key != "" ? 1 : 0
   tags                    = var.tags
   name                    = "kanban-${var.env}-mail-bounces"
   resource_group_name     = var.resource_group_name
@@ -482,30 +482,19 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_bounces" {
   }
 }
 
-locals {
-  acs_resource_group = try(split("/", var.acs_communication_service_id)[4], "")
-}
-
 resource "azurerm_eventgrid_system_topic" "acs" {
-  count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+  count = var.acs_configured && var.mail_delivery_report_key != "" ? 1 : 0
   tags  = var.tags
 
   name                = "evgt-kanban-acs-${var.env}"
-  resource_group_name = local.acs_resource_group
+  resource_group_name = var.acs_resource_group_name
   location            = "global"
   source_resource_id  = var.acs_communication_service_id
   topic_type          = "Microsoft.Communication.CommunicationServices"
-
-  lifecycle {
-    precondition {
-      condition     = local.acs_resource_group != ""
-      error_message = "acs_communication_service_id does not look like an ARM resource id: there is no resourceGroups segment to read the system topic's resource group from."
-    }
-  }
 }
 
 resource "azurerm_eventgrid_system_topic_event_subscription" "mail_delivery_reports" {
-  count = var.acs_communication_service_id != "" && var.mail_delivery_report_key != "" ? 1 : 0
+  count = var.acs_configured && var.mail_delivery_report_key != "" ? 1 : 0
 
   name                = "kanban-${var.env}-mail-delivery-reports"
   system_topic        = azurerm_eventgrid_system_topic.acs[0].name

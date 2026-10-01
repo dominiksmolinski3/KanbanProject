@@ -126,6 +126,11 @@ variable "db_connection_budget" {
   }
 }
 
+variable "acs_mail_configured" {
+  type        = bool
+  description = "Whether mail is on. A plain bool rather than a test on the connection string, which is unknown until the Communication Services resource exists and cannot gate a count."
+}
+
 variable "acs_email_connection_string" {
   type      = string
   sensitive = true

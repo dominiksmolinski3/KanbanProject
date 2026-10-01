@@ -158,23 +158,14 @@ variable "allowed_ingress_cidrs" {
   default     = []
 }
 
-variable "acs_email_connection_string" {
-  description = "Connection string for the Azure Communication Services resource that carries mail (portal -> the resource -> Keys). Empty turns mail off: the app starts and drops messages instead of refusing to boot."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "acs_email_sender_address" {
-  description = "MailFrom address on a domain linked to the Communication Services resource, e.g. \"DoNotReply@<guid>.azurecomm.net\". Not a secret."
-  type        = string
-  default     = ""
-}
-
-variable "acs_communication_service_id" {
-  description = "Resource ID of the Communication Services resource created by hand outside Terraform (portal -> the resource -> JSON view -> id), e.g. \"/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Communication/communicationServices/<name>\". Not a secret. Empty (the default) means no bounce alert - see the diagnostics module."
-  type        = string
-  default     = ""
+variable "acs" {
+  description = "The Azure Communication Services resource that carries mail, and its email service, in an existing resource group. Terraform owns them and reads the connection string and sender address from them. null (the default) turns mail off: the app starts and drops messages instead of refusing to boot, and there is no bounce alert or delivery-report subscription."
+  type = object({
+    resource_group_name        = string
+    communication_service_name = string
+    email_service_name         = string
+  })
+  default = null
 }
 
 variable "captcha_enabled" {

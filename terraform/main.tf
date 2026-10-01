@@ -31,23 +31,20 @@ resource "azurerm_resource_group" "main" {
     }
 
     precondition {
-      condition = var.env != "prod" || (
-        var.acs_email_connection_string != "" && var.acs_email_sender_address != ""
-      )
+      condition     = var.env != "prod" || var.acs != null
       error_message = <<-EOT
         prod would deploy with mail switched off (MAIL-02).
 
-        Set both for env = "prod":
-          acs_email_connection_string
-          acs_email_sender_address
+        Set acs for env = "prod".
 
-        Empty means mail off: the app starts, signup answers 200, the
+        null means mail off: the app starts, signup answers 200, the
         verification code is stored, and the message is dropped. The
         revision is healthy and there is nothing in the log to look at.
 
-        Create the Communication Services resource, link a domain (an
-        Azure-managed *.azurecomm.net subdomain needs no DNS), and put
-        both values in the gitignored prod.local.tfvars.
+        Name a resource group, a Communication Services resource and an
+        email service in acs; Terraform creates them (or imports them, if
+        they already exist) with an Azure-managed *.azurecomm.net domain,
+        which needs no DNS.
 
         See terraform/README.md, section "Mail".
       EOT
@@ -175,6 +172,15 @@ module "db_roles" {
   rbac_propagation_delay = var.rbac_propagation_delay
 }
 
+module "mail" {
+  source                     = "./modules/mail"
+  count                      = var.acs == null ? 0 : 1
+  resource_group_name        = var.acs.resource_group_name
+  communication_service_name = var.acs.communication_service_name
+  email_service_name         = var.acs.email_service_name
+  tags                       = local.tags
+}
+
 module "redis" {
   source                     = "./modules/redis"
   resource_group_name        = azurerm_resource_group.main.name
@@ -241,8 +247,9 @@ module "api_app" {
   github_repository_owner          = var.github_repository_owner
   ghcr_username                    = var.ghcr_username
   ghcr_token                       = var.ghcr_token
-  acs_email_connection_string      = var.acs_email_connection_string
-  acs_email_sender_address         = var.acs_email_sender_address
+  acs_mail_configured              = var.acs != null
+  acs_email_connection_string      = try(module.mail[0].connection_string, "")
+  acs_email_sender_address         = try(module.mail[0].sender_address, "")
   captcha_enabled                  = var.captcha_enabled
   captcha_secret                   = var.captcha_secret
   storage_account_id               = module.storage.id
@@ -306,7 +313,9 @@ module "diagnostics" {
 
   key_vault_id                 = module.key_vault.id
   postgres_server_id           = module.postgres.postgres_server_id
-  acs_communication_service_id = var.acs_communication_service_id
+  acs_configured               = var.acs != null
+  acs_communication_service_id = try(module.mail[0].id, "")
+  acs_resource_group_name      = try(var.acs.resource_group_name, "")
 
   container_app_url        = module.web_app.container_app_url
   mail_delivery_report_key = var.mail_delivery_report_key

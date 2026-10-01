@@ -26,3 +26,9 @@ custom_domain = {
   name             = "kanbanproject.pl"
   certificate_name = "kanbanproject.pl-cae-dev-260921124711"
 }
+
+acs = {
+  resource_group_name        = "rg-kanbanproject"
+  communication_service_name = "acs-kanbanproject"
+  email_service_name         = "kanban-csemail"
+}
