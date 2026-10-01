@@ -957,7 +957,8 @@ classic Cache for Redis is retiring in favour of, which this deployment learned 
 first apply against dev of the classic `azurerm_redis_cache` was refused outright with
 `Azure Cache for Redis is retiring, create Azure Managed Redis instance instead` on a subscription
 that had never created either kind before. It sits behind the private endpoint the storage account
-and Key Vault already have, authenticated with an access key from `REDIS-ACCESS-KEY`, on the
+and Key Vault already have, logged in to as the API's managed identity with an Entra token (access
+keys are off, and Jedis renews the token on its pooled connections), on the
 smallest SKU (`Balanced_B0`) — deliberate, the same way Basic would have been on a classic cache,
 since what it holds is exactly the state the store already fails open on losing.
 

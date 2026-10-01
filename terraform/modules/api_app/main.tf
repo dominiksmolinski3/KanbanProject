@@ -30,6 +30,7 @@ resource "azurerm_container_app" "main" {
   revision_mode                = "Single"
   depends_on = [
     terraform_data.migrate,
+    azurerm_managed_redis_access_policy_assignment.main,
     time_sleep.wait_for_secrets_user,
     time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
@@ -42,11 +43,6 @@ resource "azurerm_container_app" "main" {
   secret {
     name                = "jwt-secret-key"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "JWT-SECRET-KEY")
-    identity            = azurerm_user_assigned_identity.main.id
-  }
-  secret {
-    name                = "redis-access-key"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "REDIS-ACCESS-KEY")
     identity            = azurerm_user_assigned_identity.main.id
   }
   dynamic "secret" {
@@ -174,8 +170,12 @@ resource "azurerm_container_app" "main" {
         value = "true"
       }
       env {
-        name        = "SECURITY_RATE_LIMIT_REDIS_PASSWORD"
-        secret_name = "redis-access-key"
+        name  = "SECURITY_RATE_LIMIT_REDIS_ENTRA_CLIENT_ID"
+        value = azurerm_user_assigned_identity.main.client_id
+      }
+      env {
+        name  = "SECURITY_RATE_LIMIT_REDIS_USERNAME"
+        value = azurerm_user_assigned_identity.main.principal_id
       }
       env {
         name  = "SECURITY_CORS_ALLOWED_ORIGINS"
@@ -365,6 +365,11 @@ resource "azurerm_user_assigned_identity" "main" {
   name                = "kanban-app-identity-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_managed_redis_access_policy_assignment" "main" {
+  managed_redis_id = var.redis_id
+  object_id        = azurerm_user_assigned_identity.main.principal_id
 }
 
 resource "azurerm_role_assignment" "key_vault_secrets_user" {

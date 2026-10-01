@@ -182,10 +182,7 @@ module "redis" {
   env                        = var.env
   vnet_id                    = module.vnet.id
   private_endpoint_subnet_id = module.vnet.redis_subnet_id
-  key_vault_id               = module.key_vault.id
   tags                       = local.tags
-
-  depends_on = [module.key_vault]
 }
 
 module "broker" {
@@ -250,6 +247,7 @@ module "api_app" {
   postgres_fqdn                    = module.postgres.fqdn
   postgres_database                = module.postgres.postgres_db_name
   database_roles_ready             = module.db_roles.ready
+  redis_id                         = module.redis.id
   redis_hostname                   = module.redis.hostname
   redis_port                       = module.redis.port
   broker_app_name                  = module.broker.app_name

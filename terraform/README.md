@@ -860,14 +860,16 @@ for authentication, and it must never cross the wire unencrypted. The database a
 names it rather than a literal anywhere else, precisely so this detail doesn't have to be re-learned
 by a second failed apply.
 
-**The access key is a secret Terraform creates and the module owns, the same pattern
-`modules/postgres` uses for `POSTGRES-PASSWORD`.** `azurerm_key_vault_secret.redis_access_key` is
-written here, not in `api_app`, reading `azurerm_managed_redis.main.default_database[0]
-.primary_access_key`; the API module references the secret by name
-(`format("%s/secrets/%s", ..., "REDIS-ACCESS-KEY")`), which is why `module.api_app`'s `depends_on`
-in the root module names `module.redis` explicitly — nothing else orders the secret's creation ahead
-of the container app that reads it, since a string built from a Key Vault URI is not a Terraform
-attribute reference the graph can see.
+**There is no access key.** `access_keys_authentication_enabled = false`, and the API logs in as
+its own managed identity: `modules/api_app` grants it an
+`azurerm_managed_redis_access_policy_assignment` on the default database, and passes its client id
+and object id as `SECURITY_RATE_LIMIT_REDIS_ENTRA_CLIENT_ID` and `SECURITY_RATE_LIMIT_REDIS_USERNAME`.
+`RedisRateLimitConfiguration` hands Jedis a token manager that fetches a token for
+`https://redis.azure.com/.default` and renews it before it expires, re-authenticating the pooled
+connections in place. That removes the `REDIS-ACCESS-KEY` secret, and with it the trap where a
+regenerated key reached Key Vault but not a running revision. The container app depends on the
+assignment, so a new revision never starts before its identity may log in. With neither variable
+set (docker-compose, CI) the app connects unauthenticated, as before.
 
 Locally and in CI, `security.rate-limit.redis-host` defaults to `localhost`: docker-compose runs a
 plain `redis:7-alpine` with no password and no TLS (the same trust boundary Postgres and Azurite
@@ -910,7 +912,7 @@ Four decisions carry it:
   RabbitMQ has no notion of a caller identity past the TCP connection its STOMP plugin terminates,
   so splitting client/system credentials would buy nothing. The password is generated
   (`random_password`) and stored as the `RABBITMQ-PASSWORD` Key Vault secret, module-owned the same
-  way `modules/redis` owns `REDIS-ACCESS-KEY` and `modules/postgres` owns `POSTGRES-PASSWORD`; the
+  way `modules/postgres` owns `POSTGRES-PASSWORD`; the
   broker's own identity is scoped to that one secret rather than the vault, same narrow-grant
   pattern the web app's `GHCR-TOKEN` reader gets.
 - **Health checking is TCP-only.** There is no HTTP endpoint to ask, only a port (`61613`) that

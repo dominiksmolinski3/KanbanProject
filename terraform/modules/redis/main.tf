@@ -8,7 +8,7 @@ resource "azurerm_managed_redis" "main" {
   public_network_access = "Disabled"
 
   default_database {
-    access_keys_authentication_enabled = true
+    access_keys_authentication_enabled = false
     client_protocol                    = "Encrypted"
     clustering_policy                  = "EnterpriseCluster"
   }
@@ -45,12 +45,4 @@ resource "azurerm_private_endpoint" "redis" {
     name                 = "redis-zone-group"
     private_dns_zone_ids = [azurerm_private_dns_zone.redis.id]
   }
-}
-
-resource "azurerm_key_vault_secret" "redis_access_key" {
-  tags         = var.tags
-  name         = "REDIS-ACCESS-KEY"
-  value        = azurerm_managed_redis.main.default_database[0].primary_access_key
-  content_type = "Azure Managed Redis primary access key"
-  key_vault_id = var.key_vault_id
 }

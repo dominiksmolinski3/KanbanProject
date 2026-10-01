@@ -184,8 +184,12 @@ variable "storage_blob_endpoint" {
 }
 
 variable "redis_hostname" {
-  description = "Hostname of the Azure Managed Redis instance backing AuthRateLimiter's escalation. Not a secret - the access key is (REDIS-ACCESS-KEY, read from Key Vault by name, the same pattern the Postgres password uses)."
+  description = "Hostname of the Azure Managed Redis instance backing AuthRateLimiter's escalation. The API logs in to it as its own identity with an Entra token; there is no access key."
   type        = string
+}
+
+variable "redis_id" {
+  type = string
 }
 
 variable "redis_port" {
