@@ -1,5 +1,6 @@
+# Template, never provisioned: dev is the only environment, and tf.sh refuses to apply this file.
 resource_group_name     = "kanban-prod-rg"
-location                = "West Europe"
+location                = "Sweden Central"
 env                     = "prod"
 github_repository_owner = "dominiksmolinski3"
 
@@ -11,9 +12,8 @@ postgres_standby_availability_zone = "2"
 
 postgres_backup_retention_days        = 35
 postgres_geo_redundant_backup_enabled = true
+backup_location                       = "francecentral"
 
 key_vault_purge_protection_enabled     = true
 key_vault_soft_delete_retention_days   = 90
 key_vault_purge_soft_delete_on_destroy = false
-
-extra_cors_origins = ["https://kanbanproject.pl", "https://www.kanbanproject.pl"]
