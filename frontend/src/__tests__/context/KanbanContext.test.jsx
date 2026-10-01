@@ -1297,7 +1297,7 @@ describe('KanbanContext Provider', () => {
     expect(api.updateTaskColumn).toHaveBeenCalledWith('1', 'col2');
   });
 
-  test('handles empty columns when adding a task', async () => {
+  test('adding a task with no columns is a toast, not a board error', async () => {
     api.fetchColumns.mockResolvedValueOnce([]);
     api.addTask.mockRejectedValueOnce(new Error('Nie ma żadnej kolumny. Dodaj najpierw kolumnę.'));
     
@@ -1335,11 +1335,7 @@ describe('KanbanContext Provider', () => {
       fireEvent.click(screen.getByTestId('add-task-empty-columns'));
     });
     
-    await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent(
-        'Error: notifications.noColumnError'
-      );
-    });
+    expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
   });
 
   describe('a viewer on the active board (FEAT-08)', () => {
