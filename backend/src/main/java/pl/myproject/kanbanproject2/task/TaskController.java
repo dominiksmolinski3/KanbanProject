@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -116,7 +117,7 @@ public class TaskController {
 
     @PutMapping("/{taskId}/label/{label}")
     public ResponseEntity<TaskDto> addLabelToTask(@PathVariable Integer taskId,
-                                                  @PathVariable String label,
+                                                  @PathVariable @Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String label,
                                                   @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(taskService.addLabelToTask(currentUser, taskId, label));
     }
@@ -131,7 +132,7 @@ public class TaskController {
     @PatchMapping("/{taskId}/labels")
     public ResponseEntity<TaskDto> updateTaskLabels(
             @PathVariable Integer taskId,
-            @RequestBody @NotNull Set<String> labels,
+            @RequestBody @NotNull Set<@Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String> labels,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(taskService.updateTaskLabels(currentUser, taskId, labels));
     }

@@ -9,10 +9,10 @@ import java.util.Set;
 
 public record PatchTaskRequest(
         JsonNullable<@Size(max = 255) String> title,
-        JsonNullable<String> description,
+        JsonNullable<@Size(max = CreateTaskRequest.DESCRIPTION_MAX_LENGTH) String> description,
         JsonNullable<Integer> position,
         JsonNullable<LocalDateTime> deadline,
-        JsonNullable<Set<String>> labels,
+        JsonNullable<Set<@Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String>> labels,
         JsonNullable<@Valid IdRef> column,
         JsonNullable<@Valid IdRef> row,
         Integer version) {

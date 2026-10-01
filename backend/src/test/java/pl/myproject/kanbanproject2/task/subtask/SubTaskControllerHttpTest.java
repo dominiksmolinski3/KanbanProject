@@ -184,4 +184,25 @@ class SubTaskControllerHttpTest {
         verify(subTaskService).assignTaskToSubTask(caller, 1, 7);
         verify(subTaskService).updateSubTaskPosition(caller, 1, 5);
     }
+
+    @Test
+    @DisplayName("a title or description over its cap is a 400 on create and on patch")
+    void textIsCapped() throws Exception {
+        String longTitle = "t".repeat(256);
+        String longDescription = "d".repeat(pl.myproject.kanbanproject2.task.CreateTaskRequest.DESCRIPTION_MAX_LENGTH + 1);
+
+        mvc.perform(post("/subtasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + longTitle + "\",\"task\":{\"id\":7}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(patch("/subtasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\":\"" + longDescription + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verify(subTaskService, org.mockito.Mockito.never()).addSubTask(any(), any());
+        verify(subTaskService, org.mockito.Mockito.never()).patchSubTask(any(), any(), any());
+    }
 }

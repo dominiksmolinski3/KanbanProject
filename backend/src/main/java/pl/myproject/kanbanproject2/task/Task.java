@@ -33,6 +33,7 @@ public class Task {
     private String title;
     private Integer position;
     private boolean completed;
+    @jakarta.persistence.Column(columnDefinition = "TEXT")
     private String description;
     @jakarta.persistence.Column(name = "deadline")
     private LocalDateTime deadline;
