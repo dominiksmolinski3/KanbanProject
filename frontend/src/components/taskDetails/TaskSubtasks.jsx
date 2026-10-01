@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import LengthHint from '../LengthHint';
+import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from '../../services/textLimits';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { addSubTask, deleteSubTask, fetchSubTask, fetchSubTasksByTaskId, toggleSubTaskCompletion, updateSubTask } from '../../services/api';
@@ -145,11 +147,13 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
           <textarea
             ref={descriptionInputRef}
             value={subtaskDescription}
+            maxLength={DESCRIPTION_MAX_LENGTH}
             onChange={(e) => setSubtaskDescription(e.target.value)}
             placeholder={t('taskActions.description')}
             className="description-textarea"
             rows={4}
           ></textarea>
+          <LengthHint value={subtaskDescription} max={DESCRIPTION_MAX_LENGTH} />
           <div className="description-edit-actions">
             <button onClick={saveSubtaskDescription} className="save-description-btn">
               {t('taskActions.save')}
@@ -192,6 +196,7 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
           <input
             type="text"
             value={newSubtaskTitle}
+            maxLength={NAME_MAX_LENGTH}
             onChange={(e) => setNewSubtaskTitle(e.target.value)}
             placeholder={t('taskActions.shadowDescription')}
             className="subtask-input"
@@ -203,6 +208,7 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
           >
             {t('header.addTask')}
           </button>
+          <LengthHint value={newSubtaskTitle} max={NAME_MAX_LENGTH} />
         </div>
       )}
 

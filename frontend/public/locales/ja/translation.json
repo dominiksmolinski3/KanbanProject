@@ -272,6 +272,10 @@
       "logoAlt": "カンバンのロゴ"
     },
     "forms": {
+      "textLimit": {
+        "remaining": "残り{{count}}文字",
+        "atLimit": "上限に達しました：{{max}}文字"
+      },
       "wipLimit": {
         "title": "WIP制限を設定",
         "close": "フォームを閉じる",

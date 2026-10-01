@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../context/KanbanContext';
 import '../styles/components/BoardSwitcher.css';
@@ -100,7 +101,7 @@ function BoardSwitcher() {
                 type="text"
                 value={name}
                 autoFocus
-                maxLength={255}
+                maxLength={NAME_MAX_LENGTH}
                 placeholder={t('boards.switcher.namePlaceholder')}
                 onChange={(event) => setName(event.target.value)}
               />

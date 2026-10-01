@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import LengthHint from './LengthHint';
+import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
 import { createPortal } from 'react-dom';
 import { fetchUsers, fetchTask, removeUserFromTask, updateTask, ConcurrentModificationError } from '../services/api';
@@ -240,10 +242,12 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
         ref={taskTitleInputRef}
         type="text"
         value={taskTitle}
+        maxLength={NAME_MAX_LENGTH}
         onChange={(e) => setTaskTitle(e.target.value)}
         className="title-input"
         placeholder={t('taskActions.editTitle')}
       />
+      <LengthHint value={taskTitle} max={NAME_MAX_LENGTH} />
       <div className="title-edit-actions">
         <button onClick={saveTaskTitle} className="save-title-btn" disabled={!taskTitle.trim()}>
           {t('taskActions.yes')}
@@ -313,11 +317,13 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           <textarea
             ref={taskDescriptionInputRef}
             value={taskDescription}
+            maxLength={DESCRIPTION_MAX_LENGTH}
             onChange={(e) => setTaskDescription(e.target.value)}
             placeholder={t('taskActions.description')}
             className="description-textarea"
             rows={4}
           ></textarea>
+          <LengthHint value={taskDescription} max={DESCRIPTION_MAX_LENGTH} />
           <div className="description-edit-actions">
             <button onClick={saveTaskDescription} className="save-description-btn">
               {t('taskActions.save')}

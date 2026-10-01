@@ -272,6 +272,10 @@
     "logoAlt": "Kanban-Logo"
   },
   "forms": {
+    "textLimit": {
+      "remaining": "Noch {{count}} Zeichen",
+      "atLimit": "Limit erreicht: {{max}} Zeichen"
+    },
     "wipLimit": {
       "title": "WIP-Limit festlegen",
       "close": "Formular schließen",

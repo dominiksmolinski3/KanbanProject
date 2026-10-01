@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import LengthHint from './LengthHint';
+import { NAME_MAX_LENGTH } from '../services/textLimits';
 
 function EditableText({
   id,
@@ -7,7 +9,8 @@ function EditableText({
   className = "",
   inputClassName = "",
   type = "default",
-  disabled = false
+  disabled = false,
+  maxLength = NAME_MAX_LENGTH
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(text);
@@ -53,16 +56,20 @@ function EditableText({
 
   if (isEditing) {
     return (
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className={`editable-text-input ${inputClassName}`}
-        data-type={type}
-      />
+      <span className="editable-text-editing">
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          maxLength={maxLength}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`editable-text-input ${inputClassName}`}
+          data-type={type}
+        />
+        <LengthHint value={value} max={maxLength} />
+      </span>
     );
   }
 

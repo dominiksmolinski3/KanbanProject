@@ -272,6 +272,10 @@
       "logoAlt": "Logotipo de Kanban"
     },
     "forms": {
+      "textLimit": {
+        "remaining": "Quedan {{count}} caracteres",
+        "atLimit": "Límite alcanzado: {{max}} caracteres"
+      },
       "wipLimit": {
         "title": "Establecer límite WIP",
         "close": "Cerrar formulario",

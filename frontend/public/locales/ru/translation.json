@@ -272,6 +272,10 @@
       "logoAlt": "Логотип Kanban"
     },
     "forms": {
+      "textLimit": {
+        "remaining": "Осталось символов: {{count}}",
+        "atLimit": "Достигнут предел: {{max}} символов"
+      },
       "wipLimit": {
         "title": "Установить лимит НЗР",
         "close": "Закрыть форму",
