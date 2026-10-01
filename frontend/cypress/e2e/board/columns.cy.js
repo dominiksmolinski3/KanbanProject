@@ -33,7 +33,23 @@ describe('Column Management', () => {
   cy.get('input').clear().type('Updated Column{enter}');
   cy.contains('th', 'Updated Column').should('exist');
   });
-  
+
+  it('keeps the board on screen when a rename is refused', () => {
+    cy.createColumn('Refused Rename', 3);
+    cy.intercept('PATCH', '/api/columns/*', {
+      statusCode: 400,
+      body: { code: 'VALIDATION_ERROR', message: 'name: size must be between 1 and 255' },
+    }).as('refusedRename');
+    cy.contains('th', 'Refused Rename')
+      .find('.editable-text')
+      .dblclick({ force: true });
+    cy.get('input.editable-text-input').clear().type('Not Accepted{enter}');
+    cy.wait('@refusedRename');
+    cy.get('.board-error').should('not.exist');
+    cy.contains('th', 'Refused Rename').should('exist');
+    cy.get('.Toastify__toast--error').should('be.visible');
+  });
+
   it('enforces WIP limits on columns', () => {
     cy.createColumn('Limited', 2);
     cy.createRow('Test Row', 0);

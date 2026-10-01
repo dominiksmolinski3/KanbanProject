@@ -20,7 +20,7 @@ export function KanbanProvider({ children }) {
   const boards = useBoards({ t, setError, setLoading });
   const data = useBoardData({ activeBoardId: boards.activeBoardId, setLoading, setError });
   const guard = readOnlyGuard(boards.isViewer, t);
-  const shared = { t, setError, ...guard, ...data };
+  const shared = { t, ...guard, ...data };
   const layout = useLayoutActions(shared);
   const taskActions = useTaskActions(shared);
   const dragAndDrop = useDragAndDrop({

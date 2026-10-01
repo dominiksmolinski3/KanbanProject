@@ -15,7 +15,7 @@ import {
 } from '../../services/api';
 
 export function useTaskActions({
-  t, setError, blockIfReadOnly, refuseIfReadOnly,
+  t, blockIfReadOnly, refuseIfReadOnly,
   columns, rows, tasks, setTasks, refreshTasks,
 }) {
   const handleUpdateTaskName = async (taskId, newName) => {
@@ -29,7 +29,6 @@ export function useTaskActions({
       return true;
     } catch (err) {
       console.error('Error updating task name:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       return false;
     }
@@ -37,15 +36,12 @@ export function useTaskActions({
 
   const handleAddTask = async (title, columnId, deadline = null, rowId = null) => {
     refuseIfReadOnly();
+    if (!columns || columns.length === 0) {
+      const errorMessage = t('notifications.noColumnError');
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
     try {
-      if (!columns || columns.length === 0) {
-        const errorMessage = t('notifications.noColumnError');
-        setError(errorMessage);
-        toast.error(errorMessage);
-        await new Promise(resolve => setTimeout(resolve, 10));
-        throw new Error(errorMessage);
-      }
-
       const targetColumnId = columnId || columns[0].id;
       const newTask = await addTask(title, targetColumnId, deadline);
 
@@ -68,7 +64,6 @@ export function useTaskActions({
       toast.success(t('notifications.taskAdded', { title }));
       return newTask;
     } catch (err) {
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       throw err;
     }
@@ -131,8 +126,8 @@ export function useTaskActions({
       toast.success(message);
     } catch (err) {
       console.error('Error moving task:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
+      await refreshTasks();
     }
   };
 
@@ -189,8 +184,8 @@ export function useTaskActions({
 
     } catch (err) {
       console.error('Error reordering tasks:', err);
-      setError(err.message);
-      throw err;
+      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      await refreshTasks();
     }
   };
 
@@ -213,7 +208,6 @@ export function useTaskActions({
         toast.error(t('notifications.parentTaskNotCompleted'));
       } else {
         console.error('Error updating task completion:', err);
-        setError(err.message);
         toast.error(t('notifications.errorOccurred', { message: err.message }));
       }
       return false;
@@ -233,7 +227,6 @@ export function useTaskActions({
       return true;
     } catch (err) {
       console.error('Error updating daily focus:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       return false;
     }
@@ -246,7 +239,6 @@ export function useTaskActions({
       setTasks(previous => previous.filter(task => task.id !== taskId));
       toast.success(t('notifications.taskDeleted'));
     } catch (err) {
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       throw err;
     }
@@ -257,7 +249,6 @@ export function useTaskActions({
       return await getUserWipStatus(userId);
     } catch (err) {
       console.error('Error checking user WIP status:', new Error(err.message));
-      setError(err.message);
       throw err;
     }
   };
@@ -270,7 +261,6 @@ export function useTaskActions({
       return result;
     } catch (err) {
       console.error('Error updating user WIP limit:', err);
-      setError(err.message);
       toast.error(t('notifications.errorOccurred', { message: err.message }));
       throw err;
     }
