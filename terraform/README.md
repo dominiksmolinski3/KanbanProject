@@ -593,8 +593,7 @@ points at the environment's static IP and the `asuid` TXT record carries the ver
 
 Creating one from scratch is two applies, because Azure validates the certificate against a
 hostname already added to the app: add the domain with binding `Disabled` first, then create the
-certificate. dev's pair was made in the portal and adopted with `imports.tf`, which should be
-deleted once that has been applied.
+certificate. dev's pair was made in the portal and adopted with `import` blocks.
 
 ### Container App ingress restrictions
 
