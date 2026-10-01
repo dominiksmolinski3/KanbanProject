@@ -26,10 +26,9 @@ resource "azurerm_key_vault" "main" {
   soft_delete_retention_days = var.soft_delete_retention_days
 
   network_acls {
-    default_action             = var.network_default_action
-    bypass                     = var.allow_azure_services_bypass ? "AzureServices" : "None"
-    virtual_network_subnet_ids = [var.allowed_subnet_id]
-    ip_rules                   = var.ip_rules
+    default_action = var.network_default_action
+    bypass         = var.allow_azure_services_bypass ? "AzureServices" : "None"
+    ip_rules       = var.ip_rules
   }
 }
 
