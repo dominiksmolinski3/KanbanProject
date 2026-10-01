@@ -22,3 +22,10 @@ output "memory_bytes" {
   description = "Memory limit of one API replica in bytes, so alerts can be set as a share of it."
   value       = local.memory_gib * 1073741824
 }
+
+output "identity" {
+  value = {
+    name         = azurerm_user_assigned_identity.main.name
+    principal_id = azurerm_user_assigned_identity.main.principal_id
+  }
+}

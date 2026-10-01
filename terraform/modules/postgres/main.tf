@@ -12,6 +12,8 @@ resource "random_string" "suffix" {
   special = false
 }
 
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_postgresql_flexible_server" "main" {
   tags                          = var.tags
   name                          = "psql-${var.env}-${random_string.suffix.result}"
@@ -28,6 +30,12 @@ resource "azurerm_postgresql_flexible_server" "main" {
   sku_name                      = var.sku_name
   backup_retention_days         = var.backup_retention_days
   geo_redundant_backup_enabled  = var.geo_redundant_backup_enabled
+
+  authentication {
+    active_directory_auth_enabled = true
+    password_auth_enabled         = true
+    tenant_id                     = data.azurerm_client_config.current.tenant_id
+  }
 
   maintenance_window {
     day_of_week  = 0
@@ -99,15 +107,6 @@ resource "azurerm_key_vault_secret" "postgres_password" {
   name         = "POSTGRES-PASSWORD"
   value        = random_password.password.result
   content_type = "PostgreSQL administrator password"
-  key_vault_id = var.key_vault_id
-}
-
-resource "azurerm_key_vault_secret" "postgres_connection_string" {
-  tags = var.tags
-  name = "POSTGRES-CONNECTION-STRING"
-  # sslfactory is required: pgjdbc's default reads ~/.postgresql/root.crt and never falls back to the JDK trust store.
-  value        = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory", azurerm_postgresql_flexible_server.main.fqdn, azurerm_postgresql_flexible_server_database.main.name)
-  content_type = "JDBC URL"
   key_vault_id = var.key_vault_id
 }
 

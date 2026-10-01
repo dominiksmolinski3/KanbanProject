@@ -13,3 +13,10 @@ output "job_name" {
 output "restore_drill_job_name" {
   value = azurerm_container_app_job.restore_drill.name
 }
+
+output "identity" {
+  value = {
+    name         = azurerm_user_assigned_identity.job.name
+    principal_id = azurerm_user_assigned_identity.job.principal_id
+  }
+}
