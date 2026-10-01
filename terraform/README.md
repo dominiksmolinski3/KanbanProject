@@ -451,6 +451,11 @@ subscription.
   denies everything else.
 - `kanban-<env>-backup-stale` fires when no `BACKUP_OK` line has appeared in the job's
   console logs for 26 hours.
+- A second job, `kanban-<env>-restore-drill`, runs at 03:15 UTC. It downloads the newest
+  `daily/` dump with its own identity (Storage Blob Data Reader on the container, nothing
+  else), restores it into a throwaway Postgres inside the job and prints `RESTORE_OK` with
+  the migration and row counts. `kanban-<env>-restore-drill-failed` fires when no such
+  line has appeared for 26 hours. A dump that exists and does not restore is not a backup.
 
 To run it now: `az containerapp job start -g kanban-dev-rg -n kanban-dev-pg-dump`.
 To restore: download a dump and `pg_restore --no-owner --dbname=<target>`; it
