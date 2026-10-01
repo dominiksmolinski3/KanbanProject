@@ -1,5 +1,6 @@
+# Template, never provisioned: dev is the only environment, and tf.sh refuses to apply this file.
 resource_group_name     = "kanban-uat-rg"
-location                = "West Europe"
+location                = "Poland Central"
 env                     = "uat"
 github_repository_owner = "dominiksmolinski3"
 
