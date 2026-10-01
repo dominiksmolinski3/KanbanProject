@@ -714,6 +714,14 @@ Four decisions carry the feature:
   `TaskService.deleteTask` calls `TaskAttachmentService.deleteAllFor` rather than relying on a
   cascade, because a foreign-key cascade takes the rows and leaves every blob behind with nothing
   left that knows its name.
+- **The orphans that ordering allows are swept, nightly.** `OrphanedBlobSweep` (03:45) lists the
+  blobs under each `BlobOwner`'s prefix (`tasks/` for attachments, `avatars/` for avatars), asks
+  the owner which names a row still holds, in batches of 500, and removes the rest. A blob younger
+  than 24 hours is left alone whatever the rows say, because an upload writes its blob before its
+  row commits. A prefix no `BlobOwner` claims is never touched, so **a new feature that writes
+  blobs needs an owner bean** or its blobs are simply not swept. Like the chat prune it is not
+  claimed: two replicas deleting the same blob is wasted work, not a defect. It counts what it
+  removes in `kanban.storage.orphans.removed`.
 
 Scoping is the task's, entirely: an attachment has no board of its own, which is why the routes are
 nested under `/api/tasks/{taskId}/attachments` and the service checks the task before it looks at

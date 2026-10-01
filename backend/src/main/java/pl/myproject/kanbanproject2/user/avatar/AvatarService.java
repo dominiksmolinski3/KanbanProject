@@ -32,6 +32,8 @@ import java.util.function.IntConsumer;
 @Service
 public class AvatarService {
 
+    static final String BLOB_PREFIX = "avatars/";
+
     static final long MAX_AVATAR_SIZE = 1024 * 1024;
 
     private static final Set<String> ALLOWED_AVATAR_TYPES =
@@ -165,7 +167,7 @@ public class AvatarService {
     }
 
     private static String blobNameFor(User user) {
-        return "avatars/" + user.getId() + "/" + UUID.randomUUID();
+        return BLOB_PREFIX + user.getId() + "/" + UUID.randomUUID();
     }
 
     private void requireStorage() {

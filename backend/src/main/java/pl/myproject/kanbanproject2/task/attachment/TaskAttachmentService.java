@@ -41,6 +41,8 @@ import java.util.function.IntConsumer;
 @Service
 public class TaskAttachmentService {
 
+    static final String BLOB_PREFIX = "tasks/";
+
     static final long MAX_ATTACHMENT_SIZE = 10L * 1024 * 1024;
 
     private static final int MAX_FILE_NAME_LENGTH = 255;
@@ -253,7 +255,7 @@ public class TaskAttachmentService {
     }
 
     private static String blobNameFor(Task task) {
-        return "tasks/" + task.getId() + "/" + UUID.randomUUID();
+        return BLOB_PREFIX + task.getId() + "/" + UUID.randomUUID();
     }
 
     private void requireStorage() {
