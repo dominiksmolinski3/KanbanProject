@@ -72,6 +72,10 @@ class PinnedImagesTest {
         String dumperMajor = dumper.substring("postgres:".length()).split("[.@-]")[0];
 
         assertThat(images).allMatch(image -> PINNED.matcher(image).matches());
+        assertThat(images.stream().filter(image -> image.startsWith("postgres:")))
+                .as("the restore drill must restore with the image that dumped, or it tests a pairing "
+                        + "no real restore would use")
+                .containsOnly(dumper);
         assertThat(imagesIn(POSTGRES, SERVER_VERSION))
                 .as("pg_dump refuses a server newer than itself, so a server upgrade without this is a "
                         + "nightly backup that fails from that night on")

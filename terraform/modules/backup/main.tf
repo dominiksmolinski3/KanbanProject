@@ -1,6 +1,7 @@
 locals {
-  job_name  = "kanban-${var.env}-pg-dump"
-  container = "pg-dumps"
+  job_name       = "kanban-${var.env}-pg-dump"
+  drill_job_name = "kanban-${var.env}-restore-drill"
+  container      = "pg-dumps"
 
   retention = {
     daily   = { delete_after = 14, cool_after = null }
@@ -305,6 +306,131 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "stale" {
     KQL
     time_aggregation_method = "Total"
     metric_measure_column   = "Succeeded"
+    threshold               = 1
+    operator                = "LessThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [var.action_group_id]
+  }
+}
+
+resource "azurerm_user_assigned_identity" "drill" {
+  tags                = var.tags
+  name                = "kanban-restore-drill-identity-${var.env}"
+  location            = var.job_location
+  resource_group_name = var.job_resource_group_name
+}
+
+resource "azurerm_role_assignment" "drill_reader" {
+  scope                = azurerm_storage_container.dumps.id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_user_assigned_identity.drill.principal_id
+}
+
+resource "time_sleep" "wait_for_drill_role" {
+  triggers = {
+    role_assignment_id = azurerm_role_assignment.drill_reader.id
+  }
+  create_duration = var.rbac_propagation_delay
+}
+
+resource "azurerm_container_app_job" "restore_drill" {
+  tags                         = var.tags
+  name                         = local.drill_job_name
+  resource_group_name          = var.job_resource_group_name
+  location                     = var.job_location
+  container_app_environment_id = var.container_app_env_id
+  workload_profile_name        = "Consumption"
+
+  replica_timeout_in_seconds = 1800
+  replica_retry_limit        = 1
+
+  depends_on = [time_sleep.wait_for_drill_role]
+
+  schedule_trigger_config {
+    cron_expression          = var.drill_cron_expression
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.drill.id]
+  }
+
+  template {
+    init_container {
+      name    = "download"
+      image   = "curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill-download.sh"), "\r", "")]
+
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.drill.client_id
+      }
+      env {
+        name  = "CONTAINER_URL"
+        value = "${azurerm_storage_account.dumps.primary_blob_endpoint}${local.container}"
+      }
+
+      volume_mounts {
+        name = "backup"
+        path = "/backup"
+      }
+    }
+
+    container {
+      name    = "restore"
+      image   = "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
+      cpu     = 0.5
+      memory  = "1Gi"
+      command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill.sh"), "\r", "")]
+
+      volume_mounts {
+        name = "backup"
+        path = "/backup"
+      }
+    }
+
+    volume {
+      name         = "backup"
+      storage_type = "EmptyDir"
+    }
+  }
+}
+
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "drill_failed" {
+  count                   = var.alerts_enabled ? 1 : 0
+  tags                    = var.tags
+  name                    = "kanban-${var.env}-restore-drill-failed"
+  resource_group_name     = var.job_resource_group_name
+  location                = var.job_location
+  scopes                  = [var.log_analytics_workspace_id]
+  description             = "The newest database dump has not restored into a scratch Postgres in 26 hours. The dumps may exist and still be unusable."
+  severity                = 1
+  enabled                 = true
+  auto_mitigation_enabled = true
+
+  evaluation_frequency = "PT1H"
+  window_duration      = "P2D"
+
+  criteria {
+    query                   = <<-KQL
+      ContainerAppConsoleLogs_CL
+      | where TimeGenerated > ago(26h)
+      | where ContainerJobName_s == "${local.drill_job_name}" and Log_s has "RESTORE_OK"
+      | summarize Restored = count()
+    KQL
+    time_aggregation_method = "Total"
+    metric_measure_column   = "Restored"
     threshold               = 1
     operator                = "LessThan"
 

@@ -53,6 +53,12 @@ variable "cron_expression" {
   default     = "15 2 * * *"
 }
 
+variable "drill_cron_expression" {
+  description = "When the restore drill runs, in UTC. After the dump job's 30-minute timeout, so it restores that night's dump."
+  type        = string
+  default     = "15 3 * * *"
+}
+
 variable "rbac_propagation_delay" {
   type = string
 }
