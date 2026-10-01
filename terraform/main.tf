@@ -149,6 +149,10 @@ module "backup" {
   alerts_enabled             = var.alert_email != ""
   action_group_id            = module.diagnostics.action_group_id
 
+  attachment_account_id     = module.storage.id
+  attachment_container_name = module.storage.container_name
+  attachment_retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)
+
   depends_on = [module.postgres]
 }
 
@@ -254,6 +258,7 @@ module "api_app" {
   captcha_secret                   = var.captcha_secret
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint
+  storage_container_name           = module.storage.container_name
   postgres_fqdn                    = module.postgres.fqdn
   postgres_database                = module.postgres.postgres_db_name
   database_roles_ready             = module.db_roles.ready

@@ -12,3 +12,7 @@ output "name" {
   description = "The generated account name, which carries a random suffix because the namespace is global."
   value       = azurerm_storage_account.attachments.name
 }
+
+output "container_name" {
+  value = "task-attachments"
+}

@@ -183,6 +183,10 @@ variable "storage_account_id" {
   type        = string
 }
 
+variable "storage_container_name" {
+  type = string
+}
+
 variable "storage_blob_endpoint" {
   description = "Blob service endpoint the app stores task attachments in, e.g. \"https://stkanbanprod123456.blob.core.windows.net/\". Not a secret: it is reached with a token, and the account allows no anonymous access."
   type        = string
