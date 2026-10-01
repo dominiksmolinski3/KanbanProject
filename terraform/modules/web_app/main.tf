@@ -136,3 +136,25 @@ resource "time_sleep" "wait_for_secrets_user" {
   }
   create_duration = var.rbac_propagation_delay
 }
+
+resource "azurerm_container_app_environment_managed_certificate" "custom_domain" {
+  count                        = var.custom_domain == null ? 0 : 1
+  tags                         = var.tags
+  name                         = var.custom_domain.certificate_name
+  container_app_environment_id = var.container_app_env_id
+  subject_name                 = var.custom_domain.name
+  domain_control_validation    = "HTTP"
+}
+
+resource "azurerm_container_app_custom_domain" "main" {
+  count            = var.custom_domain == null ? 0 : 1
+  name             = var.custom_domain.name
+  container_app_id = azurerm_container_app.main.id
+
+  # A managed certificate is bound by the platform; these two fields only name an uploaded one.
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
+
+  depends_on = [azurerm_container_app_environment_managed_certificate.custom_domain]
+}
