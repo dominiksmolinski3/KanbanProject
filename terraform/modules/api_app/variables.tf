@@ -241,6 +241,6 @@ variable "postgres_database" {
 }
 
 variable "database_roles_ready" {
-  description = "The roles job's run id. The app logs in as an Entra role that only exists once that job has run."
+  description = "The roles job's run id. The migration job and the app log in as Entra roles that only exist once that job has run."
   type        = string
 }

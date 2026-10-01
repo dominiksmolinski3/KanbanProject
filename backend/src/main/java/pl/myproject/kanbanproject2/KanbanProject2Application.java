@@ -4,6 +4,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import pl.myproject.kanbanproject2.config.DatabaseMigration;
 
 @SpringBootApplication
 @EnableScheduling
@@ -17,6 +18,11 @@ public class KanbanProject2Application {
                     System.setProperty(entry.getKey(), entry.getValue());
                 }
             });
+        }
+
+        if (DatabaseMigration.requested(args)) {
+            DatabaseMigration.run(args);
+            return;
         }
 
         SpringApplication.run(KanbanProject2Application.class, args);

@@ -44,7 +44,15 @@ variable "postgres_database" {
 }
 
 variable "owner" {
-  description = "The managed identity that runs the migrations. It joins kanban_owner, which owns the schema."
+  description = "The managed identity the migration job runs as. It joins kanban_owner, which owns the schema."
+  type = object({
+    name         = string
+    principal_id = string
+  })
+}
+
+variable "writer" {
+  description = "The managed identity the API runs as. It joins kanban_writer, which can read and write rows and change nothing else."
   type = object({
     name         = string
     principal_id = string
