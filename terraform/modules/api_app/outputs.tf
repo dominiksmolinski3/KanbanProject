@@ -29,3 +29,10 @@ output "identity" {
     principal_id = azurerm_user_assigned_identity.main.principal_id
   }
 }
+
+output "migrator_identity" {
+  value = {
+    name         = azurerm_user_assigned_identity.migrator.name
+    principal_id = azurerm_user_assigned_identity.migrator.principal_id
+  }
+}

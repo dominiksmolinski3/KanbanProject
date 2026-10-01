@@ -13,6 +13,11 @@ locals {
 
   browser_origin = "https://${var.web_app_name}.${var.container_app_env_default_domain}"
 
+  image = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
+
+  # sslfactory is required: pgjdbc's default reads ~/.postgresql/root.crt and never falls back to the JDK trust store.
+  jdbc_url = "jdbc:postgresql://${var.postgres_fqdn}:5432/${var.postgres_database}?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory&authenticationPluginClassName=pl.myproject.kanbanproject2.config.EntraTokenAuthenticationPlugin&azureClientId="
+
   cors_allowed_origins = join(",", concat([local.browser_origin], var.extra_cors_origins))
 }
 
@@ -24,7 +29,7 @@ resource "azurerm_container_app" "main" {
   workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   depends_on = [
-    terraform_data.database_roles,
+    terraform_data.migrate,
     time_sleep.wait_for_secrets_user,
     time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
@@ -103,23 +108,21 @@ resource "azurerm_container_app" "main" {
   template {
     container {
       name   = "kanban-api"
-      image  = "ghcr.io/${var.github_repository_owner}/kanbanproject-app:${var.app_image_tag}"
+      image  = local.image
       cpu    = local.cpu_cores
       memory = "${local.memory_gib}Gi"
 
       env {
-        name = "SPRING_DATASOURCE_URL"
-        # sslfactory is required: pgjdbc's default reads ~/.postgresql/root.crt and never falls back to the JDK trust store.
-        value = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory&authenticationPluginClassName=pl.myproject.kanbanproject2.config.EntraTokenAuthenticationPlugin&azureClientId=%s", var.postgres_fqdn, var.postgres_database, azurerm_user_assigned_identity.main.client_id)
+        name  = "SPRING_DATASOURCE_URL"
+        value = "${local.jdbc_url}${azurerm_user_assigned_identity.main.client_id}"
       }
       env {
         name  = "SPRING_DATASOURCE_USERNAME"
         value = azurerm_user_assigned_identity.main.name
       }
       env {
-        # Without it a new table is owned by this identity rather than kanban_owner, and the next migration cannot alter it.
-        name  = "DB_MIGRATION_INIT_SQL"
-        value = "SET ROLE kanban_owner"
+        name  = "DB_MIGRATE_ON_STARTUP"
+        value = "false"
       }
       env {
         name        = "JWT_SECRET_KEY"
@@ -283,8 +286,78 @@ resource "azurerm_container_app" "main" {
   }
 }
 
-resource "terraform_data" "database_roles" {
-  input = var.database_roles_ready
+resource "azurerm_user_assigned_identity" "migrator" {
+  tags                = var.tags
+  name                = "kanban-migrator-identity-${var.env}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_container_app_job" "migrate" {
+  tags                         = var.tags
+  name                         = "kanban-api-migrate-${var.env}"
+  resource_group_name          = var.resource_group_name
+  location                     = var.location
+  container_app_environment_id = var.container_app_env_id
+  workload_profile_name        = "Consumption"
+
+  replica_timeout_in_seconds = 900
+  replica_retry_limit        = 0
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.migrator.id]
+  }
+
+  template {
+    container {
+      name    = "migrate"
+      image   = local.image
+      cpu     = 0.5
+      memory  = "1Gi"
+      command = ["java", "-XX:MaxRAMPercentage=60.0", "-jar", "/app/app.jar", "--migrate-only"]
+
+      env {
+        name  = "SPRING_DATASOURCE_URL"
+        value = "${local.jdbc_url}${azurerm_user_assigned_identity.migrator.client_id}"
+      }
+      env {
+        name  = "SPRING_DATASOURCE_USERNAME"
+        value = azurerm_user_assigned_identity.migrator.name
+      }
+      env {
+        # Without it a new table is owned by this identity rather than kanban_owner, and the next roles run cannot grant on it.
+        name  = "DB_MIGRATION_INIT_SQL"
+        value = "SET ROLE kanban_owner"
+      }
+      env {
+        name  = "LOG_FORMAT"
+        value = "ecs"
+      }
+    }
+  }
+}
+
+resource "terraform_data" "migrate" {
+  triggers_replace = [
+    azurerm_container_app_job.migrate.id,
+    var.app_image_tag,
+    var.database_roles_ready,
+  ]
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = replace(file("${path.root}/scripts/run-container-app-job.sh"), "\r", "")
+    environment = {
+      JOB            = azurerm_container_app_job.migrate.name
+      RESOURCE_GROUP = var.resource_group_name
+    }
+  }
 }
 
 resource "azurerm_user_assigned_identity" "main" {

@@ -117,6 +117,7 @@ module "postgres" {
   standby_availability_zone    = var.postgres_standby_availability_zone
   backup_retention_days        = var.postgres_backup_retention_days
   geo_redundant_backup_enabled = var.postgres_geo_redundant_backup_enabled
+  password_auth_enabled        = var.postgres_password_auth_enabled
   tags                         = local.tags
 
   depends_on = [module.key_vault]
@@ -168,7 +169,8 @@ module "db_roles" {
   postgres_server_name   = module.postgres.postgres_server_name
   postgres_fqdn          = module.postgres.fqdn
   postgres_database      = module.postgres.postgres_db_name
-  owner                  = module.api_app.identity
+  owner                  = module.api_app.migrator_identity
+  writer                 = module.api_app.identity
   reader                 = module.backup.identity
   rbac_propagation_delay = var.rbac_propagation_delay
 }
