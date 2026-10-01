@@ -58,10 +58,20 @@ variable "location" {
   description = "Azure region. Scheduled query rules are regional resources, unlike the metric alerts above them."
 }
 
+variable "acs_configured" {
+  type        = bool
+  description = "Whether the root manages a Communication Services resource. false skips its diagnostic setting, the bounce alert and the delivery-report subscription."
+  default     = false
+}
+
 variable "acs_communication_service_id" {
-  type        = string
-  description = "Resource ID of the Azure Communication Services resource that carries mail (portal -> the resource -> JSON view -> id), created by hand outside Terraform - see acs_email_connection_string at the root. Empty (the default) skips both the diagnostic setting and the bounce alert below: there is no resource to point either at yet."
-  default     = ""
+  type    = string
+  default = ""
+}
+
+variable "acs_resource_group_name" {
+  type    = string
+  default = ""
 }
 
 variable "container_app_url" {

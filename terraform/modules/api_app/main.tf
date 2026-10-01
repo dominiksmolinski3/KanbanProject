@@ -5,7 +5,6 @@ locals {
   memory_gib = 2
 
   ghcr_credentials_configured = var.ghcr_token != ""
-  acs_mail_configured         = var.acs_email_connection_string != ""
   delivery_reports_configured = var.mail_delivery_report_key != ""
   captcha_secret_configured   = var.captcha_secret != ""
 
@@ -50,7 +49,7 @@ resource "azurerm_container_app" "main" {
     identity            = azurerm_user_assigned_identity.main.id
   }
   dynamic "secret" {
-    for_each = local.acs_mail_configured ? [1] : []
+    for_each = var.acs_mail_configured ? [1] : []
     content {
       name                = "acs-email-connection-string"
       key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "ACS-EMAIL-CONNECTION-STRING")
@@ -129,7 +128,7 @@ resource "azurerm_container_app" "main" {
         secret_name = "jwt-secret-key"
       }
       dynamic "env" {
-        for_each = local.acs_mail_configured ? [1] : []
+        for_each = var.acs_mail_configured ? [1] : []
         content {
           name        = "ACS_EMAIL_CONNECTION_STRING"
           secret_name = "acs-email-connection-string"
@@ -418,7 +417,7 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
 }
 
 resource "azurerm_key_vault_secret" "acs_email_connection_string" {
-  count = local.acs_mail_configured ? 1 : 0
+  count = var.acs_mail_configured ? 1 : 0
 
   tags         = var.tags
   name         = "ACS-EMAIL-CONNECTION-STRING"

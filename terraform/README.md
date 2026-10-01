@@ -89,8 +89,7 @@ az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv
 3) Provide required secrets/variables
 
 Values supplied through variables:
-- `acs_email_connection_string` - Azure Communication Services connection string; empty (the default) turns mail off
-- `acs_email_sender_address` - MailFrom address on a domain linked to that resource
+- `acs` - the resource group, Communication Services resource and email service that carry mail (see [Mail](#mail)); `null` (the default) turns mail off
 - `captcha_enabled`
 - `captcha_secret`
 
@@ -109,7 +108,6 @@ Optional (network) - see [Container App ingress restrictions](#container-app-ing
 
 Optional (monitoring):
 - `alert_email` - if set, Terraform creates an Azure Monitor action group and basic Container Apps metric alerts (CPU + memory).
-- `acs_communication_service_id` - resource ID of the same Communication Services resource `acs_email_connection_string` points at. Empty (the default) skips the mail bounce alert; set it once the resource exists to turn it on. See [Attachment storage](#attachment-storage)'s sibling paragraph on mail, below, and `terraform/modules/diagnostics/main.tf`.
 
 Optional (database sizing) - see [Postgres sizing and availability](#postgres-sizing-and-availability):
 - `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`
@@ -201,8 +199,8 @@ No changes. Your infrastructure matches the configuration.
 secret-bearing value lives in gitignored `<env>.local.tfvars`, deliberately, so that one
 environment's variables cannot reach another's state. CI has no access to that file -- and in this
 configuration those values do not merely set attributes, they gate `count`: an empty
-`acs_communication_service_id` is zero Event Grid resources, an empty `alert_email` is zero alerts,
-an empty `acs_email_connection_string` is no Key Vault secret. So CI's idea of "the configuration"
+`mail_delivery_report_key` is zero Event Grid resources, an empty `alert_email` is zero alerts,
+an empty `captcha_secret` is no Key Vault secret. So CI's idea of "the configuration"
 is structurally a different configuration, and the job would have posted **15 to destroy** into
 every Terraform pull request, forever.
 
@@ -213,9 +211,9 @@ have stopped the job before it printed any of it.
 
 **So it is retired rather than fixed**, the distinction CD-01 established: nothing was built, and
 recording it as closed would be worse than saying so. The only way to make the job truthful is to
-put dev's live ACS connection string, captcha secret and delivery-report key into GitHub secrets so
-CI can reproduce the real configuration -- a mail-sending credential in CI, to power a code-review
-aid. That trade was declined.
+put dev's captcha secret and delivery-report key into GitHub secrets, and give CI a login that
+can read the ACS keys, so it can reproduce the real configuration -- a mail-sending credential in
+CI, to power a code-review aid. That trade was declined.
 
 **What still runs on every Terraform pull request:** `fmt -check`, `init -backend=false`,
 `validate`, and a **blocking** Checkov scan. What is given up is early sight of a
@@ -286,10 +284,12 @@ sees them. The JWT key is stored base64-encoded, because `JwtService.getSignInKe
 runs `Decoders.BASE64.decode(...)` then `Keys.hmacShaKeyFor(...)` and throws on
 anything under 32 decoded bytes.
 
-**Supplied.** `acs_email_connection_string` and `captcha_secret` are issued by Azure
-Communication Services and Google, so they cannot be generated. They come in as
-variables, which means they sit in your tfvars file and in Terraform state in
-plaintext.
+**Read from Azure.** The ACS connection string is the Communication Services resource's own
+primary key, which Terraform reads from the resource it manages (see [Mail](#mail)). It sits in
+Terraform state, not in any tfvars file.
+
+**Supplied.** `captcha_secret` is issued by Google, so it cannot be generated. It comes in as a
+variable, which means it sits in your tfvars file and in Terraform state in plaintext.
 
 That is a deliberate acceptance, not an oversight. The identity running
 `terraform apply` is granted `Key Vault Secrets Officer` on the vault (it has to be --
@@ -297,22 +297,6 @@ Terraform writes the Postgres secrets), so an applier can already read every sec
 the vault with one `az keyvault secret show`. Keeping these two out of tfvars would not
 deny them anything they don't already hold. Both are also revocable from a console in
 seconds with no downtime and no data loss, so the cost of exposure is a rotation.
-
-The Communication Services resource itself, and an email domain linked to it, are not
-provisioned here -- the same way the Gmail account this replaced was created by hand.
-Create the resource, link a domain (an Azure-managed `*.azurecomm.net` subdomain needs
-no DNS), and paste its connection string and a MailFrom address on that domain into
-`acs_email_connection_string` / `acs_email_sender_address`. Left empty, the app boots
-with mail disabled rather than failing.
-
-Answering `202` on send only means ACS accepted the message, not that it reached anyone -- a
-hard bounce or a spam rejection surfaces later, on a channel the application never listens to.
-Once the resource exists, paste its resource ID (portal -> the resource -> JSON view -> `id`)
-into `acs_communication_service_id` too: this is the one additional value the diagnostics
-module needs to ship the resource's delivery-status logs to Log Analytics and alert on a bounce.
-Left empty, Terraform skips both -- there is no resource ID to point either at. See
-`terraform/modules/diagnostics/main.tf`, the comment above `mail_bounces`, for why that alert
-reads a log table rather than a metric.
 
 What follows from that: **the state blob is as sensitive as the vault**, and the
 control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
@@ -353,32 +337,36 @@ rename each to <env>.local.tfvars (drop the '.auto.'); this script passes the on
 
 ### Mail
 
-Terraform writes the `ACS-EMAIL-CONNECTION-STRING` Key Vault secret and passes
-`ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app. It does **not**
-create the Communication Services resource or the email domain linked to it; those are made by hand
-in the portal, and an Azure-managed `*.azurecomm.net` domain needs no DNS.
+`modules/mail` owns the Communication Services resource, the email service, its Azure-managed
+`*.azurecomm.net` domain (which needs no DNS) and the link between them, all in the existing
+resource group `acs` names. Terraform reads the connection string and the `DoNotReply@` sender
+address from them, writes the `ACS-EMAIL-CONNECTION-STRING` Key Vault secret and passes
+`ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app. Nothing about mail
+is pasted into a tfvars file.
 
-With both values empty the app starts and drops every message instead of refusing to boot, which is
+dev's were made by hand in the portal and adopted with `import` blocks. All four carry
+`prevent_destroy`, the domain because it is a generated GUID subdomain and a new one would change
+every sender address. The same resource feeds the diagnostic setting, the bounce alert and the
+Event Grid subscription for delivery reports, so those follow `acs` too.
+
+With `acs` unset the app starts and drops every message instead of refusing to boot, which is
 what lets CI and a fresh clone run without an Azure account. In production that same default is a
 signup that answers `200`, writes the account unverified, stores the verification code and sends
 nothing -- a user who cannot log in, and an operator looking at a healthy revision with no error in
 it.
 
-So **a `prod` plan refuses while either value is empty**, as a precondition on the resource group,
+So **a `prod` plan refuses while `acs` is `null`**, as a precondition on the resource group,
 next to the one that catches a state key paired with the wrong var-file:
 
 ```
 prod would deploy with mail switched off (MAIL-02).
 
-acs_email_connection_string and acs_email_sender_address must both be set for env = "prod".
+Set acs for env = "prod".
 ```
 
 `dev` and `uat` are unaffected and are expected to run with mail off. There is no override flag, on
 purpose: a deployment that deliberately cannot send a verification code is one nobody can sign up
-to. The cost is that the Communication Services resource has to exist before `prod` is first
-applied -- which is the ordering the finding is about, not a side effect of enforcing it.
-
-Set `acs_communication_service_id` as well to get the bounce alert; empty leaves it at `count = 0`.
+to.
 
 ### Postgres sizing and availability
 
@@ -785,11 +773,9 @@ endpoint and the identity's client id are passed as plain environment variables 
 them proves anything, and both come from Terraform's own outputs rather than from anybody's
 tfvars.
 
-That is worth contrasting with mail. `acs_email_connection_string` is a value somebody pastes,
-because Terraform does not create the Communication Services resource; it has been half of MAIL-02
-for five revisions for exactly that reason. Storage has no equivalent, because Terraform creates
-the account and the identity that reaches it -- there is nothing to carry between two systems, so
-there is nothing to drift.
+Mail used to be the contrast: its connection string was a value somebody pasted, because Terraform
+did not own the Communication Services resource. It does now, and reads the string itself, so
+neither has anything to carry between two systems.
 
 | Principal | Role | Why |
 |---|---|---|
