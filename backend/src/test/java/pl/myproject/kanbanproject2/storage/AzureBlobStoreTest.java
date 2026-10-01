@@ -1,8 +1,12 @@
 package pl.myproject.kanbanproject2.storage;
 
+import com.azure.core.http.rest.PagedIterable;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.models.BlobItem;
+import com.azure.storage.blob.models.BlobItemProperties;
 import com.azure.storage.blob.models.BlobRange;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.options.BlobInputStreamOptions;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 import com.azure.storage.blob.specialized.BlobInputStream;
@@ -14,6 +18,9 @@ import org.mockito.ArgumentCaptor;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,6 +54,30 @@ class AzureBlobStoreTest {
         var options = ArgumentCaptor.forClass(BlobParallelUploadOptions.class);
         verify(blob).uploadWithResponse(options.capture(), eq(null), any());
         assertThat(options.getValue().getHeaders().getContentType()).isEqualTo("text/plain");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("a listing is scoped to the prefix and carries each blob's last-modified time")
+    void listsUnderAPrefix() {
+        OffsetDateTime modified = OffsetDateTime.of(2026, 9, 30, 12, 0, 0, 0, ZoneOffset.UTC);
+        PagedIterable<BlobItem> page = mock(PagedIterable.class);
+        when(page.stream()).thenReturn(Stream.of(new BlobItem().setName("tasks/1/a")
+                .setProperties(new BlobItemProperties().setLastModified(modified))));
+        var options = ArgumentCaptor.forClass(ListBlobsOptions.class);
+        when(container.listBlobs(options.capture(), eq(null))).thenReturn(page);
+
+        assertThat(store.list("tasks/"))
+                .containsExactly(new BlobStore.StoredBlob("tasks/1/a", modified.toInstant()));
+        assertThat(options.getValue().getPrefix()).isEqualTo("tasks/");
+    }
+
+    @Test
+    @DisplayName("a listing failure is the store's own exception, like every other call")
+    void wrapsListFailures() {
+        when(container.listBlobs(any(ListBlobsOptions.class), eq(null))).thenThrow(new IllegalStateException("boom"));
+
+        assertThatThrownBy(() -> store.list("tasks/")).isInstanceOf(BlobStoreException.class);
     }
 
     @Test

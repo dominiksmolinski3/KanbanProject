@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.task.Task;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -19,6 +20,9 @@ public interface TaskAttachmentRepository extends JpaRepository<TaskAttachment, 
     List<TaskAttachment> findByTask(Task task);
 
     List<TaskAttachment> findByTaskIn(List<Task> tasks);
+
+    @Query("SELECT a.blobName FROM TaskAttachment a WHERE a.blobName IN :names")
+    List<String> findBlobNamesIn(@Param("names") Collection<String> names);
 
     @Query("SELECT COUNT(a) FROM TaskAttachment a WHERE a.task.board = :board")
     long countByTaskBoard(@Param("board") Board board);

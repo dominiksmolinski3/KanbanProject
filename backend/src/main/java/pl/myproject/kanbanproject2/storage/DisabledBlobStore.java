@@ -5,6 +5,7 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 
 import java.io.InputStream;
+import java.util.List;
 
 @Slf4j
 public class DisabledBlobStore implements BlobStore {
@@ -17,6 +18,11 @@ public class DisabledBlobStore implements BlobStore {
     @Override
     public void remove(String blobName) {
         log.debug("No storage account is configured; nothing to remove for {}", blobName);
+    }
+
+    @Override
+    public List<StoredBlob> list(String prefix) {
+        return List.of();
     }
 
     @Override
