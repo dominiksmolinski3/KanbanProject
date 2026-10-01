@@ -23,11 +23,11 @@ class RedisPrivateEndpointReachableTest {
 
     @Test
     @DisplayName("the Redis private endpoint still lives in the subnet this test reads the NSG of")
-    void redisSitsInThePrivateEndpointSubnet() throws IOException {
+    void redisSitsInItsOwnSubnet() throws IOException {
         assertThat(block(read(ROOT_MODULE), "module \"redis\""))
                 .as("modules/redis moved to another subnet, so the NSG rule asserted below is "
                         + "guarding the wrong one")
-                .contains("private_endpoint_subnet_id = module.vnet.private_endpoint_subnet_id");
+                .contains("private_endpoint_subnet_id = module.vnet.redis_subnet_id");
     }
 
     @Test
@@ -63,9 +63,9 @@ class RedisPrivateEndpointReachableTest {
     }
 
     @Test
-    @DisplayName("the private-endpoint NSG admits the backend on the Managed Redis port")
+    @DisplayName("the Redis NSG admits the backend on the Managed Redis port")
     void theNsgAdmitsRedisFromTheBackend() throws IOException {
-        String nsg = block(read(NSG), "resource \"azurerm_network_security_group\" \"private_endpoints\"");
+        String nsg = block(read(NSG), "resource \"azurerm_network_security_group\" \"redis\"");
 
         assertThat(allowRuleFromBackendOn(nsg, MANAGED_REDIS_PORT))
                 .as("without it every API call waits out the Redis connect timeout and the rate "
@@ -80,6 +80,9 @@ class RedisPrivateEndpointReachableTest {
 
         assertThat(allowRuleFromBackendOn(nsg, "443")).isTrue();
         assertThat(allowRuleFromBackendOn(nsg, "6380")).isFalse();
+        assertThat(allowRuleFromBackendOn(nsg, MANAGED_REDIS_PORT))
+                .as("the Key Vault endpoint subnet holds no Redis endpoint any more")
+                .isFalse();
     }
 
     private static boolean allowRuleFromBackendOn(String nsg, String port) {

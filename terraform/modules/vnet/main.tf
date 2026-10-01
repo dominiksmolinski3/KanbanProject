@@ -4,6 +4,7 @@ locals {
   db_subnet_cidr      = "10.0.2.0/24"
   pe_subnet_cidr      = "10.0.3.0/28"
   storage_subnet_cidr = "10.0.3.16/28"
+  redis_subnet_cidr   = "10.0.3.32/28"
 }
 
 resource "azurerm_virtual_network" "main" {
@@ -57,12 +58,22 @@ resource "azurerm_subnet" "storage" {
   private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
 }
 
+resource "azurerm_subnet" "redis" {
+  name                 = "snet-redis-${var.env}"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [local.redis_subnet_cidr]
+
+  private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
+}
+
 resource "azurerm_subnet" "db" {
   name                 = "snet-db-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [local.db_subnet_cidr]
 
+  # Flexible Server uploads its WAL through this endpoint; Azure adds it and warns against removing it.
   service_endpoint {
     service = "Microsoft.Storage"
   }
