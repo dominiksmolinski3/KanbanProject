@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import LengthHint from './LengthHint';
+import { LABEL_MAX_LENGTH } from '../services/textLimits';
 import { createPortal } from 'react-dom';
 import { addLabelToTask, removeLabelFromTask, getAllLabels } from '../services/api';
 import '../styles/components/TaskLabels.css';
@@ -335,10 +337,12 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
             <input 
               type="text"
               value={customLabelName}
+              maxLength={LABEL_MAX_LENGTH}
               onChange={(e) => setCustomLabelName(e.target.value)}
               placeholder={t('taskLabels.labelNamePlaceholder')}
               autoFocus
             />
+            <LengthHint value={customLabelName} max={LABEL_MAX_LENGTH} />
           </div>
           <div className="form-group">
             <label>{t('taskLabels.labelColor')}</label>

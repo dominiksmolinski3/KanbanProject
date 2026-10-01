@@ -309,7 +309,12 @@
 
 .add-subtask-form {
   display: flex;
+  flex-wrap: wrap;
   margin-bottom: var(--spacing-xl);
+}
+
+.add-subtask-form .length-hint {
+  flex-basis: 100%;
 }
 
 .subtask-input {

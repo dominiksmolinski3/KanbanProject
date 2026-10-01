@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import LengthHint from './LengthHint';
+import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
 import { useTranslation } from 'react-i18next';
 import '../styles/components/Forms.css'; 
@@ -65,10 +67,12 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
             id="task-title"
             type="text"
             value={title}
+            maxLength={NAME_MAX_LENGTH}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('forms.addTaskForm.titlePlaceholder')}
             disabled={isSubmitting}
           />
+          <LengthHint value={title} max={NAME_MAX_LENGTH} />
         </div>
         
         <div className="form-group">

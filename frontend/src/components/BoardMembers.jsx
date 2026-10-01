@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useKanban } from '../context/KanbanContext';
@@ -102,7 +103,7 @@ function BoardMembers() {
               type="text"
               value={name}
               autoFocus
-              maxLength={255}
+              maxLength={NAME_MAX_LENGTH}
               onChange={(event) => setName(event.target.value)}
             />
             <button type="submit">{t('boards.members.save')}</button>

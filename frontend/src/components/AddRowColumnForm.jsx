@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import LengthHint from './LengthHint';
+import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
 import { useTranslation } from 'react-i18next';
 import '../styles/components/Forms.css';
@@ -94,10 +96,12 @@ function AddRowColumnForm({ onClose, defaultTab = 'column' }) {
             id="item-name"
             type="text"
             value={name}
+            maxLength={NAME_MAX_LENGTH}
             onChange={(e) => setName(e.target.value)}
             placeholder={t(`forms.addRowColumn.placeholder.${activeTab}`)}
             disabled={isSubmitting}
           />
+          <LengthHint value={name} max={NAME_MAX_LENGTH} />
         </div>
         
         <div className="form-group">
