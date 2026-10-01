@@ -94,6 +94,14 @@ resource "azurerm_container_app_job" "roles" {
         value = var.owner.principal_id
       }
       env {
+        name  = "WRITER_ROLE"
+        value = var.writer.name
+      }
+      env {
+        name  = "WRITER_OID"
+        value = var.writer.principal_id
+      }
+      env {
         name  = "READER_ROLE"
         value = var.reader.name
       }
@@ -138,12 +146,13 @@ resource "terraform_data" "roles" {
     azurerm_container_app_job.roles.id,
     filesha256("${path.module}/roles.sh"),
     var.owner.principal_id,
+    var.writer.principal_id,
     var.reader.principal_id,
   ]
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command     = replace(file("${path.module}/run-job.sh"), "\r", "")
+    command     = replace(file("${path.root}/scripts/run-container-app-job.sh"), "\r", "")
     environment = {
       JOB            = azurerm_container_app_job.roles.name
       RESOURCE_GROUP = var.resource_group_name

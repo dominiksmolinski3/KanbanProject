@@ -434,29 +434,38 @@ which the next `terraform plan` will try to undo. Treat the zone as set at creat
 
 ### Database logins
 
-The server accepts Entra tokens as well as passwords. Nothing running in the environment
-holds the `psqladmin` password except the roles job below.
+The server accepts Entra tokens, and the psqladmin password while
+`postgres_password_auth_enabled` is true. No app or job but the roles job holds that password.
 
 | Login | Who | Can |
 |---|---|---|
-| `kanban-db-admin-identity-<env>` | the server's Entra admin; only the roles job uses it | create Entra roles |
-| `kanban-app-identity-<env>` | the API | everything `kanban_owner` can, which owns the schema |
+| `kanban-db-admin-identity-<env>` | the server's Entra admin; only the roles job uses it | create roles, and grant the three below |
+| `kanban-migrator-identity-<env>` | `kanban-api-migrate-<env>` | everything `kanban_owner` can, which owns the schema |
+| `kanban-app-identity-<env>` | the API | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, through `kanban_writer` |
 | `kanban-backup-identity-<env>` | the nightly dump | `SELECT`, through `kanban_reader` |
-| `psqladmin` | break-glass, and the roles job | member of `kanban_owner` |
+| `psqladmin` | break-glass while password login is on | member of `kanban_owner` |
 
-The API fetches a token per new connection through `EntraTokenAuthenticationPlugin`, named
-in its JDBC URL. Its Flyway connection runs `SET ROLE kanban_owner`
-(`DB_MIGRATION_INIT_SQL`), so a new table is owned by `kanban_owner` and not by the API's own
-role. Default privileges give `kanban_reader` `SELECT` on anything `kanban_owner` creates.
+Each fetches a token per new connection through `EntraTokenAuthenticationPlugin`, which the
+JDBC URL names. The API runs with `DB_MIGRATE_ON_STARTUP=false` and cannot alter the schema.
+Migrations run in `kanban-api-migrate-<env>`, which starts the API image with `--migrate-only`
+and `SET ROLE kanban_owner` (`DB_MIGRATION_INIT_SQL`), so new tables belong to `kanban_owner`.
+Default privileges give `kanban_writer` and `kanban_reader` their rights on anything
+`kanban_owner` creates.
 
-`kanban-<env>-db-roles` is a manual job, and `terraform apply` starts it and waits for it
-(`modules/db_roles/run-job.sh`, which needs `bash` and a logged-in `az`). It creates the two
-Entra roles, hands every table in `public` to `kanban_owner` and grants the memberships. It is
-idempotent, and it runs again when its script or either identity changes. The API's revision
-depends on it, so a failed run stops the apply before the API moves off the password.
+`terraform apply` starts two manual jobs and waits for each (`scripts/run-container-app-job.sh`,
+which needs `bash` and a logged-in `az`):
 
-Still to do: Flyway as its own job and identity, the API cut to DML only, and password login
-turned off.
+1. `kanban-<env>-db-roles` creates the Entra roles and the three group roles, and grants the
+   memberships. It reruns when its script or an identity changes. While password login is on,
+   it also hands every table psqladmin created to `kanban_owner`. With password login off it
+   checks that nothing is left to hand over, and fails if something is.
+2. `kanban-api-migrate-<env>` runs Flyway. It reruns whenever `app_image_tag` moves.
+
+The API's revision depends on both, so a failed run stops the apply before the API changes.
+
+To turn password login off, apply once with it on (the hand-over needs psqladmin), then set
+`postgres_password_auth_enabled = false` in the tfvars and apply again. Break-glass is then a
+job running as the Entra admin.
 
 ### Database dumps
 

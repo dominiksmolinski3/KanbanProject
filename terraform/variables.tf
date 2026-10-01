@@ -271,6 +271,12 @@ variable "postgres_geo_redundant_backup_enabled" {
   default     = false
 }
 
+variable "postgres_password_auth_enabled" {
+  description = "Whether the server still accepts the psqladmin password. Turn it off in a later apply than the one that first runs the roles job, which needs the password to hand psqladmin's tables to kanban_owner."
+  type        = bool
+  default     = true
+}
+
 variable "owner_tag" {
   description = "Value of the `owner` tag on every resource - a team or a person accountable for the environment. Cost reports and policy both group on it, so an empty value is worse than a rough one."
   type        = string

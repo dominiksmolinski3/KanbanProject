@@ -89,3 +89,9 @@ variable "tags" {
   description = "Tags applied to every resource this module creates. Set once at the root."
   type        = map(string)
 }
+
+variable "password_auth_enabled" {
+  description = "Whether psqladmin can log in with its password. Turn it off only after the roles job has handed psqladmin's tables to kanban_owner."
+  type        = bool
+  default     = true
+}
