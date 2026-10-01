@@ -185,6 +185,10 @@ resource "azurerm_container_app" "main" {
         value = var.storage_blob_endpoint
       }
       env {
+        name  = "AZURE_STORAGE_CONTAINER"
+        value = var.storage_container_name
+      }
+      env {
         name  = "AZURE_STORAGE_IDENTITY_CLIENT_ID"
         value = azurerm_user_assigned_identity.main.client_id
       }

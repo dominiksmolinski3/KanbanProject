@@ -33,6 +33,9 @@ resource "azurerm_storage_account" "attachments" {
   }
 
   blob_properties {
+    versioning_enabled  = true
+    change_feed_enabled = true
+
     delete_retention_policy {
       days = var.retention_days
     }
@@ -49,6 +52,25 @@ resource "azurerm_storage_account" "attachments" {
 
   lifecycle {
     prevent_destroy = true
+  }
+}
+
+resource "azurerm_storage_management_policy" "attachments" {
+  storage_account_id = azurerm_storage_account.attachments.id
+
+  rule {
+    name    = "expire-previous-versions"
+    enabled = true
+
+    filters {
+      blob_types = ["blockBlob"]
+    }
+
+    actions {
+      version {
+        delete_after_days_since_creation = var.retention_days
+      }
+    }
   }
 }
 
