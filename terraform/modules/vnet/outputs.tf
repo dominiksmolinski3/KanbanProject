@@ -34,3 +34,9 @@ output "storage_subnet_id" {
   value       = azurerm_subnet.storage.id
   depends_on  = [azurerm_subnet_network_security_group_association.storage]
 }
+
+output "redis_subnet_id" {
+  description = "Subnet holding the Redis private endpoint NIC."
+  value       = azurerm_subnet.redis.id
+  depends_on  = [azurerm_subnet_network_security_group_association.redis]
+}

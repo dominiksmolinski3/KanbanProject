@@ -230,7 +230,7 @@ structural.
 
 ### Network layout
 
-The VNet is `10.0.0.0/16` and is carved into four subnets, each with one job.
+The VNet is `10.0.0.0/16` and is carved into five subnets, each with one job.
 
 | Subnet | Prefix | Holds |
 |---|---|---|
@@ -238,6 +238,7 @@ The VNet is `10.0.0.0/16` and is carved into four subnets, each with one job.
 | `snet-db-<env>` | `10.0.2.0/24` | Postgres Flexible Server, delegated to `Microsoft.DBforPostgreSQL/flexibleServers` |
 | `snet-pe-<env>` | `10.0.3.0/28` | the Key Vault private endpoint NIC |
 | `snet-storage-<env>` | `10.0.3.16/28` | the attachment blob private endpoint NIC |
+| `snet-redis-<env>` | `10.0.3.32/28` | the Managed Redis private endpoint NIC |
 
 **The backend subnet is dedicated to the Container Apps environment.** Azure treats an
 infrastructure subnet as platform-managed and requires that nothing else live in it,
@@ -246,12 +247,17 @@ Keeping the two apart also means `nsg-pe-${env}` (see
 [Network security groups](#network-security-groups)) does not have to be written
 around whatever the Container Apps platform needs.
 
-**The two private endpoints get a subnet each** rather than sharing `snet-pe`. One
+**The private endpoints get a subnet each** rather than sharing `snet-pe`. One
 subnet means one NSG, and the rule covering both would have to read "anything in the
 backend subnet may reach 443 anywhere in here" -- which is what
 `AllowKeyVaultFromBackend` already says, so the storage endpoint would inherit its
 reachability from a rule named after something else. Separate subnets keep each
 service's reachability written as its own rule.
+
+**`snet-db` keeps its `Microsoft.Storage` service endpoint.** It looks unused, since nothing
+in this configuration reaches a storage account from there, but Azure adds it when the first
+flexible server lands in the subnet and the server uploads its WAL through it. Microsoft's
+networking docs warn that removing it can break the server.
 
 The backend subnet keeps its `Microsoft.KeyVault` service endpoint, and that subnet --
 not the private endpoint subnet -- is what the vault's `network_acls` allow. Those are
@@ -652,8 +658,8 @@ Two one-way doors in that table:
   default and its maximum) everywhere so no environment ever plans that replacement.
 ### Network security groups
 
-All four subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
-`nsg-pe-${env}`, `nsg-storage-${env}`), defined in
+All five subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
+`nsg-pe-${env}`, `nsg-storage-${env}`, `nsg-redis-${env}`), defined in
 [modules/vnet/nsg.tf](modules/vnet/nsg.tf) alongside the subnets whose CIDRs they
 reference.
 
@@ -663,12 +669,12 @@ Without an NSG, a foothold anywhere in `snet-backend` reaches Postgres on 5432
 directly. Each NSG therefore re-denies inbound `VirtualNetwork` traffic at priority
 4096 and re-allows only the documented flows:
 
-| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) | `snet-storage` (10.0.3.16/28) |
-|---|---|---|---|---|
-| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` |
-| 110 | anything within the subnet | anything within the subnet | -- | -- |
-| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- | -- |
-| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
+| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) | `snet-storage` (10.0.3.16/28) | `snet-redis` (10.0.3.32/28) |
+|---|---|---|---|---|---|
+| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` | 10000 from `snet-backend` |
+| 110 | anything within the subnet | anything within the subnet | -- | -- | -- |
+| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- | -- | -- |
+| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
 
 The deny is sourced on `VirtualNetwork` rather than `*` so the platform's
 `AllowAzureLoadBalancerInBound` at 65001 still applies. Rule 110 is not optional in
@@ -679,14 +685,14 @@ to its standby inside the delegated subnet. Neither endpoint subnet needs such a
 
 **The endpoint subnets only get an NSG because their network policies are switched
 on.** Azure does not apply NSGs to private endpoint NICs by default, which is why
-`private_endpoint_network_policies` on `snet-pe` and `snet-storage` is
+`private_endpoint_network_policies` on `snet-pe`, `snet-storage` and `snet-redis` is
 `NetworkSecurityGroupEnabled` rather than the `Disabled` that private endpoints ship
 with. Set either back to `Disabled` and its NSG stays associated and stops being
-enforced, silently. Each carries one allow rule -- 443 from `snet-backend` -- because
-reaching the vault, or the blob service, over its endpoint is the only reason anything
-in the vnet talks to that subnet.
+enforced, silently. Each carries one allow rule from `snet-backend` -- 443 for the vault
+and the blob service, 10000 for Redis -- because reaching that service over its endpoint
+is the only reason anything in the vnet talks to that subnet.
 
-They are two subnets rather than one for the sake of those rules. Sharing a subnet
+They are separate subnets for the sake of those rules. Sharing a subnet
 would mean one NSG and one rule reading "anything in `snet-backend` may reach 443
 anywhere in here", so the blob endpoint would take its reachability from a rule named
 `AllowKeyVaultFromBackend`. Splitting them costs a /28 out of a /16 and keeps each
