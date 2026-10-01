@@ -22,10 +22,6 @@ resource "azurerm_subnet" "backend" {
   address_prefixes     = [local.backend_subnet_cidr]
 
   service_endpoint {
-    service = "Microsoft.KeyVault"
-  }
-
-  service_endpoint {
     service = "Microsoft.Storage.Global"
   }
 

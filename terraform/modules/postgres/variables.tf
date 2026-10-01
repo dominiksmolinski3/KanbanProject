@@ -95,3 +95,8 @@ variable "password_auth_enabled" {
   type        = bool
   default     = true
 }
+
+variable "tenant_id" {
+  description = "Entra tenant for the server's Entra authentication. Read at the root, because a data source inside a module with depends_on is deferred whenever that dependency changes."
+  type        = string
+}
