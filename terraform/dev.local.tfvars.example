@@ -1,8 +1,5 @@
 key_vault_allowed_ips = ["203.0.113.42"]
 
-acs_email_connection_string   = ""
-acs_email_sender_address      = ""
-acs_communication_service_id  = ""
 captcha_enabled = true
 captcha_secret  = ""
 alert_email = "you@example.com"

@@ -9,7 +9,7 @@ locals {
   budget_resource_groups = compact([
     azurerm_resource_group.main.name,
     module.backup.resource_group_name,
-    var.acs_communication_service_id == "" ? "" : split("/", var.acs_communication_service_id)[4],
+    try(var.acs.resource_group_name, ""),
   ])
 }
 

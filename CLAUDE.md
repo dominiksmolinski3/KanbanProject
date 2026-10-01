@@ -1288,7 +1288,7 @@ Three things about it are load-bearing:
 
 With no connection string the bean is a `DisabledEmailSender`: the app starts and drops messages instead of refusing to boot, which is what lets CI and a fresh clone run without an Azure account. Nothing about a dropped message is logged — subjects carry task titles and bodies carry live verification codes, and the last rewrite of this configuration happened because `mail.debug` had been left on and was writing the SMTP dialogue to the application log. The startup warning naming the missing properties is the only signal, deliberately.
 
-**Terraform provisions the ACS secret, not the ACS resource.** `terraform/` now writes an `ACS-EMAIL-CONNECTION-STRING` Key Vault secret (from `acs_email_connection_string`, empty by default) and passes `ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app — the `SPRING-MAIL-*` secrets are gone. What Terraform still does **not** create is the Communication Services resource itself or the email domain linked to it; those are made by hand in Azure (an Azure-managed `*.azurecomm.net` domain needs no DNS), exactly as the Gmail account this replaced was. Left empty, the app boots with mail disabled rather than failing.
+**Terraform owns the ACS resource and reads its secret.** `terraform/modules/mail` manages the Communication Services resource, the email service, its Azure-managed `*.azurecomm.net` domain and the link between them (dev's were made by hand and adopted with `import` blocks). Terraform reads the connection string and the `DoNotReply@` sender address from them, writes the `ACS-EMAIL-CONNECTION-STRING` Key Vault secret and passes `ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app, so nothing about mail is pasted into a tfvars file. With the `acs` variable unset, the app boots with mail disabled rather than failing.
 
 **Mail is enqueued, not sent, on the request thread (`V10`).** `email_outbox` holds one composed
 message per row — both bodies, exactly as `MailTemplates` built them, because re-running the template
@@ -1431,8 +1431,7 @@ builds from the **web** app's FQDN plus that key — so the address and the cred
 configured into disagreeing. It has to be the web app since the split: Event Grid calls the URL from
 outside this VNet and cannot reach an internal ingress at all, and nginx proxies
 `/api/mail/delivery-reports` like any other `/api` path, for free. It needs both
-`acs_communication_service_id` and
-`mail_delivery_report_key`, and it is **the one resource here with an ordering constraint against
+`acs` and `mail_delivery_report_key`, and it is **the one resource here with an ordering constraint against
 the application rather than against other Terraform**: Event Grid validates the endpoint by calling
 it at creation time, so the app has to be deployed and serving before this can apply.
 
