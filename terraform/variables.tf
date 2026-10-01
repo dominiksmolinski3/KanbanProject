@@ -220,7 +220,7 @@ variable "alert_email" {
 }
 
 variable "monthly_budget" {
-  description = "Monthly cost budget for the resource group, in the subscription's billing currency. Owners and alert_email are mailed at 50, 80 and 100% of actual spend and when the forecast crosses 100%. Null creates no budget."
+  description = "Monthly cost budget for the application, backup and mail resource groups together, in the subscription's billing currency. Owners and alert_email are mailed at 50, 80 and 100% of actual spend and when the forecast crosses 100%. Null creates no budget."
   type        = number
   default     = null
 
