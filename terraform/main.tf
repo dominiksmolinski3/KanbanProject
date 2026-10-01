@@ -17,6 +17,8 @@ locals {
   }
 }
 
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_resource_group" "main" {
   tags     = local.tags
   name     = var.resource_group_name
@@ -86,7 +88,6 @@ module "key_vault" {
   resource_group_name         = azurerm_resource_group.main.name
   location                    = azurerm_resource_group.main.location
   env                         = var.env
-  allowed_subnet_id           = module.vnet.backend_subnet_id
   private_endpoint_subnet_id  = module.vnet.private_endpoint_subnet_id
   vnet_id                     = module.vnet.id
   ip_rules                    = var.key_vault_allowed_ips
@@ -106,6 +107,7 @@ module "postgres" {
   vnet_id             = module.vnet.id
   subnet_id           = module.vnet.db_subnet_id
   key_vault_id        = module.key_vault.id
+  tenant_id           = data.azurerm_client_config.current.tenant_id
 
   sku_name                     = var.postgres_sku_name
   storage_mb                   = var.postgres_storage_mb

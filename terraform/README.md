@@ -258,14 +258,14 @@ in this configuration reaches a storage account from there, but Azure adds it wh
 flexible server lands in the subnet and the server uploads its WAL through it. Microsoft's
 networking docs warn that removing it can break the server.
 
-The backend subnet keeps its `Microsoft.KeyVault` service endpoint, and that subnet --
-not the private endpoint subnet -- is what the vault's `network_acls` allow. Those are
-two different paths to the same vault: the service endpoint covers the app's own
-egress if it ever resolves the vault's public name, while the private endpoint is what
-the `privatelink.vaultcore.azure.net` zone actually resolves to for every client in
-the VNet. Adding a private endpoint's own subnet to a resource's ACL does nothing --
-private endpoint traffic bypasses the firewall entirely -- which is why the two
-variables (`allowed_subnet_id`, `private_endpoint_subnet_id`) are separate.
+The backend subnet has no `Microsoft.KeyVault` service endpoint, and the vault's
+`network_acls` name no subnet. Every client in the VNet resolves the vault through the
+`privatelink.vaultcore.azure.net` zone to the private endpoint, and private endpoint
+traffic is not subject to the vault firewall, so a subnet rule only ever admitted the
+app's egress if it resolved the vault's *public* name. Nothing here does. The
+Container Apps platform resolves Key Vault secret references as a trusted service
+(`key_vault_allow_azure_services_bypass`), which is the one path besides the endpoint
+and `key_vault_allowed_ips`.
 
 Migrating an environment created before the split: `terraform apply` destroys and
 recreates the private endpoint in the new subnet, so its private IP changes. The DNS
@@ -587,8 +587,8 @@ with.
 ### Key Vault network access
 
 The vault denies public traffic by default (`key_vault_network_default_action = "Deny"`)
-and admits two things: the backend subnet, via a service endpoint and the private
-endpoint, and whatever is listed in `key_vault_allowed_ips`. Nothing discovers an
+and admits the private endpoint, trusted Azure services (Key Vault references) and
+whatever is listed in `key_vault_allowed_ips`. Nothing discovers an
 address for you -- the config used to look the caller's public IP up over the internet
 on every plan, which meant the committed allow-list silently became "whoever ran
 Terraform last", left that address on the vault until the next apply, and could never

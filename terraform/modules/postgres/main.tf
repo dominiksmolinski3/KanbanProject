@@ -12,8 +12,6 @@ resource "random_string" "suffix" {
   special = false
 }
 
-data "azurerm_client_config" "current" {}
-
 resource "azurerm_postgresql_flexible_server" "main" {
   tags                          = var.tags
   name                          = "psql-${var.env}-${random_string.suffix.result}"
@@ -34,7 +32,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
   authentication {
     active_directory_auth_enabled = true
     password_auth_enabled         = var.password_auth_enabled
-    tenant_id                     = data.azurerm_client_config.current.tenant_id
+    tenant_id                     = var.tenant_id
   }
 
   maintenance_window {
