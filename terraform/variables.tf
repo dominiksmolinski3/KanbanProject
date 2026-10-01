@@ -143,6 +143,15 @@ variable "extra_cors_origins" {
   default     = []
 }
 
+variable "custom_domain" {
+  description = "A hostname bound to the public edge with an Azure-managed certificate, and that certificate's resource name in the Container Apps environment. Its https origin is added to the API's CORS list. Null binds none."
+  type = object({
+    name             = string
+    certificate_name = string
+  })
+  default = null
+}
+
 variable "allowed_ingress_cidrs" {
   description = "IPv4 CIDR ranges allowed to reach the public edge, e.g. an office address as \"203.0.113.42/32\". Intended for locking non-prod environments to the team; unusable on an environment with real users. Empty (the default) leaves ingress open to the internet; any entry turns it into an allow-list and denies everything else."
   type        = list(string)

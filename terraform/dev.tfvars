@@ -21,3 +21,8 @@ api_max_replicas = 5
 api_db_connection_budget = 30
 
 monthly_budget = 40
+
+custom_domain = {
+  name             = "kanbanproject.pl"
+  certificate_name = "kanbanproject.pl-cae-dev-260921124711"
+}

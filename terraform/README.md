@@ -578,6 +578,18 @@ Pick one durable path per environment:
 
 Keep the committed list to addresses that do not move. A workstation address belongs in
 the local override, so it never lands in the repository or in another environment's plan.
+### Custom domain
+
+`custom_domain` binds a hostname to the edge with an Azure-managed certificate validated over
+HTTP; dev sets `kanbanproject.pl`. Its `https://` origin is added to the API's CORS list, so it
+does not also need to be in `extra_cors_origins`. DNS stays at the registrar: the apex `A` record
+points at the environment's static IP and the `asuid` TXT record carries the verification id.
+
+Creating one from scratch is two applies, because Azure validates the certificate against a
+hostname already added to the app: add the domain with binding `Disabled` first, then create the
+certificate. dev's pair was made in the portal and adopted with `imports.tf`, which should be
+deleted once that has been applied.
+
 ### Container App ingress restrictions
 
 **What this is for: keeping non-prod environments off the public internet. It is not
