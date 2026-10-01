@@ -162,7 +162,7 @@ module "redis" {
   location                   = azurerm_resource_group.main.location
   env                        = var.env
   vnet_id                    = module.vnet.id
-  private_endpoint_subnet_id = module.vnet.private_endpoint_subnet_id
+  private_endpoint_subnet_id = module.vnet.redis_subnet_id
   key_vault_id               = module.key_vault.id
   tags                       = local.tags
 

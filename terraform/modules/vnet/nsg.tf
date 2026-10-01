@@ -118,18 +118,6 @@ resource "azurerm_network_security_group" "private_endpoints" {
   }
 
   security_rule {
-    name                       = "AllowRedisFromBackend"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = local.backend_subnet_cidr
-    destination_port_range     = "10000"
-    destination_address_prefix = local.pe_subnet_cidr
-  }
-
-  security_rule {
     name                       = "DenyVnetInbound"
     priority                   = 4096
     direction                  = "Inbound"
@@ -171,6 +159,42 @@ resource "azurerm_network_security_group" "storage" {
     source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "*"
   }
+}
+
+resource "azurerm_network_security_group" "redis" {
+  tags                = var.tags
+  name                = "nsg-redis-${var.env}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  security_rule {
+    name                       = "AllowRedisFromBackend"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    source_address_prefix      = local.backend_subnet_cidr
+    destination_port_range     = "10000"
+    destination_address_prefix = local.redis_subnet_cidr
+  }
+
+  security_rule {
+    name                       = "DenyVnetInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "redis" {
+  subnet_id                 = azurerm_subnet.redis.id
+  network_security_group_id = azurerm_network_security_group.redis.id
 }
 
 resource "azurerm_subnet_network_security_group_association" "storage" {
