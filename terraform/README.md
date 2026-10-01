@@ -133,13 +133,19 @@ Use `tf.sh`. It takes the environment name once and derives both the backend sta
 `-var-file` from it, which is the pairing nothing else enforces:
 
 ```bash
-./tf.sh dev  plan
-./tf.sh prod plan -out=prod.tfplan
-./tf.sh prod apply prod.tfplan
+./tf.sh dev plan -out=dev.tfplan
+./tf.sh dev apply dev.tfplan
 ```
 
 It runs `init -reconfigure` on every invocation, so switching environments cannot leave the
 previous one's backend configured.
+
+**dev is the only environment that exists.** `uat.tfvars` and `prod.tfvars` are templates, kept so
+the configuration for them stays correct: `./tf.sh uat plan -var app_image_tag=<sha>` renders one
+and creates nothing, and `tf.sh` refuses `apply`, `destroy` and `import` for both. Their regions
+are ones the subscription's policy allows (`polandcentral`, `norwayeast`, `francecentral`,
+`swedencentral`, `uksouth`); prod sits in Sweden Central rather than Poland Central because
+geo-redundant backup needs a paired region and Poland Central has none.
 
 `apply` (never `plan`, never `destroy`) also runs the same check
 `.github/workflows/deployed-contract.yml` runs on a daily cron, immediately afterward and against
@@ -162,11 +168,6 @@ is passed on the command line rather than written in `providers.tf`:
 terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"
 terraform plan  -var-file "dev.tfvars"
 terraform apply -var-file "dev.tfvars"
-
-# Production
-terraform init -reconfigure -backend-config="key=env/prod/terraform.tfstate"
-terraform plan  -var-file "prod.tfvars"
-terraform apply -var-file "prod.tfvars"
 ```
 
 </details>
@@ -812,7 +813,7 @@ Two things to know when operating it:
   changed after the fact, so it is not a decision that has to be right before the account holds
   anything.
 - **Blob soft delete is tied to the database's restore window, on purpose.** `retention_days` comes
-  from `postgres_backup_retention_days` (7 in dev, 14 in uat, 35 in prod) rather than a number of
+  from `postgres_backup_retention_days` (35 in dev and prod, 14 in uat) rather than a number of
   its own. An attachment is half a row in Postgres and half a blob here, with no foreign key and no
   transaction across the two; the only thing that lets both be rolled back to the same instant is
   that their recovery windows are the same length. A shorter window here means a database restored

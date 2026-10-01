@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ENVIRONMENTS="dev uat prod"
+TEMPLATES="uat prod"
 
 usage() {
   echo "usage: $0 <${ENVIRONMENTS// /|}> <terraform-subcommand> [args...]" >&2
@@ -172,6 +173,19 @@ check_pinned_image_is_current() {
 
 subcommand=$1
 shift
+
+case " $TEMPLATES " in
+  *" $env_name "*)
+    case "$subcommand" in
+      apply|destroy|import)
+        echo "error: ${env_name} is a template; dev is the only environment that is provisioned." >&2
+        echo "  \`$0 ${env_name} plan\` still renders it. To provision ${env_name} for real, take it out" >&2
+        echo "  of TEMPLATES in this script and drop the header of ${var_file}." >&2
+        exit 1
+        ;;
+    esac
+    ;;
+esac
 
 if [ "$subcommand" = "apply" ] && ! { [ $# -gt 0 ] && [ -f "$1" ]; }; then
   check_pinned_image_is_current "$@"
