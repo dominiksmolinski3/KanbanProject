@@ -33,7 +33,9 @@ class ResourceProvidersAreRegisteredTest {
 
     private static final Map<String, String> NAMESPACES = new LinkedHashMap<>() {{
         put("azurerm_consumption_", "Microsoft.Consumption");
+        put("azurerm_communication_service", "Microsoft.Communication");
         put("azurerm_container_app", "Microsoft.App");
+        put("azurerm_email_communication_service", "Microsoft.Communication");
         put("azurerm_eventgrid_", "Microsoft.EventGrid");
         put("azurerm_key_vault", "Microsoft.KeyVault");
         put("azurerm_log_analytics_", "Microsoft.OperationalInsights");
