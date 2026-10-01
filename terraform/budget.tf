@@ -1,14 +1,34 @@
-resource "time_static" "budget_start" {}
+resource "time_static" "budget_start" {
+  # Azure refuses a new budget whose start month is already over, so a new scope needs a new start.
+  triggers = {
+    scope = data.azurerm_subscription.current.id
+  }
+}
 
-resource "azurerm_consumption_budget_resource_group" "main" {
-  count             = var.monthly_budget == null ? 0 : 1
-  name              = "budget-kanban-${var.env}"
-  resource_group_id = azurerm_resource_group.main.id
-  amount            = var.monthly_budget
-  time_grain        = "Monthly"
+locals {
+  budget_resource_groups = compact([
+    azurerm_resource_group.main.name,
+    module.backup.resource_group_name,
+    var.acs_communication_service_id == "" ? "" : split("/", var.acs_communication_service_id)[4],
+  ])
+}
+
+resource "azurerm_consumption_budget_subscription" "main" {
+  count           = var.monthly_budget == null ? 0 : 1
+  name            = "budget-kanban-${var.env}"
+  subscription_id = data.azurerm_subscription.current.id
+  amount          = var.monthly_budget
+  time_grain      = "Monthly"
 
   time_period {
     start_date = formatdate("YYYY-MM-01'T'00:00:00Z", time_static.budget_start.rfc3339)
+  }
+
+  filter {
+    dimension {
+      name   = "ResourceGroupName"
+      values = local.budget_resource_groups
+    }
   }
 
   dynamic "notification" {
