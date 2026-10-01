@@ -812,7 +812,7 @@ Two things to know when operating it:
   changed after the fact, so it is not a decision that has to be right before the account holds
   anything.
 - **Blob soft delete is tied to the database's restore window, on purpose.** `retention_days` comes
-  from `postgres_backup_retention_days` (7 in dev, 14 in uat, 35 in prod) rather than a number of
+  from `postgres_backup_retention_days` (35 in dev and prod, 14 in uat) rather than a number of
   its own. An attachment is half a row in Postgres and half a blob here, with no foreign key and no
   transaction across the two; the only thing that lets both be rolled back to the same instant is
   that their recovery windows are the same length. A shorter window here means a database restored
@@ -820,6 +820,16 @@ Two things to know when operating it:
   earlier -- rows pointing at nothing, which is precisely the failure the write ordering in
   `TaskAttachmentService` was arranged to make impossible. `attachment_retention_days` unties them
   when that is what you want; Azure allows 1-365 days here against a Postgres maximum of 35.
+- **The blobs are copied out of the region, by object replication.** The account has versioning
+  and the change feed on, and `modules/backup` replicates its container into a GRS account in the
+  backup resource group (Sweden Central), the same place the database dumps go. Replication is a
+  storage-service copy, so it needs no endpoint in the VNet and nothing in the app changes. A
+  delete is replicated as "the current version became a previous one", so the copy keeps a deleted
+  file for the same `retention_days`, after which a lifecycle rule on each side expires previous
+  versions. The destination container refuses writes while the policy exists; to restore, copy
+  back from it, or remove the policy first. The container name is passed to the app as
+  `AZURE_STORAGE_CONTAINER` from the same output the replication rule reads, so the two cannot
+  name different containers.
 
 An environment that sets no storage endpoint at all still runs: the app starts, reports
 `OUT_OF_SERVICE` for `attachments` on `/actuator/health`, and refuses uploads with a `503` that says

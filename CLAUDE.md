@@ -734,7 +734,7 @@ consequences are load-bearing. The write ordering above is the only thing keepin
 outliving its bytes. And the two recovery windows have to be the same length: `retention_days` on
 the storage module comes from `postgres_backup_retention_days` rather than a number of its own,
 because a database restored further back than blob soft-delete reaches comes up holding rows whose
-blobs were already purged. `attachment_retention_days` unties them deliberately.
+blobs were already purged. `attachment_retention_days` unties them deliberately. The blobs also leave the region: object replication copies the container into a GRS account in the backup resource group, and the copy keeps a deleted file for that same window.
 
 If attachment traffic ever outgrows one container, the way out is Front Door with a private origin —
 `terraform/front-door-private-origin.md` has the design and the traps, and the first of them is that

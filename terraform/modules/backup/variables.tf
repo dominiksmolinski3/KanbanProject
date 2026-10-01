@@ -64,6 +64,20 @@ variable "action_group_id" {
   default = null
 }
 
+variable "attachment_account_id" {
+  description = "The attachment account whose container is replicated here. It needs versioning and the change feed on."
+  type        = string
+}
+
+variable "attachment_container_name" {
+  type = string
+}
+
+variable "attachment_retention_days" {
+  description = "How long the copy keeps a version that is no longer current - a deleted or overwritten attachment. The same window as the source, so a database restore finds its files in either place."
+  type        = number
+}
+
 variable "log_analytics_workspace_id" {
   type = string
 }
