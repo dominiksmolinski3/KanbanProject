@@ -144,8 +144,6 @@ module "backup" {
   job_location               = azurerm_resource_group.main.location
   container_app_env_id       = module.vnet.container_app_env_id
   writer_subnet_id           = module.vnet.backend_subnet_id
-  key_vault_id               = module.key_vault.id
-  key_vault_uri              = module.key_vault.uri
   postgres_fqdn              = module.postgres.fqdn
   postgres_database          = module.postgres.postgres_db_name
   rbac_propagation_delay     = var.rbac_propagation_delay
@@ -154,6 +152,25 @@ module "backup" {
   action_group_id            = module.diagnostics.action_group_id
 
   depends_on = [module.postgres]
+}
+
+module "db_roles" {
+  source                 = "./modules/db_roles"
+  env                    = var.env
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  tags                   = local.tags
+  container_app_env_id   = module.vnet.container_app_env_id
+  key_vault_id           = module.key_vault.id
+  key_vault_uri          = module.key_vault.uri
+  tenant_id              = module.postgres.tenant_id
+  password_login_enabled = module.postgres.password_auth_enabled
+  postgres_server_name   = module.postgres.postgres_server_name
+  postgres_fqdn          = module.postgres.fqdn
+  postgres_database      = module.postgres.postgres_db_name
+  owner                  = module.api_app.identity
+  reader                 = module.backup.identity
+  rbac_propagation_delay = var.rbac_propagation_delay
 }
 
 module "redis" {
@@ -228,6 +245,9 @@ module "api_app" {
   captcha_secret                   = var.captcha_secret
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint
+  postgres_fqdn                    = module.postgres.fqdn
+  postgres_database                = module.postgres.postgres_db_name
+  database_roles_ready             = module.db_roles.ready
   redis_hostname                   = module.redis.hostname
   redis_port                       = module.redis.port
   broker_app_name                  = module.broker.app_name

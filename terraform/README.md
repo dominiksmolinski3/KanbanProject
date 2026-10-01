@@ -432,6 +432,32 @@ expect a short outage. `postgres_zone` is different: Azure cannot move a running
 server between zones, and after an HA failover the primary is in the standby's zone,
 which the next `terraform plan` will try to undo. Treat the zone as set at creation.
 
+### Database logins
+
+The server accepts Entra tokens as well as passwords. Nothing running in the environment
+holds the `psqladmin` password except the roles job below.
+
+| Login | Who | Can |
+|---|---|---|
+| `kanban-db-admin-identity-<env>` | the server's Entra admin; only the roles job uses it | create Entra roles |
+| `kanban-app-identity-<env>` | the API | everything `kanban_owner` can, which owns the schema |
+| `kanban-backup-identity-<env>` | the nightly dump | `SELECT`, through `kanban_reader` |
+| `psqladmin` | break-glass, and the roles job | member of `kanban_owner` |
+
+The API fetches a token per new connection through `EntraTokenAuthenticationPlugin`, named
+in its JDBC URL. Its Flyway connection runs `SET ROLE kanban_owner`
+(`DB_MIGRATION_INIT_SQL`), so a new table is owned by `kanban_owner` and not by the API's own
+role. Default privileges give `kanban_reader` `SELECT` on anything `kanban_owner` creates.
+
+`kanban-<env>-db-roles` is a manual job, and `terraform apply` starts it and waits for it
+(`modules/db_roles/run-job.sh`, which needs `bash` and a logged-in `az`). It creates the two
+Entra roles, hands every table in `public` to `kanban_owner` and grants the memberships. It is
+idempotent, and it runs again when its script or either identity changes. The API's revision
+depends on it, so a failed run stops the apply before the API moves off the password.
+
+Still to do: Flyway as its own job and identity, the API cut to DML only, and password login
+turned off.
+
 ### Database dumps
 
 Point-in-time restore lives inside the server's blast radius: deleting the server, its
@@ -440,8 +466,9 @@ exported. `modules/backup` keeps a copy that survives all of that except the
 subscription.
 
 - A Container Apps job (`kanban-<env>-pg-dump`) runs nightly at 02:15 UTC in the
-  existing environment. An init container runs `pg_dump --format=custom`; the main
-  container uploads it with the job's managed identity.
+  existing environment. An init container runs `pg_dump --format=custom`, logged in as
+  the job's own identity (`kanban_reader`, see below); the main container uploads it with
+  the same identity.
 - The dumps go to a GRS account in **its own resource group in `backup_location`**
   (`swedencentral`), which the subscription's region policy allows and which is not
   the database's region.

@@ -24,6 +24,7 @@ resource "azurerm_container_app" "main" {
   workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   depends_on = [
+    terraform_data.database_roles,
     time_sleep.wait_for_secrets_user,
     time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
@@ -33,21 +34,6 @@ resource "azurerm_container_app" "main" {
     azurerm_key_vault_secret.ghcr_token,
   ]
 
-  secret {
-    name                = "postgres-connection-string"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-CONNECTION-STRING")
-    identity            = azurerm_user_assigned_identity.main.id
-  }
-  secret {
-    name                = "postgres-user"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-USER")
-    identity            = azurerm_user_assigned_identity.main.id
-  }
-  secret {
-    name                = "postgres-password"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-PASSWORD")
-    identity            = azurerm_user_assigned_identity.main.id
-  }
   secret {
     name                = "jwt-secret-key"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "JWT-SECRET-KEY")
@@ -122,16 +108,18 @@ resource "azurerm_container_app" "main" {
       memory = "${local.memory_gib}Gi"
 
       env {
-        name        = "SPRING_DATASOURCE_URL"
-        secret_name = "postgres-connection-string"
+        name = "SPRING_DATASOURCE_URL"
+        # sslfactory is required: pgjdbc's default reads ~/.postgresql/root.crt and never falls back to the JDK trust store.
+        value = format("jdbc:postgresql://%s:5432/%s?sslmode=verify-full&sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory&authenticationPluginClassName=pl.myproject.kanbanproject2.config.EntraTokenAuthenticationPlugin&azureClientId=%s", var.postgres_fqdn, var.postgres_database, azurerm_user_assigned_identity.main.client_id)
       }
       env {
-        name        = "SPRING_DATASOURCE_USERNAME"
-        secret_name = "postgres-user"
+        name  = "SPRING_DATASOURCE_USERNAME"
+        value = azurerm_user_assigned_identity.main.name
       }
       env {
-        name        = "SPRING_DATASOURCE_PASSWORD"
-        secret_name = "postgres-password"
+        # Without it a new table is owned by this identity rather than kanban_owner, and the next migration cannot alter it.
+        name  = "DB_MIGRATION_INIT_SQL"
+        value = "SET ROLE kanban_owner"
       }
       env {
         name        = "JWT_SECRET_KEY"
@@ -293,6 +281,10 @@ resource "azurerm_container_app" "main" {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.main.id]
   }
+}
+
+resource "terraform_data" "database_roles" {
+  input = var.database_roles_ready
 }
 
 resource "azurerm_user_assigned_identity" "main" {

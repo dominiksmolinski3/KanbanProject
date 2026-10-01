@@ -31,14 +31,6 @@ variable "writer_subnet_id" {
   type        = string
 }
 
-variable "key_vault_id" {
-  type = string
-}
-
-variable "key_vault_uri" {
-  type = string
-}
-
 variable "postgres_fqdn" {
   type = string
 }

@@ -231,3 +231,16 @@ variable "app_insights_connection_string" {
   type        = string
   sensitive   = true
 }
+
+variable "postgres_fqdn" {
+  type = string
+}
+
+variable "postgres_database" {
+  type = string
+}
+
+variable "database_roles_ready" {
+  description = "The roles job's run id. The app logs in as an Entra role that only exists once that job has run."
+  type        = string
+}

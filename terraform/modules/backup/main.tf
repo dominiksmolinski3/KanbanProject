@@ -159,20 +159,9 @@ resource "azurerm_role_assignment" "dump_writer" {
   principal_id       = azurerm_user_assigned_identity.job.principal_id
 }
 
-resource "azurerm_role_assignment" "database_secrets" {
-  for_each = toset(["POSTGRES-USER", "POSTGRES-PASSWORD"])
-
-  scope                = "${var.key_vault_id}/secrets/${each.value}"
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_user_assigned_identity.job.principal_id
-}
-
 resource "time_sleep" "wait_for_roles" {
   triggers = {
-    role_assignment_ids = join(",", concat(
-      [azurerm_role_assignment.dump_writer.id],
-      [for assignment in azurerm_role_assignment.database_secrets : assignment.id],
-    ))
+    role_assignment_id = azurerm_role_assignment.dump_writer.id
   }
   create_duration = var.rbac_propagation_delay
 }
@@ -201,25 +190,13 @@ resource "azurerm_container_app_job" "pg_dump" {
     identity_ids = [azurerm_user_assigned_identity.job.id]
   }
 
-  secret {
-    name                = "postgres-user"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-USER")
-    identity            = azurerm_user_assigned_identity.job.id
-  }
-
-  secret {
-    name                = "postgres-password"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-PASSWORD")
-    identity            = azurerm_user_assigned_identity.job.id
-  }
-
   template {
     init_container {
       name    = "pg-dump"
       image   = "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
       cpu     = 0.25
       memory  = "0.5Gi"
-      command = ["pg_dump", "--format=custom", "--file=/backup/kanban.dump"]
+      command = ["/bin/sh", "-c", replace(file("${path.module}/pg-dump.sh"), "\r", "")]
 
       env {
         name  = "PGHOST"
@@ -230,12 +207,12 @@ resource "azurerm_container_app_job" "pg_dump" {
         value = var.postgres_database
       }
       env {
-        name        = "PGUSER"
-        secret_name = "postgres-user"
+        name  = "PGUSER"
+        value = azurerm_user_assigned_identity.job.name
       }
       env {
-        name        = "PGPASSWORD"
-        secret_name = "postgres-password"
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.job.client_id
       }
       env {
         name  = "PGSSLMODE"
