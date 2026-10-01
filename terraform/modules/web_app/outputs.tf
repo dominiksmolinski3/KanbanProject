@@ -17,3 +17,8 @@ output "api_upstream" {
   description = "The internal address nginx proxies to. Exposed so the root module can check it against the API app's own name rather than leaving two string patterns to agree by hand."
   value       = local.api_upstream
 }
+
+output "custom_domain_origin" {
+  description = "https:// origin of the custom domain, or null when none is bound."
+  value       = var.custom_domain == null ? null : "https://${var.custom_domain.name}"
+}

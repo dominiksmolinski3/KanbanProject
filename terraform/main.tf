@@ -199,6 +199,7 @@ module "web_app" {
   github_repository_owner          = var.github_repository_owner
   ghcr_username                    = var.ghcr_username
   ghcr_token                       = var.ghcr_token
+  custom_domain                    = var.custom_domain
   tags                             = local.tags
 
   depends_on = [module.key_vault]
@@ -211,7 +212,7 @@ module "api_app" {
   env                              = var.env
   container_app_env_id             = module.vnet.container_app_env_id
   container_app_env_default_domain = module.vnet.container_app_env_default_domain
-  extra_cors_origins               = var.extra_cors_origins
+  extra_cors_origins               = distinct(concat(var.extra_cors_origins, compact([module.web_app.custom_domain_origin])))
   rbac_propagation_delay           = var.rbac_propagation_delay
   app_image_tag                    = var.app_image_tag
   max_replicas                     = var.api_max_replicas

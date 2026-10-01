@@ -113,3 +113,12 @@ variable "tags" {
   description = "Tags applied to every resource this module creates. Set once at the root."
   type        = map(string)
 }
+
+variable "custom_domain" {
+  description = "A hostname bound to the edge with an Azure-managed certificate validated over HTTP, and the certificate's resource name. Null binds none. DNS for the name is not managed here."
+  type = object({
+    name             = string
+    certificate_name = string
+  })
+  default = null
+}
