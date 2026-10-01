@@ -44,6 +44,6 @@ final class AuthRateLimitTestSupport {
                 1000,
                 4, 2, Duration.ofSeconds(15), Duration.ofMinutes(5), Duration.ofMinutes(15),
                 3, 2, Duration.ofSeconds(15), Duration.ofMinutes(15), Duration.ofHours(1),
-                "localhost", 6379, "", false);
+                "localhost", 6379, "", false, "", "");
     }
 }

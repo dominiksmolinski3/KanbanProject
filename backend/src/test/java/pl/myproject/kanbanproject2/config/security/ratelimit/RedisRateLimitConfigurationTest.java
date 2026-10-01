@@ -7,6 +7,7 @@ import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitTestSupport.properties;
 
 class RedisRateLimitConfigurationTest {
@@ -63,7 +64,41 @@ class RedisRateLimitConfigurationTest {
         assertThat(RedisRateLimitConfiguration.CONNECT_TIMEOUT).isLessThan(Duration.ofSeconds(1));
     }
 
+    @Test
+    @DisplayName("with an Entra client id the factory carries a token manager and no password")
+    void entraLogsInWithATokenManager() {
+        JedisConnectionFactory factory = configuration.rateLimitRedisConnectionFactory(
+                withRedis("redis-kanban-dev.polandcentral.redis.azure.net", 10000, "", true, "client-id", "object-id"));
+
+        assertThat(factory.getPassword()).isNull();
+        assertThat(factory.getClientConfiguration().getClientConfigCustomizer()).isPresent();
+    }
+
+    @Test
+    @DisplayName("without one the factory carries no token manager, as docker-compose and CI expect")
+    void noEntraMeansNoTokenManager() {
+        JedisConnectionFactory factory = configuration.rateLimitRedisConnectionFactory(withRedis("localhost", 6379, "", false));
+
+        assertThat(factory.getClientConfiguration().getClientConfigCustomizer()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("an Entra login needs the identity's object id as its user, and is never mixed with a password")
+    void entraIsValidatedAtStartup() {
+        assertThatThrownBy(() -> withRedis("h", 10000, "", true, "client-id", ""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("redis-username");
+        assertThatThrownBy(() -> withRedis("h", 10000, "s3cret", true, "client-id", "object-id"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("set one");
+    }
+
     private static AuthRateLimitProperties withRedis(String host, int port, String password, boolean ssl) {
+        return withRedis(host, port, password, ssl, "", "");
+    }
+
+    private static AuthRateLimitProperties withRedis(String host, int port, String password, boolean ssl,
+                                                     String entraClientId, String username) {
         AuthRateLimitProperties defaults = properties();
         return new AuthRateLimitProperties(
                 defaults.enabled(), defaults.trustedProxyCount(), defaults.maxTrackedKeys(),
@@ -71,6 +106,6 @@ class RedisRateLimitConfigurationTest {
                 defaults.credentialBaseCooldown(), defaults.credentialMaxCooldown(), defaults.credentialWindow(),
                 defaults.emailRequestsPerIp(), defaults.emailRequestsPerAccount(),
                 defaults.emailBaseCooldown(), defaults.emailMaxCooldown(), defaults.emailWindow(),
-                host, port, password, ssl);
+                host, port, password, ssl, entraClientId, username);
     }
 }

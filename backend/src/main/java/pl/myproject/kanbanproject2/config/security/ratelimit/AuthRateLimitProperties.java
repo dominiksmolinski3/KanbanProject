@@ -29,7 +29,9 @@ public record AuthRateLimitProperties(
         @DefaultValue("localhost") String redisHost,
         @DefaultValue("6379") int redisPort,
         @DefaultValue("") String redisPassword,
-        @DefaultValue("false") boolean redisSsl
+        @DefaultValue("false") boolean redisSsl,
+        @DefaultValue("") String redisEntraClientId,
+        @DefaultValue("") String redisUsername
 ) {
 
     public AuthRateLimitProperties {
@@ -51,9 +53,21 @@ public record AuthRateLimitProperties(
         if (redisPort < 1 || redisPort > 65535) {
             throw new IllegalArgumentException("security.rate-limit.redis-port must be a valid port number");
         }
+        if (!redisEntraClientId.isBlank() && redisUsername.isBlank()) {
+            throw new IllegalArgumentException(
+                    "security.rate-limit.redis-username must name the identity's object id when redis-entra-client-id is set");
+        }
+        if (!redisEntraClientId.isBlank() && !redisPassword.isBlank()) {
+            throw new IllegalArgumentException(
+                    "security.rate-limit.redis-password and redis-entra-client-id are two ways to log in; set one");
+        }
     }
 
-    Duration longestWindow() {
+    boolean redisEntraEnabled() {
+        return !redisEntraClientId.isBlank();
+    }
+
+        Duration longestWindow() {
         return credentialWindow.compareTo(emailWindow) >= 0 ? credentialWindow : emailWindow;
     }
 

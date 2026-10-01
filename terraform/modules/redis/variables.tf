@@ -20,10 +20,6 @@ variable "private_endpoint_subnet_id" {
   description = "Shared with Key Vault's private endpoint - a generic-purpose subnet, not one dedicated to Redis, so this module adds no subnet of its own."
 }
 
-variable "key_vault_id" {
-  type = string
-}
-
 variable "tags" {
   type    = map(string)
   default = {}
