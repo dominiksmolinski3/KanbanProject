@@ -9,10 +9,12 @@ import java.util.Set;
 
 public record CreateTaskRequest(
         @NotBlank @Size(max = 255) String title,
-        String description,
+        @Size(max = CreateTaskRequest.DESCRIPTION_MAX_LENGTH) String description,
         Integer position,
         LocalDateTime deadline,
-        Set<String> labels,
+        Set<@Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String> labels,
         @Valid IdRef column,
         @Valid IdRef row) {
+    public static final int DESCRIPTION_MAX_LENGTH = 10_000;
+    public static final int LABEL_MAX_LENGTH = 255;
 }

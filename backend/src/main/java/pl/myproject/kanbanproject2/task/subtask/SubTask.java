@@ -22,6 +22,7 @@ public class SubTask {
     private Integer version;
     @Column(columnDefinition = "TEXT")
     private String title;
+    @Column(columnDefinition = "TEXT")
     private String description;
     private boolean completed;
     private Integer position;

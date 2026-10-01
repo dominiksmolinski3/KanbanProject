@@ -19,6 +19,7 @@ import pl.myproject.kanbanproject2.user.User;
 import java.util.List;
 import java.util.Set;
 
+import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -205,5 +206,53 @@ class TaskControllerHttpTest {
                 .andExpect(status().isOk());
 
         verify(taskService).patchTask(eq(caller), eq(1), any(PatchTaskRequest.class));
+    }
+
+    @Test
+    @DisplayName("a description over the cap is refused before the service, one at the cap is not")
+    void descriptionIsCapped() throws Exception {
+        when(taskService.patchTask(eq(caller), eq(1), any())).thenReturn(dto(1, "unchanged"));
+        String atCap = "x".repeat(CreateTaskRequest.DESCRIPTION_MAX_LENGTH);
+
+        mvc.perform(patch("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("description", atCap + "x"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(post("/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("title", "t", "description", atCap + "x"))))
+                .andExpect(status().isBadRequest());
+        verify(taskService, never()).patchTask(any(), any(), any());
+        verify(taskService, never()).addTask(any(), any(), any());
+
+        mvc.perform(patch("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("description", atCap))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("a label over the cap is refused on every route that writes one")
+    void labelIsCapped() throws Exception {
+        String tooLong = "l".repeat(CreateTaskRequest.LABEL_MAX_LENGTH + 1);
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/tasks/1/label/" + tooLong))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(patch("/tasks/1/labels")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(List.of("ok", tooLong))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(patch("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("labels", List.of(tooLong)))))
+                .andExpect(status().isBadRequest());
+
+        verify(taskService, never()).addLabelToTask(any(), any(), any());
+        verify(taskService, never()).updateTaskLabels(any(), any(), any());
+        verify(taskService, never()).patchTask(any(), any(), any());
     }
 }
