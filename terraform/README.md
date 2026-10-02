@@ -31,6 +31,9 @@ Run these against an existing account too -- `create` is the only command above 
 fails if the account already exists; swap it for `az storage account update` with the
 same flags.
 
+Once the account exists, `terraform/bootstrap` manages it, so the commands above are only for a
+subscription that has none yet. See [Drift detection](#drift-detection).
+
 This account holds the generated Postgres administrator password and JWT signing key in
 plaintext, which is why it is worth hardening -- see [Secrets](#secrets).
 
@@ -221,6 +224,53 @@ destroy-and-replace surprise -- TF-06's class. The mitigations for that are the 
 actually been used before every apply in this repository's history: `prevent_destroy` on Postgres,
 and a person running `./tf.sh dev plan` from an allow-listed address before merging anything
 structural.
+
+### Drift detection
+
+`.github/workflows/terraform-drift.yml` plans dev from `main` every night and opens a `sweep-red`
+issue through `sweep-alarm.yml` when the plan is not empty: a portal change, an apply from a
+branch that never merged, or a merge nobody applied. It answers the problem above differently
+from the retired job. **It reads the gitignored values from where Terraform already put them**
+rather than from GitHub secrets. `scripts/drift-inputs.sh` rebuilds `dev.local.tfvars` as JSON:
+the two secrets from Key Vault, `app_image_tag` and `captcha_enabled` from the running API, the
+alert address from the action group, and the vault's own IP rules. Run locally, it reproduces
+the file exactly (`./tf.sh dev plan` with only its output reads *No changes*). What that costs is
+written down rather than hidden: **drift in those six values is invisible to the sweep**, because
+they are read from the thing being compared.
+
+The run logs in as `id-kanban-terraform-drift`, a user-assigned identity with a federated
+credential for the `terraform-drift` GitHub environment, so there is no client secret anywhere.
+It holds Reader on the subscription, Storage Blob Data Reader on the state container, Key Vault
+Secrets User on `kanban-dev-rg`, and one custom role on the three resource groups. That role is
+what a refresh was **measured** calling beyond Reader (`TF_LOG=DEBUG` on a real dev plan), plus
+`vaults/write` so the run can add its own address to the vault firewall and take it off again:
+
+- `listSecrets` on the container apps and jobs, `listKeys` on ACS and the storage accounts,
+  `sharedKeys` on the workspace, and `getFullUrl` on the Event Grid subscription. The storage
+  keys are inert, since every account has shared keys off. The ACS keys and the vault's secrets
+  are not, which is why the credential trusts one GitHub environment and that environment
+  deploys from `main` only.
+- The run plans with `-lock=false`, so it never needs to write the state blob.
+- `terraform_operator_object_id` keeps the vault's Secrets Officer assignment on the person who
+  applies, since the planner is somebody else. `key_vault_runner_ips` adds the runner to the IP
+  rules for the length of the plan, so the rule it added is not reported as drift.
+
+The identity, its roles and the state account itself are in `terraform/bootstrap`, a root of its
+own with its own state (`bootstrap/terraform.tfstate` in the same container). It is applied by
+hand, once, as a subscription Owner:
+
+```bash
+cd terraform/bootstrap
+terraform init
+terraform apply
+```
+
+then delete `imports.tf`, and give the `terraform-drift` environment four variables from its
+outputs: `AZURE_CLIENT_ID` (`drift_client_id`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and
+`TERRAFORM_OPERATOR_OBJECT_ID`. A missing one fails the run rather than skipping it.
+`tfstate-rg` is read by name and not imported: it sits in West Europe, which the location policy
+denies, so even a tag update to it would be refused. The account inside it is in Poland Central
+and is managed normally, with a `CanNotDelete` lock.
 
 ## Notes
 

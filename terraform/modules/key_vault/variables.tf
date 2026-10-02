@@ -68,3 +68,9 @@ variable "rbac_propagation_delay" {
   type        = string
   default     = "60s"
 }
+
+variable "operator_object_id" {
+  description = "Object id granted Key Vault Secrets Officer so Terraform can write secrets. Null means whoever runs Terraform."
+  type        = string
+  default     = null
+}

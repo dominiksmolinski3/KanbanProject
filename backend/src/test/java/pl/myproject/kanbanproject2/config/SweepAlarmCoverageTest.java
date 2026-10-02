@@ -32,7 +32,8 @@ class SweepAlarmCoverageTest {
                 new String[] { "dast.yml", "scan-alarm" },
                 new String[] { "dependency-scan.yml", "scan-alarm" },
                 new String[] { "external-scan.yml", "scan-alarm" },
-                new String[] { "deployed-contract.yml", "contract-alarm" });
+                new String[] { "deployed-contract.yml", "contract-alarm" },
+                new String[] { "terraform-drift.yml", "drift-alarm" });
     }
 
     private static final Set<String> NOT_A_SWEEP = Set.of("push", "pull_request");

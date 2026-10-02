@@ -1662,6 +1662,12 @@ and reasons in `local.refusal_alerts`.
   — only the `DEPLOYED_ORIGIN` repository variable — and an unset origin fails rather than skips.
   **What it does not do is name the deployed commit**: nothing public says which one is running, so
   a revision that moves no claim is invisible to it. That is stated rather than solved.
+- **`terraform-drift.yml`** — a nightly `plan -detailed-exitcode` of dev from `main`, through
+  `sweep-alarm.yml`. It solves the retired PR plan job's problem the other way round: the
+  gitignored values are read back out of Azure (`terraform/scripts/drift-inputs.sh`) rather than
+  put into GitHub, so drift in those six values is the one thing it cannot see. It logs in over
+  OIDC as an identity `terraform/bootstrap` creates, and that root also manages the state account.
+  See `terraform/README.md`, *Drift detection*.
 - `codeql.yml` — CodeQL analysis of the Java backend, on pushes, PRs and a weekly cron. The weekly
   cron is why it is not in `SweepAlarmCoverageTest`'s list: its findings go to the Security tab,
   which has its own notifications, and there is no job result an alarm could add anything to.

@@ -1,7 +1,8 @@
 package pl.myproject.kanbanproject2.config;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,9 +20,9 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ResourceProvidersAreRegisteredTest {
-    private static final Path TERRAFORM = Path.of("..", "terraform");
+    private static final Path REPO = Path.of("..");
 
-    private static final Path PROVIDERS = TERRAFORM.resolve("providers.tf");
+    private static final String PROVIDERS = "providers.tf";
 
     private static final Pattern RESOURCE_TYPE =
             Pattern.compile("(?m)^\\s*resource\\s+\"(azurerm_[a-z0-9_]+)\"");
@@ -37,6 +38,7 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_container_app", "Microsoft.App");
         put("azurerm_email_communication_service", "Microsoft.Communication");
         put("azurerm_eventgrid_", "Microsoft.EventGrid");
+        put("azurerm_federated_identity_credential", "Microsoft.ManagedIdentity");
         put("azurerm_key_vault", "Microsoft.KeyVault");
         put("azurerm_log_analytics_", "Microsoft.OperationalInsights");
         put("azurerm_monitor_", "Microsoft.Insights");
@@ -61,11 +63,12 @@ class ResourceProvidersAreRegisteredTest {
     private static final Set<String> ALWAYS_REGISTERED =
             Set.of("Microsoft.Resources", "Microsoft.Authorization");
 
-    @Test
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = { "terraform", "terraform/bootstrap" })
     @DisplayName("every Azure service the Terraform declares is named in resource_providers_to_register")
-    void everyNamespaceUsedIsRegistered() throws IOException {
-        Set<String> used = namespacesUsed();
-        Set<String> declared = namespacesDeclared();
+    void everyNamespaceUsedIsRegistered(String root) throws IOException {
+        Set<String> used = namespacesUsed(root);
+        Set<String> declared = namespacesDeclared(root);
 
         assertThat(declared)
                 .as("a namespace used by a resource and missing from the provider block is an "
@@ -75,29 +78,31 @@ class ResourceProvidersAreRegisteredTest {
                 .containsExactlyInAnyOrderElementsOf(used);
     }
 
-    @Test
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = { "terraform", "terraform/bootstrap" })
     @DisplayName("nothing is registered that no resource needs")
-    void nothingSuperfluousIsRegistered() throws IOException {
-        assertThat(namespacesDeclared())
+    void nothingSuperfluousIsRegistered(String root) throws IOException {
+        assertThat(namespacesDeclared(root))
                 .as("a namespace nobody uses is the same dead configuration ConfigurationTest "
                         + "exists to catch one file over: it survives every build while meaning "
                         + "nothing, and the next reader takes it as evidence the service is in use")
-                .isSubsetOf(namespacesUsed());
+                .isSubsetOf(namespacesUsed(root));
     }
 
-    @Test
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = { "terraform", "terraform/bootstrap" })
     @DisplayName("the control-plane namespaces are left out, so nothing asks ARM to register ARM")
-    void theControlPlaneIsNotInTheList() throws IOException {
-        assertThat(namespacesDeclared())
+    void theControlPlaneIsNotInTheList(String root) throws IOException {
+        assertThat(namespacesDeclared(root))
                 .as("Microsoft.Resources and Microsoft.Authorization cannot be unregistered, so a "
                         + "registration for them is a call with nothing to do")
                 .doesNotContainAnyElementsOf(ALWAYS_REGISTERED);
     }
 
-    private static Set<String> namespacesUsed() throws IOException {
+    private static Set<String> namespacesUsed(String root) throws IOException {
         Set<String> namespaces = new TreeSet<>();
 
-        for (Path file : terraformFiles()) {
+        for (Path file : terraformFiles(REPO.resolve(root))) {
             Matcher matcher = RESOURCE_TYPE.matcher(Files.readString(file, StandardCharsets.UTF_8));
             while (matcher.find()) {
                 String type = matcher.group(1);
@@ -105,7 +110,7 @@ class ResourceProvidersAreRegisteredTest {
                         "no ARM namespace is recorded for the resource type '" + type + "' (in "
                                 + file + "). Add it to NAMESPACES in this test and, unless it is "
                                 + "already there, to resource_providers_to_register in "
-                                + "terraform/providers.tf - a namespace this subscription has "
+                                + root + "/providers.tf - a namespace this subscription has "
                                 + "never used is a 409 MissingSubscriptionRegistration partway "
                                 + "through an apply."));
                 if (!ALWAYS_REGISTERED.contains(namespace)) {
@@ -116,7 +121,7 @@ class ResourceProvidersAreRegisteredTest {
 
         assertThat(namespaces)
                 .as("no azurerm resources were found under %s at all, so this guard is reading the "
-                        + "wrong tree rather than passing", TERRAFORM)
+                        + "wrong tree rather than passing", root)
                 .isNotEmpty();
         return namespaces;
     }
@@ -128,12 +133,13 @@ class ResourceProvidersAreRegisteredTest {
                 .map(Map.Entry::getValue);
     }
 
-    private static Set<String> namespacesDeclared() throws IOException {
-        String providers = Files.readString(existing(PROVIDERS), StandardCharsets.UTF_8);
+    private static Set<String> namespacesDeclared(String root) throws IOException {
+        String providers = Files.readString(existing(REPO.resolve(root).resolve(PROVIDERS)),
+                StandardCharsets.UTF_8);
 
         Matcher list = REGISTRATION_LIST.matcher(providers);
         assertThat(list.find())
-                .as("terraform/providers.tf declares no resource_providers_to_register, so the "
+                .as(root + "/providers.tf declares no resource_providers_to_register, so the "
                         + "provider's own defaults are the only thing registering anything - and "
                         + "they do not cover Microsoft.EventGrid, which is how this was found")
                 .isTrue();
@@ -146,12 +152,22 @@ class ResourceProvidersAreRegisteredTest {
         return declared;
     }
 
-    private static Iterable<Path> terraformFiles() throws IOException {
-        try (Stream<Path> tree = Files.walk(existing(TERRAFORM))) {
+    private static Iterable<Path> terraformFiles(Path root) throws IOException {
+        try (Stream<Path> tree = Files.walk(existing(root))) {
             return tree.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".tf"))
+                    .filter(path -> !insideAnotherRoot(root, path))
                     .toList();
         }
+    }
+
+    private static boolean insideAnotherRoot(Path root, Path file) {
+        for (Path dir = file.getParent(); !dir.equals(root); dir = dir.getParent()) {
+            if (Files.exists(dir.resolve(PROVIDERS))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Path existing(Path path) {
