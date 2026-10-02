@@ -1,0 +1,137 @@
+name: Terraform drift sweep
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-drift
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: terraform-drift
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      TF_ENV: dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Require the environment's variables
+        env:
+          CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          OPERATOR: ${{ vars.TERRAFORM_OPERATOR_OBJECT_ID }}
+        run: |
+          for name in CLIENT_ID TENANT_ID SUBSCRIPTION_ID OPERATOR; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The terraform-drift environment is missing a variable; see terraform/README.md, Drift detection. A sweep that planned nothing must not report that it passed."
+              exit 1
+            fi
+          done
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.12.2
+          terraform_wrapper: false
+
+      - name: Open the vault to this runner
+        id: vault
+        run: |
+          rg=$(sed -n 's/^resource_group_name[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' "${TF_ENV}.tfvars")
+          vault=$(az keyvault list --resource-group "$rg" --query "[0].name" --output tsv)
+          ip=$(curl -fsS https://api.ipify.org)
+          echo "vault=$vault" >> "$GITHUB_OUTPUT"
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
+          az keyvault network-rule add --name "$vault" --ip-address "$ip" --output none
+
+      - name: Read the values Terraform keeps out of git
+        env:
+          KEY_VAULT_RUNNER_IP: ${{ steps.vault.outputs.ip }}
+        run: bash scripts/drift-inputs.sh "$TF_ENV" "$RUNNER_TEMP/drift.tfvars.json"
+
+      - name: Plan
+        env:
+          RUNNER_IP: ${{ steps.vault.outputs.ip }}
+          OPERATOR: ${{ vars.TERRAFORM_OPERATOR_OBJECT_ID }}
+        run: |
+          INPUTS="$RUNNER_TEMP/drift.tfvars.json"
+          PLAN="$RUNNER_TEMP/drift.tfplan"
+          set +e
+          ./tf.sh "$TF_ENV" plan -lock=false -input=false -no-color -detailed-exitcode \
+            -var-file="$INPUTS" \
+            -var "key_vault_runner_ips=[\"$RUNNER_IP\"]" \
+            -var "terraform_operator_object_id=$OPERATOR" \
+            -out="$PLAN" > "$RUNNER_TEMP/plan.log" 2>&1
+          code=$?
+          set -e
+          grep -E '^(Plan:|No changes)' "$RUNNER_TEMP/plan.log" || true
+
+          if [ "$code" -eq 1 ]; then
+            grep -A12 -E '^(Error|│ Error)' "$RUNNER_TEMP/plan.log" || tail -n 40 "$RUNNER_TEMP/plan.log"
+            exit 1
+          fi
+
+          {
+            echo "### Terraform drift: ${TF_ENV}"
+            if [ "$code" -eq 0 ]; then
+              echo 'No changes: the environment matches `main`.'
+            else
+              echo '```'
+              terraform show -json "$PLAN" | jq -r '
+                (.resource_changes // [])[]
+                | select(.change.actions != ["no-op"] and .change.actions != ["read"])
+                | "\(.change.actions | join("/")) \(.address)"'
+              terraform show -json "$PLAN" | jq -r '
+                (.output_changes // {}) | to_entries[]
+                | select(.value.actions != ["no-op"])
+                | "\(.value.actions | join("/")) output.\(.key)"'
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$code" -eq 2 ]; then
+            echo "::error::${TF_ENV} differs from main; the changed addresses are in the run summary."
+            exit 1
+          fi
+
+      - name: Close the vault again
+        if: always()
+        env:
+          VAULT: ${{ steps.vault.outputs.vault }}
+          RUNNER_IP: ${{ steps.vault.outputs.ip }}
+        run: |
+          rm -f "$RUNNER_TEMP/drift.tfvars.json" "$RUNNER_TEMP/drift.tfplan" "$RUNNER_TEMP/plan.log"
+          if [ -n "$VAULT" ] && [ -n "$RUNNER_IP" ]; then
+            az keyvault network-rule remove --name "$VAULT" --ip-address "$RUNNER_IP/32" --output none
+          fi
+
+  drift-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ plan ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.plan.result }}"
+      subject: dev has drifted from what main declares
+      label: sweep-red

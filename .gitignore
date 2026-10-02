@@ -34,6 +34,8 @@ hs_err_pid14848.log
 /frontend/coverage
 secrets.yaml
 /terraform/.terraform
+/terraform/bootstrap/.terraform
+terraform/bootstrap/*.tfplan
 terraform/*.local.tfvars
 terraform/*.local.auto.tfvars
 terraform/*.tfplan
