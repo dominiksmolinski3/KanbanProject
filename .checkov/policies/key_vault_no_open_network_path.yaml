@@ -1,0 +1,18 @@
+metadata:
+  id: "CKV2_KANBAN_2"
+  name: "Ensure a key vault answers no network it has not named"
+  category: "NETWORKING"
+definition:
+  or:
+    - cond_type: attribute
+      resource_types:
+        - azurerm_key_vault
+      attribute: public_network_access_enabled
+      operator: equals
+      value: false
+    - cond_type: attribute
+      resource_types:
+        - azurerm_key_vault
+      attribute: network_acls.default_action
+      operator: equals
+      value: Deny

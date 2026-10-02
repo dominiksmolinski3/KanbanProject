@@ -1751,8 +1751,11 @@ and reasons in `local.refusal_alerts`.
   `CKV_AZURE_59` is skipped because it reads only `public_network_access_enabled`,
   which azurerm 5 deprecates; `.checkov/policies` replaces it with `CKV2_KANBAN_1`,
   which passes an account whose public access is `Disabled` or whose network rules
-  deny by default. The trigger names `.checkov/**` for the same reason it names
-  `.checkov.yaml`.
+  deny by default. `CKV_AZURE_189` is skipped the same way: it passes a vault that names
+  any IP or subnet and never reads `default_action`, so it fails a vault that denies
+  everything but its private endpoint and passes one left open. `CKV2_KANBAN_2` replaces it
+  on the same terms as `CKV2_KANBAN_1`. The trigger names `.checkov/**` for the same reason
+  it names `.checkov.yaml`.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was
