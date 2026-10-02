@@ -171,6 +171,7 @@ jobs:
           docker compose --profile replicas up -d --build && exit 0
           echo "docker compose up failed (attempt $i/3)" >&2
           docker compose --profile replicas down -v
+          docker builder prune -af
           [ "$i" = 3 ] && exit 1
           sleep 15
         done
