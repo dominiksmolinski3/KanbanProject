@@ -90,7 +90,7 @@ variable "ingress_source_address_prefixes" {
 variable "key_vault_allowed_ips" {
   description = <<-EOT
     Public IPv4 addresses or CIDR ranges allowed through the Key Vault firewall, in addition
-    to the backend subnet. Terraform writes secrets over the data plane, so whoever runs
+    to its private endpoint. Terraform writes secrets over the data plane, so whoever runs
     `terraform apply` from outside the VNet has to appear in this list. Record stable egress
     addresses here (a self-hosted runner, an office range); for local development set your own
     address in the gitignored dev.local.tfvars rather than committing it.

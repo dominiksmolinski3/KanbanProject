@@ -21,6 +21,7 @@ external-checks-dir:
 
 skip-check:
   - CKV_AZURE_59
+  - CKV_AZURE_189
   - CKV_AZURE_41
   - CKV_AZURE_136
   - CKV2_AZURE_57
