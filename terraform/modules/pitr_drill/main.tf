@@ -34,11 +34,12 @@ resource "azurerm_role_definition" "scratch" {
 resource "azurerm_role_definition" "source" {
   name        = "kanban-${var.env}-pitr-source"
   scope       = var.resource_group_id
-  description = "Reads the server a drill restores from, and places its copy in the same subnet and DNS zone."
+  description = "Restores from the server, which Azure checks as write on the source, and places the copy in the same subnet and DNS zone. No delete."
 
   permissions {
     actions = [
       "Microsoft.DBforPostgreSQL/flexibleServers/read",
+      "Microsoft.DBforPostgreSQL/flexibleServers/write",
       "Microsoft.Network/virtualNetworks/subnets/read",
       "Microsoft.Network/virtualNetworks/subnets/join/action",
       "Microsoft.Network/privateDnsZones/read",
@@ -219,7 +220,7 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "failed" {
       ContainerAppConsoleLogs_CL
       | where TimeGenerated > ago(2d)
       | where ContainerJobName_s == "${local.job_name}"
-      | summarize Started = countif(Log_s has "PITR_START" and TimeGenerated < ago(2h)), Restored = countif(Log_s has "PITR_OK")
+      | summarize Started = dcountif(ContainerGroupName_s, Log_s has "PITR_START" and TimeGenerated < ago(2h)), Restored = dcountif(ContainerGroupName_s, Log_s has "PITR_OK")
       | extend Unconfirmed = Started - Restored
     KQL
     time_aggregation_method = "Maximum"
