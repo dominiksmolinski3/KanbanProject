@@ -11,7 +11,11 @@ servers="https://management.azure.com$SCRATCH_GROUP_ID/providers/Microsoft.DBfor
 arm() {
   method=$1
   shift
-  curl -fsS -X "$method" -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"
+  if ! curl -sS --fail-with-body -o /tmp/arm -X "$method" -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"; then
+    echo "$method ${1%%\?*} refused: $(cat /tmp/arm)" >&2
+    return 1
+  fi
+  cat /tmp/arm
 }
 
 state() {
@@ -28,7 +32,7 @@ wait_for() {
 }
 
 remove() {
-  arm DELETE "$servers/$1?$api" -o /dev/null
+  arm DELETE "$servers/$1?$api" >/dev/null
   wait_for "$1" ""
   echo "PITR_REMOVED $1"
 }
@@ -47,7 +51,7 @@ case "$1" in
     echo "$point" > /drill/point
     trap 'remove "$name"' EXIT
 
-    arm PUT "$servers/$name?$api" -o /dev/null --data "{
+    arm PUT "$servers/$name?$api" --data "{
       \"location\": \"$LOCATION\",
       \"tags\": {\"purpose\": \"pitr-drill\"},
       \"properties\": {
@@ -55,7 +59,7 @@ case "$1" in
         \"sourceServerResourceId\": \"$SOURCE_SERVER_ID\",
         \"pointInTimeUTC\": \"$point\"
       }
-    }"
+    }" >/dev/null
     wait_for "$name" Ready
 
     arm GET "$servers/$name?$api" | grep -q '"activeDirectoryAuth" *: *"Enabled"' || {
