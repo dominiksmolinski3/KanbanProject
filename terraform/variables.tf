@@ -303,3 +303,16 @@ variable "rbac_propagation_delay" {
   type        = string
   default     = "60s"
 }
+
+variable "terraform_operator_object_id" {
+  description = "Entra object id of the person who applies this configuration. Unset means the caller, which is right for an apply; the drift sweep plans as a different identity and sets it so the vault's role assignment does not read as drift."
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "key_vault_runner_ips" {
+  description = "Addresses the drift workflow adds to the vault firewall for the length of one plan. Always empty outside that workflow."
+  type        = list(string)
+  default     = []
+}

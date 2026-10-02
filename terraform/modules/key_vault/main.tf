@@ -35,7 +35,7 @@ resource "azurerm_key_vault" "main" {
 resource "azurerm_role_assignment" "terraform_caller_secrets_officer" {
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
+  principal_id         = coalesce(var.operator_object_id, data.azurerm_client_config.current.object_id)
 }
 
 resource "time_sleep" "wait_for_secrets_officer" {

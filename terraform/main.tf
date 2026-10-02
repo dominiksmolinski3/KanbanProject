@@ -90,12 +90,13 @@ module "key_vault" {
   env                         = var.env
   private_endpoint_subnet_id  = module.vnet.private_endpoint_subnet_id
   vnet_id                     = module.vnet.id
-  ip_rules                    = var.key_vault_allowed_ips
+  ip_rules                    = concat(var.key_vault_allowed_ips, var.key_vault_runner_ips)
   allow_azure_services_bypass = var.key_vault_allow_azure_services_bypass
   network_default_action      = var.key_vault_network_default_action
   purge_protection_enabled    = var.key_vault_purge_protection_enabled
   soft_delete_retention_days  = var.key_vault_soft_delete_retention_days
   rbac_propagation_delay      = var.rbac_propagation_delay
+  operator_object_id          = var.terraform_operator_object_id
   tags                        = local.tags
 }
 
