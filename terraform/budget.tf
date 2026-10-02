@@ -9,6 +9,7 @@ locals {
   budget_resource_groups = compact([
     azurerm_resource_group.main.name,
     module.backup.resource_group_name,
+    module.pitr_drill.resource_group_name,
     try(var.acs.resource_group_name, ""),
   ])
 }
