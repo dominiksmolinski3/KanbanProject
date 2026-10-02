@@ -6,6 +6,10 @@ output "postgres_db_name" {
   value = azurerm_postgresql_flexible_server_database.main.name
 }
 
+output "private_dns_zone_id" {
+  value = azurerm_private_dns_zone.main.id
+}
+
 output "fqdn" {
   value = azurerm_postgresql_flexible_server.main.fqdn
 }
