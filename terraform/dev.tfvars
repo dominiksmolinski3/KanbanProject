@@ -9,6 +9,7 @@ postgres_zone           = "1"
 
 postgres_backup_retention_days        = 35
 postgres_geo_redundant_backup_enabled = false
+postgres_password_auth_enabled        = false
 
 key_vault_purge_protection_enabled     = false
 key_vault_purge_soft_delete_on_destroy = true
