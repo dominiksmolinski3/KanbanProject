@@ -546,7 +546,9 @@ subscription.
   `kanban_reader` in every copy) and prints `PITR_OK` with the migration and row counts, and
   `cleanup` deletes the scratch server once `check` has finished, however it finished.
   - The drill's identity can create and delete servers in the scratch group only. On the real
-    server, its subnet and its DNS zone it can read and join, nothing more.
+    server it can read and write, because Azure refuses a restore (`LinkedAuthorizationFailed`)
+    unless the caller can write the source. It cannot delete it: the role has no delete action,
+    and the server keeps its `CanNotDelete` lock. On the subnet and DNS zone it can join.
   - A scratch server is billed while it exists. If one is left behind, the next run deletes it
     before restoring.
   - A log alert can look back two days at most, too short for a monthly job to go stale in.
