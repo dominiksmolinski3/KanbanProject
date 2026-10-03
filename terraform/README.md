@@ -240,6 +240,9 @@ they are read from the thing being compared.
 
 The run logs in as `id-kanban-terraform-drift`, a user-assigned identity with a federated
 credential for the `terraform-drift` GitHub environment, so there is no client secret anywhere.
+This repository issues OIDC subjects in GitHub's immutable-id form
+(`repo:<owner>@<id>/<repo>@<id>:environment:...`), so the credential matches that, not
+`repo:<owner>/<repo>`. A mismatch fails the login with `AADSTS700213`.
 It holds Reader on the subscription, Storage Blob Data Reader on the state container, Key Vault
 Secrets User on `kanban-dev-rg`, and one custom role on the three resource groups. That role is
 what a refresh was **measured** calling beyond Reader (`TF_LOG=DEBUG` on a real dev plan), plus
@@ -265,8 +268,7 @@ terraform init
 terraform apply
 ```
 
-then delete `imports.tf`, and give the `terraform-drift` environment four variables from its
-outputs: `AZURE_CLIENT_ID` (`drift_client_id`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and
+then give the `terraform-drift` environment four variables from its outputs: `AZURE_CLIENT_ID` (`drift_client_id`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and
 `TERRAFORM_OPERATOR_OBJECT_ID`. A missing one fails the run rather than skipping it.
 `tfstate-rg` is read by name and not imported: it sits in West Europe, which the location policy
 denies, so even a tag update to it would be refused. The account inside it is in Poland Central

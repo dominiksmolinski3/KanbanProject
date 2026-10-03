@@ -76,7 +76,7 @@ jobs:
           INPUTS="$RUNNER_TEMP/drift.tfvars.json"
           PLAN="$RUNNER_TEMP/drift.tfplan"
           set +e
-          ./tf.sh "$TF_ENV" plan -lock=false -input=false -no-color -detailed-exitcode \
+          bash tf.sh "$TF_ENV" plan -lock=false -input=false -no-color -detailed-exitcode \
             -var-file="$INPUTS" \
             -var "key_vault_runner_ips=[\"$RUNNER_IP\"]" \
             -var "terraform_operator_object_id=$OPERATOR" \
@@ -85,7 +85,8 @@ jobs:
           set -e
           grep -E '^(Plan:|No changes)' "$RUNNER_TEMP/plan.log" || true
 
-          if [ "$code" -eq 1 ]; then
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "::error::The plan exited $code, so it says nothing about drift."
             grep -A12 -E '^(Error|│ Error)' "$RUNNER_TEMP/plan.log" || tail -n 40 "$RUNNER_TEMP/plan.log"
             exit 1
           fi

@@ -9,7 +9,7 @@ resource "azurerm_federated_identity_credential" "drift" {
   name                      = "github-${var.drift_environment}"
   user_assigned_identity_id = azurerm_user_assigned_identity.drift.id
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_repository}:environment:${var.drift_environment}"
+  subject                   = "${var.github_oidc_subject_prefix}:environment:${var.drift_environment}"
   audience                  = ["api://AzureADTokenExchange"]
 }
 
