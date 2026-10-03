@@ -124,24 +124,24 @@ function FlowMetrics() {
   };
 
   return (
-    <div className="flow-metrics viz-root">
-      <div className="flow-header">
-        <h2>{t('flow.heading')}</h2>
-        <p className="flow-explainer">{t('flow.explainer')}</p>
+    <div className="flow-metrics viz-root page-shell">
+      <div className="flow-header page-head">
+        <h1 className="page-title">{t('flow.heading')}</h1>
+        <p className="flow-explainer page-lede">{t('flow.explainer')}</p>
       </div>
 
       <div className="flow-filters">
-        <label>
-          <span>{t('flow.window')}</span>
-          <select value={days} onChange={(event) => setDays(Number(event.target.value))}>
+        <label className="field">
+          <span className="field-label">{t('flow.window')}</span>
+          <select className="field-input" value={days} onChange={(event) => setDays(Number(event.target.value))}>
             {WINDOWS.map(n => (
               <option key={n} value={n}>{t('flow.lastDays', { count: n })}</option>
             ))}
           </select>
         </label>
-        <label>
-          <span>{t('flow.startsAt')}</span>
-          <select value={start} onChange={(event) => setStart(event.target.value)}>
+        <label className="field">
+          <span className="field-label">{t('flow.startsAt')}</span>
+          <select className="field-input" value={start} onChange={(event) => setStart(event.target.value)}>
             <option value="">
               {definedStart ? t('flow.asTheBoardDefines', { name: definedStart }) : t('flow.arrivalOnBoard')}
             </option>
@@ -150,9 +150,9 @@ function FlowMetrics() {
             ))}
           </select>
         </label>
-        <label>
-          <span>{t('flow.doneAt')}</span>
-          <select value={done} onChange={(event) => setDone(event.target.value)}>
+        <label className="field">
+          <span className="field-label">{t('flow.doneAt')}</span>
+          <select className="field-input" value={done} onChange={(event) => setDone(event.target.value)}>
             <option value="">
               {definedDone ? t('flow.asTheBoardDefines', { name: definedDone }) : t('flow.lastColumn')}
             </option>
@@ -166,7 +166,7 @@ function FlowMetrics() {
             {differsFromBoard && (
               <button
                 type="button"
-                className="flow-definition-save"
+                className="flow-definition-save btn btn-primary btn-sm"
                 disabled={saving}
                 onClick={() => saveDefinition({ start: data.startColumnId, done: data.doneColumnId })}
               >
@@ -176,7 +176,7 @@ function FlowMetrics() {
             {hasDefinition && (
               <button
                 type="button"
-                className="flow-definition-reset"
+                className="flow-definition-reset btn btn-ghost btn-sm"
                 disabled={saving}
                 onClick={() => saveDefinition({ start: null, done: null })}
               >
