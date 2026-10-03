@@ -11,6 +11,12 @@ variable "github_repository" {
   default     = "dominiksmolinski3/KanbanProject"
 }
 
+variable "github_oidc_subject_prefix" {
+  description = "What GitHub puts before :environment: in the token's subject. This repository issues the immutable-id form, so it is sub_claim_prefix from `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`, not repo:<owner>/<repo>."
+  type        = string
+  default     = "repo:dominiksmolinski3@115213364/KanbanProject@1349659343"
+}
+
 variable "drift_environment" {
   description = "GitHub environment the drift workflow runs in. The federated credential trusts this environment only."
   type        = string
