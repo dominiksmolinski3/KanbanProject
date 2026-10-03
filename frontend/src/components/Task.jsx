@@ -4,15 +4,16 @@ import TaskDetails from './TaskDetails';
 import EditableText from './EditableText';
 import AvatarStack from './AvatarStack';
 import TaskCardMeta from './TaskCardMeta';
+import Icon from './Icon';
 import Xarrow from "react-xarrows";
-import { assignUserToTask, fetchSubTasksByTaskId, fetchTask, WipLimitExceededError } from '../services/api';
-import { createPortal } from 'react-dom';
+import { assignUserToTask, WipLimitExceededError } from '../services/api';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { deadlineState } from '../board/cardModel';
 import '../styles/components/Task.css';
 
 const TILT_GHOST_CLASS = 'task-drag-ghost';
+const TITLE_OPEN_DELAY_MS = 250;
 
 function setTiltedDragImage(e, source) {
   if (!source || typeof e.dataTransfer.setDragImage !== 'function') return;
@@ -44,17 +45,13 @@ function Task({ task, columnId, rowId }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [assignmentError, setAssignmentError] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [showDescription, setShowDescription] = useState(false);
-  const [taskDescription, setTaskDescription] = useState('');
-  const [loadingDescription, setLoadingDescription] = useState(false);
   const [isParentTask] = useState(false); 
   const [childColumns] = useState(new Set());
   const [isDragging, setIsDragging] = useState(false);
-  const [taskSubtasks, setTaskSubtasks] = useState([]);
  
-  const descriptionBtnRef = useRef(null);
   const taskRef = useRef(null);
   const warningTimeoutRef = useRef(null);
+  const openTimerRef = useRef(null);
   const dueState = deadlineState(task.deadline);
   const isDeadlineExpired = dueState === 'overdue';
   const isDeadlineUpcoming = dueState === 'soon';
@@ -67,14 +64,11 @@ function Task({ task, columnId, rowId }) {
   const hasUnfinishedSubtasks = (task.openSubtasks ?? 0) > 0;
 
   useEffect(() => () => {
+    clearTimeout(openTimerRef.current);
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
     }
   }, []);
-
-  useEffect(() => {
-    setTaskSubtasks([]);
-  }, [task.openSubtasks]);
 
   useEffect(() => {
     if (assignmentError) {
@@ -86,87 +80,24 @@ function Task({ task, columnId, rowId }) {
     }
   }, [assignmentError]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showDescription && 
-          !event.target.classList.contains('description-dropdown-btn') && 
-          !event.target.closest('.description-popover')) {
-        setShowDescription(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDescription]);
-
-  useEffect(() => {
-    if (showDescription) {
-      if (!taskSubtasks.length) {
-        setLoadingDescription(true);
-        
-        Promise.all([
-          fetchTask(task.id).then(taskData => setTaskDescription(taskData.description || '')),
-          fetchSubTasksByTaskId(task.id).then(subtasks => setTaskSubtasks(subtasks || []))
-        ])
-        .catch(error => console.error('Error fetching task details:', error))
-        .finally(() => setLoadingDescription(false));
-      }
-
-      window.dispatchEvent(new CustomEvent('close-all-popovers', {
-        detail: { exceptTaskId: task.id }
-      }));
-    }
-  }, [showDescription, task.id, taskSubtasks.length]);
-
-  useEffect(() => {
-    return () => {
-      const popover = document.querySelector(`.description-popover[data-task-id="${task.id}"]`);
-      if (popover && popover.parentNode) {
-        popover.parentNode.removeChild(popover);
-      }
-    };
-  }, [task.id]);
-
-  useEffect(() => {
-    const handleClosePopovers = (e) => {
-      if (!e.detail || e.detail.exceptTaskId !== task.id) {
-        setShowDescription(false);
-      }
-    };
-    
-    window.addEventListener('close-all-popovers', handleClosePopovers);
-    
-    return () => {
-      window.removeEventListener('close-all-popovers', handleClosePopovers);
-    };
-  }, [task.id]);
-
   const handleTaskClick = (e) => {
-    if (e.target.className === 'delete-btn' || 
-        e.target.className === 'confirm-delete-btn' || 
+    if (e.target.classList.contains('editable-text')) {
+      clearTimeout(openTimerRef.current);
+      // A second click is the start of a double click, which edits the title in place.
+      if (e.detail <= 1) {
+        openTimerRef.current = setTimeout(() => setShowDetails(true), TITLE_OPEN_DELAY_MS);
+      }
+      return;
+    }
+    if (e.target.className === 'delete-btn' ||
+        e.target.className === 'confirm-delete-btn' ||
         e.target.className === 'cancel-delete-btn' ||
-        e.target.classList.contains('editable-text') ||
         e.target.classList.contains('editable-text-input') ||
         e.target.classList.contains('warning-close-btn') ||
         e.target.classList.contains('task-complete-checkbox') ||
         e.target.classList.contains('daily-focus-btn') ||
-        e.target.classList.contains('description-dropdown-btn') ||
-        e.target.closest('.description-dropdown-btn') ||
-        e.target.closest('.task-description-dropdown')) return;
+        e.target.closest('.task-actions')) return;
     setShowDetails(!showDetails);
-  };
-
-  const handleDescriptionToggle = (e) => {
-    e.stopPropagation();
-    
-    if (showDescription) {
-      setShowDescription(false);
-      return;
-    }
-    
-    setShowDescription(true);
   };
 
   const handleDeleteClick = (e) => {
@@ -411,27 +342,15 @@ function Task({ task, columnId, rowId }) {
         data-row-id={task.rowId || "null"}
         data-is-parent={isParentTask}
       >
+        {heldByKeyboard && <span className="task-held-tag">{t('board.keyboardMove.tag')}</span>}
         <div className="task-header">
-          {!readOnly && (
-            <button
-              type="button"
-              className="task-grip"
-              aria-roledescription={t('board.keyboardMove.roleDescription')}
-              aria-label={t('board.keyboardMove.grip', { title })}
-              aria-describedby="board-keyboard-move-help"
-              aria-pressed={heldByKeyboard}
-              onKeyDown={onGripKeyDown}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span aria-hidden="true">⠿</span>
-            </button>
-          )}
           <input
             type="checkbox"
             className="task-complete-checkbox"
             checked={Boolean(task.completed)}
             onChange={handleToggleCompletion}
             onClick={(e) => e.stopPropagation()}
+            disabled={readOnly}
             title={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
             aria-label={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
           />
@@ -446,58 +365,67 @@ function Task({ task, columnId, rowId }) {
               disabled={readOnly}
             />
           </div>
-
-          <div className="task-header-actions">
-            <button
-              type="button"
-              className="task-open-btn"
-              title={t('taskActions.open', { title })}
-              aria-label={t('taskActions.open', { title })}
-              onClick={openDetails}
-            >
-              <span aria-hidden="true">↗</span>
-            </button>
-            <button
-              className={`daily-focus-btn ${task.dailyFocus ? 'active' : ''}`}
-              title={task.dailyFocus
-                ? t('taskActions.removeFromDailyFocus')
-                : t('taskActions.addToDailyFocus')}
-              aria-label={task.dailyFocus
-                ? t('taskActions.removeFromDailyFocus')
-                : t('taskActions.addToDailyFocus')}
-              aria-pressed={Boolean(task.dailyFocus)}
-              onClick={handleToggleDailyFocus}
-            >
-              ★
-            </button>
-            {!readOnly && (
-              <button
-                className="delete-btn"
-                title={t('taskActions.delete')}
-                aria-label={t('taskActions.delete')}
-                onClick={handleDeleteClick}
-              >
-                ×
-              </button>
-            )}
-          </div>
+          {task.dailyFocus && (
+            <span className="task-focus-star" title={t('board.dailyFocus')}>
+              <Icon name="star" filled />
+            </span>
+          )}
         </div>
 
-        <TaskCardMeta task={task} dueState={dueState} />
-
-        <div className="task-footer">
-          <button
-            ref={descriptionBtnRef}
-            type="button"
-            className="description-dropdown-btn"
-            title={showDescription ? t('taskActions.hideDetails') : t('taskActions.showDetails')}
-            aria-expanded={showDescription}
-            onClick={handleDescriptionToggle}
-          >
-            <span className="description-dropdown-caret" aria-hidden="true">{showDescription ? '▴' : '▾'}</span>
-            {showDescription ? t('taskActions.hideDetails') : t('taskActions.showDetails')}
-          </button>
+        <TaskCardMeta task={task} dueState={dueState}>
           <AvatarStack userIds={task.userIds || []} members={activeBoard?.members || []} />
+        </TaskCardMeta>
+
+        <div className="task-actions">
+          {!readOnly && (
+            <button
+              type="button"
+              className="task-grip"
+              aria-roledescription={t('board.keyboardMove.roleDescription')}
+              aria-label={t('board.keyboardMove.grip', { title })}
+              title={t('board.keyboardMove.grip', { title })}
+              aria-describedby="board-keyboard-move-help"
+              aria-pressed={heldByKeyboard}
+              onKeyDown={onGripKeyDown}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Icon name="grip" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="task-open-btn"
+            title={t('taskActions.open', { title })}
+            aria-label={t('taskActions.open', { title })}
+            onClick={openDetails}
+          >
+            <Icon name="open" />
+          </button>
+          <button
+            type="button"
+            className={`daily-focus-btn ${task.dailyFocus ? 'active' : ''}`}
+            title={task.dailyFocus
+              ? t('taskActions.removeFromDailyFocus')
+              : t('taskActions.addToDailyFocus')}
+            aria-label={task.dailyFocus
+              ? t('taskActions.removeFromDailyFocus')
+              : t('taskActions.addToDailyFocus')}
+            aria-pressed={Boolean(task.dailyFocus)}
+            onClick={handleToggleDailyFocus}
+          >
+            <Icon name="star" filled={Boolean(task.dailyFocus)} />
+          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="delete-btn"
+              title={t('taskActions.delete')}
+              aria-label={t('taskActions.delete')}
+              onClick={handleDeleteClick}
+            >
+              <Icon name="trash" />
+            </button>
+          )}
         </div>
 
         {assignmentError && (
@@ -508,16 +436,18 @@ function Task({ task, columnId, rowId }) {
 
         {hasUnfinishedSubtasks && showWarning && (
           <div className="subtask-warning">
-            <div className="warning-icon">⚠️</div>
+            <Icon name="warning" size="sm" className="warning-icon" />
             <div className="warning-message">
               {t('taskActions.incompleteSubtasks')}
             </div>
-          <button 
-            className="warning-close-btn" 
-            onClick={handleCloseWarning}
-          >
-            ×
-          </button>
+            <button
+              type="button"
+              className="warning-close-btn"
+              aria-label={t('demo.dismiss')}
+              onClick={handleCloseWarning}
+            >
+              <Icon name="close" size="sm" />
+            </button>
           </div>
         )}
       </article>
@@ -564,64 +494,6 @@ function Task({ task, columnId, rowId }) {
           showHead={true}
         />
       )}
-
-      {showDescription && createPortal(
-      <div 
-        className="description-popover" 
-        data-task-id={task.id} 
-        style={{
-          position: 'fixed', 
-          opacity: 1,
-          zIndex: 1000,
-          left: descriptionBtnRef.current ? 
-            descriptionBtnRef.current.getBoundingClientRect().left : window.innerWidth / 2 - 150,
-          top: descriptionBtnRef.current ? 
-            descriptionBtnRef.current.getBoundingClientRect().bottom + 5 : 100,
-          width: '300px',
-          visibility: 'visible' 
-        }}
-      >
-        <div className="description-popover-arrow" style={{left: '50%'}}></div>
-        <div className="description-popover-content">
-          {loadingDescription ? (
-            <p className="loading-description">{t('taskActions.loading')}</p>
-          ) : (
-            <>
-              <div className="popover-section">
-                <h4 className="popover-section-title">{t('taskActions.description')}</h4>
-                {taskDescription ? (
-                  <p className="description-content">{taskDescription}</p>
-                ) : (
-                  <p className="empty-description">{t('taskActions.noDescription')}</p>
-                )}
-              </div>
-          
-              <div className="popover-section subtasks-preview">
-                <h4 className="popover-section-title">{t('taskActions.subtasks')}</h4>
-                {taskSubtasks && taskSubtasks.length > 0 ? (
-                  <ul className="subtasks-preview-list">
-                    {taskSubtasks.map(subtask => (
-                      <li 
-                        key={subtask.id} 
-                        className={`subtask-preview-item ${subtask.completed ? 'completed' : ''}`}
-                      >
-                        <span className={`subtask-checkbox ${subtask.completed ? 'checked' : ''}`}>
-                          {subtask.completed ? '✓' : ''}
-                        </span>
-                        <span className="subtask-title">{subtask.title}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="empty-subtasks">{t('taskActions.noSubtasks')}</p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>,
-      document.body
-    )}
 
       {isConfirmingDelete && (
         <div className="delete-modal-overlay" onClick={handleCancelDelete}>

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Task from './Task';
 import EditableText from './EditableText';
 import WipMeter from './WipMeter';
+import Icon from './Icon';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import '../styles/components/Board.css';
@@ -12,8 +13,10 @@ import TaskSearch from './TaskSearch';
 import BoardActions from './BoardActions';
 import { buildBoardModel } from '../board/boardModel';
 import useCollapsedLanes from '../board/useCollapsedLanes';
+import useNarrowScreen from '../board/useNarrowScreen';
 
 const DROP_TARGET = 'drop-target';
+const ESCAPE_KEY = 'Esc';
 
 const markDropTarget = (e) => e.currentTarget.classList.add(DROP_TARGET);
 
@@ -25,6 +28,7 @@ const unmarkDropTarget = (e) => {
 
 function Board() {
   const [addContext, setAddContext] = useState({ type: null, columnId: null, rowId: null });
+  const [phoneColumnId, setPhoneColumnId] = useState(null);
   const {
     columns,
     rows,
@@ -46,6 +50,7 @@ function Board() {
   const { t } = useTranslation();
   const { handleDragOver } = dragAndDrop;
   const lanes = useCollapsedLanes(activeBoardId);
+  const narrow = useNarrowScreen();
 
   const model = useMemo(
     () => buildBoardModel({ columns, rows, tasks, dailyFocusOnly }),
@@ -150,12 +155,17 @@ function Board() {
     });
   };
 
+  const held = keyboardMove.held;
+  const phoneColumn = model.columns.find((column) => column.id === phoneColumnId) || model.columns[0];
+  const isTargetColumn = (columnId) => Boolean(held) && String(held.cell.columnId) === String(columnId);
+  const isTargetRow = (rowId) => Boolean(held) && String(held.cell.rowId) === String(rowId);
+
   const renderRowHeader = (row) => {
     const collapsed = lanes.isCollapsed(row.id);
 
     return (
       <td
-        className={`grid-row-header wip-${row.wipState}${row.isOverLimit ? ' wip-exceeded' : ''}${collapsed ? ' lane-collapsed' : ''}`}
+        className={`grid-row-header wip-${row.wipState}${row.isOverLimit ? ' wip-exceeded' : ''}${collapsed ? ' lane-collapsed' : ''}${isTargetRow(row.id) ? ' keyboard-target-name' : ''}`}
         draggable={!readOnly}
         onDragStart={(e) => dragAndDrop.handleDragStart(e, row.id, 'row')}
         onDragOver={(e) => dragAndDrop.handleDragOver(e)}
@@ -173,9 +183,9 @@ function Board() {
             title={t(collapsed ? 'board.lane.expand' : 'board.lane.collapse', { name: row.name })}
             onClick={() => lanes.toggle(row.id)}
           >
-            <span className="lane-chevron" aria-hidden="true" />
+            <Icon name="chevron-down" className="lane-chevron" />
           </button>
-          {!readOnly && <span className="row-drag-handle" aria-hidden="true">⋮⋮</span>}
+          {!readOnly && <span className="row-drag-handle" aria-hidden="true"><Icon name="grip" size="sm" /></span>}
           <EditableText
             id={row.id}
             text={row.name}
@@ -195,7 +205,7 @@ function Board() {
               aria-label={t('row.delete')}
               onClick={() => handleDeleteRowClick(row.id)}
             >
-              ×
+              <Icon name="trash" size="sm" />
             </button>
           )}
         </div>
@@ -206,8 +216,7 @@ function Board() {
   const renderColumnHeader = (column) => (
     <th
       key={column.id}
-      className={`grid-column-header wip-${column.wipState}${column.isOverLimit ? ' wip-exceeded' : ''}`}
-      style={{ '--wip-fill': `${column.wipFill}%` }}
+      className={`grid-column-header wip-${column.wipState}${column.isOverLimit ? ' wip-exceeded' : ''}${isTargetColumn(column.id) ? ' keyboard-target-name' : ''}`}
       draggable={!readOnly}
       onDragStart={(e) => dragAndDrop.handleDragStart(e, column.id, 'column')}
       onDragOver={(e) => dragAndDrop.handleDragOver(e)}
@@ -219,7 +228,7 @@ function Board() {
     >
       <div className="column-header-inner">
         <div className="column-title">
-          {!readOnly && <span className="column-drag-handle" aria-hidden="true">⋮⋮</span>}
+          {!readOnly && <span className="column-drag-handle" aria-hidden="true"><Icon name="grip" size="sm" /></span>}
           <EditableText
             id={column.id}
             text={column.name}
@@ -229,9 +238,6 @@ function Board() {
             type="column"
             disabled={readOnly}
           />
-        </div>
-        <div className="column-actions">
-          <WipMeter count={column.taskCount} limit={column.wipLimit} state={column.wipState} />
           {!readOnly && (
             <button
               className="delete-column-btn icon-btn"
@@ -239,12 +245,12 @@ function Board() {
               aria-label={t('column.delete')}
               onClick={() => handleDeleteColumnClick(column.id)}
             >
-              ×
+              <Icon name="trash" size="sm" />
             </button>
           )}
         </div>
+        <WipMeter count={column.taskCount} limit={column.wipLimit} state={column.wipState} />
       </div>
-      <div className={`wip-bar${column.wipLimit > 0 ? '' : ' wip-bar-empty'}`} aria-hidden="true"><span /></div>
     </th>
   );
 
@@ -253,6 +259,8 @@ function Board() {
     const collapsed = lanes.isCollapsed(row.id);
     const shouldHighlight = cellTasks.length > 0 && (column.isOverLimit || row.isOverLimit);
     const isKeyboardTarget = keyboardMove.isTarget(column.id, row.id);
+    const showSlot = isKeyboardTarget && Boolean(held?.from)
+      && !(String(held.from.columnId) === String(column.id) && String(held.from.rowId) === String(row.id));
 
     const onDragOver = (e) => {
       e.preventDefault();
@@ -268,7 +276,7 @@ function Board() {
     return (
       <td
         key={`${row.id}-${column.id}`}
-        className={`grid-cell${shouldHighlight ? ' wip-exceeded-cell' : ''}${isKeyboardTarget ? ' keyboard-move-target' : ''}${collapsed ? ' lane-collapsed-cell' : ''}`}
+        className={`grid-cell${shouldHighlight ? ' wip-exceeded-cell' : ''}${isKeyboardTarget ? ' keyboard-move-target' : ''}${collapsed ? ' lane-collapsed-cell' : ''}${column.id === phoneColumn?.id ? ' phone-active' : ''}`}
         data-column-id={column.id}
         data-row-id={row.id}
         data-keyboard-target={isKeyboardTarget ? 'true' : undefined}
@@ -291,12 +299,12 @@ function Board() {
                 rowId={row.id}
               />
             ))}
+            {showSlot && <div className="keyboard-drop-slot">{t('board.keyboardMove.slot')}</div>}
             {!readOnly && (
               <button
                 className="add-task-placeholder"
                 onClick={() => setAddContext({ type: 'task', columnId: column.id, rowId: row.id })}
                 title={t('taskActions.addTaskHere')}
-                aria-label={t('taskActions.addTaskHere')}
               >
                 {t('taskActions.addTaskHere')}
               </button>
@@ -320,6 +328,7 @@ function Board() {
       </div>
       {readOnly && (
         <div className="board-readonly-banner" role="status">
+          <Icon name="eye" size="sm" />
           {t('board.readOnlyBanner')}
         </div>
       )}
@@ -331,7 +340,7 @@ function Board() {
           aria-pressed={dailyFocusOnly}
           onClick={() => setDailyFocusOnly(!dailyFocusOnly)}
         >
-          <span aria-hidden="true">★</span> {t('board.dailyFocus')}
+          <Icon name="star" size="sm" filled={dailyFocusOnly} /> {t('board.dailyFocus')}
           <span className="daily-focus-count">{model.dailyFocusCount}</span>
         </button>
         {dailyFocusOnly && model.dailyFocusCount === 0 && (
@@ -339,6 +348,25 @@ function Board() {
         )}
         <TaskSearch />
       </div>
+      {narrow && model.columns.length > 0 && (
+        <div className="phone-column-tabs" role="tablist" aria-label={t('forms.addRowColumn.tabs.columns')}>
+          {model.columns.map((column) => (
+            <button
+              key={column.id}
+              type="button"
+              role="tab"
+              aria-selected={column.id === phoneColumn?.id}
+              className={`phone-column-tab wip-${column.wipState}`}
+              onClick={() => setPhoneColumnId(column.id)}
+            >
+              {column.name}
+              <span className="phone-column-count">
+                {column.wipLimit > 0 ? `${column.taskCount}/${column.wipLimit}` : column.taskCount}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="board-scroller">
         <table className="kanban-table">
           <thead>
@@ -353,7 +381,7 @@ function Board() {
                     title={t('column.add')}
                     onClick={() => setAddContext({ type: 'column', columnId: null, rowId: null })}
                   >
-                    <span aria-hidden="true">+</span> {t('column.add')}
+                    <Icon name="plus" size="sm" /> {t('column.add')}
                   </button>
                 </th>
               )}
@@ -376,7 +404,7 @@ function Board() {
                     title={t('row.add')}
                     onClick={() => setAddContext({ type: 'row', columnId: null, rowId: null })}
                   >
-                    <span aria-hidden="true">+</span> {t('row.add')}
+                    <Icon name="plus" size="sm" /> {t('row.add')}
                   </button>
                 </td>
                 {model.columns.map((column) => (
@@ -388,6 +416,18 @@ function Board() {
           </tbody>
         </table>
       </div>
+      {held && (
+        <div className="keyboard-move-strip" aria-hidden="true">
+          <Icon name="info" size="sm" />
+          <span className="keyboard-move-strip-text">
+            {announcement ? t(announcement.key, announcement.values) : ''}
+          </span>
+          <span className="keyboard-move-keys">
+            <kbd>{t('board.keyboardMove.keySpace')}</kbd> {t('board.keyboardMove.drop')}
+            <kbd>{ESCAPE_KEY}</kbd> {t('board.keyboardMove.cancel')}
+          </span>
+        </div>
+      )}
       {addContext.type === 'task' && (
         <AddTaskForm
           onClose={closeForm}
