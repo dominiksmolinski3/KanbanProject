@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { hueOf, readStoredLabelColors, splitPriority } from '../board/cardModel';
+import Icon from './Icon';
 
 const MAX_LABELS = 3;
 
@@ -13,7 +14,7 @@ function formatDue(deadline, language) {
   }
 }
 
-function TaskCardMeta({ task, dueState }) {
+function TaskCardMeta({ task, dueState, children }) {
   const { t, i18n } = useTranslation();
   const { priority, priorityLabel, labels } = useMemo(() => splitPriority(task.labels || []), [task.labels]);
   const storedColors = labels.length > 0 ? readStoredLabelColors() : {};
@@ -23,7 +24,8 @@ function TaskCardMeta({ task, dueState }) {
   const visibleLabels = labels.slice(0, MAX_LABELS);
   const hiddenLabels = labels.length - visibleLabels.length;
 
-  if (!priority && labels.length === 0 && !dueState && totalSubtasks === 0) return null;
+  const hasAssignees = (task.userIds || []).length > 0;
+  if (!priority && labels.length === 0 && !dueState && totalSubtasks === 0 && !hasAssignees) return null;
 
   const due = dueState ? formatDue(task.deadline, i18n?.language) : null;
   const dueKey = { overdue: 'taskActions.dueOverdue', soon: 'taskActions.dueSoon', later: 'taskActions.dueLater' }[dueState];
@@ -38,7 +40,7 @@ function TaskCardMeta({ task, dueState }) {
               title={t('taskActions.priorityTitle', { level: t(`taskActions.priority.${priority}`) })}
               data-label={priorityLabel}
             >
-              <span className="priority-glyph" aria-hidden="true" />
+              <span className="priority-bars" aria-hidden="true"><i /><i /><i /><i /></span>
               {t(`taskActions.priority.${priority}`)}
             </span>
           )}
@@ -63,11 +65,11 @@ function TaskCardMeta({ task, dueState }) {
         </div>
       )}
 
-      {(dueState || totalSubtasks > 0) && (
+      {(dueState || totalSubtasks > 0 || hasAssignees) && (
         <div className="task-signals">
           {dueState && (
             <span className={`due-chip due-${dueState}`} title={t(dueKey, { date: due })}>
-              <span className="due-icon" aria-hidden="true" />
+              <Icon name="calendar" size="sm" />
               <span className="visually-hidden">{t(dueKey, { date: due })}</span>
               <span aria-hidden="true">{due}</span>
             </span>
@@ -77,7 +79,7 @@ function TaskCardMeta({ task, dueState }) {
               className={`subtask-chip${openSubtasks === 0 ? ' subtask-done' : ''}`}
               title={t('taskActions.subtaskProgress', { done: doneSubtasks, total: totalSubtasks })}
             >
-              <span className="subtask-icon" aria-hidden="true" />
+              <Icon name="checklist" size="sm" />
               <span className="visually-hidden">
                 {t('taskActions.subtaskProgress', { done: doneSubtasks, total: totalSubtasks })}
               </span>
@@ -87,6 +89,7 @@ function TaskCardMeta({ task, dueState }) {
               </span>
             </span>
           )}
+          {children}
         </div>
       )}
     </div>

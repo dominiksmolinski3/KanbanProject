@@ -1,28 +1,34 @@
 .task-search-toggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  background: none;
-  border: var(--border-thin) solid var(--kb-border-strong);
-  border-radius: var(--radius-full);
-  color: var(--kb-text-muted);
-  font-size: var(--text-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  gap: var(--space-8);
+  width: 300px;
+  max-width: 100%;
+  height: var(--kb-control-height-sm);
+  margin-inline-start: auto;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--kb-line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--kb-field);
+  color: var(--kb-ink-subtle);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: start;
+  cursor: text;
 }
 
 .task-search-toggle:hover {
-  border-color: var(--kb-accent);
-  color: var(--kb-accent);
+  border-color: var(--kb-ink-muted);
+  background: var(--kb-field);
+  color: var(--kb-ink-muted);
 }
 
 .task-search {
   flex: 1 1 100%;
-  background: var(--kb-card);
-  border: var(--border-thin) solid var(--kb-border);
-  border-radius: var(--radius-md, 0.5rem);
-  padding: var(--spacing-md);
+  background: var(--kb-surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--kb-shadow-pop);
+  padding: var(--space-16);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -39,12 +45,22 @@
 }
 
 .task-search-close {
-  background: none;
-  border: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--kb-control-height-sm);
+  height: var(--kb-control-height-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--kb-ink-muted);
   cursor: pointer;
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--kb-text-muted);
+}
+
+.task-search-close:hover {
+  border: 0;
+  background: var(--kb-hover);
+  color: var(--kb-ink);
 }
 
 .task-search-term {
@@ -253,9 +269,8 @@
 }
 
 .task-search-hit {
-  outline: 3px solid var(--kb-accent);
-  outline-offset: 2px;
-  transition: outline-color var(--transition-fast);
+  box-shadow: 0 0 0 2px var(--kb-gold), 0 0 0 6px var(--kb-gold-soft), var(--kb-shadow-hover);
+  transition: box-shadow 1.6s var(--kb-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -98,13 +98,14 @@ describe('Bench Component', () => {
     const benchContainer = document.querySelector('.bench-container');
     expect(benchContainer).not.toHaveClass('open');
     
-    const toggleButton = screen.getByText('▶');
+    const toggleButton = screen.getByRole('button', { name: 'Zespół' });
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggleButton);
-    
+
     expect(benchContainer).toHaveClass('open');
-    expect(screen.getByText('◀')).toBeInTheDocument();
-    
-    fireEvent.click(screen.getByText('◀'));
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(toggleButton);
     expect(benchContainer).not.toHaveClass('open');
   });
   
