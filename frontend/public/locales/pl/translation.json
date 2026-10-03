@@ -130,7 +130,12 @@
       "over": "Nad {{column}}, {{row}}.",
       "dropped": "Przeniesiono {{title}} do {{column}}, {{row}}.",
       "unchanged": "{{title}} pozostało na swoim miejscu.",
-      "cancelled": "Anulowano przenoszenie. {{title}} pozostało na swoim miejscu."
+      "cancelled": "Anulowano przenoszenie. {{title}} pozostało na swoim miejscu.",
+      "tag": "Przenoszenie",
+      "slot": "Upuść tutaj",
+      "keySpace": "Spacja",
+      "drop": "upuść",
+      "cancel": "anuluj"
     }
   },
   "notifications": {
@@ -404,7 +409,9 @@
     "retry": "Odśwież",
     "recentlyVerified": "Konto zweryfikowane! CAPTCHA pominięta przy tym logowaniu.",
     "verifyAndLoginSuccess": "Konto zweryfikowane i zalogowano pomyślnie!",
-    "checkingSession": "Sprawdzanie sesji..."
+    "checkingSession": "Sprawdzanie sesji...",
+    "claim": "Mniej zaczynaj, więcej kończ.",
+    "claimSub": "Jedna tablica dla zespołu: kolumny, tory i limity WIP, a przepływ mierzony z każdego ruchu."
   },
   "taskLabels": {
     "addLabel": "+ Etykieta",
@@ -527,7 +534,9 @@
       "REOPENED": "{{who}} otworzył(a) ponownie {{what}}",
       "DELETED": "{{who}} usunął(-nęła) {{what}}",
       "COMMENTED": "{{who}} skomentował(a) {{what}}"
-    }
+    },
+    "today": "Dziś",
+    "yesterday": "Wczoraj"
   },
   "demo": {
     "notice": "To jest strona testowa. Zaloguj się kontem demonstracyjnym:",
@@ -562,7 +571,15 @@
     "loadingTimeStatistics": "Wczytywanie statystyk czasu...",
     "noTimeStatistics": "Brak statystyk czasu",
     "noColumnHistory": "Brak historii kolumn",
-    "noColumnHistoryHint": "To zadanie nie zmieniło jeszcze kolumny"
+    "noColumnHistoryHint": "To zadanie nie zmieniło jeszcze kolumny",
+    "tabs": {
+      "details": "Szczegóły"
+    },
+    "props": {
+      "assignees": "Przypisani",
+      "priority": "Priorytet"
+    },
+    "close": "Zamknij zadanie"
   },
   "app": {
     "loading": "Ładowanie..."
@@ -660,6 +677,9 @@
       "expiredCode": "Ten kod wygasł. Poproś o nowy.",
       "invalid": "Sprawdź pola i spróbuj ponownie.",
       "generic": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "avatar": {
+      "change": "Zmień awatar"
     }
   },
   "errors": {

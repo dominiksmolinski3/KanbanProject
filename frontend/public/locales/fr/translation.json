@@ -130,7 +130,12 @@
         "over": "Sur {{column}}, {{row}}.",
         "dropped": "{{title}} déplacée vers {{column}}, {{row}}.",
         "unchanged": "{{title}} est restée à sa place.",
-        "cancelled": "Déplacement annulé. {{title}} est restée à sa place."
+        "cancelled": "Déplacement annulé. {{title}} est restée à sa place.",
+        "tag": "Déplacement",
+        "slot": "Déposer ici",
+        "keySpace": "Espace",
+        "drop": "déposer",
+        "cancel": "annuler"
       }
     },
     "notifications": {
@@ -404,7 +409,9 @@
       "retry": "Recharger",
       "recentlyVerified": "Compte vérifié ! CAPTCHA ignoré pour cette connexion.",
       "verifyAndLoginSuccess": "Compte vérifié et connexion réussie !",
-      "checkingSession": "Vérification de votre session..."
+      "checkingSession": "Vérification de votre session...",
+      "claim": "Arrêtez de commencer, commencez à finir.",
+      "claimSub": "Un tableau pour l’équipe : colonnes, couloirs et limites WIP, avec le flux mesuré à chaque déplacement."
     },
     "taskLabels": {
       "addLabel": "+ Étiquette",
@@ -527,7 +534,9 @@
         "REOPENED": "{{who}} a rouvert {{what}}",
         "DELETED": "{{who}} a supprimé {{what}}",
         "COMMENTED": "{{who}} a commenté {{what}}"
-      }
+      },
+      "today": "Aujourd’hui",
+      "yesterday": "Hier"
     },
     "demo": {
         "notice": "Ceci est un site de test. Connectez-vous avec un compte de démonstration :",
@@ -562,7 +571,15 @@
         "loadingTimeStatistics": "Chargement des statistiques de temps...",
         "noTimeStatistics": "Aucune statistique de temps disponible",
         "noColumnHistory": "Aucun historique de colonnes disponible",
-        "noColumnHistoryHint": "Cette tâche n'a pas encore changé de colonne"
+        "noColumnHistoryHint": "Cette tâche n'a pas encore changé de colonne",
+        "tabs": {
+            "details": "Détails"
+        },
+        "props": {
+            "assignees": "Assignés",
+            "priority": "Priorité"
+        },
+        "close": "Fermer la tâche"
     },
     "app": {
         "loading": "Chargement..."
@@ -660,6 +677,9 @@
         "expiredCode": "Ce code a expiré. Demandez-en un nouveau.",
         "invalid": "Vérifiez les champs et réessayez.",
         "generic": "Une erreur s'est produite. Réessayez."
+      },
+      "avatar": {
+        "change": "Changer d’avatar"
       }
     },
     "errors": {

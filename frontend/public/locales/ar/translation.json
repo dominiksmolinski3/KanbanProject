@@ -130,7 +130,12 @@
         "over": "فوق {{column}}، {{row}}.",
         "dropped": "تم نقل {{title}} إلى {{column}}، {{row}}.",
         "unchanged": "بقيت {{title}} في مكانها.",
-        "cancelled": "أُلغي النقل. بقيت {{title}} في مكانها."
+        "cancelled": "أُلغي النقل. بقيت {{title}} في مكانها.",
+        "tag": "قيد النقل",
+        "slot": "أفلِت هنا",
+        "keySpace": "مسافة",
+        "drop": "إفلات",
+        "cancel": "إلغاء"
       }
     },
     "notifications": {
@@ -404,7 +409,9 @@
       "retry": "إعادة التحميل",
       "recentlyVerified": "تم التحقق من الحساب! تم تخطي CAPTCHA لتسجيل الدخول هذا.",
       "verifyAndLoginSuccess": "تم التحقق من الحساب وتسجيل الدخول بنجاح!",
-      "checkingSession": "جارٍ التحقق من جلستك..."
+      "checkingSession": "جارٍ التحقق من جلستك...",
+      "claim": "توقّف عن البدء، وابدأ بالإنجاز.",
+      "claimSub": "لوحة واحدة للفريق: أعمدة ومسارات وحدود للعمل الجاري، مع تدفق يُقاس من كل نقلة."
     },
     "taskLabels": {
       "addLabel": "+ تصنيف",
@@ -527,7 +534,9 @@
         "REOPENED": "أعاد {{who}} فتح {{what}}",
         "DELETED": "حذف {{who}} {{what}}",
         "COMMENTED": "علّق {{who}} على {{what}}"
-      }
+      },
+      "today": "اليوم",
+      "yesterday": "أمس"
     },
     "demo": {
         "notice": "هذا موقع تجريبي. سجّل الدخول بحساب تجريبي:",
@@ -562,7 +571,15 @@
         "loadingTimeStatistics": "جارٍ تحميل إحصاءات الوقت...",
         "noTimeStatistics": "لا تتوفر إحصاءات للوقت",
         "noColumnHistory": "لا يتوفر سجل للأعمدة",
-        "noColumnHistoryHint": "لم تنتقل هذه المهمة بين الأعمدة بعد"
+        "noColumnHistoryHint": "لم تنتقل هذه المهمة بين الأعمدة بعد",
+        "tabs": {
+            "details": "التفاصيل"
+        },
+        "props": {
+            "assignees": "المكلَّفون",
+            "priority": "الأولوية"
+        },
+        "close": "إغلاق المهمة"
     },
     "app": {
         "loading": "جارٍ التحميل..."
@@ -660,6 +677,9 @@
         "expiredCode": "انتهت صلاحية الرمز. اطلب رمزًا جديدًا.",
         "invalid": "تحقق من الحقول وحاول مرة أخرى.",
         "generic": "حدث خطأ ما. حاول مرة أخرى."
+      },
+      "avatar": {
+        "change": "تغيير الصورة الرمزية"
       }
     },
     "errors": {

@@ -130,7 +130,12 @@
       "over": "Über {{column}}, {{row}}.",
       "dropped": "{{title}} nach {{column}}, {{row}} verschoben.",
       "unchanged": "{{title}} ist an seinem Platz geblieben.",
-      "cancelled": "Verschieben abgebrochen. {{title}} ist an seinem Platz geblieben."
+      "cancelled": "Verschieben abgebrochen. {{title}} ist an seinem Platz geblieben.",
+      "tag": "Wird verschoben",
+      "slot": "Hier ablegen",
+      "keySpace": "Leertaste",
+      "drop": "ablegen",
+      "cancel": "abbrechen"
     }
   },
   "notifications": {
@@ -404,7 +409,9 @@
     "retry": "Neu laden",
     "recentlyVerified": "Konto verifiziert! CAPTCHA für diese Anmeldung übersprungen.",
     "verifyAndLoginSuccess": "Konto verifiziert und erfolgreich angemeldet!",
-    "checkingSession": "Sitzung wird geprüft..."
+    "checkingSession": "Sitzung wird geprüft...",
+    "claim": "Weniger anfangen, mehr abschließen.",
+    "claimSub": "Ein Board für das Team: Spalten, Swimlanes und WIP-Limits, mit einem Fluss, der aus jeder Bewegung gemessen wird."
   },
   "taskLabels": {
     "addLabel": "+ Label",
@@ -527,7 +534,9 @@
       "REOPENED": "{{who}} hat {{what}} wieder geöffnet",
       "DELETED": "{{who}} hat {{what}} gelöscht",
       "COMMENTED": "{{who}} hat {{what}} kommentiert"
-    }
+    },
+    "today": "Heute",
+    "yesterday": "Gestern"
   },
   "demo": {
     "notice": "Dies ist eine Testseite. Melde dich mit einem Demokonto an:",
@@ -562,7 +571,15 @@
     "loadingTimeStatistics": "Zeitstatistiken werden geladen...",
     "noTimeStatistics": "Keine Zeitstatistiken verfügbar",
     "noColumnHistory": "Kein Spaltenverlauf verfügbar",
-    "noColumnHistoryHint": "Diese Aufgabe wurde noch nicht zwischen Spalten verschoben"
+    "noColumnHistoryHint": "Diese Aufgabe wurde noch nicht zwischen Spalten verschoben",
+    "tabs": {
+      "details": "Details"
+    },
+    "props": {
+      "assignees": "Zugewiesen",
+      "priority": "Priorität"
+    },
+    "close": "Aufgabe schließen"
   },
   "app": {
     "loading": "Wird geladen..."
@@ -660,6 +677,9 @@
       "expiredCode": "Dieser Code ist abgelaufen. Fordern Sie einen neuen an.",
       "invalid": "Prüfen Sie die Felder und versuchen Sie es erneut.",
       "generic": "Etwas ist schiefgelaufen. Versuchen Sie es erneut."
+    },
+    "avatar": {
+      "change": "Avatar ändern"
     }
   },
   "errors": {

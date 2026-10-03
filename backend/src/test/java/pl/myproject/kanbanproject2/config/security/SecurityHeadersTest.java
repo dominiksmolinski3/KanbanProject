@@ -59,8 +59,8 @@ class SecurityHeadersTest {
                 .contains("frame-ancestors 'none'")
                 .contains("https://www.google.com")
                 .contains("https://www.gstatic.com")
-                .contains("https://fonts.googleapis.com")
-                .contains("https://fonts.gstatic.com");
+                .doesNotContain("fonts.googleapis.com")
+                .doesNotContain("fonts.gstatic.com");
     }
 
     @Test
