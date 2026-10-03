@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 
-export const BROWSER_NEVER_CONNECTED = 'Timed out waiting for the browser to connect';
+export const BROWSER_NEVER_CONNECTED = [
+  'Timed out waiting for the browser to connect',
+  'Cypress failed to make a connection to the Chrome DevTools Protocol',
+];
 
 export function run(command, args) {
   return new Promise((resolve) => {
@@ -20,7 +23,7 @@ export function run(command, args) {
 
 export async function runRetryingConnect(command, args, runner = run, log = console.log) {
   const first = await runner(command, args);
-  if (first.code === 0 || !first.output.includes(BROWSER_NEVER_CONNECTED)) {
+  if (first.code === 0 || !BROWSER_NEVER_CONNECTED.some((line) => first.output.includes(line))) {
     return first.code;
   }
   log(`::warning title=Cypress browser never connected::retrying once - ${command} ${args.join(' ')}`);
