@@ -44,7 +44,7 @@ class CspMatchesTheClientTest {
     void theScanFindsSomething() throws IOException {
         assertThat(hostsTheClientNames())
                 .as("no external host found in the client at all - the scan has stopped reading")
-                .contains("fonts.googleapis.com", "www.google.com");
+                .contains("www.google.com");
     }
 
     @Test

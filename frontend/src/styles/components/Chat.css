@@ -1,9 +1,14 @@
 .chat-container {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    inset-inline-end: 20px;
     z-index: 1000;
-    font-family: var(--font-family);
+  }
+
+  @media (max-width: 640px) {
+    .chat-container {
+      bottom: 80px;
+    }
   }
   
   .chat-toggle-button {

@@ -130,7 +130,12 @@
       "over": "Over {{column}}, {{row}}.",
       "dropped": "Moved {{title}} to {{column}}, {{row}}.",
       "unchanged": "{{title}} stayed where it was.",
-      "cancelled": "Move cancelled. {{title}} stayed where it was."
+      "cancelled": "Move cancelled. {{title}} stayed where it was.",
+      "tag": "Moving",
+      "slot": "Drop here",
+      "keySpace": "Space",
+      "drop": "drop",
+      "cancel": "cancel"
     }
   },
   "notifications": {
@@ -404,7 +409,9 @@
     "captchaBlocked": "reCAPTCHA failed to load (script blocked?). Check for a blocker such as uBlock or AdBlock.",
     "captchaLoadError": "Script load error.",
     "retry": "Reload",
-    "checkingSession": "Checking your session..."
+    "checkingSession": "Checking your session...",
+    "claim": "Stop starting, start finishing.",
+    "claimSub": "One board for the team: columns, swimlanes and WIP limits, with the flow measured from every move."
   },
   "taskLabels": {
     "addLabel": "+ Label",
@@ -527,7 +534,9 @@
       "REOPENED": "{{who}} reopened {{what}}",
       "DELETED": "{{who}} deleted {{what}}",
       "COMMENTED": "{{who}} commented on {{what}}"
-    }
+    },
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "demo": {
     "notice": "This is a test website. Sign in with a demo account:",
@@ -562,7 +571,15 @@
     "loadingTimeStatistics": "Loading time statistics...",
     "noTimeStatistics": "No time statistics available",
     "noColumnHistory": "No column history available",
-    "noColumnHistoryHint": "This task has not moved between columns yet"
+    "noColumnHistoryHint": "This task has not moved between columns yet",
+    "tabs": {
+      "details": "Details"
+    },
+    "props": {
+      "assignees": "Assignees",
+      "priority": "Priority"
+    },
+    "close": "Close task"
   },
   "app": {
     "loading": "Loading..."
@@ -660,6 +677,9 @@
       "expiredCode": "That code has expired. Ask for a new one.",
       "invalid": "Check the fields and try again.",
       "generic": "Something went wrong. Try again."
+    },
+    "avatar": {
+      "change": "Change avatar"
     }
   },
   "errors": {

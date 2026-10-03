@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import { useKanban } from '../context/KanbanContext';
 import '../styles/components/BoardSwitcher.css';
 
@@ -68,7 +69,7 @@ function BoardSwitcher() {
             {pending}
           </span>
         )}
-        <span className="board-switcher-caret" aria-hidden="true">▾</span>
+        <Icon name="chevron-down" size="sm" className="board-switcher-caret" />
       </button>
 
       {open && (

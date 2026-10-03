@@ -130,7 +130,12 @@
         "over": "{{column}}、{{row}} の上です。",
         "dropped": "{{title}} を {{column}}、{{row}} に移動しました。",
         "unchanged": "{{title}} は元の場所のままです。",
-        "cancelled": "移動を取り消しました。{{title}} は元の場所のままです。"
+        "cancelled": "移動を取り消しました。{{title}} は元の場所のままです。",
+        "tag": "移動中",
+        "slot": "ここに置く",
+        "keySpace": "Space",
+        "drop": "置く",
+        "cancel": "キャンセル"
       }
     },
     "notifications": {
@@ -404,7 +409,9 @@
       "retry": "再読み込み",
       "recentlyVerified": "アカウントが確認されました！このログインでは CAPTCHA をスキップします。",
       "verifyAndLoginSuccess": "アカウントの確認とログインが完了しました！",
-      "checkingSession": "セッションを確認しています..."
+      "checkingSession": "セッションを確認しています...",
+      "claim": "始めるより、終わらせる。",
+      "claimSub": "チームのためのひとつのボード。列、スイムレーン、WIP制限、そしてすべての移動から測るフロー。"
     },
     "taskLabels": {
       "addLabel": "+ ラベル",
@@ -527,7 +534,9 @@
         "REOPENED": "{{who}} が {{what}} を再開しました",
         "DELETED": "{{who}} が {{what}} を削除しました",
         "COMMENTED": "{{who}} が {{what}} にコメントしました"
-      }
+      },
+      "today": "今日",
+      "yesterday": "昨日"
     },
     "demo": {
         "notice": "これはテスト用のサイトです。デモアカウントでサインインしてください:",
@@ -562,7 +571,15 @@
         "loadingTimeStatistics": "時間統計を読み込み中...",
         "noTimeStatistics": "時間統計はありません",
         "noColumnHistory": "カラムの履歴はありません",
-        "noColumnHistoryHint": "このタスクはまだカラム間を移動していません"
+        "noColumnHistoryHint": "このタスクはまだカラム間を移動していません",
+        "tabs": {
+            "details": "詳細"
+        },
+        "props": {
+            "assignees": "担当者",
+            "priority": "優先度"
+        },
+        "close": "タスクを閉じる"
     },
     "app": {
         "loading": "読み込み中..."
@@ -660,6 +677,9 @@
         "expiredCode": "コードの有効期限が切れています。新しいコードを請求してください。",
         "invalid": "入力内容を確認して、もう一度お試しください。",
         "generic": "問題が発生しました。もう一度お試しください。"
+      },
+      "avatar": {
+        "change": "アバターを変更"
       }
     },
     "errors": {
