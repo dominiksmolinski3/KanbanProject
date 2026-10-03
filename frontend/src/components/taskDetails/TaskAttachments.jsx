@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Icon from '../Icon';
 import { toast } from 'react-toastify';
 import { AttachmentUploadError, MAX_ATTACHMENT_SIZE, deleteTaskAttachment, downloadTaskAttachment, fetchTaskAttachments, uploadTaskAttachment } from '../../services/api';
 import ConfirmDialog from './ConfirmDialog';
@@ -137,7 +138,10 @@ function TaskAttachments({ taskId, readOnly }) {
       onDragLeave={readOnly ? undefined : () => setDraggingFileOver(false)}
       onDrop={readOnly ? undefined : handleDrop}
     >
-      <h4>{t('taskActions.attachments')}</h4>
+      <div className="section-header">
+        <h3>{t('taskActions.attachments')}</h3>
+        {attachments.length > 0 && <span className="section-meta">{attachments.length}</span>}
+      </div>
 
       {!readOnly && (
         <div className="add-attachment-form">
@@ -156,9 +160,12 @@ function TaskAttachments({ taskId, readOnly }) {
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
           >
-            {uploading ? t('taskActions.attachmentUploading') : t('taskActions.addAttachment')}
+            <Icon name="paperclip" />
+            <span className="attachment-add-label">
+              {uploading ? t('taskActions.attachmentUploading') : t('taskActions.addAttachment')}
+            </span>
+            <span className="attachment-hint">{t('taskActions.attachmentHint')}</span>
           </button>
-          <span className="attachment-hint">{t('taskActions.attachmentHint')}</span>
         </div>
       )}
 
@@ -172,9 +179,7 @@ function TaskAttachments({ taskId, readOnly }) {
                 onClick={() => handleDownload(attachment)}
                 title={t('taskActions.downloadAttachment')}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
+                <Icon name="file" size="sm" />
                 <span className="attachment-file-name">{attachment.fileName}</span>
               </button>
               <span className="attachment-meta">
@@ -187,8 +192,9 @@ function TaskAttachments({ taskId, readOnly }) {
                   className="delete-attachment-btn"
                   onClick={() => setAttachmentToDelete(attachment)}
                   title={t('taskActions.deleteAttachment')}
+                  aria-label={t('taskActions.deleteAttachment')}
                 >
-                  ×
+                  <Icon name="trash" size="sm" />
                 </button>
               )}
             </div>

@@ -5,7 +5,7 @@ import EditIcon from './EditIcon';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function TaskDeadline({ deadline, readOnly, onSave }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
 
@@ -25,24 +25,6 @@ function TaskDeadline({ deadline, readOnly, onSave }) {
 
   return (
     <div className="task-deadline-section">
-      <div className="deadline-header">
-        <span className="deadline-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </span>
-        <h4>{t('taskActions.deadline')}:</h4>
-        {!editing && !readOnly && (
-          <button
-            onClick={startEditing}
-            className="edit-description-btn"
-            title={t('taskActions.editDeadline')}
-          >
-            <EditIcon />
-          </button>
-        )}
-      </div>
-
       {editing ? (
         <div className="deadline-edit-form">
           <input
@@ -50,6 +32,7 @@ function TaskDeadline({ deadline, readOnly, onSave }) {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="deadline-input"
+            aria-label={t('taskActions.deadline')}
           />
           <div className="description-edit-actions">
             <button onClick={save} className="save-description-btn">
@@ -61,10 +44,10 @@ function TaskDeadline({ deadline, readOnly, onSave }) {
           </div>
         </div>
       ) : (
-        <div className={`deadline-content ${isExpired ? 'expired' : isUpcoming ? 'upcoming' : ''}`}>
+        <div className="deadline-row">
           {deadline ? (
-            <>
-              {new Date(deadline).toLocaleString(undefined, {
+            <span className={`deadline-content ${isExpired ? 'expired' : isUpcoming ? 'upcoming' : ''}`}>
+              {new Date(deadline).toLocaleString(i18n?.language || undefined, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -73,9 +56,19 @@ function TaskDeadline({ deadline, readOnly, onSave }) {
               })}
               {isExpired && <span className="expired-tag">{t('taskActions.expired')}</span>}
               {isUpcoming && <span className="upcoming-tag">{t('taskActions.upcoming')}</span>}
-            </>
+            </span>
           ) : (
-            <p className="empty-deadline">{t('taskActions.noDeadline')}</p>
+            <span className="empty-deadline">{t('taskActions.noDeadline')}</span>
+          )}
+          {!readOnly && (
+            <button
+              onClick={startEditing}
+              className="edit-deadline-btn"
+              aria-label={t('taskActions.editDeadline')}
+              title={t('taskActions.editDeadline')}
+            >
+              <EditIcon />
+            </button>
           )}
         </div>
       )}

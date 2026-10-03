@@ -76,7 +76,7 @@ describe('TaskDetails for a viewer', () => {
     expect(screen.queryByTitle('taskActions.deleteAttachment')).not.toBeInTheDocument();
     expect(screen.queryByText('taskLabels.addLabel')).not.toBeInTheDocument();
 
-    expect(screen.getByRole('checkbox')).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Subtask' })).toBeDisabled();
     expect(screen.getByText('A task')).toBeInTheDocument();
     expect(screen.getByTitle('taskActions.downloadAttachment')).toBeInTheDocument();
     expect(screen.getByText('Bug')).toBeInTheDocument();
@@ -93,6 +93,6 @@ describe('TaskDetails for a viewer', () => {
     expect(screen.getByText('taskActions.addAttachment')).toBeInTheDocument();
     expect(screen.getByTitle('taskActions.deleteAttachment')).toBeInTheDocument();
     expect(screen.getByText('taskLabels.addLabel')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox')).not.toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Subtask' })).not.toBeDisabled();
   });
 });

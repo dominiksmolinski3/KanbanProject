@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Icon from '../Icon';
 import { fetchColumns, getTaskColumnHistory, getTaskColumnTimeSpentSummary } from '../../services/api';
 
 const PAGE_SIZE = 4;
@@ -105,13 +106,11 @@ function TaskColumnHistory({ taskId }) {
     return (
       <div className="column-history-section">
         <div className="section-header">
-          <h4>{t('taskActions.columnHistory')}</h4>
+          <h3>{t('taskActions.columnHistory')}</h3>
         </div>
         <div className="column-history-content">
           <div className="no-history">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/>
-            </svg>
+            <Icon name="clock" size="lg" />
             <p>{t('taskDetails.noColumnHistory')}</p>
             <span>{t('taskDetails.noColumnHistoryHint')}</span>
           </div>
@@ -126,7 +125,7 @@ function TaskColumnHistory({ taskId }) {
   return (
     <div className="column-history-section">
       <div className="section-header">
-        <h4>{t('taskActions.columnHistory')}</h4>
+        <h3>{t('taskActions.columnHistory')}</h3>
       </div>
       <div className="column-history-content">
         <div className="timeline-container">
@@ -185,9 +184,7 @@ function TaskColumnHistory({ taskId }) {
             disabled={page === 0}
             onClick={() => setPage(prev => Math.max(0, prev - 1))}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-            </svg>
+            <Icon name="chevron-left" size="sm" />
             {t('taskDetails.previous')}
           </button>
 
@@ -210,14 +207,12 @@ function TaskColumnHistory({ taskId }) {
             onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
           >
             {t('taskDetails.next')}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-            </svg>
+            <Icon name="chevron-right" size="sm" />
           </button>
         </div>
 
         <div className="column-time-stats">
-          <h5>{t('taskDetails.timeSpentAnalysis')}</h5>
+          <h3>{t('taskDetails.timeSpentAnalysis')}</h3>
           {loadingTimeSpent ? (
             <div className="loading-stats">
               <div className="loading-spinner"></div>
@@ -245,9 +240,7 @@ function TaskColumnHistory({ taskId }) {
             </div>
           ) : (
             <div className="no-stats">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-              </svg>
+              <Icon name="flow" size="lg" />
               <p>{t('taskDetails.noTimeStatistics')}</p>
             </div>
           )}

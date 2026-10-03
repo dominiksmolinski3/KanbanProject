@@ -113,7 +113,6 @@ describe('TaskDetails Component', () => {
   test('a re-read after an edit keeps the panel on screen instead of blanking it', async () => {
     renderTaskDetails();
     await waitFor(() => expect(screen.queryByText('board.loading')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByTitle('taskDetails.parentAndChildTasks'));
 
     let finishReread;
     api.fetchTask.mockImplementationOnce(() => new Promise(resolve => { finishReread = resolve; }));
@@ -442,8 +441,6 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
 
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
     
     const assignButton = screen.getByRole('button', { name: 'taskActions.assign' });
     fireEvent.click(assignButton);
@@ -470,8 +467,6 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
 
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
     
     const assignButton = screen.getByRole('button', { name: 'taskActions.assign' });
     fireEvent.click(assignButton);
@@ -496,7 +491,7 @@ describe('TaskDetails Component', () => {
     
     await waitFor(() => {
       expect(screen.getByText((content, element) => {
-        return content.includes('taskActions.assigned');
+        return content.includes('taskDetails.props.assignees');
       })).toBeInTheDocument();
     });
     
@@ -541,7 +536,7 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
   
-    const closeButton = screen.getByText('×', { selector: '.close-panel-btn' });
+    const closeButton = screen.getByRole('button', { name: 'taskDetails.close' });
     fireEvent.click(closeButton);
   
     expect(onCloseMock).toHaveBeenCalled();
@@ -673,8 +668,6 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
       expect(screen.getByText('forms.wipLimit.selectUser')).toBeInTheDocument();
@@ -711,8 +704,6 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
       expect(screen.getByText('forms.wipLimit.selectUser')).toBeInTheDocument();
@@ -749,7 +740,7 @@ describe('TaskDetails Component', () => {
     
     await waitFor(() => {
       expect(screen.getByText((content, element) => {
-        return content.includes('taskActions.assigned');
+        return content.includes('taskDetails.props.assignees');
       })).toBeInTheDocument();
     });
     
@@ -831,11 +822,9 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
     
     await waitFor(() => {
-      expect(screen.getByText('taskActions.assignUser')).toBeInTheDocument();
+      expect(screen.getByText('taskDetails.props.assignees')).toBeInTheDocument();
     });
     
     const userSelect = screen.getByRole('combobox');
@@ -904,7 +893,7 @@ describe('TaskDetails Component', () => {
     api.getTaskColumnTimeSpentSummary.mockResolvedValue([]);
     renderTaskDetails();
 
-    fireEvent.click(await screen.findByTitle('taskDetails.historyAndTimeline'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'taskDetails.historyAndTimeline' }));
 
     const first = (await screen.findByText('To Do')).closest('.timeline-column-name');
     const last = screen.getByText('In Progress').closest('.timeline-column-name');
@@ -952,11 +941,9 @@ describe('TaskDetails Component', () => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
     
-    const relationshipsButton = screen.getByTitle('taskDetails.parentAndChildTasks');
-    fireEvent.click(relationshipsButton);
   
     await waitFor(() => { 
-      expect(screen.getByText('taskActions.assignUser')).toBeInTheDocument();
+      expect(screen.getByText('taskDetails.props.assignees')).toBeInTheDocument();
     });
     
     const assignButton = screen.getByRole('button', { name: 'taskActions.assign' });
