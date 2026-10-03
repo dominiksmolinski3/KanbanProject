@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import Icon from './Icon';
 import { authService } from '../services/authService';
 import { getSessionId } from '../services/session';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +11,8 @@ import '../styles/components/Devices.css';
 // Stand-ins drawn under a blur when the server withholds the real values; never real data.
 const REDACTED_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0';
 const REDACTED_ADDRESS = '000.000.000.000';
+
+const MOBILE = /Mobi|Android|iPhone|iPad/i;
 
 function Redacted({ placeholder, label }) {
   return (
@@ -77,35 +81,38 @@ function Devices() {
   };
 
   return (
-    <div className="container">
-      <h1>{t('devices.title')}</h1>
-      <p className="devices-intro">{t('devices.intro')}</p>
+    <div className="page-shell devices-page">
+      <div className="page-head">
+        <h1 className="page-title">{t('devices.title')}</h1>
+        <p className="page-lede devices-intro">{t('devices.intro')}</p>
+      </div>
       {sessions.some((session) => session.redacted) && (
-        <p className="devices-demo-notice">{t('devices.demoNotice')}</p>
+        <p className="devices-demo-notice" role="status">
+          <Icon name="eye" size="sm" />
+          {t('devices.demoNotice')}
+        </p>
       )}
 
-      <div className="devices-container">
-        <div className="devices-header">
-          <span>{t('devices.fields.device')}</span>
-          <span>{t('devices.fields.address')}</span>
-          <span>{t('devices.fields.signedIn')}</span>
-          <span>{t('devices.fields.lastSeen')}</span>
-          <span>{t('devices.fields.actions')}</span>
-        </div>
+      <section className="page-panel devices-list" aria-label={t('devices.title')}>
+        {isLoading && <div className="page-empty devices-empty">{t('devices.messages.loading')}</div>}
 
-        <div className="devices-list">
-          {isLoading && <div className="devices-empty">{t('devices.messages.loading')}</div>}
+        {!isLoading && sessions.length === 0 && (
+          <div className="page-empty devices-empty">
+            <span className="page-empty-icon"><Icon name="laptop" /></span>
+            <p className="page-empty-title">{t('devices.messages.none')}</p>
+          </div>
+        )}
 
-          {!isLoading && sessions.length === 0 && (
-            <div className="devices-empty">{t('devices.messages.none')}</div>
-          )}
-
-          {!isLoading && sessions.map((session) => (
-            <div
-              key={session.id}
-              className={`device-item${isCurrentSession(session) ? ' device-current' : ''}`}
-              data-session-id={session.id}
-            >
+        {!isLoading && sessions.map((session) => (
+          <div
+            key={session.id}
+            className={`device-item${isCurrentSession(session) ? ' device-current' : ''}`}
+            data-session-id={session.id}
+          >
+            <span className="device-icon" aria-hidden="true">
+              <Icon name={MOBILE.test(session.userAgent || '') ? 'phone' : 'laptop'} />
+            </span>
+            <div className="device-main">
               <span className="device-agent">
                 {session.redacted
                   ? <Redacted placeholder={REDACTED_AGENT} label={t('devices.fields.hidden')} />
@@ -114,30 +121,41 @@ function Devices() {
                   <span className="device-badge">{t('devices.fields.thisDevice')}</span>
                 )}
               </span>
-              <span className="device-address">
-                {session.redacted
-                  ? <Redacted placeholder={REDACTED_ADDRESS} label={t('devices.fields.hidden')} />
-                  : session.ipAddress || '—'}
-              </span>
-              <span className="device-moment">{formatMoment(session.signedInAt)}</span>
-              <span className="device-moment">{formatMoment(session.lastSeenAt)}</span>
-              <span className="device-actions">
-                <button
-                  className="device-end-btn"
-                  disabled={endingId === session.id}
-                  onClick={() => endSession(session)}
-                >
-                  {t('devices.buttons.end')}
-                </button>
+              <span className="device-meta">
+                <span className="device-field">
+                  <span className="device-field-label">{t('devices.fields.address')}</span>
+                  <span className="device-address">
+                    {session.redacted
+                      ? <Redacted placeholder={REDACTED_ADDRESS} label={t('devices.fields.hidden')} />
+                      : session.ipAddress || '—'}
+                  </span>
+                </span>
+                <span className="device-field">
+                  <span className="device-field-label">{t('devices.fields.signedIn')}</span>
+                  <span className="device-moment">{formatMoment(session.signedInAt)}</span>
+                </span>
+                <span className="device-field">
+                  <span className="device-field-label">{t('devices.fields.lastSeen')}</span>
+                  <span className="device-moment">{formatMoment(session.lastSeenAt)}</span>
+                </span>
               </span>
             </div>
-          ))}
-        </div>
-      </div>
+            <button
+              type="button"
+              className="btn btn-danger-quiet btn-sm device-end-btn"
+              disabled={endingId === session.id}
+              onClick={() => endSession(session)}
+            >
+              {t('devices.buttons.end')}
+            </button>
+          </div>
+        ))}
+      </section>
 
-      <div className="navigation">
-        <a href="/board" className="back-btn">{t('devices.buttons.back')}</a>
-      </div>
+      <Link to="/account" className="devices-back">
+        <Icon name="chevron-left" size="sm" />
+        {t('header.account')}
+      </Link>
     </div>
   );
 }
