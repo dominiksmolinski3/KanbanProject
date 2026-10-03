@@ -92,6 +92,17 @@
   -moz-osx-font-smoothing: grayscale;
 
   font-family: var(--font-sans);
+
+  --toastify-color-light: var(--kb-surface);
+  --toastify-text-color-light: var(--kb-ink);
+  --toastify-color-info: var(--kb-accent);
+  --toastify-color-success: var(--kb-ok);
+  --toastify-color-warning: var(--kb-warn);
+  --toastify-color-error: var(--kb-danger);
+  --toastify-color-progress-light: var(--kb-accent);
+  --toastify-font-family: var(--font-sans);
+  --toastify-toast-bd-radius: var(--radius-panel);
+  --toastify-toast-shadow: var(--kb-shadow-pop);
 }
 
 * {
@@ -104,6 +115,10 @@
 :focus-visible {
   outline: 2px solid var(--kb-focus);
   outline-offset: 2px;
+}
+
+[tabindex="-1"]:focus {
+  outline: none;
 }
 
 .kb-icon {

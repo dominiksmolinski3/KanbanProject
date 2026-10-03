@@ -1,13 +1,32 @@
 .length-hint {
-  display: block;
-  margin-top: 4px;
-  font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--kb-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+  color: var(--kb-warn);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .length-hint.at-limit {
   color: var(--kb-danger);
+}
+
+.length-hint-meter {
+  width: 32px;
+  height: 4px;
+  border-radius: var(--radius-pip);
+  background: var(--kb-sunken);
+  overflow: hidden;
+}
+
+.length-hint-meter > span {
+  display: block;
+  height: 100%;
+  background: currentColor;
 }
 
 .editable-text-editing {
@@ -18,11 +37,10 @@
 .editable-text-editing .length-hint {
   position: absolute;
   top: 100%;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 5;
   padding: 2px 6px;
-  white-space: nowrap;
-  border: 1px solid var(--kb-border-strong);
-  border-radius: 4px;
-  background: var(--kb-card);
+  border-radius: var(--radius-control);
+  background: var(--kb-surface);
+  box-shadow: var(--kb-shadow-pop);
 }

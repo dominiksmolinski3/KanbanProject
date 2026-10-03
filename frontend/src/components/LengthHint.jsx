@@ -13,6 +13,9 @@ function LengthHint({ value, max }) {
   const atLimit = length >= max;
   return (
     <span className={`length-hint${atLimit ? ' at-limit' : ''}`} role="status">
+      <span className="length-hint-meter" aria-hidden="true">
+        <span style={{ width: `${Math.min(100, Math.round((length / max) * 100))}%` }} />
+      </span>
       {atLimit
         ? t('forms.textLimit.atLimit', { max })
         : t('forms.textLimit.remaining', { count: max - length })}
