@@ -13,6 +13,7 @@ import { deadlineState } from '../board/cardModel';
 import '../styles/components/Task.css';
 
 const TILT_GHOST_CLASS = 'task-drag-ghost';
+const TITLE_OPEN_DELAY_MS = 250;
 
 function setTiltedDragImage(e, source) {
   if (!source || typeof e.dataTransfer.setDragImage !== 'function') return;
@@ -50,6 +51,7 @@ function Task({ task, columnId, rowId }) {
  
   const taskRef = useRef(null);
   const warningTimeoutRef = useRef(null);
+  const openTimerRef = useRef(null);
   const dueState = deadlineState(task.deadline);
   const isDeadlineExpired = dueState === 'overdue';
   const isDeadlineUpcoming = dueState === 'soon';
@@ -62,6 +64,7 @@ function Task({ task, columnId, rowId }) {
   const hasUnfinishedSubtasks = (task.openSubtasks ?? 0) > 0;
 
   useEffect(() => () => {
+    clearTimeout(openTimerRef.current);
     if (warningTimeoutRef.current) {
       clearTimeout(warningTimeoutRef.current);
     }
@@ -78,10 +81,17 @@ function Task({ task, columnId, rowId }) {
   }, [assignmentError]);
 
   const handleTaskClick = (e) => {
-    if (e.target.className === 'delete-btn' || 
-        e.target.className === 'confirm-delete-btn' || 
+    if (e.target.classList.contains('editable-text')) {
+      clearTimeout(openTimerRef.current);
+      // A second click is the start of a double click, which edits the title in place.
+      if (e.detail <= 1) {
+        openTimerRef.current = setTimeout(() => setShowDetails(true), TITLE_OPEN_DELAY_MS);
+      }
+      return;
+    }
+    if (e.target.className === 'delete-btn' ||
+        e.target.className === 'confirm-delete-btn' ||
         e.target.className === 'cancel-delete-btn' ||
-        e.target.classList.contains('editable-text') ||
         e.target.classList.contains('editable-text-input') ||
         e.target.classList.contains('warning-close-btn') ||
         e.target.classList.contains('task-complete-checkbox') ||
