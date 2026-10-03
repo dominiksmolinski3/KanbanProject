@@ -1576,8 +1576,11 @@ and reasons in `local.refusal_alerts`.
   `--spec` means *every* spec to Cypress.
   **Both Cypress steps retry once, and only when Chromium never connected**
   (`cypress/retry-browser-connect.js`): about 0.8% of e2e jobs died that way before any test ran,
-  on Cypress 16.0 and 16.1 alike. The match is Cypress's own `Timed out waiting for the browser to
-  connect` line, so a failing test is never retried, and a retry leaves a `::warning` on the run. The cross-replica spec runs on leg 1. The Cypress binary
+  on Cypress 16.0 and 16.1 alike. The match is one of Cypress's own two never-connected lines,
+  `Timed out waiting for the browser to connect` and `Cypress failed to make a connection to the
+  Chrome DevTools Protocol` (the debugging port refusing every attempt, `connect ECONNREFUSED`).
+  A bare `ECONNREFUSED` is not matched, because a test that cannot reach the app prints one too.
+  So a failing test is never retried, and a retry leaves a `::warning` on the run. The cross-replica spec runs on leg 1. The Cypress binary
   is cached on the lockfile hash, which also caches its verified state, and the job no longer
   spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
   logs on failure instead.
