@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import LengthHint from '../LengthHint';
 import { DESCRIPTION_MAX_LENGTH, NAME_MAX_LENGTH } from '../../services/textLimits';
 import { useTranslation } from 'react-i18next';
+import Icon from '../Icon';
 import { toast } from 'react-toastify';
 import { addSubTask, deleteSubTask, fetchSubTask, fetchSubTasksByTaskId, toggleSubTaskCompletion, updateSubTask } from '../../services/api';
 import ConfirmDialog from './ConfirmDialog';
@@ -187,9 +188,26 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
     </div>
   );
 
+  const doneCount = subtasks.filter(subtask => subtask.completed).length;
+
   return (
-    <div className="subtasks-section">
-      <h4>{t('taskActions.subtasks')}</h4>
+    <section className="subtasks-section">
+      <div className="section-header">
+        <h3>{t('taskActions.subtasks')}</h3>
+        {subtasks.length > 0 && (
+          <span
+            className="section-meta"
+            title={t('taskActions.subtaskProgress', { done: doneCount, total: subtasks.length })}
+          >
+            {doneCount}/{subtasks.length}
+          </span>
+        )}
+      </div>
+      {subtasks.length > 0 && (
+        <div className="subtask-progress" aria-hidden="true">
+          <span style={{ width: `${Math.round((doneCount / subtasks.length) * 100)}%` }} />
+        </div>
+      )}
 
       {!readOnly && (
         <div className="add-subtask-form">
@@ -206,6 +224,7 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
             disabled={!newSubtaskTitle.trim()}
             className="add-subtask-btn"
           >
+            <Icon name="plus" size="sm" />
             {t('header.addTask')}
           </button>
           <LengthHint value={newSubtaskTitle} max={NAME_MAX_LENGTH} />
@@ -241,16 +260,17 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
                       onClick={() => toggleSubtaskExpansion(subtask.id)}
                       title={toggleLabel}
                     >
-                      <span className={expanded ? 'arrow-icon rotated' : 'arrow-icon'}>▼</span>
-                      <span className="button-text">{toggleLabel}</span>
+                      <Icon name="chevron-down" size="sm" className={expanded ? 'arrow-icon rotated' : 'arrow-icon'} />
+                      <span className="visually-hidden">{toggleLabel}</span>
                     </button>
                     {!readOnly && (
                       <button
                         className="delete-subtask-btn"
                         onClick={() => setSubtaskToDelete(subtask)}
                         title={t('taskActions.deleteSubTask')}
+                        aria-label={t('taskActions.deleteSubTask')}
                       >
-                        ×
+                        <Icon name="trash" size="sm" />
                       </button>
                     )}
                   </div>
@@ -273,7 +293,7 @@ function TaskSubtasks({ taskId, readOnly, onSubtaskUpdate, onSaved }) {
           onCancel={cancelDelete}
         />
       )}
-    </div>
+    </section>
   );
 }
 
