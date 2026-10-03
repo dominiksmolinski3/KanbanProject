@@ -8,6 +8,13 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import DemoBanner from './DemoBanner';
+import BrandMark from './BrandMark';
+
+const MINI_BOARD = [
+  { pips: [true, true, false, false], cards: [34, 22, 28] },
+  { pips: [true, true, true, false], cards: [26, 38] },
+  { pips: [true, true, true, true], cards: [22, 30, 24, 18] },
+];
 import { useDocumentTheme } from '../theme/useDocumentTheme';
 import '../styles/HomePage.css';
 
@@ -240,327 +247,368 @@ const HomePage = () => {
   return (
     <div className="home-container">
       <DemoBanner />
-      <div className="language-switcher-container">
-        <LanguageSwitcher />
-      </div>
-      <div className="auth-container">
-        <h1>{t('board.title', 'Kanban Project')}</h1>
-        
-        {resetStage ? (
-          <div className="verification-form">
-            {resetStage === 'request' ? (
-              <>
-                <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
-                <p>{t('auth.resetIntro', 'Enter your email address and we will send you a reset code.')}</p>
-
-                <form onSubmit={handleRequestReset}>
-                  <div className="form-group">
-                    <input
-                      type="email"
-                      placeholder={t('auth.email', 'Email')}
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  {error && <div className="error-message">{error}</div>}
-
-                  <button type="submit" disabled={loading} className="auth-button">
-                    {loading ? (
-                      <>
-                        <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
-                        <span className="loading-text">{t('auth.sending', 'Sending...')}</span>
-                      </>
-                    ) : t('auth.sendResetCode', 'Send Reset Code')}
-                  </button>
-
-                  <p className="resend-link">
-                    <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
-                  </p>
-                </form>
-              </>
-            ) : (
-              <>
-                <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
-                <p>{t('auth.enterResetCode', 'Enter the reset code sent to your email and choose a new password.')}</p>
-
-                <form onSubmit={handleResetPassword}>
-                  <div className="form-group">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder={t('auth.resetCode', 'Reset Code')}
-                      value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <input
-                      type="password"
-                      placeholder={t('auth.newPassword', 'New Password')}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      minLength={8}
-                      maxLength={72}
-                      required
-                    />
-                  </div>
-
-                  {error && <div className="error-message">{error}</div>}
-
-                  <button type="submit" disabled={loading} className="auth-button">
-                    {loading ? (
-                      <>
-                        <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
-                        <span className="loading-text">{t('auth.resetting', 'Resetting...')}</span>
-                      </>
-                    ) : t('auth.setNewPassword', 'Set New Password')}
-                  </button>
-
-                  <p className="resend-link">
-                    <span onClick={() => setResetStage('request')}>{t('auth.resendCode', 'Resend Code')}</span>
-                  </p>
-                  <p className="resend-link">
-                    <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
-                  </p>
-                </form>
-              </>
-            )}
+      <div className="auth-layout">
+        <section className="auth-brand" aria-label={t('board.title', 'Kanban Project')}>
+          <div className="auth-brand-mark">
+            <BrandMark className="auth-logo" />
+            <span>{t('board.title', 'Kanban Project')}</span>
           </div>
-        ) : showVerification ? (
-          <div className="verification-form">
-            <h2>{t('auth.verifyAccount', 'Verify Your Account')}</h2>
-            <p>{t('auth.enterCode', 'Enter the verification code sent to your email')}</p>
-            
-            <form onSubmit={handleVerify}>
-              <div className="form-group">
-                <input
-                  type="Verification Code"
-                  placeholder={t('auth.verificationCode', 'Verification Code')}
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  required
-                />
+          <div className="auth-claim-block">
+            <h1 className="auth-claim">{t('auth.claim')}</h1>
+            <p className="auth-claim-sub">{t('auth.claimSub')}</p>
+          </div>
+          <div className="auth-mini-board" aria-hidden="true">
+            {MINI_BOARD.map((column, c) => (
+              <div key={c} className="auth-mini-column">
+                <span className="auth-mini-pips">
+                  {column.pips.map((on, p) => <i key={p} className={on ? 'on' : ''} />)}
+                </span>
+                {column.cards.map((height, k) => <span key={k} className="auth-mini-card" style={{ height }} />)}
               </div>
-              
-              {error && <div className="error-message">{error}</div>}
-              
-              <button type="submit" disabled={loading} className="auth-button">
-              {loading ? (
-                  <>
-                  <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
-                  <span className="loading-text">{t('auth.verifying', 'Verifying...')}</span>
-                  </>
-                ) : t('auth.verifyAccount', 'Verify Account')}
-              </button>
-              {loading && longLoading && (  
-                <div className="long-loading-message">
-                  {t('auth.pleaseWait', 'Please wait! We are working on handling this.')}
-                </div>
-              )}
-              
-              <p className="resend-link">
-                {t('auth.noCode', 'Didn\'t receive a code?')}{' '}
-                <span onClick={handleResendCode}>{t('auth.resendCode', 'Resend Code')}</span>
-              </p>
-            </form>
+            ))}
           </div>
-        ) : (
-          <>
-            <div className="tabs">
-              <button
-                className={activeTab === 'login' ? 'active' : ''}
-                onClick={() => setActiveTab('login')}
-              >
-                {t('auth.login', 'Login')}
-              </button>
-              <button
-                className={activeTab === 'register' ? 'active' : ''}
-                onClick={() => setActiveTab('register')}
-              >
-                {t('auth.register', 'Register')}
-              </button>
+        </section>
+        <main className="auth-main">
+          <div className="auth-container">
+            <div className="language-switcher-container">
+              <LanguageSwitcher />
             </div>
-            <div className="tab-content">
-              {activeTab === 'login' ? (
-                <form onSubmit={handleLogin}>
-                  <div className="form-group">
-                    <input
-                      type="email"
-                      placeholder={t('auth.email', 'Email')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group password-field">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.password', 'Password')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
-                    >
-                      <EyeIcon crossed={showPassword} />
-                    </button>
-                  </div>
-                  {error && <div className="error-message">{error}</div>}
-                  <p className="resend-link">
-                    <span onClick={openPasswordReset}>
-                      {t('auth.forgotPassword', 'Forgot your password?')}
-                    </span>
-                  </p>
-                </form>
-              ) : (
-                <form onSubmit={handleRegister}>
-                  <div className="form-group">
-                    <input
-                      type="text"
-                      placeholder={t('auth.username', 'Username')}
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <input
-                      type="email"
-                      placeholder={t('auth.email', 'Email')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group password-field">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.password', 'Password')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
-                    >
-                      <EyeIcon crossed={showPassword} />
-                    </button>
-                  </div>
-                  <div className="form-group password-field">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.confirmPassword', 'Confirm Password')}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {error && <div className="error-message">{error}</div>}
-                </form>
-              )}
-            </div>
+            
+            {resetStage ? (
+              <div className="verification-form">
+                {resetStage === 'request' ? (
+                  <>
+                    <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
+                    <p>{t('auth.resetIntro', 'Enter your email address and we will send you a reset code.')}</p>
 
-            {isCaptchaRequired && (
-              <div className="form-group recaptcha-wrapper" style={{ minHeight: '78px' }}>
-                <div className="recaptcha-inner" style={{ 
-                  minHeight: '78px', 
-                  maxHeight: '78px',
-                  position: 'relative', 
-                  width: '302px', 
-                  margin: '0 auto',
-                  overflow: 'hidden'
-                }}>
-                  {!captchaReady && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '39px', 
-                      left: '151px', 
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 1,
-                      width: '20px',
-                      height: '20px'
-                    }}>
-                      <span className="loading-spinner" style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        borderWidth: '2px',
-                        display: 'block'
-                      }}></span>
+                    <form onSubmit={handleRequestReset}>
+                      <div className="form-group">
+                        <input
+                          type="email"
+                          placeholder={t('auth.email', 'Email')}
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      {error && <div className="error-message">{error}</div>}
+
+                      <button type="submit" disabled={loading} className="auth-button">
+                        {loading ? (
+                          <>
+                            <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                            <span className="loading-text">{t('auth.sending', 'Sending...')}</span>
+                          </>
+                        ) : t('auth.sendResetCode', 'Send Reset Code')}
+                      </button>
+
+                      <p className="resend-link">
+                        <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
+                      </p>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <h2>{t('auth.resetPassword', 'Reset Your Password')}</h2>
+                    <p>{t('auth.enterResetCode', 'Enter the reset code sent to your email and choose a new password.')}</p>
+
+                    <form onSubmit={handleResetPassword}>
+                      <div className="form-group">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={t('auth.resetCode', 'Reset Code')}
+                          value={resetCode}
+                          onChange={(e) => setResetCode(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <input
+                          type="password"
+                          placeholder={t('auth.newPassword', 'New Password')}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          minLength={8}
+                          maxLength={72}
+                          required
+                        />
+                      </div>
+
+                      {error && <div className="error-message">{error}</div>}
+
+                      <button type="submit" disabled={loading} className="auth-button">
+                        {loading ? (
+                          <>
+                            <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                            <span className="loading-text">{t('auth.resetting', 'Resetting...')}</span>
+                          </>
+                        ) : t('auth.setNewPassword', 'Set New Password')}
+                      </button>
+
+                      <p className="resend-link">
+                        <span onClick={() => setResetStage('request')}>{t('auth.resendCode', 'Resend Code')}</span>
+                      </p>
+                      <p className="resend-link">
+                        <span onClick={closePasswordReset}>{t('auth.backToLogin', 'Back to sign in')}</span>
+                      </p>
+                    </form>
+                  </>
+                )}
+              </div>
+            ) : showVerification ? (
+              <div className="verification-form">
+                <h2>{t('auth.verifyAccount', 'Verify Your Account')}</h2>
+                <p>{t('auth.enterCode', 'Enter the verification code sent to your email')}</p>
+                
+                <form onSubmit={handleVerify}>
+                  <div className="form-group">
+                    <input
+                      type="Verification Code"
+                      placeholder={t('auth.verificationCode', 'Verification Code')}
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  {error && <div className="error-message">{error}</div>}
+                  
+                  <button type="submit" disabled={loading} className="auth-button">
+                  {loading ? (
+                      <>
+                      <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                      <span className="loading-text">{t('auth.verifying', 'Verifying...')}</span>
+                      </>
+                    ) : t('auth.verifyAccount', 'Verify Account')}
+                  </button>
+                  {loading && longLoading && (  
+                    <div className="long-loading-message">
+                      {t('auth.pleaseWait', 'Please wait! We are working on handling this.')}
                     </div>
                   )}
-                  <SafeReCAPTCHA
-                    key={captchaKey}
-                    ref={recaptchaRef}
-                    sitekey={siteKey}
-                    theme={documentTheme}
-                    hl={captchaLanguage}
-                    onChange={(val) => setCaptchaToken(val || '')}
-                    onReady={() => setCaptchaReady(true)}
-                    onLoadError={() => {
-                      setCaptchaLoadError(true);
-                      setCaptchaWarn(true);
-                    }}
-                    onErrored={() => {
-                      setCaptchaWarn(true);
-                      console.warn('[Captcha] onErrored event fired');
-                    }}
-                    style={{ opacity: captchaReady ? 1 : 0, transition: 'opacity 0.3s ease' }}
-                  />
-                </div>
-                {captchaWarn && captchaReady && (
-                  <div className="captcha-warning">
-                    {t('auth.captchaBlocked')}
-                  </div>
-                )}
-                {captchaLoadError && (
-                  <div className="captcha-load-error">
-                    {t('auth.captchaLoadError')} <button type="button" className="captcha-retry" onClick={() => {
-                      setCaptchaLoadError(false);
-                      setCaptchaWarn(false);
-                      setCaptchaReady(false);
-                      resetRecaptchaLoader();
-                      setCaptchaKey(k => k + 1);
-                    }}>{t('auth.retry')}</button>
-                  </div>
-                )}
+                  
+                  <p className="resend-link">
+                    {t('auth.noCode', 'Didn\'t receive a code?')}{' '}
+                    <span onClick={handleResendCode}>{t('auth.resendCode', 'Resend Code')}</span>
+                  </p>
+                </form>
               </div>
-            )}
-
-            <div className="shared-submit">
-              <button
-                type="button"
-                disabled={loading || (isCaptchaRequired && !captchaToken)}
-                className="auth-button"
-                onClick={() => {
-                  if (activeTab === 'login') handleLogin();
-                  else handleRegister();
-                }}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
-                    <span className="loading-text">{activeTab === 'login' ? t('auth.signingIn', 'Signing In...') : t('auth.registering', 'Registering...')}</span>
-                  </>
-                ) : (activeTab === 'login' ? t('auth.signIn', 'Sign In') : t('auth.register', 'Register'))}
-              </button>
-              {loading && longLoading && (
-                <div className="long-loading-message">
-                  {t('auth.pleaseWait', 'Please wait! We are working on handling this.')}
+            ) : (
+              <>
+                <div className="tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'login'}
+                    className={activeTab === 'login' ? 'active' : ''}
+                    onClick={() => setActiveTab('login')}
+                  >
+                    {t('auth.login', 'Login')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'register'}
+                    className={activeTab === 'register' ? 'active' : ''}
+                    onClick={() => setActiveTab('register')}
+                  >
+                    {t('auth.register', 'Register')}
+                  </button>
                 </div>
-              )}
-            </div>
-          </>
-        )}
+                <div className="tab-content">
+                  {activeTab === 'login' ? (
+                    <form onSubmit={handleLogin}>
+                      <div className="form-group">
+                        <label className="field-label" htmlFor="login-email">{t('auth.email')}</label>
+                        <input
+                          id="login-email"
+                          type="email"
+                          placeholder={t('auth.email', 'Email')}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group password-field">
+                        <label className="field-label" htmlFor="login-password">{t('auth.password')}</label>
+                        <input
+                          id="login-password"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder={t('auth.password', 'Password')}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                        >
+                          <EyeIcon crossed={showPassword} />
+                        </button>
+                      </div>
+                      {error && <div className="error-message">{error}</div>}
+                      <p className="resend-link">
+                        <span onClick={openPasswordReset}>
+                          {t('auth.forgotPassword', 'Forgot your password?')}
+                        </span>
+                      </p>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleRegister}>
+                      <div className="form-group">
+                        <label className="field-label" htmlFor="register-username">{t('auth.username')}</label>
+                        <input
+                          id="register-username"
+                          type="text"
+                          placeholder={t('auth.username', 'Username')}
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="field-label" htmlFor="register-email">{t('auth.email')}</label>
+                        <input
+                          id="register-email"
+                          type="email"
+                          placeholder={t('auth.email', 'Email')}
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group password-field">
+                        <label className="field-label" htmlFor="register-password">{t('auth.password')}</label>
+                        <input
+                          id="register-password"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder={t('auth.password', 'Password')}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                        >
+                          <EyeIcon crossed={showPassword} />
+                        </button>
+                      </div>
+                      <div className="form-group password-field">
+                        <label className="field-label" htmlFor="register-confirm">{t('auth.confirmPassword')}</label>
+                        <input
+                          id="register-confirm"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder={t('auth.confirmPassword', 'Confirm Password')}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      {error && <div className="error-message">{error}</div>}
+                    </form>
+                  )}
+                </div>
+
+                {isCaptchaRequired && (
+                  <div className="form-group recaptcha-wrapper" style={{ minHeight: '78px' }}>
+                    <div className="recaptcha-inner" style={{ 
+                      minHeight: '78px', 
+                      maxHeight: '78px',
+                      position: 'relative', 
+                      width: '302px', 
+                      margin: '0 auto',
+                      overflow: 'hidden'
+                    }}>
+                      {!captchaReady && (
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: '39px', 
+                          left: '151px', 
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 1,
+                          width: '20px',
+                          height: '20px'
+                        }}>
+                          <span className="loading-spinner" style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            borderWidth: '2px',
+                            display: 'block'
+                          }}></span>
+                        </div>
+                      )}
+                      <SafeReCAPTCHA
+                        key={captchaKey}
+                        ref={recaptchaRef}
+                        sitekey={siteKey}
+                        theme={documentTheme}
+                        hl={captchaLanguage}
+                        onChange={(val) => setCaptchaToken(val || '')}
+                        onReady={() => setCaptchaReady(true)}
+                        onLoadError={() => {
+                          setCaptchaLoadError(true);
+                          setCaptchaWarn(true);
+                        }}
+                        onErrored={() => {
+                          setCaptchaWarn(true);
+                          console.warn('[Captcha] onErrored event fired');
+                        }}
+                        style={{ opacity: captchaReady ? 1 : 0, transition: 'opacity 0.3s ease' }}
+                      />
+                    </div>
+                    {captchaWarn && captchaReady && (
+                      <div className="captcha-warning">
+                        {t('auth.captchaBlocked')}
+                      </div>
+                    )}
+                    {captchaLoadError && (
+                      <div className="captcha-load-error">
+                        {t('auth.captchaLoadError')} <button type="button" className="captcha-retry" onClick={() => {
+                          setCaptchaLoadError(false);
+                          setCaptchaWarn(false);
+                          setCaptchaReady(false);
+                          resetRecaptchaLoader();
+                          setCaptchaKey(k => k + 1);
+                        }}>{t('auth.retry')}</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="shared-submit">
+                  <button
+                    type="button"
+                    disabled={loading || (isCaptchaRequired && !captchaToken)}
+                    className="auth-button"
+                    onClick={() => {
+                      if (activeTab === 'login') handleLogin();
+                      else handleRegister();
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></span>
+                        <span className="loading-text">{activeTab === 'login' ? t('auth.signingIn', 'Signing In...') : t('auth.registering', 'Registering...')}</span>
+                      </>
+                    ) : (activeTab === 'login' ? t('auth.signIn', 'Sign In') : t('auth.register', 'Register'))}
+                  </button>
+                  {loading && longLoading && (
+                    <div className="long-loading-message">
+                      {t('auth.pleaseWait', 'Please wait! We are working on handling this.')}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );
