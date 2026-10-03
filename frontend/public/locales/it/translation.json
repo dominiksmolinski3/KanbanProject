@@ -130,7 +130,12 @@
         "over": "Su {{column}}, {{row}}.",
         "dropped": "{{title}} spostata in {{column}}, {{row}}.",
         "unchanged": "{{title}} è rimasta dov'era.",
-        "cancelled": "Spostamento annullato. {{title}} è rimasta dov'era."
+        "cancelled": "Spostamento annullato. {{title}} è rimasta dov'era.",
+        "tag": "In spostamento",
+        "slot": "Rilascia qui",
+        "keySpace": "Spazio",
+        "drop": "rilascia",
+        "cancel": "annulla"
       }
     },
     "notifications": {
@@ -404,7 +409,9 @@
       "retry": "Ricarica",
       "recentlyVerified": "Account verificato! CAPTCHA ignorato per questo accesso.",
       "verifyAndLoginSuccess": "Account verificato e accesso eseguito correttamente!",
-      "checkingSession": "Verifica della sessione..."
+      "checkingSession": "Verifica della sessione...",
+      "claim": "Smetti di iniziare, inizia a finire.",
+      "claimSub": "Una bacheca per il team: colonne, corsie e limiti WIP, con il flusso misurato da ogni spostamento."
     },
     "taskLabels": {
       "addLabel": "+ Etichetta",
@@ -527,7 +534,9 @@
         "REOPENED": "{{who}} ha riaperto {{what}}",
         "DELETED": "{{who}} ha eliminato {{what}}",
         "COMMENTED": "{{who}} ha commentato {{what}}"
-      }
+      },
+      "today": "Oggi",
+      "yesterday": "Ieri"
     },
     "demo": {
         "notice": "Questo è un sito di prova. Accedi con un account dimostrativo:",
@@ -562,7 +571,15 @@
         "loadingTimeStatistics": "Caricamento delle statistiche sul tempo...",
         "noTimeStatistics": "Nessuna statistica sul tempo disponibile",
         "noColumnHistory": "Nessuna cronologia delle colonne disponibile",
-        "noColumnHistoryHint": "Questa attività non è ancora stata spostata tra le colonne"
+        "noColumnHistoryHint": "Questa attività non è ancora stata spostata tra le colonne",
+        "tabs": {
+            "details": "Dettagli"
+        },
+        "props": {
+            "assignees": "Assegnatari",
+            "priority": "Priorità"
+        },
+        "close": "Chiudi attività"
     },
     "app": {
         "loading": "Caricamento..."
@@ -660,6 +677,9 @@
         "expiredCode": "Il codice è scaduto. Richiedine uno nuovo.",
         "invalid": "Controlla i campi e riprova.",
         "generic": "Qualcosa è andato storto. Riprova."
+      },
+      "avatar": {
+        "change": "Cambia avatar"
       }
     },
     "errors": {

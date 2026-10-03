@@ -130,7 +130,12 @@
         "over": "Sobre {{column}}, {{row}}.",
         "dropped": "{{title}} movida a {{column}}, {{row}}.",
         "unchanged": "{{title}} se quedó donde estaba.",
-        "cancelled": "Movimiento cancelado. {{title}} se quedó donde estaba."
+        "cancelled": "Movimiento cancelado. {{title}} se quedó donde estaba.",
+        "tag": "Moviendo",
+        "slot": "Soltar aquí",
+        "keySpace": "Espacio",
+        "drop": "soltar",
+        "cancel": "cancelar"
       }
     },
     "notifications": {
@@ -404,7 +409,9 @@
       "retry": "Recargar",
       "recentlyVerified": "¡Cuenta verificada! CAPTCHA omitido para este inicio de sesión.",
       "verifyAndLoginSuccess": "¡Cuenta verificada y sesión iniciada correctamente!",
-      "checkingSession": "Comprobando tu sesión..."
+      "checkingSession": "Comprobando tu sesión...",
+      "claim": "Deja de empezar, empieza a terminar.",
+      "claimSub": "Un tablero para el equipo: columnas, carriles y límites WIP, con el flujo medido a partir de cada movimiento."
     },
     "taskLabels": {
       "addLabel": "+ Etiqueta",
@@ -527,7 +534,9 @@
         "REOPENED": "{{who}} reabrió {{what}}",
         "DELETED": "{{who}} eliminó {{what}}",
         "COMMENTED": "{{who}} comentó en {{what}}"
-      }
+      },
+      "today": "Hoy",
+      "yesterday": "Ayer"
     },
     "demo": {
         "notice": "Este es un sitio de prueba. Inicia sesión con una cuenta de demostración:",
@@ -562,7 +571,15 @@
         "loadingTimeStatistics": "Cargando estadísticas de tiempo...",
         "noTimeStatistics": "No hay estadísticas de tiempo",
         "noColumnHistory": "No hay historial de columnas",
-        "noColumnHistoryHint": "Esta tarea aún no se ha movido entre columnas"
+        "noColumnHistoryHint": "Esta tarea aún no se ha movido entre columnas",
+        "tabs": {
+            "details": "Detalles"
+        },
+        "props": {
+            "assignees": "Asignados",
+            "priority": "Prioridad"
+        },
+        "close": "Cerrar tarea"
     },
     "app": {
         "loading": "Cargando..."
@@ -660,6 +677,9 @@
         "expiredCode": "Ese código ha caducado. Pide uno nuevo.",
         "invalid": "Revisa los campos e inténtalo de nuevo.",
         "generic": "Algo ha salido mal. Inténtalo de nuevo."
+      },
+      "avatar": {
+        "change": "Cambiar avatar"
       }
     },
     "errors": {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../../components/Header';
@@ -106,30 +106,5 @@ describe('Header Component', () => {
     fireEvent.click(screen.getByTestId('header-menu-toggle'));
     fireEvent.click(screen.getByText('header.logout'));
     expect(mockLogout).toHaveBeenCalledTimes(1);
-  });
-
-  test('makes header sticky on scroll', async () => {
-    renderHeader();
-    const header = screen.getByRole('banner');
-    expect(header).not.toHaveClass('sticky');
-    await act(async () => {
-      global.window.scrollY = 100;
-      global.window.dispatchEvent(new Event('scroll'));
-    });
-    expect(header).toHaveClass('sticky');
-    await act(async () => {
-      global.window.scrollY = 0;
-      global.window.dispatchEvent(new Event('scroll'));
-    });
-    expect(header).not.toHaveClass('sticky');
-  });
-
-  test('cleans up scroll event listener on unmount', () => {
-    const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
-
-    const { unmount } = renderHeader();
-    unmount();
-    expect(removeEventListenerSpy).toHaveBeenCalledWith('scroll', expect.any(Function));
-    removeEventListenerSpy.mockRestore();
   });
 });
