@@ -93,7 +93,7 @@ describe('Chat', () => {
     useChat.mockReturnValue({ ...baseChat, isOpen: true, setMessageType });
     render(<Chat />);
 
-    fireEvent.change(screen.getByLabelText('chat.conversationKind'), { target: { value: 'private' } });
+    fireEvent.click(screen.getByRole('button', { name: 'chat.private' }));
 
     expect(setMessageType).toHaveBeenCalledWith('private');
   });
@@ -117,7 +117,7 @@ describe('Chat', () => {
   test('open: the send button is disabled until connected with a non-blank message', () => {
     useChat.mockReturnValue({ ...baseChat, isOpen: true, isConnected: false, message: 'hi' });
     render(<Chat />);
-    expect(screen.getByText('chat.send')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'chat.send' })).toBeDisabled();
   });
 
   test('open: Enter without shift sends; Enter with shift does not', () => {
