@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { hueOf, initialsOf } from '../board/cardModel';
 import { toast } from 'react-toastify';
 import { useKanban } from '../context/KanbanContext';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +17,7 @@ import '../styles/components/TaskComments.css';
 const MAX_PAGE_SIZE = 100;
 
 function TaskComments({ taskId }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { readOnly, activeBoard } = useKanban();
   const { user } = useAuth() || {};
 
@@ -166,59 +167,68 @@ function TaskComments({ taskId }) {
         <ul className="comments-list">
           {comments.map(comment => (
             <li key={comment.id} className="comment-item">
-              <div className="comment-meta">
-                <span className="comment-author">{comment.authorName || t('taskComments.formerMember')}</span>
-                <time dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString()}</time>
-                {comment.editedAt && <span className="comment-edited">{t('taskComments.edited')}</span>}
-              </div>
-
-              {editingId === comment.id ? (
-                <div className="comment-edit-form">
-                  <textarea
-                    value={editDraft}
-                    onChange={(event) => setEditDraft(event.target.value)}
-                    className="comment-textarea"
-                    rows={3}
-                    maxLength={maxLength}
-                    aria-label={t('taskComments.edit')}
-                  />
-                  <div className="comment-composer-actions">
-                    <button type="button" className="comment-post-btn" onClick={saveEdit} disabled={!editDraft.trim()}>
-                      {t('taskComments.save')}
-                    </button>
-                    <button type="button" className="comment-cancel-btn" onClick={() => setEditingId(null)}>
-                      {t('taskComments.cancel')}
-                    </button>
-                  </div>
+              <span
+                className="comment-avatar"
+                aria-hidden="true"
+                style={{ '--avatar-hue': hueOf(comment.authorId ?? comment.authorName ?? '') }}
+              >
+                {initialsOf(comment.authorName || '')}
+              </span>
+              <div className="comment-main">
+                <div className="comment-meta">
+                  <span className="comment-author">{comment.authorName || t('taskComments.formerMember')}</span>
+                  <time dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleString(i18n?.language || undefined)}</time>
+                  {comment.editedAt && <span className="comment-edited">{t('taskComments.edited')}</span>}
                 </div>
-              ) : (
-                <p className="comment-body">{comment.body}</p>
-              )}
 
-              {editingId !== comment.id && !readOnly && (
-                <div className="comment-actions">
-                  {isMine(comment) && (
-                    <button type="button" className="comment-action-btn" onClick={() => startEditing(comment)}>
-                      {t('taskComments.edit')}
-                    </button>
-                  )}
-                  {canDelete(comment) && (confirmingDeleteId === comment.id ? (
-                    <>
-                      <span className="comment-confirm">{t('taskComments.confirmDelete')}</span>
-                      <button type="button" className="comment-action-btn danger" onClick={() => remove(comment.id)}>
-                        {t('taskComments.delete')}
+                {editingId === comment.id ? (
+                  <div className="comment-edit-form">
+                    <textarea
+                      value={editDraft}
+                      onChange={(event) => setEditDraft(event.target.value)}
+                      className="comment-textarea"
+                      rows={3}
+                      maxLength={maxLength}
+                      aria-label={t('taskComments.edit')}
+                    />
+                    <div className="comment-composer-actions">
+                      <button type="button" className="comment-post-btn" onClick={saveEdit} disabled={!editDraft.trim()}>
+                        {t('taskComments.save')}
                       </button>
-                      <button type="button" className="comment-action-btn" onClick={() => setConfirmingDeleteId(null)}>
+                      <button type="button" className="comment-cancel-btn" onClick={() => setEditingId(null)}>
                         {t('taskComments.cancel')}
                       </button>
-                    </>
-                  ) : (
-                    <button type="button" className="comment-action-btn" onClick={() => setConfirmingDeleteId(comment.id)}>
-                      {t('taskComments.delete')}
-                    </button>
-                  ))}
-                </div>
-              )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="comment-body">{comment.body}</p>
+                )}
+
+                {editingId !== comment.id && !readOnly && (
+                  <div className="comment-actions">
+                    {isMine(comment) && (
+                      <button type="button" className="comment-action-btn" onClick={() => startEditing(comment)}>
+                        {t('taskComments.edit')}
+                      </button>
+                    )}
+                    {canDelete(comment) && (confirmingDeleteId === comment.id ? (
+                      <>
+                        <span className="comment-confirm">{t('taskComments.confirmDelete')}</span>
+                        <button type="button" className="comment-action-btn danger" onClick={() => remove(comment.id)}>
+                          {t('taskComments.delete')}
+                        </button>
+                        <button type="button" className="comment-action-btn" onClick={() => setConfirmingDeleteId(null)}>
+                          {t('taskComments.cancel')}
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="comment-action-btn" onClick={() => setConfirmingDeleteId(comment.id)}>
+                        {t('taskComments.delete')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </li>
           ))}
         </ul>

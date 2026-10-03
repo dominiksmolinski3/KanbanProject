@@ -9,19 +9,21 @@ import TaskLabels from './TaskLabels';
 import TaskComments from './TaskComments';
 import TaskSubtasks from './taskDetails/TaskSubtasks';
 import TaskAttachments from './taskDetails/TaskAttachments';
-import TaskAssignees, { AssignedUsersBar } from './taskDetails/TaskAssignees';
+import TaskAssignees from './taskDetails/TaskAssignees';
 import TaskRelations from './taskDetails/TaskRelations';
 import TaskDeadline from './taskDetails/TaskDeadline';
 import TaskColumnHistory from './taskDetails/TaskColumnHistory';
 import ConfirmDialog from './taskDetails/ConfirmDialog';
 import EditIcon from './taskDetails/EditIcon';
+import Icon from './Icon';
+import { splitPriority } from '../board/cardModel';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
 const SAVED_NOTICE_MS = 3000;
 
 function TaskDetails({ task, onClose, onSubtaskUpdate }) {
-  const { refreshTasks, readOnly } = useKanban();
+  const { refreshTasks, readOnly, columns = [], rows = [], setDailyFocus, updateTaskCompletion } = useKanban();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -37,7 +39,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   const [taskDescription, setTaskDescription] = useState('');
   const [originalTaskDescription, setOriginalTaskDescription] = useState('');
   const [editingTaskDescription, setEditingTaskDescription] = useState(false);
-  const [currentView, setCurrentView] = useState('main');
+  const [currentView, setCurrentView] = useState('details');
 
   const panelRef = useRef(null);
   const taskDescriptionInputRef = useRef(null);
@@ -95,19 +97,6 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
   useEffect(() => {
     loadTaskData();
   }, [task.id]);
-
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (loading || !panel) return;
-
-    const rect = panel.getBoundingClientRect();
-    if (rect.right > window.innerWidth) {
-      panel.style.left = `${window.innerWidth - rect.width - 20}px`;
-    }
-    if (rect.bottom > window.innerHeight) {
-      panel.style.top = `${window.innerHeight - rect.height - 20}px`;
-    }
-  }, [loading]);
 
   const reloadAfterChange = async () => {
     await loadTaskData();
@@ -227,16 +216,23 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
 
   if (loading) {
     return createPortal(
-      <div className="task-details-overlay">
-        <div className="task-details-panel loading">
+      <>
+        <div className="task-details-overlay" />
+        <section className="task-details-panel loading" aria-busy="true">
           <p>{t('board.loading')}</p>
-        </div>
-      </div>,
+        </section>
+      </>,
       document.body
     );
   }
 
-  const renderHeader = () => (editingTaskTitle ? (
+  const title = taskTitle || task.title;
+  const titleId = `task-sheet-title-${task.id}`;
+  const columnName = columns.find((column) => String(column.id) === String(task.columnId))?.name;
+  const rowName = rows.find((row) => String(row.id) === String(task.rowId))?.name;
+  const { priority } = splitPriority(taskLabels);
+
+  const renderTitle = () => (editingTaskTitle ? (
     <div className="title-edit-form">
       <input
         ref={taskTitleInputRef}
@@ -250,61 +246,74 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
       <LengthHint value={taskTitle} max={NAME_MAX_LENGTH} />
       <div className="title-edit-actions">
         <button onClick={saveTaskTitle} className="save-title-btn" disabled={!taskTitle.trim()}>
-          {t('taskActions.yes')}
+          {t('taskActions.save')}
         </button>
         <button onClick={cancelEditingTaskTitle} className="cancel-title-btn">
-          {t('taskActions.no')}
+          {t('taskActions.cancel')}
         </button>
       </div>
     </div>
   ) : (
-    <>
-      <h3>{taskTitle || task.title}</h3>
+    <div className="sheet-titlerow">
+      <input
+        type="checkbox"
+        className="sheet-check"
+        checked={Boolean(task.completed)}
+        disabled={readOnly || !updateTaskCompletion}
+        onChange={() => updateTaskCompletion?.(task.id, !task.completed)}
+        aria-label={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
+        title={task.completed ? t('taskActions.reopen') : t('taskActions.complete')}
+      />
+      <h2 className="sheet-title" id={titleId}>{title}</h2>
       <div className="panel-actions">
+        {setDailyFocus && (
+          <button
+            type="button"
+            className={`daily-focus-toggle${task.dailyFocus ? ' active' : ''}`}
+            aria-pressed={Boolean(task.dailyFocus)}
+            onClick={() => setDailyFocus(task.id, !task.dailyFocus)}
+            aria-label={task.dailyFocus ? t('taskActions.removeFromDailyFocus') : t('taskActions.addToDailyFocus')}
+            title={task.dailyFocus ? t('taskActions.removeFromDailyFocus') : t('taskActions.addToDailyFocus')}
+          >
+            <Icon name="star" filled={Boolean(task.dailyFocus)} />
+          </button>
+        )}
         {!readOnly && (
-          <button className="edit-title-btn" onClick={startEditingTaskTitle} title={t('taskActions.editTitle')}>
+          <button
+            type="button"
+            className="edit-title-btn"
+            onClick={startEditingTaskTitle}
+            aria-label={t('taskActions.editTitle')}
+            title={t('taskActions.editTitle')}
+          >
             <EditIcon />
           </button>
         )}
         <button
-          className={`history-timeline-btn ${currentView === 'history' ? 'active' : ''}`}
-          onClick={() => setCurrentView('history')}
-          title={t('taskDetails.historyAndTimeline')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        <button
-          className={`parent-child-btn ${currentView === 'relationships' ? 'active' : ''}`}
-          onClick={() => setCurrentView('relationships')}
-          title={t('taskDetails.parentAndChildTasks')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </button>
-        <button
+          type="button"
           className="close-panel-btn"
+          aria-label={t('taskDetails.close')}
+          title={t('taskDetails.close')}
           onClick={(event) => {
             event.stopPropagation();
             onClose();
           }}
         >
-          ×
+          <Icon name="close" />
         </button>
       </div>
-    </>
+    </div>
   ));
 
   const renderDescription = () => (
-    <div className="task-description-section">
+    <section className="task-description-section">
       <div className="description-header">
-        <h4>{t('taskActions.description')}:</h4>
+        <h3>{t('taskActions.description')}</h3>
         {!editingTaskDescription && !readOnly && (
           <button
             onClick={startEditingTaskDescription}
             className="edit-description-btn"
+            aria-label={t('taskActions.editTaskDescription')}
             title={t('taskActions.editTaskDescription')}
           >
             <EditIcon />
@@ -321,7 +330,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             onChange={(e) => setTaskDescription(e.target.value)}
             placeholder={t('taskActions.description')}
             className="description-textarea"
-            rows={4}
+            rows={5}
           ></textarea>
           <LengthHint value={taskDescription} max={DESCRIPTION_MAX_LENGTH} />
           <div className="description-edit-actions">
@@ -342,13 +351,14 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 
-  const renderView = () => {
-    if (currentView === 'relationships') {
-      return (
-        <div className="relationships-view">
+  const renderProps = () => (
+    <dl className="sheet-props">
+      <div className="sheet-prop">
+        <dt><Icon name="people" size="sm" />{t('taskDetails.props.assignees')}</dt>
+        <dd>
           <TaskAssignees
             taskId={task.id}
             users={users}
@@ -357,22 +367,65 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
             onRequestRemove={setUserToRemove}
             onChanged={reloadAfterChange}
           />
+        </dd>
+      </div>
+      <div className="sheet-prop">
+        <dt><Icon name="filter" size="sm" />{t('board.labels')}</dt>
+        <dd>
+          <TaskLabels
+            taskId={task.id}
+            initialLabels={taskLabels}
+            onLabelsChange={handleLabelsChange}
+            readOnly={readOnly}
+          />
+        </dd>
+      </div>
+      <div className="sheet-prop">
+        <dt><Icon name="priority" size="sm" />{t('taskDetails.props.priority')}</dt>
+        <dd>
+          {priority ? (
+            <span className={`task-priority-pill priority-${priority}`}>
+              <span className="priority-bars" aria-hidden="true"><i /><i /><i /><i /></span>
+              {t(`taskActions.priority.${priority}`)}
+            </span>
+          ) : (
+            <span className="sheet-prop-empty" aria-hidden="true">–</span>
+          )}
+        </dd>
+      </div>
+      <div className="sheet-prop">
+        <dt><Icon name="calendar" size="sm" />{t('taskActions.deadline')}</dt>
+        <dd>
+          <TaskDeadline deadline={task.deadline} readOnly={readOnly} onSave={saveDeadline} />
+        </dd>
+      </div>
+      <div className="sheet-prop">
+        <dt><Icon name="link" size="sm" />{t('taskDetails.parentTask')}</dt>
+        <dd>
           <TaskRelations
+            part="parent"
             taskId={task.id}
             parentTaskId={parentTaskId}
             readOnly={readOnly}
             onChanged={reloadAfterChange}
           />
-        </div>
-      );
+        </dd>
+      </div>
+    </dl>
+  );
+
+  const tabs = [
+    { id: 'details', label: t('taskDetails.tabs.details') },
+    { id: 'comments', label: t('taskComments.heading'), icon: 'comment' },
+    { id: 'history', label: t('taskDetails.historyAndTimeline') },
+  ];
+
+  const renderView = () => {
+    if (currentView === 'comments') {
+      return <TaskComments taskId={task.id} />;
     }
     if (currentView === 'history') {
-      return (
-        <div className="history-timeline-view">
-          <TaskDeadline deadline={task.deadline} readOnly={readOnly} onSave={saveDeadline} />
-          <TaskColumnHistory taskId={task.id} />
-        </div>
-      );
+      return <TaskColumnHistory taskId={task.id} />;
     }
     return (
       <>
@@ -384,7 +437,13 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           onSaved={flashSaved}
         />
         <TaskAttachments taskId={task.id} readOnly={readOnly} />
-        <TaskComments taskId={task.id} />
+        <TaskRelations
+          part="children"
+          taskId={task.id}
+          parentTaskId={parentTaskId}
+          readOnly={readOnly}
+          onChanged={reloadAfterChange}
+        />
       </>
     );
   };
@@ -398,12 +457,48 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           onClose();
         }}
       />
-      <div className="task-details-panel" ref={panelRef}>
+      <section
+        className="task-details-panel"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="panel-header">
-          {renderHeader()}
+          {(columnName || rowName) && (
+            <div className="sheet-crumbs">
+              {columnName && <span>{columnName}</span>}
+              {columnName && rowName && <Icon name="chevron-right" size="sm" />}
+              {rowName && <span>{rowName}</span>}
+            </div>
+          )}
+          {renderTitle()}
+          {renderProps()}
+          <div className="sheet-tabs" role="tablist" aria-label={title}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`sheet-tab-${tab.id}`}
+                aria-selected={currentView === tab.id}
+                aria-controls="sheet-body"
+                className="sheet-tab"
+                onClick={() => setCurrentView(tab.id)}
+              >
+                {tab.icon && <Icon name={tab.icon} size="sm" />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="task-details-main">
+        <div
+          className="task-details-main"
+          id="sheet-body"
+          role="tabpanel"
+          aria-labelledby={`sheet-tab-${currentView}`}
+        >
           {renderView()}
 
           {userToRemove && (
@@ -416,24 +511,13 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
           )}
         </div>
 
-        <div className="task-labels-section">
-          <h4>{t('board.labels')}</h4>
-          <TaskLabels
-            taskId={task.id}
-            initialLabels={taskLabels}
-            onLabelsChange={handleLabelsChange}
-            readOnly={readOnly}
-          />
-        </div>
-
-        <AssignedUsersBar assignedUsers={assignedUsers} readOnly={readOnly} onRequestRemove={setUserToRemove} />
-
         {success && (
-          <div className="success-message">
+          <div className="success-message" role="status">
+            <Icon name="check" size="sm" />
             {t('notifications.taskUpdated')}
           </div>
         )}
-      </div>
+      </section>
     </>,
     document.body
   );

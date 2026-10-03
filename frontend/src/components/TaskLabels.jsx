@@ -7,6 +7,7 @@ import '../styles/components/TaskLabels.css';
 import { useKanban } from '../context/KanbanContext';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 
 const PREDEFINED_LABELS = [
   { name: 'High Priority', color: '#FF4D4D' },
@@ -230,8 +231,9 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
                   handleRemoveLabel(label);
                 }}
                 className="remove-label-button"
+                aria-label={label}
               >
-                ×
+                <Icon name="close" size="sm" />
               </button>
             )}
           </span>

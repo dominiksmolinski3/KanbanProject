@@ -158,7 +158,7 @@ describe('TaskLabels Component', () => {
       );
     });
     
-    const bugLabel = screen.getAllByText('×')[0];
+    const bugLabel = screen.getAllByRole('button', { name: initialLabels[0] })[0];
     await act(async () => {
       fireEvent.click(bugLabel);
     });
@@ -413,7 +413,7 @@ describe('TaskLabels Component', () => {
       );
     });
     
-    const bugLabel = screen.getAllByText('×')[0];
+    const bugLabel = screen.getAllByRole('button', { name: initialLabels[0] })[0];
     await act(async () => {
       fireEvent.click(bugLabel);
     });
