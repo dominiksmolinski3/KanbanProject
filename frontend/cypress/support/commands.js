@@ -142,7 +142,7 @@ Cypress.Commands.add('deleteTasks', () => {
     if (remaining === 0) {
       return;
     }
-    cy.get('.delete-btn').first().click();
+    cy.get('.delete-btn').first().focus().click();
     cy.get('.confirm-delete-btn').first().click({ force: true });
     cy.get('.delete-btn', { timeout: 10000 }).should('have.length', remaining - 1);
     cy.deleteTasks();
