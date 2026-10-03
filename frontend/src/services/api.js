@@ -863,6 +863,18 @@ export const deleteUser = async (userId) => {
   }
 };
 
+export const uploadUserAvatar = async (userId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    throw await apiError(response);
+  }
+};
+
 export const getUserAvatar = async (userId) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/avatar`, {

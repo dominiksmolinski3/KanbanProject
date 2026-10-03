@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import Account from '../../components/Account';
 
 const translation = { t: (key, values) => (values && values.email ? `${key}:${values.email}` : key) };
@@ -41,13 +42,13 @@ describe('Account', () => {
   });
 
   test('shows the current address', () => {
-    render(<Account />);
+    render(<MemoryRouter><Account /></MemoryRouter>);
     expect(screen.getByText('account.email.current:owner@example.test')).toBeInTheDocument();
   });
 
   test('asks for a code with the new address and the password, then asks for the code', async () => {
     authService.requestEmailChange.mockResolvedValue();
-    render(<Account />);
+    render(<MemoryRouter><Account /></MemoryRouter>);
 
     fireEvent.change(screen.getByLabelText('account.email.newLabel'), { target: { value: 'new@example.test' } });
     fireEvent.change(screen.getAllByLabelText('account.password.currentLabel')[0], { target: { value: 'pw' } });
@@ -62,7 +63,7 @@ describe('Account', () => {
     authService.requestEmailChange.mockResolvedValue();
     const session = { token: 'jwt', refreshToken: 'r', expiresIn: 900000, sessionId: 3 };
     authService.confirmEmailChange.mockResolvedValue(session);
-    render(<Account />);
+    render(<MemoryRouter><Account /></MemoryRouter>);
 
     fireEvent.change(screen.getByLabelText('account.email.newLabel'), { target: { value: 'new@example.test' } });
     fireEvent.change(screen.getAllByLabelText('account.password.currentLabel')[0], { target: { value: 'pw' } });
@@ -78,7 +79,7 @@ describe('Account', () => {
 
   test('a wrong password is shown as that, not as a generic failure', async () => {
     authService.requestEmailChange.mockRejectedValue(failure('WRONG_PASSWORD'));
-    render(<Account />);
+    render(<MemoryRouter><Account /></MemoryRouter>);
 
     fireEvent.change(screen.getByLabelText('account.email.newLabel'), { target: { value: 'new@example.test' } });
     fireEvent.change(screen.getAllByLabelText('account.password.currentLabel')[0], { target: { value: 'bad' } });
@@ -90,7 +91,7 @@ describe('Account', () => {
 
   test('a changed password signs out, because the server has ended every session', async () => {
     authService.changePassword.mockResolvedValue();
-    render(<Account />);
+    render(<MemoryRouter><Account /></MemoryRouter>);
 
     fireEvent.change(screen.getByLabelText('account.password.newLabel'), { target: { value: 'a-new-password' } });
     fireEvent.change(screen.getAllByLabelText('account.password.currentLabel')[1], { target: { value: 'old' } });
