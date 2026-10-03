@@ -18,13 +18,18 @@ arm() {
   cat /tmp/arm
 }
 
-state() {
-  arm GET "$servers/$1?$api" 2>/dev/null | sed -n 's/.*"state" *: *"\([^"]*\)".*/\1/p'
+# Every "state" in the body, one per line: highAvailability carries one of its own.
+states() {
+  arm GET "$servers/$1?$api" 2>/dev/null | grep -o '"state" *: *"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/'
 }
 
 wait_for() {
   for _ in $(seq 120); do
-    [ "$(state "$1")" = "$2" ] && return 0
+    if [ -z "$2" ]; then
+      [ -z "$(states "$1")" ] && return 0
+    elif states "$1" | grep -qx "$2"; then
+      return 0
+    fi
     sleep 30
   done
   echo "$1 did not reach '$2' in an hour" >&2
