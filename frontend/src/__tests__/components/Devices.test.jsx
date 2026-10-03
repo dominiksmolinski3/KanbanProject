@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import Devices from '../../components/Devices';
 
 const translation = { t: (key) => key, i18n: { language: 'en' } };
@@ -57,7 +58,7 @@ describe('Devices', () => {
       session({ id: 13, userAgent: 'Firefox/1', ipAddress: '198.51.100.4' })
     ]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText('Mozilla/5.0 (Macintosh)')).toBeInTheDocument());
     expect(screen.getByText('Firefox/1')).toBeInTheDocument();
@@ -70,7 +71,7 @@ describe('Devices', () => {
       session({ ipAddress: null, userAgent: null, redacted: true })
     ]);
 
-    const { container } = render(<Devices />);
+    const { container } = render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText('devices.demoNotice')).toBeInTheDocument());
     expect(screen.getAllByText('devices.fields.hidden')).toHaveLength(2);
@@ -82,7 +83,7 @@ describe('Devices', () => {
   test('an ordinary account sees no demo notice', async () => {
     authService.listDevices.mockResolvedValue([session()]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText('203.0.113.7')).toBeInTheDocument());
     expect(screen.queryByText('devices.demoNotice')).not.toBeInTheDocument();
@@ -91,7 +92,7 @@ describe('Devices', () => {
   test('marks the row whose id matches the stored session, and only that one', async () => {
     authService.listDevices.mockResolvedValue([session(), session({ id: 13 })]);
 
-    const { container } = render(<Devices />);
+    const { container } = render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() => expect(container.querySelectorAll('.device-item')).toHaveLength(2));
     expect(container.querySelectorAll('.device-current')).toHaveLength(1);
@@ -103,7 +104,7 @@ describe('Devices', () => {
       session({ id: 13, userAgent: null, ipAddress: null })
     ]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() =>
       expect(screen.getByText('devices.fields.unknownDevice')).toBeInTheDocument());
@@ -112,7 +113,7 @@ describe('Devices', () => {
   test('ending another session withdraws it by id and reloads the list', async () => {
     authService.listDevices.mockResolvedValue([session({ id: 13 })]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('devices.buttons.end')).toBeInTheDocument());
     fireEvent.click(screen.getByText('devices.buttons.end'));
 
@@ -125,7 +126,7 @@ describe('Devices', () => {
   test('ending your own session signs you out rather than leaving a dead page behind', async () => {
     authService.listDevices.mockResolvedValue([session()]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('devices.buttons.end')).toBeInTheDocument());
     fireEvent.click(screen.getByText('devices.buttons.end'));
 
@@ -138,7 +139,7 @@ describe('Devices', () => {
     window.confirm = jest.fn(() => false);
     authService.listDevices.mockResolvedValue([session({ id: 13 })]);
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('devices.buttons.end')).toBeInTheDocument());
     fireEvent.click(screen.getByText('devices.buttons.end'));
 
@@ -150,7 +151,7 @@ describe('Devices', () => {
     authService.endDevice.mockRejectedValue(new Error('404'));
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('devices.buttons.end')).toBeInTheDocument());
     fireEvent.click(screen.getByText('devices.buttons.end'));
 
@@ -162,7 +163,7 @@ describe('Devices', () => {
     authService.listDevices.mockRejectedValue(new Error('500'));
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<Devices />);
+    render(<MemoryRouter><Devices /></MemoryRouter>);
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('devices.messages.loadError'));

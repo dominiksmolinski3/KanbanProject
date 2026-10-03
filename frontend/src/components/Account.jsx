@@ -2,8 +2,104 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../services/authService';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { uploadUserAvatar } from '../services/api';
+import useUserAvatar, { clearAvatarCache } from '../board/useUserAvatar';
+import { hueOf, initialsOf } from '../board/cardModel';
+import Icon from './Icon';
 import '../styles/components/Account.css';
+
+const AVATAR_MAX_BYTES = 1024 * 1024;
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+function PasswordInput({ id, autoComplete, value, onChange, minLength, maxLength }) {
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  return (
+    <span className="account-password">
+      <input
+        id={id}
+        className="field-input"
+        type={shown ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        required
+        minLength={minLength}
+        maxLength={maxLength}
+        value={value}
+        onChange={onChange}
+      />
+      <button
+        type="button"
+        className="account-reveal"
+        aria-pressed={shown}
+        aria-label={shown ? t('auth.hidePassword') : t('auth.showPassword')}
+        title={shown ? t('auth.hidePassword') : t('auth.showPassword')}
+        onClick={() => setShown(!shown)}
+      >
+        <Icon name="eye" size="sm" />
+      </button>
+    </span>
+  );
+}
+
+function Profile({ user }) {
+  const { t } = useTranslation();
+  const stored = useUserAvatar(user.id);
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const url = preview || stored;
+
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!AVATAR_TYPES.includes(file.type)) {
+      toast.info(t('usersManagement.messages.fileTypeError'));
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.info(t('usersManagement.messages.fileTooLarge'));
+      return;
+    }
+    setBusy(true);
+    try {
+      await uploadUserAvatar(user.id, file);
+      clearAvatarCache();
+      setPreview(URL.createObjectURL(file));
+      toast.success(t('usersManagement.messages.avatarUpdated'));
+    } catch (error) {
+      toast.error(error.message || t('account.errors.generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="page-panel account-profile">
+      {url ? (
+        <img className="account-avatar" src={url} alt="" />
+      ) : (
+        <span className="account-avatar" aria-hidden="true" style={{ '--avatar-hue': hueOf(user.id) }}>
+          {initialsOf(user.name || user.email)}
+        </span>
+      )}
+      <div className="account-identity">
+        <strong>{user.name || user.email}</strong>
+        <span>{user.email}</span>
+      </div>
+      <label className={`btn btn-secondary btn-sm account-avatar-change${busy ? ' busy' : ''}`}>
+        {t('account.avatar.change')}
+        <input
+          type="file"
+          accept={AVATAR_TYPES.join(',')}
+          disabled={busy}
+          onChange={upload}
+        />
+      </label>
+    </section>
+  );
+}
 
 const ERROR_KEYS = {
   WRONG_PASSWORD: 'account.errors.wrongPassword',
@@ -55,15 +151,18 @@ function EmailChange({ user, onChanged }) {
   };
 
   return (
-    <section className="account-card" aria-labelledby="account-email-heading">
-      <h2 id="account-email-heading">{t('account.email.heading')}</h2>
-      <p className="account-muted">{t('account.email.current', { email: user.email })}</p>
+    <section className="page-panel account-card" aria-labelledby="account-email-heading">
+      <div className="account-card-head">
+        <h2 className="page-panel-title" id="account-email-heading">{t('account.email.heading')}</h2>
+        <p className="account-muted">{t('account.email.current', { email: user.email })}</p>
+      </div>
 
       {sentTo === null ? (
         <form className="account-form" onSubmit={request}>
-          <label htmlFor="account-new-email">{t('account.email.newLabel')}</label>
+          <label className="field-label" htmlFor="account-new-email">{t('account.email.newLabel')}</label>
           <input
             id="account-new-email"
+            className="field-input"
             type="email"
             autoComplete="email"
             required
@@ -71,25 +170,30 @@ function EmailChange({ user, onChanged }) {
             value={newEmail}
             onChange={(event) => setNewEmail(event.target.value)}
           />
-          <label htmlFor="account-email-password">{t('account.password.currentLabel')}</label>
-          <input
+          <label className="field-label" htmlFor="account-email-password">{t('account.password.currentLabel')}</label>
+          <PasswordInput
             id="account-email-password"
-            type="password"
             autoComplete="current-password"
-            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <button type="submit" className="account-submit" disabled={busy}>
-            {t('account.email.send')}
-          </button>
+          <div className="account-actions">
+            <button type="submit" className="btn btn-primary account-submit" disabled={busy}>
+              {t('account.email.send')}
+            </button>
+          </div>
         </form>
       ) : (
         <form className="account-form" onSubmit={confirm}>
-          <p role="status">{t('account.email.sent', { email: sentTo })}</p>
-          <label htmlFor="account-email-code">{t('account.email.codeLabel')}</label>
+          <p className="account-sent" role="status">
+            <Icon name="mail" size="sm" />
+            {t('account.email.sent', { email: sentTo })}
+          </p>
+          <label className="field-label" htmlFor="account-email-code">{t('account.email.codeLabel')}</label>
           <input
             id="account-email-code"
+            className="field-input account-code"
+            dir="ltr"
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="\d{6}"
@@ -99,10 +203,10 @@ function EmailChange({ user, onChanged }) {
             onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
           />
           <div className="account-actions">
-            <button type="submit" className="account-submit" disabled={busy}>
+            <button type="submit" className="btn btn-primary account-submit" disabled={busy}>
               {t('account.email.confirm')}
             </button>
-            <button type="button" className="account-secondary" onClick={() => setSentTo(null)}>
+            <button type="button" className="btn btn-secondary account-secondary" onClick={() => setSentTo(null)}>
               {t('account.email.cancel')}
             </button>
           </div>
@@ -133,33 +237,33 @@ function PasswordChange({ user, onChanged }) {
   };
 
   return (
-    <section className="account-card" aria-labelledby="account-password-heading">
-      <h2 id="account-password-heading">{t('account.password.heading')}</h2>
-      <p className="account-muted">{t('account.password.intro')}</p>
+    <section className="page-panel account-card" aria-labelledby="account-password-heading">
+      <div className="account-card-head">
+        <h2 className="page-panel-title" id="account-password-heading">{t('account.password.heading')}</h2>
+        <p className="account-muted">{t('account.password.intro')}</p>
+      </div>
       <form className="account-form" onSubmit={submit}>
-        <label htmlFor="account-current-password">{t('account.password.currentLabel')}</label>
-        <input
+        <label className="field-label" htmlFor="account-current-password">{t('account.password.currentLabel')}</label>
+        <PasswordInput
           id="account-current-password"
-          type="password"
           autoComplete="current-password"
-          required
           value={current}
           onChange={(event) => setCurrent(event.target.value)}
         />
-        <label htmlFor="account-new-password">{t('account.password.newLabel')}</label>
-        <input
+        <label className="field-label" htmlFor="account-new-password">{t('account.password.newLabel')}</label>
+        <PasswordInput
           id="account-new-password"
-          type="password"
           autoComplete="new-password"
-          required
           minLength={8}
           maxLength={72}
           value={next}
           onChange={(event) => setNext(event.target.value)}
         />
-        <button type="submit" className="account-submit" disabled={busy}>
-          {t('account.password.submit')}
-        </button>
+        <div className="account-actions">
+          <button type="submit" className="btn btn-primary account-submit" disabled={busy}>
+            {t('account.password.submit')}
+          </button>
+        </div>
       </form>
     </section>
   );
@@ -180,10 +284,21 @@ function Account() {
   };
 
   return (
-    <div className="container account-page">
-      <h1>{t('account.title')}</h1>
+    <div className="page-shell account-page">
+      <div className="page-head">
+        <h1 className="page-title">{t('account.title')}</h1>
+      </div>
+      <Profile user={user} />
       <EmailChange user={user} onChanged={login} />
       <PasswordChange user={user} onChanged={signOutAfterPasswordChange} />
+      <Link to="/sessions" className="page-panel account-sessions-link">
+        <span className="account-sessions-icon"><Icon name="laptop" /></span>
+        <span className="account-sessions-text">
+          <strong>{t('devices.title')}</strong>
+          <span>{t('devices.intro')}</span>
+        </span>
+        <Icon name="chevron-right" size="sm" />
+      </Link>
     </div>
   );
 }
