@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import '../styles/components/Forms.css';
 import FormModal from './FormModal';
 
@@ -96,7 +97,7 @@ function WipLimitControl({ onClose }) {
             onClick={onClose}
             aria-label={t('forms.wipLimit.close')}
           >
-            ×
+            <Icon name="close" />
           </button>
         </div>
         

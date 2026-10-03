@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';
 import WipLimitControl from './WipLimitControl';
-
-const ICON_PROPS = {
-  xmlns: 'http://www.w3.org/2000/svg',
-  fill: 'none',
-  viewBox: '0 0 24 24',
-  stroke: 'currentColor',
-  width: 18,
-  height: 18,
-  'aria-hidden': true,
-};
 
 function BoardActions() {
   const [activeForm, setActiveForm] = useState(null);
@@ -30,9 +21,7 @@ function BoardActions() {
           onClick={() => toggle('task')}
           data-testid="open-add-task-form"
         >
-          <svg {...ICON_PROPS}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Icon name="plus" size="sm" />
           {t('header.addTask')}
         </button>
         <button
@@ -41,9 +30,6 @@ function BoardActions() {
           onClick={() => toggle('boardItem')}
           data-testid="open-add-board-item-form"
         >
-          <svg {...ICON_PROPS}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-          </svg>
           {t('header.addBoardItem')}
         </button>
         <button
@@ -52,9 +38,6 @@ function BoardActions() {
           onClick={() => toggle('wip')}
           data-testid="open-wip-limit-form"
         >
-          <svg {...ICON_PROPS}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h6" />
-          </svg>
           {t('header.wipLimit')}
         </button>
       </div>

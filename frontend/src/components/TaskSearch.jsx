@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import { useKanban } from '../context/KanbanContext';
 import { searchTasks, getAllLabels, fetchUsers } from '../services/api';
 import '../styles/components/TaskSearch.css';
@@ -156,7 +157,8 @@ function TaskSearch() {
         data-testid="open-task-search"
         onClick={() => setIsOpen(true)}
       >
-        🔍 {t('board.search.open')}
+        <Icon name="search" size="sm" />
+        {t('board.search.open')}
       </button>
     );
   }
@@ -175,7 +177,7 @@ function TaskSearch() {
           onClick={() => setIsOpen(false)}
           aria-label={t('board.search.close')}
         >
-          ×
+          <Icon name="close" />
         </button>
       </div>
 

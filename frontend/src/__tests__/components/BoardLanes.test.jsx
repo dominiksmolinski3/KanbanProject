@@ -121,7 +121,7 @@ describe('swimlanes', () => {
 });
 
 describe('WIP signals in the column header', () => {
-  test('a column at its limit is marked as approaching it, one over it as exceeded', () => {
+  test('a column at its limit is marked as approaching it, with one pip per slot', () => {
     renderBoard({
       tasks: [
         { id: 1, title: 'One', columnId: 'c2', rowId: 'r1' },
@@ -134,12 +134,13 @@ describe('WIP signals in the column header', () => {
     expect(doing).toHaveClass('wip-near');
     expect(doing).not.toHaveClass('wip-exceeded');
     expect(doing.querySelector('.wip-limit')).toHaveClass('near');
-    expect(doing.style.getPropertyValue('--wip-fill')).toBe('100%');
-    expect(doing.querySelector('.wip-bar')).toBeInTheDocument();
+    expect(doing.querySelectorAll('.wip-pip.on')).toHaveLength(2);
+    expect(doing.querySelectorAll('.wip-pip')).toHaveLength(2);
 
     const todo = screen.getByTestId('editable-column-c1').closest('th');
     expect(todo).toHaveClass('wip-ok');
-    expect(todo.style.getPropertyValue('--wip-fill')).toBe('20%');
+    expect(todo.querySelectorAll('.wip-pip.on')).toHaveLength(1);
+    expect(todo.querySelectorAll('.wip-pip')).toHaveLength(5);
   });
 
   test('a drag over a cell lights it up until the drag leaves it', () => {
