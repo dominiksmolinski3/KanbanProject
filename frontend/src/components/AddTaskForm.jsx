@@ -3,6 +3,7 @@ import LengthHint from './LengthHint';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import '../styles/components/Forms.css'; 
 import FormModal from './FormModal';
 
@@ -55,7 +56,7 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
             onClick={onClose}
             aria-label={t('forms.addRowColumn.close')}
           >
-            ×
+            <Icon name="close" />
           </button>
         </div>
         

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { fetchUsers, getUserAvatar, updateUserWipLimit } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import '../styles/components/Bench.css';
 import { toast } from 'react-toastify';
 
@@ -133,8 +134,15 @@ function Bench() {
   if (loading) {
     return (
         <div className={`bench-container ${isOpen ? 'open' : ''}`}>
-        <button className="bench-toggle" onClick={handleToggle}>
-          {isOpen ? '◀' : '▶'}
+        <button
+          type="button"
+          className="bench-toggle"
+          onClick={handleToggle}
+          aria-expanded={isOpen}
+          aria-label={t('bench.title')}
+          title={t('bench.title')}
+        >
+          <Icon name={isOpen ? 'chevron-left' : 'people'} />
         </button>
         <div className="bench">
           <h3>{t('bench.title')}</h3>
@@ -147,8 +155,15 @@ function Bench() {
   if (error) {
     return (
         <div className={`bench-container ${isOpen ? 'open' : ''}`}>
-        <button className="bench-toggle" onClick={handleToggle}>
-          {isOpen ? '◀' : '▶'}
+        <button
+          type="button"
+          className="bench-toggle"
+          onClick={handleToggle}
+          aria-expanded={isOpen}
+          aria-label={t('bench.title')}
+          title={t('bench.title')}
+        >
+          <Icon name={isOpen ? 'chevron-left' : 'people'} />
         </button>
         <div className="bench">
           <h3>{t('bench.title')}</h3>
@@ -160,8 +175,15 @@ function Bench() {
 
   return (
     <div className={`bench-container ${isOpen ? 'open' : ''}`}>
-      <button className="bench-toggle" onClick={handleToggle}>
-        {isOpen ? '◀' : '▶'}
+      <button
+        type="button"
+        className="bench-toggle"
+        onClick={handleToggle}
+        aria-expanded={isOpen}
+        aria-label={t('bench.title')}
+        title={t('bench.title')}
+      >
+        <Icon name={isOpen ? 'chevron-left' : 'people'} />
       </button>
       <div className="bench">
         <h3>{t('bench.title')}</h3>
