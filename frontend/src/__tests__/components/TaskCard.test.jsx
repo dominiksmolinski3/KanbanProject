@@ -57,6 +57,25 @@ describe('task card', () => {
     expect(getChildTasks).not.toHaveBeenCalled();
   });
 
+  test('one click on the title opens the task; a double click edits the title instead', async () => {
+    jest.useFakeTimers();
+    try {
+      await renderCard();
+      const title = document.querySelector('.task .editable-text');
+
+      fireEvent.click(title, { detail: 1 });
+      fireEvent.click(title, { detail: 2 });
+      await act(async () => { jest.advanceTimersByTime(500); });
+      expect(fetchTask).not.toHaveBeenCalled();
+
+      fireEvent.click(title, { detail: 1 });
+      await act(async () => { jest.advanceTimersByTime(500); });
+      expect(fetchTask).toHaveBeenCalledWith(9);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test('assignees stack up to three, then a count, with initials when there is no picture', async () => {
     await renderCard({ userIds: [1, 2, 3, 4] });
 
