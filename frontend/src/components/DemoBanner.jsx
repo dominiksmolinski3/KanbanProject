@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Icon from './Icon';
 import '../styles/DemoBanner.css';
 
 const DEMO_HOSTNAME_MARKER = 'kanbanproject';
@@ -39,12 +40,13 @@ const DemoBanner = () => {
 
   return (
     <div className="demo-banner" role="status" ref={bannerRef}>
+      <Icon name="info" size="sm" />
       <span className="demo-banner-text">
         {t('demo.notice')}{' '}
         {TEST_ACCOUNTS.map(({ email, password }, index) => (
           <React.Fragment key={email}>
             {index > 0 && <> {t('demo.or')} </>}
-            <strong>{email}</strong> / <strong>{password}</strong>
+            <strong dir="ltr">{email}</strong> / <strong dir="ltr">{password}</strong>
           </React.Fragment>
         ))}
       </span>
@@ -54,7 +56,7 @@ const DemoBanner = () => {
         onClick={() => setDismissed(true)}
         aria-label={t('demo.dismiss')}
       >
-        ×
+        {t('demo.dismiss')}
       </button>
     </div>
   );
