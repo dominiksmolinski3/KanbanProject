@@ -105,6 +105,7 @@ resource "azurerm_storage_container" "dumps" {
 resource "azurerm_storage_container_immutability_policy" "dumps" {
   storage_container_resource_manager_id = azurerm_storage_container.dumps.id
   immutability_period_in_days           = local.retention.daily.delete_after
+  locked                                = true
 }
 
 resource "azurerm_storage_management_policy" "dumps" {
