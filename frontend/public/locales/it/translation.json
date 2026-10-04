@@ -451,7 +451,9 @@
         "avatarUpdated": "Avatar aggiornato con successo",
         "avatarError": "Si è verificato un errore durante il caricamento dell'avatar:",
         "loadError": "Si è verificato un errore durante il caricamento degli utenti"
-      }
+      },
+      "intro": "Le persone di questa bacheca e tutte quelle con cui condividi una bacheca.",
+      "people": "Persone con cui condividi una bacheca"
     },
     "chat": {
       "title": "Chat",
