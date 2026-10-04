@@ -93,6 +93,7 @@ resource "azurerm_container_app_environment" "main" {
   infrastructure_subnet_id   = azurerm_subnet.backend.id
   logs_destination           = "log-analytics"
   log_analytics_workspace_id = var.log_analytics_workspace_id
+  mutual_tls_enabled         = true
 
   workload_profile {
     name                  = "Consumption"
