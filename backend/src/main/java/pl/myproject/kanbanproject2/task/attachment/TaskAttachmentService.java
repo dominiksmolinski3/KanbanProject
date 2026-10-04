@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpRange;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -30,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,7 +48,6 @@ public class TaskAttachmentService {
 
     private static final int MAX_FILE_NAME_LENGTH = 255;
 
-    private static final String UNKNOWN_CONTENT_TYPE = "application/octet-stream";
 
     private final TaskAttachmentRepository attachments;
     private final TaskRepository tasks;
@@ -295,13 +295,21 @@ public class TaskAttachmentService {
     }
 
     private static String contentTypeOf(MultipartFile file) {
-        String declared = file.getContentType();
+        return mediaTypeOf(file.getContentType()).toString();
+    }
+
+    static MediaType mediaTypeOf(String declared) {
         if (!StringUtils.hasText(declared)) {
-            return UNKNOWN_CONTENT_TYPE;
+            return MediaType.APPLICATION_OCTET_STREAM;
         }
-        int separator = declared.indexOf(';');
-        String bare = (separator < 0 ? declared : declared.substring(0, separator)).trim();
-        return bare.isEmpty() ? UNKNOWN_CONTENT_TYPE : bare.toLowerCase(Locale.ROOT);
+        try {
+            MediaType parsed = MediaType.parseMediaType(declared);
+            return parsed.isConcrete()
+                    ? new MediaType(parsed.getType(), parsed.getSubtype())
+                    : MediaType.APPLICATION_OCTET_STREAM;
+        } catch (InvalidMediaTypeException e) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     private void removeAfterCommit(String blobName) {
