@@ -68,7 +68,9 @@
     "attachmentUploadFailed": "Nie udało się wysłać pliku {{name}}",
     "attachmentDownloadFailed": "Nie udało się pobrać pliku {{name}}",
     "attachmentStorageUnavailable": "Magazyn plików nie jest skonfigurowany, więc nie można zapisać załączników",
-    "avatarAlt": "Awatar użytkownika"
+    "avatarAlt": "Awatar użytkownika",
+    "childCount": "Zadania podrzędne: {{count}}",
+    "hasParent": "Ma zadanie nadrzędne"
   },
   "board": {
     "wip": {
@@ -581,7 +583,8 @@
       "assignees": "Przypisani",
       "priority": "Priorytet"
     },
-    "close": "Zamknij zadanie"
+    "close": "Zamknij zadanie",
+    "childTask": "Zadanie podrzędne"
   },
   "app": {
     "loading": "Ładowanie..."

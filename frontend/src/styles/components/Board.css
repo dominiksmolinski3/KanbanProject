@@ -797,6 +797,6 @@ tr:has(.add-placeholder-row) .grid-cell {
   border: 0;
 }
 
-.cell-stack:has(.keyboard-held) {
+.cell-stack:has(.keyboard-held, .linked-child, .linked-parent) {
   padding-top: 14px;
 }

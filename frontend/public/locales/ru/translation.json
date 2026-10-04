@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "Не удалось загрузить {{name}}",
       "attachmentDownloadFailed": "Не удалось скачать {{name}}",
       "attachmentStorageUnavailable": "Хранилище файлов не настроено, поэтому вложения нельзя сохранить",
-      "avatarAlt": "Аватар пользователя"
+      "avatarAlt": "Аватар пользователя",
+      "childCount": "Дочерние задачи: {{count}}",
+      "hasParent": "Есть родительская задача"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "Исполнители",
             "priority": "Приоритет"
         },
-        "close": "Закрыть задачу"
+        "close": "Закрыть задачу",
+        "childTask": "Дочерняя задача"
     },
     "app": {
         "loading": "Загрузка..."

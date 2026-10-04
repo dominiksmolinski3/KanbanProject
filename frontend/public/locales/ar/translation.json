@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "تعذر رفع {{name}}",
       "attachmentDownloadFailed": "تعذر تنزيل {{name}}",
       "attachmentStorageUnavailable": "تخزين الملفات غير مهيأ، لذا لا يمكن حفظ المرفقات",
-      "avatarAlt": "الصورة الرمزية للمستخدم"
+      "avatarAlt": "الصورة الرمزية للمستخدم",
+      "childCount": "المهام الفرعية: {{count}}",
+      "hasParent": "لها مهمة أصل"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "المكلَّفون",
             "priority": "الأولوية"
         },
-        "close": "إغلاق المهمة"
+        "close": "إغلاق المهمة",
+        "childTask": "مهمة فرعية"
     },
     "app": {
         "loading": "جارٍ التحميل..."

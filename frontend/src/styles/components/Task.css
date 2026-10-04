@@ -37,6 +37,19 @@
   transform: rotate(1.5deg);
 }
 
+.task.linked-child {
+  box-shadow: 0 0 0 2px var(--kb-accent), var(--kb-shadow-hover);
+}
+
+.task.linked-parent {
+  box-shadow: 0 0 0 2px var(--kb-ink-muted), var(--kb-shadow-hover);
+}
+
+.task-held-tag.link-tag.parent {
+  background: var(--kb-ink-muted);
+  color: var(--kb-surface);
+}
+
 .task.user-drag-over {
   box-shadow: 0 0 0 2px var(--kb-accent), var(--kb-shadow-hover);
 }
@@ -347,6 +360,20 @@
   color: var(--kb-danger);
 }
 
+.relation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 22px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--kb-sunken);
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
 .subtask-chip {
   gap: var(--space-6);
   font-variant-numeric: tabular-nums;
@@ -578,24 +605,9 @@
 }
 
 #root .xarrow {
-  filter: drop-shadow(0 0 3px var(--kb-accent-ring));
   pointer-events: none !important;
 }
 
-#root .xarrow[data-type="child"] path {
-  stroke-width: 3;
-}
-
-#root .xarrow[data-type="parent"] path {
-  stroke-dasharray: 6, 3;
-  animation: dash 1s linear infinite;
-}
-
-@keyframes dash {
-  to {
-    stroke-dashoffset: -9;
-  }
-}
 
 @media (hover: none) {
   .task-actions {

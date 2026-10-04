@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "Impossibile caricare {{name}}",
       "attachmentDownloadFailed": "Impossibile scaricare {{name}}",
       "attachmentStorageUnavailable": "L'archiviazione dei file non è configurata, gli allegati non possono essere salvati",
-      "avatarAlt": "Avatar dell'utente"
+      "avatarAlt": "Avatar dell'utente",
+      "childCount": "Attività figlie: {{count}}",
+      "hasParent": "Ha un'attività padre"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "Assegnatari",
             "priority": "Priorità"
         },
-        "close": "Chiudi attività"
+        "close": "Chiudi attività",
+        "childTask": "Attività figlia"
     },
     "app": {
         "loading": "Caricamento..."

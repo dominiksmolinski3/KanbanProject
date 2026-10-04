@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "{{name}} をアップロードできませんでした",
       "attachmentDownloadFailed": "{{name}} をダウンロードできませんでした",
       "attachmentStorageUnavailable": "ファイルストレージが設定されていないため、添付ファイルを保存できません",
-      "avatarAlt": "ユーザーのアバター"
+      "avatarAlt": "ユーザーのアバター",
+      "childCount": "子タスク: {{count}}",
+      "hasParent": "親タスクがあります"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "担当者",
             "priority": "優先度"
         },
-        "close": "タスクを閉じる"
+        "close": "タスクを閉じる",
+        "childTask": "子タスク"
     },
     "app": {
         "loading": "読み込み中..."
