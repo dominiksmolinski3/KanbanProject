@@ -451,7 +451,9 @@
         "avatarUpdated": "L'avatar a été mis à jour avec succès",
         "avatarError": "Une erreur s'est produite lors du téléchargement de l'avatar :",
         "loadError": "Une erreur s'est produite lors du chargement des utilisateurs"
-      }
+      },
+      "intro": "Les personnes de ce tableau, et toutes celles avec qui vous partagez un tableau.",
+      "people": "Personnes avec qui vous partagez un tableau"
     },
     "chat": {
       "title": "Chat",

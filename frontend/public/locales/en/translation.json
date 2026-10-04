@@ -451,7 +451,9 @@
       "avatarUpdated": "Avatar has been successfully updated",
       "avatarError": "An error occurred while uploading the avatar:",
       "loadError": "An error occurred while loading users"
-    }
+    },
+    "intro": "The people on this board, and everyone you share any board with.",
+    "people": "People you share a board with"
   },
   "chat": {
     "title": "Chat",

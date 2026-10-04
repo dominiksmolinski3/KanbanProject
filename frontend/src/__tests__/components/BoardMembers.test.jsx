@@ -134,7 +134,7 @@ describe('BoardMembers', () => {
   test('the owner cannot be removed, by anyone', async () => {
     await renderPanel();
 
-    const removals = screen.getAllByRole('button', { name: '×' });
+    const removals = screen.getAllByRole('button', { name: /^boards\.members\.(remove|leave)$/ });
     expect(removals).toHaveLength(1);
 
     fireEvent.click(removals[0]);
@@ -158,7 +158,7 @@ describe('BoardMembers', () => {
 
     await renderPanel();
 
-    fireEvent.click(screen.getByRole('button', { name: '×' }));
+    fireEvent.click(screen.getByRole('button', { name: 'boards.members.leave' }));
     expect(window.confirm).toHaveBeenCalledWith('boards.members.leaveConfirm');
     expect(mockKanban.removeBoardMember).toHaveBeenCalledWith(3, 2);
   });

@@ -451,7 +451,9 @@
       "avatarUpdated": "Avatar wurde erfolgreich aktualisiert",
       "avatarError": "Beim Hochladen des Avatars ist ein Fehler aufgetreten:",
       "loadError": "Beim Laden der Benutzer ist ein Fehler aufgetreten"
-    }
+    },
+    "intro": "Die Personen auf diesem Board und alle, mit denen du ein Board teilst.",
+    "people": "Personen, mit denen du ein Board teilst"
   },
   "chat": {
     "title": "Chat",

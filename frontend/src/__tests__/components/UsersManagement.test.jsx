@@ -10,6 +10,9 @@ jest.mock('react-i18next', () => ({
 jest.mock('react-toastify', () => ({
   toast: { error: jest.fn(), info: jest.fn(), warning: jest.fn() },
 }));
+jest.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 1 } }),
+}));
 jest.mock('../../components/BoardMembers', () => () => <div>BoardMembers</div>);
 jest.mock('../../components/Invitations', () => () => <div>Invitations</div>);
 

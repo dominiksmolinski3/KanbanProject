@@ -4,12 +4,16 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import BoardMembers from './BoardMembers';
 import Invitations from './Invitations';
+import Icon from './Icon';
+import { useAuth } from '../context/AuthContext';
+import { hueOf, initialsOf } from '../board/cardModel';
 
 function UsersManagement() {
   const [users, setUsers] = useState([]);
   const [avatarPreviews, setAvatarPreviews] = useState({});
   const avatarPreviewsRef = useRef({});
   const { t } = useTranslation();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     avatarPreviewsRef.current = avatarPreviews;
@@ -144,40 +148,15 @@ function UsersManagement() {
     }
   };
   
-  const renderUserAvatar = (user) => {
-    const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"%3E%3C/path%3E%3C/svg%3E';
-    
-    return (
-      <div className="user-avatar">
-        <img 
-          src={avatarPreviews[user.id] || defaultAvatar} 
-          alt={`${user.name}'s avatar`}
-          className="avatar-preview"
-          onError={(e) => {
-            e.target.src = defaultAvatar;
-          }}
-        />
-        <input
-          type="file"
-          id={`avatar-input-${user.id}`}
-          accept="image/jpeg,image/png"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files[0];
-            if (file) {
-              handleAvatarUpload(user.id, file);
-            }
-          }}
-        />
-        <button
-          onClick={() => document.getElementById(`avatar-input-${user.id}`).click()}
-          className="upload-avatar-btn"
-        >
-          {t('usersManagement.buttons.change')}
-        </button>
-      </div>
-    );
-  };
+  const renderUserAvatar = (user) => (
+    avatarPreviews[user.id] ? (
+      <img src={avatarPreviews[user.id]} alt="" className="people-avatar" />
+    ) : (
+      <span className="people-avatar" aria-hidden="true" style={{ '--avatar-hue': hueOf(user.id) }}>
+        {initialsOf(user.name || user.email)}
+      </span>
+    )
+  );
 
   const deleteUser = (userId) => {
     if (window.confirm(t('usersManagement.messages.deleteConfirm'))) {
@@ -198,46 +177,65 @@ function UsersManagement() {
     }
   };
 
+  const isMe = (person) => currentUser?.id != null && person.id === currentUser.id;
+  const people = [...users].sort((a, b) => Number(isMe(b)) - Number(isMe(a)));
+
   return (
-    <div className="container">
-      <h1>{t('usersManagement.title')}</h1>
+    <div className="page-shell users-page">
+      <div className="page-head">
+        <h1 className="page-title">{t('usersManagement.title')}</h1>
+        <p className="page-lede">{t('usersManagement.intro')}</p>
+      </div>
 
       <Invitations />
 
       <BoardMembers />
 
-      <div className="users-container">
-        <div className="users-header">
-          <span className="user-id">{t('usersManagement.fields.avatar')}</span>
-          <span className="user-id">{t('usersManagement.fields.id')}</span>
-          <span className="user-name">{t('usersManagement.fields.name')}</span>
-          <span className="user-email">{t('usersManagement.fields.email')}</span>
-          <span className="user-actions">{t('usersManagement.fields.actions')}</span>
-        </div>
-        <div id="usersList" className="users-list">
-          {users.map(user => (
-            <div key={user.id} className="user-item" data-user-id={user.id}>
+      <section className="page-panel people-panel" aria-labelledby="people-heading">
+        <h2 className="page-panel-title" id="people-heading">{t('usersManagement.people')}</h2>
+        <ul id="usersList" className="users-list">
+          {people.map(user => (
+            <li key={user.id} className="user-item" data-user-id={user.id}>
               {renderUserAvatar(user)}
-              <span className="user-id">{user.id}</span>
-              <span className="user-name">{user.name}</span>
-              <span className="user-email">{user.email}</span>
-              <span className="user-actions">
-                <button
-                  className="delete-user-btn"
-                  title={t('usersManagement.buttons.delete')}
-                  onClick={() => deleteUser(user.id)}
-                >
-                  ×
-                </button>
+              <span className="people-identity">
+                <span className="user-name">
+                  {user.name}
+                  {isMe(user) && <span className="people-you">{t('boards.members.you')}</span>}
+                </span>
+                <span className="user-email" dir="ltr">{user.email}</span>
               </span>
-            </div>
+              {isMe(user) && (
+                <span className="user-actions">
+                  <label className="btn btn-secondary btn-sm people-avatar-change">
+                    {t('account.avatar.change')}
+                    <input
+                      id={`avatar-input-${user.id}`}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        e.target.value = '';
+                        if (file) {
+                          handleAvatarUpload(user.id, file);
+                        }
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="delete-user-btn"
+                    title={t('usersManagement.buttons.delete')}
+                    aria-label={t('usersManagement.buttons.delete')}
+                    onClick={() => deleteUser(user.id)}
+                  >
+                    <Icon name="trash" size="sm" />
+                  </button>
+                </span>
+              )}
+            </li>
           ))}
-        </div>
-      </div>
-
-      <div className="navigation">
-        <a href="/" className="back-btn">{t('usersManagement.buttons.back')}</a>
-      </div>
+        </ul>
+      </section>
     </div>
   );
 }
