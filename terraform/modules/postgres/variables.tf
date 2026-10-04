@@ -91,7 +91,7 @@ variable "tags" {
 }
 
 variable "password_auth_enabled" {
-  description = "Whether psqladmin can log in with its password. Turn it off only after the roles job has handed psqladmin's tables to kanban_owner."
+  description = "Whether psqladmin can log in with its password. While on, the password is also in Key Vault as POSTGRES-PASSWORD for the roles job; it is never in state. Turn it off only after the roles job has handed psqladmin's tables to kanban_owner."
   type        = bool
   default     = true
 }

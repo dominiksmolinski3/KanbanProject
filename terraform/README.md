@@ -476,7 +476,10 @@ which the next `terraform plan` will try to undo. Treat the zone as set at creat
 ### Database logins
 
 The server accepts Entra tokens, and the psqladmin password while
-`postgres_password_auth_enabled` is true. No app or job but the roles job holds that password.
+`postgres_password_auth_enabled` is true. The password is ephemeral and write-only, so it is
+never in Terraform state. It sits in Key Vault as `POSTGRES-PASSWORD`, for the roles job alone,
+only while password login is on; turning it off deletes the secret and sets the server to a
+password nobody holds.
 
 | Login | Who | Can |
 |---|---|---|
@@ -506,7 +509,8 @@ The API's revision depends on both, so a failed run stops the apply before the A
 
 To turn password login off, apply once with it on (the hand-over needs psqladmin), then set
 `postgres_password_auth_enabled = false` in the tfvars and apply again. Break-glass is then a
-job running as the Entra admin.
+job running as the Entra admin. Turning it back on writes a fresh password to the server and to
+Key Vault in the same apply.
 
 ### Database dumps
 
@@ -976,8 +980,8 @@ Four decisions carry it:
 - **One account, `kanban`, for both `WebSocketConfig`'s client login and its system login.**
   RabbitMQ has no notion of a caller identity past the TCP connection its STOMP plugin terminates,
   so splitting client/system credentials would buy nothing. The password is generated
-  (`random_password`) and stored as the `RABBITMQ-PASSWORD` Key Vault secret, module-owned the same
-  way `modules/postgres` owns `POSTGRES-PASSWORD`; the
+  (`random_password`) and stored as the `RABBITMQ-PASSWORD` Key Vault secret, owned by the
+  module; the
   broker's own identity is scoped to that one secret rather than the vault, same narrow-grant
   pattern the web app's `GHCR-TOKEN` reader gets.
 - **Health checking is TCP-only.** There is no HTTP endpoint to ask, only a port (`61613`) that

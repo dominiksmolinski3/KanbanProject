@@ -1,7 +1,12 @@
-resource "random_password" "password" {
+ephemeral "random_password" "password" {
   length           = 32
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+locals {
+  # The server and POSTGRES-PASSWORD must be written in the same apply, or they hold two different ephemeral values.
+  password_version = var.password_auth_enabled ? 2 : 1
 }
 
 resource "random_string" "suffix" {
@@ -13,21 +18,22 @@ resource "random_string" "suffix" {
 }
 
 resource "azurerm_postgresql_flexible_server" "main" {
-  tags                          = var.tags
-  name                          = "psql-${var.env}-${random_string.suffix.result}"
-  resource_group_name           = var.resource_group_name
-  location                      = var.location
-  version                       = "17"
-  public_network_access_enabled = false
-  delegated_subnet_id           = var.subnet_id
-  private_dns_zone_id           = azurerm_private_dns_zone.main.id
-  administrator_login           = "psqladmin"
-  administrator_password        = random_password.password.result
-  zone                          = var.zone
-  storage_mb                    = var.storage_mb
-  sku_name                      = var.sku_name
-  backup_retention_days         = var.backup_retention_days
-  geo_redundant_backup_enabled  = var.geo_redundant_backup_enabled
+  tags                              = var.tags
+  name                              = "psql-${var.env}-${random_string.suffix.result}"
+  resource_group_name               = var.resource_group_name
+  location                          = var.location
+  version                           = "17"
+  public_network_access_enabled     = false
+  delegated_subnet_id               = var.subnet_id
+  private_dns_zone_id               = azurerm_private_dns_zone.main.id
+  administrator_login               = "psqladmin"
+  administrator_password_wo         = ephemeral.random_password.password.result
+  administrator_password_wo_version = local.password_version
+  zone                              = var.zone
+  storage_mb                        = var.storage_mb
+  sku_name                          = var.sku_name
+  backup_retention_days             = var.backup_retention_days
+  geo_redundant_backup_enabled      = var.geo_redundant_backup_enabled
 
   authentication {
     active_directory_auth_enabled = true
@@ -92,20 +98,14 @@ resource "azurerm_private_dns_zone_virtual_network_link" "main" {
   virtual_network_id  = var.vnet_id
 }
 
-resource "azurerm_key_vault_secret" "postgres_user" {
-  tags         = var.tags
-  name         = "POSTGRES-USER"
-  value        = azurerm_postgresql_flexible_server.main.administrator_login
-  content_type = "PostgreSQL administrator login"
-  key_vault_id = var.key_vault_id
-}
-
 resource "azurerm_key_vault_secret" "postgres_password" {
-  tags         = var.tags
-  name         = "POSTGRES-PASSWORD"
-  value        = random_password.password.result
-  content_type = "PostgreSQL administrator password"
-  key_vault_id = var.key_vault_id
+  count            = var.password_auth_enabled ? 1 : 0
+  tags             = var.tags
+  name             = "POSTGRES-PASSWORD"
+  value_wo         = ephemeral.random_password.password.result
+  value_wo_version = local.password_version
+  content_type     = "PostgreSQL administrator password"
+  key_vault_id     = var.key_vault_id
 }
 
 locals {

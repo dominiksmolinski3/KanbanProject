@@ -35,3 +35,7 @@ output "tenant_id" {
 output "password_auth_enabled" {
   value = azurerm_postgresql_flexible_server.main.authentication[0].password_auth_enabled
 }
+
+output "administrator_login" {
+  value = azurerm_postgresql_flexible_server.main.administrator_login
+}

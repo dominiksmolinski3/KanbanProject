@@ -75,3 +75,7 @@ variable "password_login_enabled" {
   description = "Whether the server still accepts the psqladmin password. Only the one-time hand-over of tables psqladmin created needs it."
   type        = bool
 }
+
+variable "postgres_admin_login" {
+  type = string
+}
