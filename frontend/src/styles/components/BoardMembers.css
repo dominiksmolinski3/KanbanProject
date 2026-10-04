@@ -1,222 +1,254 @@
-.board-panel {
-  margin: 0 0 1.75rem;
-  padding: 1.1rem 1.25rem 1.25rem;
-  border: 1px solid var(--kb-border);
-  border-radius: 0.6rem;
-  background: var(--kb-card);
-}
-
 .board-panel-header {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 10px;
 }
 
-.board-panel-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--kb-text);
+.board-panel-header .page-panel-title {
+  overflow-wrap: anywhere;
 }
 
 .board-panel-action {
-  margin-left: auto;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--kb-border-strong);
-  border-radius: 0.35rem;
-  background: transparent;
-  color: var(--kb-text);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
+  margin-inline-start: auto;
 }
 
 .board-panel-explainer {
-  margin: 0.5rem 0 1rem;
-  font-size: 0.85rem;
-  color: var(--kb-text-muted);
-  max-width: 62ch;
+  margin: 0;
+  color: var(--kb-ink-muted);
+}
+
+.invitations-panel {
+  border-color: transparent;
+  background: var(--kb-accent-soft);
 }
 
 .board-role {
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--kb-lane-strong);
-  font-size: 0.72rem;
-  color: var(--kb-text-muted);
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--kb-sunken);
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .board-role.owner {
   background: var(--kb-accent-soft);
-  color: var(--kb-accent);
-}
-
-.board-member-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--kb-border);
-}
-
-.board-member {
-  display: grid;
-  grid-template-columns: minmax(6rem, 1fr) minmax(8rem, 1.6fr) auto auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--kb-border);
-}
-
-.board-member-name {
-  font-weight: 500;
-  color: var(--kb-text);
-}
-
-.board-member-you {
-  margin-left: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 400;
-  color: var(--kb-text-muted);
-}
-
-.board-member-email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--kb-text-muted);
-  font-size: 0.9rem;
-}
-
-.board-member-remove {
-  width: 1.7rem;
-  height: 1.7rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--kb-danger-soft);
-  color: var(--kb-danger);
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.board-invite {
-  margin-top: 1rem;
-}
-
-.board-invite label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.board-invite-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.board-invite-row input {
-  flex: 1 1 18rem;
-  min-width: 0;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--kb-border-strong);
-  border-radius: 0.35rem;
-  background: var(--kb-field);
-  color: var(--kb-text);
-  font: inherit;
-}
-
-.board-invite-row button {
-  padding: 0.45rem 0.9rem;
-  border: 0;
-  border-radius: 0.35rem;
-  background: var(--kb-fill);
-  color: var(--kb-on-fill);
-  font: inherit;
-  cursor: pointer;
-}
-
-.board-invite-row button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.board-invite-note {
-  margin: 0.4rem 0 0;
-  font-size: 0.78rem;
-  color: var(--kb-text-muted);
-  max-width: 62ch;
+  color: var(--kb-accent-ink);
 }
 
 .board-rename {
   display: flex;
-  gap: 0.4rem;
-  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
 }
 
-.board-rename input {
-  flex: 1 1 auto;
+.board-rename .field-input {
+  flex: 1 1 260px;
+  width: auto;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.board-member-list,
+.board-invitation-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-member-list {
+  border: 1px solid var(--kb-line);
+  border-radius: 10px;
+}
+
+.board-member,
+.board-invitation {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  gap: var(--space-12);
+  align-items: center;
+  min-height: 56px;
+  padding: 10px var(--space-12);
+}
+
+.board-member + .board-member {
+  border-top: 1px solid var(--kb-line);
+}
+
+.board-member-avatar {
+  --avatar-hue: 225;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: hsl(var(--avatar-hue) 55% 88%);
+  color: hsl(var(--avatar-hue) 60% 26%);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+:root:where([data-theme="dark"]) .board-member-avatar {
+  background: hsl(var(--avatar-hue) 30% 30%);
+  color: hsl(var(--avatar-hue) 70% 88%);
+}
+
+.board-member-avatar.board-pending-icon {
+  background: var(--kb-sunken);
+  color: var(--kb-ink-muted);
+}
+
+.board-member-identity {
+  display: grid;
   min-width: 0;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--kb-border-strong);
-  border-radius: 0.35rem;
-  background: var(--kb-field);
-  color: var(--kb-text);
-  font: inherit;
 }
 
-.board-rename button {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--kb-border-strong);
-  border-radius: 0.35rem;
+.board-member-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-6);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.board-member-you {
+  color: var(--kb-ink-muted);
+  font-weight: 400;
+}
+
+.board-member-email {
+  color: var(--kb-ink-muted);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.board-member-remove,
+.board-member-remove-spacer {
+  width: var(--kb-control-height-sm);
+  height: var(--kb-control-height-sm);
+}
+
+.board-member-remove {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
   background: transparent;
-  color: var(--kb-text);
-  font: inherit;
+  color: var(--kb-ink-muted);
   cursor: pointer;
 }
 
-.board-delete {
-  margin-top: 1.1rem;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid color-mix(in srgb, var(--kb-danger) 35%, transparent);
-  border-radius: 0.35rem;
-  background: transparent;
+.board-member-remove:hover {
+  border: 0;
+  background: var(--kb-danger-soft);
   color: var(--kb-danger);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
+}
+
+.board-pending {
+  display: grid;
+  gap: var(--space-8);
 }
 
 .board-invite-heading {
-  margin: 1.25rem 0 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--kb-text);
-}
-
-.board-invitation-list {
-  list-style: none;
   margin: 0;
-  padding: 0;
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
 }
 
-.board-invitation {
+.board-invitation.pending {
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  border: 1px dashed var(--kb-line-strong);
+  border-radius: 10px;
+}
+
+.board-invitation.incoming {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  border-radius: 10px;
+  background: var(--kb-surface);
+}
+
+.board-invitation.incoming + .board-invitation.incoming {
+  margin-top: var(--space-8);
+}
+
+.board-invitation.incoming .board-member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-control);
+}
+
+.board-invitation-actions {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--kb-border);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
 }
 
-.board-invitation-accept,
-.board-invitation-decline {
-  margin-left: auto;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  cursor: pointer;
+.board-invite {
+  display: grid;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
 }
 
-.board-invitation-decline {
-  margin-left: 0;
+.board-invite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.board-invite-row input {
+  flex: 1 1 260px;
+  width: auto;
+}
+
+.board-invite-row select {
+  flex: 0 1 220px;
+  width: auto;
+}
+
+.board-invite-note {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--kb-ink-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.board-danger {
+  display: flex;
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--kb-line);
+}
+
+@media (max-width: 640px) {
+  .board-member,
+  .board-invitation.pending {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .board-member .board-role,
+  .board-invitation.pending .board-role {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .board-invitation.incoming {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .board-invitation-actions {
+    grid-column: 1 / -1;
+  }
 }

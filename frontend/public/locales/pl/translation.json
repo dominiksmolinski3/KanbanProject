@@ -451,7 +451,9 @@
       "avatarUpdated": "Avatar został pomyślnie zaktualizowany",
       "avatarError": "Wystąpił błąd podczas uploadu avatara:",
       "loadError": "Wystąpił błąd podczas ładowania użytkowników"
-    }
+    },
+    "intro": "Osoby na tej tablicy i wszyscy, z którymi dzielisz jakąkolwiek tablicę.",
+    "people": "Osoby, z którymi dzielisz tablicę"
   },
   "chat": {
     "title": "Czat",

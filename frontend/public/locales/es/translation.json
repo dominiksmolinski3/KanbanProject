@@ -451,7 +451,9 @@
         "avatarUpdated": "El avatar ha sido actualizado exitosamente",
         "avatarError": "Ocurrió un error al cargar el avatar:",
         "loadError": "Ocurrió un error al cargar los usuarios"
-      }
+      },
+      "intro": "Las personas de este tablero y todas con las que compartes algún tablero.",
+      "people": "Personas con las que compartes un tablero"
     },
     "chat": {
       "title": "Chat",
