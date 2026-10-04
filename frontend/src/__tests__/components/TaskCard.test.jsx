@@ -57,6 +57,30 @@ describe('task card', () => {
     expect(getChildTasks).not.toHaveBeenCalled();
   });
 
+  test('while a parent is dragged or held, its children and its parent say how they are linked', async () => {
+    const tasks = [
+      { id: 1, title: 'Parent', childTaskIds: [9] },
+      { id: 9, title: 'Ship it', parentTaskId: 1, childTaskIds: [] },
+    ];
+    const { unmount } = await renderCard({ parentTaskId: 1 }, context({ tasks, linkFocusId: 1 }));
+    expect(document.querySelector('.task')).toHaveClass('linked-child');
+    expect(screen.getByText('taskDetails.childTask')).toBeInTheDocument();
+    unmount();
+
+    await renderCard({ id: 1, childTaskIds: [9] }, context({ tasks: [{ id: 9, parentTaskId: 1 }], linkFocusId: 9 }));
+    expect(document.querySelector('.task')).toHaveClass('linked-parent');
+    expect(screen.getByText('taskDetails.parentTask')).toBeInTheDocument();
+  });
+
+  test('a card with relations carries a link chip; one without has none', async () => {
+    const { unmount } = await renderCard({ childTaskIds: [2, 3] });
+    expect(document.querySelector('.relation-chip')).toHaveTextContent('2');
+    unmount();
+
+    await renderCard({});
+    expect(document.querySelector('.relation-chip')).toBeNull();
+  });
+
   test('one click on the title opens the task; a double click edits the title instead', async () => {
     jest.useFakeTimers();
     try {

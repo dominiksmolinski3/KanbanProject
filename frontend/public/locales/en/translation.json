@@ -68,7 +68,9 @@
     "attachmentUploadFailed": "Could not upload {{name}}",
     "attachmentDownloadFailed": "Could not download {{name}}",
     "attachmentStorageUnavailable": "File storage is not configured, so attachments cannot be saved",
-    "avatarAlt": "User avatar"
+    "avatarAlt": "User avatar",
+    "childCount": "Child tasks: {{count}}",
+    "hasParent": "Has a parent task"
   },
   "board": {
     "wip": {
@@ -581,7 +583,8 @@
       "assignees": "Assignees",
       "priority": "Priority"
     },
-    "close": "Close task"
+    "close": "Close task",
+    "childTask": "Child task"
   },
   "app": {
     "loading": "Loading..."

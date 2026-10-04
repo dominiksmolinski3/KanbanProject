@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "Impossible d'envoyer {{name}}",
       "attachmentDownloadFailed": "Impossible de télécharger {{name}}",
       "attachmentStorageUnavailable": "Le stockage de fichiers n'est pas configuré, les pièces jointes ne peuvent pas être enregistrées",
-      "avatarAlt": "Avatar de l'utilisateur"
+      "avatarAlt": "Avatar de l'utilisateur",
+      "childCount": "Tâches enfants : {{count}}",
+      "hasParent": "A une tâche parente"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "Assignés",
             "priority": "Priorité"
         },
-        "close": "Fermer la tâche"
+        "close": "Fermer la tâche",
+        "childTask": "Tâche enfant"
     },
     "app": {
         "loading": "Chargement..."

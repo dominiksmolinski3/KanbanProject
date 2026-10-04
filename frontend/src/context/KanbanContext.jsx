@@ -31,6 +31,9 @@ export function KanbanProvider({ children }) {
   });
 
   const keyboardMoveRaw = useKeyboardMove({ columns: data.columns, rows: data.rows, moveTask: taskActions.moveTask });
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const linkFocusId = draggedTaskId ?? keyboardMoveRaw.held?.taskId ?? null;
+
   const keyboardMove = {
     ...keyboardMoveRaw,
     grab: (...args) => {
@@ -85,7 +88,9 @@ export function KanbanProvider({ children }) {
     dailyFocusOnly,
     setDailyFocusOnly,
     dragAndDrop,
-    keyboardMove
+    keyboardMove,
+    linkFocusId,
+    setDraggedTaskId
   };
 
   return <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>;

@@ -15,6 +15,8 @@ import '../styles/components/Task.css';
 const TILT_GHOST_CLASS = 'task-drag-ghost';
 const TITLE_OPEN_DELAY_MS = 250;
 
+const linkColor = (token) => getComputedStyle(document.documentElement).getPropertyValue(token).trim() || 'currentColor';
+
 function setTiltedDragImage(e, source) {
   if (!source || typeof e.dataTransfer.setDragImage !== 'function') return;
   const rect = source.getBoundingClientRect();
@@ -39,6 +41,9 @@ function Task({ task, columnId, rowId }) {
     setDailyFocus,
     readOnly,
     activeBoard,
+    tasks = [],
+    linkFocusId = null,
+    setDraggedTaskId,
   } = useKanban();
   const [showDetails, setShowDetails] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -157,6 +162,7 @@ function Task({ task, columnId, rowId }) {
     }
 
     setIsDragging(true);
+    setDraggedTaskId?.(task.id);
     document.body.classList.add('showing-task-relationships');
 
     if (hasUnfinishedSubtasks) {
@@ -173,6 +179,16 @@ function Task({ task, columnId, rowId }) {
   };
 
   const heldByKeyboard = keyboardMove.isHeld(task.id);
+  const showsLinks = isDragging || heldByKeyboard;
+  const focusTask = linkFocusId !== null && String(linkFocusId) !== String(task.id)
+    ? tasks.find((candidate) => String(candidate.id) === String(linkFocusId))
+    : null;
+  let linkRole = null;
+  if (focusTask && (focusTask.childTaskIds || []).some((id) => String(id) === String(task.id))) {
+    linkRole = 'child';
+  } else if (focusTask && String(focusTask.parentTaskId) === String(task.id)) {
+    linkRole = 'parent';
+  }
 
   const onGripKeyDown = (e) => {
     if (heldByKeyboard) {
@@ -302,6 +318,7 @@ function Task({ task, columnId, rowId }) {
       taskRef.current.classList.remove('dragging');
     }
     setIsDragging(false);
+    setDraggedTaskId?.(null);
     document.body.classList.remove('showing-task-relationships');
 
   };
@@ -322,6 +339,7 @@ function Task({ task, columnId, rowId }) {
         className={[
           'task',
           isDragOver && 'user-drag-over',
+          linkRole && `linked-${linkRole}`,
           heldByKeyboard && 'keyboard-held',
           isParentTask && 'parent-task',
           task.completed && 'task-completed',
@@ -343,6 +361,11 @@ function Task({ task, columnId, rowId }) {
         data-is-parent={isParentTask}
       >
         {heldByKeyboard && <span className="task-held-tag">{t('board.keyboardMove.tag')}</span>}
+        {linkRole && (
+          <span className={`task-held-tag link-tag ${linkRole}`}>
+            {linkRole === 'child' ? t('taskDetails.childTask') : t('taskDetails.parentTask')}
+          </span>
+        )}
         <div className="task-header">
           <input
             type="checkbox"
@@ -452,46 +475,40 @@ function Task({ task, columnId, rowId }) {
         )}
       </article>
 
-      {isDragging && childTaskIds.filter(isOnBoard).map(childId => (
+      {showsLinks && childTaskIds.filter(isOnBoard).map(childId => (
         <Xarrow
           key={`arrow-${task.id}-${childId}`}
           start={`task-${task.id}`}
           end={`task-${childId}`}
-          color="#86d6ff"
-          strokeWidth={3}
+          color={linkColor('--kb-accent')}
+          strokeWidth={2}
           path="smooth"
-          startAnchor="auto"
-          endAnchor="auto"
-          curveness={0.3}
-          zIndex={9999}
-          animateDrawing={0.5}
-          showHead={true}
-          headSize={6}
-          labels={{ middle: 
-            <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              backgroundColor: '#86d6ff',
-              boxShadow: '0 0 5px rgba(134, 214, 255, 0.8)'
-            }}/>
-          }}
+          curveness={0.45}
+          zIndex={20}
+          showHead
+          headSize={5}
+          showTail
+          tailShape="circle"
+          tailSize={3}
         />
       ))}
 
-      {isDragging && parentTaskId !== null && isOnBoard(parentTaskId) && (
+      {showsLinks && parentTaskId !== null && isOnBoard(parentTaskId) && (
         <Xarrow
-          key={`arrow-${parentTaskId}-${task.id}`}
-          start={`task-${parentTaskId}`}
-          end={`task-${task.id}`}
-          color="#0e1b36"
-          strokeWidth={3}
-          path="straight"
-          startAnchor="auto"
-          endAnchor="auto"
-          dashness={{ strokeLen: 5, nonStrokeLen: 5, animation: 1 }}
-          zIndex={9999}
-          showHead={true}
+          key={`arrow-${task.id}-${parentTaskId}`}
+          start={`task-${task.id}`}
+          end={`task-${parentTaskId}`}
+          color={linkColor('--kb-ink-muted')}
+          strokeWidth={2}
+          path="smooth"
+          curveness={0.45}
+          dashness={{ strokeLen: 6, nonStrokeLen: 5 }}
+          zIndex={20}
+          showHead
+          headSize={5}
+          showTail
+          tailShape="circle"
+          tailSize={3}
         />
       )}
 

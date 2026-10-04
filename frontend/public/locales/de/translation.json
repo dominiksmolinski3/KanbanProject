@@ -68,7 +68,9 @@
     "attachmentUploadFailed": "{{name}} konnte nicht hochgeladen werden",
     "attachmentDownloadFailed": "{{name}} konnte nicht heruntergeladen werden",
     "attachmentStorageUnavailable": "Der Dateispeicher ist nicht konfiguriert, Anhänge können nicht gespeichert werden",
-    "avatarAlt": "Benutzer-Avatar"
+    "avatarAlt": "Benutzer-Avatar",
+    "childCount": "Untergeordnete Aufgaben: {{count}}",
+    "hasParent": "Hat eine übergeordnete Aufgabe"
   },
   "board": {
     "wip": {
@@ -581,7 +583,8 @@
       "assignees": "Zugewiesen",
       "priority": "Priorität"
     },
-    "close": "Aufgabe schließen"
+    "close": "Aufgabe schließen",
+    "childTask": "Untergeordnete Aufgabe"
   },
   "app": {
     "loading": "Wird geladen..."
