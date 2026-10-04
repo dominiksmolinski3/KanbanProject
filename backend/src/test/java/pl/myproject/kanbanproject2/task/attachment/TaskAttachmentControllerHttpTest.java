@@ -162,6 +162,16 @@ class TaskAttachmentControllerHttpTest {
     }
 
     @Test
+    @DisplayName("a stored type that does not parse still downloads, as octet-stream, rather than answering 500")
+    void contentSurvivesAnUnparseableStoredType() throws Exception {
+        when(attachmentService.content(caller, 42, 5L, null)).thenReturn(content("notes", "not a type"));
+
+        mvc.perform(get("/tasks/42/attachments/5/content"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/octet-stream"));
+    }
+
+    @Test
     @DisplayName("an attachment the caller may not see is a 404, with nothing in the body about it")
     void contentAnswers404() throws Exception {
         when(attachmentService.content(caller, 42, 5L, null))
