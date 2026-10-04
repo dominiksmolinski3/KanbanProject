@@ -137,7 +137,7 @@ describe('TaskLabels Component', () => {
 
     await waitFor(() => {
       expect(updateTaskLabels).toHaveBeenCalledWith(1, [...initialLabels, 'High Priority']);
-      expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'High Priority']);
+      expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'High Priority'], expect.objectContaining({ id: 1 }));
       expect(mockRefreshTasks).toHaveBeenCalled();
     });
   });
@@ -189,7 +189,7 @@ describe('TaskLabels Component', () => {
     
     await waitFor(() => {
       expect(updateTaskLabels).toHaveBeenCalledWith(1, ['Feature']);
-      expect(mockLabelsChange).toHaveBeenCalledWith(['Feature']);
+      expect(mockLabelsChange).toHaveBeenCalledWith(['Feature'], expect.objectContaining({ id: 1 }));
     });
   });
   
@@ -264,7 +264,7 @@ describe('TaskLabels Component', () => {
     
     await waitFor(() => {
       expect(updateTaskLabels).toHaveBeenCalledWith(1, [...initialLabels, 'Custom Label']);
-      expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'Custom Label']);
+      expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'Custom Label'], expect.objectContaining({ id: 1 }));
       expect(mockRefreshTasks).toHaveBeenCalled();
     });
     

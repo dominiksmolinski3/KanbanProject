@@ -507,26 +507,34 @@ describe('TaskDetails Component', () => {
     expect(api.removeUserFromTask).not.toHaveBeenCalled();
   });
 
-  test('updates task labels', async () => {
+  test('a label change saves once, and the next field save carries the version it returned', async () => {
+    api.fetchTask.mockResolvedValue({ ...mockTask, version: 3 });
+    api.getAllLabels.mockResolvedValue([]);
+    api.updateTaskLabels.mockResolvedValue({ ...mockTask, labels: ['Frontend'], version: 4 });
+    api.updateTask.mockResolvedValue({ ...mockTask, version: 5 });
+
     renderTaskDetails();
-    
+
     await waitFor(() => {
       expect(screen.queryByText('board.loading')).not.toBeInTheDocument();
     });
-    
-    const updateTaskSpy = jest.spyOn(api, 'updateTask');
-    const newLabels = ['Bug', 'Frontend', 'High Priority'];
-    
-    const labelsSection = await screen.findByText('board.labels');
-    
+
     await act(async () => {
-      mockContextValue.refreshTasks(newLabels);
-      await api.updateTask(mockTask.id, { labels: newLabels });
+      fireEvent.click(screen.getAllByRole('button', { name: 'Bug' })[0]);
     });
-    
-    expect(updateTaskSpy).toHaveBeenCalledWith(mockTask.id, { 
-      labels: expect.any(Array)
+
+    await waitFor(() => {
+      expect(api.updateTaskLabels).toHaveBeenCalledWith(mockTask.id, ['Frontend']);
     });
+    expect(api.updateTask).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByTitle('taskActions.editTaskDescription'));
+    fireEvent.change(screen.getByPlaceholderText('taskActions.description'), {
+      target: { value: 'After the label' }
+    });
+    fireEvent.click(screen.getByText('taskActions.save'));
+
+    expect(api.updateTask).toHaveBeenCalledWith(mockTask.id, { description: 'After the label', version: 4 });
   });
 
   test('handles closing the task details panel', async () => {
