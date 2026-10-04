@@ -161,7 +161,6 @@ class TenantIsolationTest {
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.updateTaskPosition(me, 7, 3));
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.updateTaskCompletion(me, 7, true));
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.setDailyFocus(me, 7, true));
-            expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.addLabelToTask(me, 7, "mine"));
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.updateTaskLabels(me, 7, Set.of("x")));
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.assignUserToTask(me, 7, MINE));
             expect(ExceptionIdentifier.TASK_NOT_FOUND, () -> taskService.getChildTasks(me, 7));

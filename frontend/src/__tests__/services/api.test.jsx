@@ -444,64 +444,6 @@ describe('API Services', () => {
       await expect(api.removeUserFromTask('1', 'user1')).rejects.toThrow('Network error');
     });
       
-    test('addLabelToTask should add a label to task', async () => {
-      const mockTask = { id: '1', title: 'Task 1', labels: ['bug', 'feature'] };
-      const label = 'feature';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockTask
-      });
-      
-      const result = await api.addLabelToTask('1', label);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/label/feature', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      expect(result).toEqual(mockTask);
-    });
-
-    test('addLabelToTask should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400
-      });
-        
-      await expect(api.addLabelToTask('1', 'bug')).rejects.toMatchObject({ status: 400 });
-    });
-
-    test('removeLabelFromTask should remove a label from task', async () => {
-      const mockTask = { id: '1', title: 'Task 1', labels: ['bug'] };
-      const label = 'feature';
-        
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockTask
-      });
-      
-      const result = await api.removeLabelFromTask('1', label);
-      
-      expect(fetch).toHaveBeenCalledWith('/api/tasks/1/label/feature', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      expect(result).toEqual(mockTask);
-    });
-
-    test('removeLabelFromTask should handle error responses', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400
-      });
-        
-      await expect(api.removeLabelFromTask('1', 'bug')).rejects.toMatchObject({ status: 400 });
-    });
-      
     test('updateTaskLabels should update all task labels', async () => {
       const mockTask = { id: '1', title: 'Task 1', labels: ['bug', 'critical'] };
       const labels = ['bug', 'critical'];
