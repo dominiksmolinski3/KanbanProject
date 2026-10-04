@@ -32,3 +32,9 @@ variable "tags" {
   description = "Tags applied to every resource this module creates. Set once at the root."
   type        = map(string)
 }
+
+variable "password_version" {
+  description = "Bump to rotate the RabbitMQ password. The broker and the API both need a restart to read it."
+  type        = number
+  default     = 1
+}

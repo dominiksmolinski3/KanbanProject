@@ -257,3 +257,9 @@ variable "database_roles_ready" {
   description = "The roles job's run id. The migration job and the app log in as Entra roles that only exist once that job has run."
   type        = string
 }
+
+variable "jwt_secret_version" {
+  description = "Bump to rotate the JWT signing key. Every signed-in user is signed out, and the API needs a restart to read the new key."
+  type        = number
+  default     = 1
+}
