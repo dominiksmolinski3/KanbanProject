@@ -58,9 +58,7 @@ public class TaskAttachmentController {
         TaskAttachmentContent attachment =
                 attachmentService.content(currentUser, taskId, attachmentId, singleRangeIn(rangeHeader));
 
-        MediaType mediaType = StringUtils.hasText(attachment.contentType())
-                ? MediaType.parseMediaType(attachment.contentType())
-                : MediaType.APPLICATION_OCTET_STREAM;
+        MediaType mediaType = TaskAttachmentService.mediaTypeOf(attachment.contentType());
 
         var response = ResponseEntity
                 .status(attachment.partial() ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)

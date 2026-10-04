@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpRange;
 import org.springframework.mock.web.MockMultipartFile;
@@ -193,6 +195,16 @@ class TaskAttachmentServiceTest {
         @DisplayName("an upload with no declared type is stored as octet-stream rather than guessed at")
         void defaultsAnAbsentContentType() {
             service.upload(caller, 42, upload("notes", null, CONTENT));
+
+            verify(blobStore).put(anyString(), eq("application/octet-stream"),
+                    any(InputStream.class), anyLong());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"not a type", "text", "*/*", "image/*"})
+        @DisplayName("a declared type that is not one concrete media type is stored as octet-stream")
+        void refusesAnUnusableContentType(String declared) {
+            service.upload(caller, 42, upload("notes", declared, CONTENT));
 
             verify(blobStore).put(anyString(), eq("application/octet-stream"),
                     any(InputStream.class), anyLong());
