@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { authService } from '../services/authService';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { uploadUserAvatar } from '../services/api';
+import { getUserAvatar, uploadUserAvatar } from '../services/api';
 import useUserAvatar, { clearAvatarCache } from '../board/useUserAvatar';
 import { hueOf, initialsOf } from '../board/cardModel';
 import Icon from './Icon';
@@ -66,7 +66,7 @@ function Profile({ user }) {
     try {
       await uploadUserAvatar(user.id, file);
       clearAvatarCache();
-      setPreview(URL.createObjectURL(file));
+      setPreview(await getUserAvatar(user.id));
       toast.success(t('usersManagement.messages.avatarUpdated'));
     } catch (error) {
       toast.error(error.message || t('account.errors.generic'));
