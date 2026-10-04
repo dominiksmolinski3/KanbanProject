@@ -24,8 +24,6 @@ class WriteAccessCoverageTest {
                     "public TaskDto removeUserFromTask(",
                     "public TaskDto updateTaskPosition(",
                     "public List<TaskDto> reorderTasks(",
-                    "public TaskDto addLabelToTask(",
-                    "public TaskDto removeLabelFromTask(",
                     "public TaskDto updateTaskLabels(",
                     "public TaskDto assignParentTask(",
                     "public TaskDto removeParentTask(",

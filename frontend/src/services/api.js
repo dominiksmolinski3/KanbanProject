@@ -421,46 +421,6 @@ export const removeUserFromTask = async (taskId, userId) => {
   }
 };
 
-export const addLabelToTask = async (taskId, label) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/label/${label}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error adding label to task ${taskId}:`, error);
-    throw error;
-  }
-};
-
-export const removeLabelFromTask = async (taskId, label) => {
-  try {
-    const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/label/${label}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error removing label from task ${taskId}:`, error);
-    throw error;
-  }
-};
-
 export const updateTaskLabels = async (taskId, labels) => {
   try {
     const response = await fetch(`${API_ENDPOINTS.TASKS}/${taskId}/labels`, {

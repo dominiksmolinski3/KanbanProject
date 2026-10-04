@@ -188,7 +188,6 @@ class TaskServiceRequestBindingTest {
         String overlong = "x".repeat(TaskLabels.MAX_LENGTH + 1);
 
         List<Runnable> routes = List.of(
-                () -> taskService.addLabelToTask(caller, 1, overlong),
                 () -> taskService.updateTaskLabels(caller, 1, Set.of(overlong)),
                 () -> taskService.patchTask(caller, 1, patch(p -> p.labels = JsonNullable.of(Set.of(overlong)))),
                 () -> taskService.addTask(caller, null, new CreateTaskRequest(
@@ -214,7 +213,9 @@ class TaskServiceRequestBindingTest {
         }
         task.setLabels(full);
 
-        assertThatThrownBy(() -> taskService.addLabelToTask(caller, 1, "one-too-many"))
+        var oneTooMany = new java.util.HashSet<>(full);
+        oneTooMany.add("one-too-many");
+        assertThatThrownBy(() -> taskService.updateTaskLabels(caller, 1, oneTooMany))
                 .isInstanceOf(GlobalException.class);
         assertThat(task.getLabels()).hasSize(TaskLabels.MAX_COUNT).doesNotContain("one-too-many");
     }

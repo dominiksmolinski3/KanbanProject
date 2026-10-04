@@ -1,13 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import TaskLabels from '../../components/TaskLabels';
-import { addLabelToTask, removeLabelFromTask, getAllLabels } from '../../services/api';
+import { updateTaskLabels, getAllLabels } from '../../services/api';
 import KanbanContext from '../../context/KanbanContext';
 import { toast } from 'react-toastify';
 
 jest.mock('../../services/api', () => ({
-  addLabelToTask: jest.fn(),
-  removeLabelFromTask: jest.fn(),
+  updateTaskLabels: jest.fn(),
   getAllLabels: jest.fn()
 }));
 
@@ -108,7 +107,7 @@ describe('TaskLabels Component', () => {
   });
   
   test('adds a predefined label when selected', async () => {
-    addLabelToTask.mockResolvedValue({ id: 1, labels: [...initialLabels, 'High Priority'] });
+    updateTaskLabels.mockResolvedValue({ id: 1, labels: [...initialLabels, 'High Priority'] });
     
     await act(async () => {
       render(
@@ -137,14 +136,39 @@ describe('TaskLabels Component', () => {
     });
 
     await waitFor(() => {
-      expect(addLabelToTask).toHaveBeenCalledWith(1, 'High Priority');
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, [...initialLabels, 'High Priority']);
       expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'High Priority']);
       expect(mockRefreshTasks).toHaveBeenCalled();
     });
   });
   
+  test('removing a label that looks like a path sends the remaining set, never a URL built from it', async () => {
+    const hostile = '../../../users/12';
+    updateTaskLabels.mockResolvedValue({ id: 1, labels: ['Bug'] });
+
+    await act(async () => {
+      render(
+        <KanbanContext.Provider value={mockContextValue}>
+          <TaskLabels
+            taskId={1}
+            initialLabels={['Bug', hostile]}
+            onLabelsChange={mockLabelsChange}
+          />
+        </KanbanContext.Provider>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: hostile })[0]);
+    });
+
+    await waitFor(() => {
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, ['Bug']);
+    });
+  });
+
   test('removes a label when remove button is clicked', async () => {
-    removeLabelFromTask.mockResolvedValue({ id: 1, labels: ['Feature'] });
+    updateTaskLabels.mockResolvedValue({ id: 1, labels: ['Feature'] });
     
     await act(async () => {
       render(
@@ -164,7 +188,7 @@ describe('TaskLabels Component', () => {
     });
     
     await waitFor(() => {
-      expect(removeLabelFromTask).toHaveBeenCalledWith(1, 'Bug');
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, ['Feature']);
       expect(mockLabelsChange).toHaveBeenCalledWith(['Feature']);
     });
   });
@@ -203,7 +227,7 @@ describe('TaskLabels Component', () => {
   });
   
   test('adds a custom label when submitted', async () => {
-    addLabelToTask.mockResolvedValue({ id: 1, labels: [...initialLabels, 'Custom Label'] });
+    updateTaskLabels.mockResolvedValue({ id: 1, labels: [...initialLabels, 'Custom Label'] });
     
     await act(async () => {
       render(
@@ -239,7 +263,7 @@ describe('TaskLabels Component', () => {
     });
     
     await waitFor(() => {
-      expect(addLabelToTask).toHaveBeenCalledWith(1, 'Custom Label');
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, [...initialLabels, 'Custom Label']);
       expect(mockLabelsChange).toHaveBeenCalledWith([...initialLabels, 'Custom Label']);
       expect(mockRefreshTasks).toHaveBeenCalled();
     });
@@ -360,12 +384,12 @@ describe('TaskLabels Component', () => {
     
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith('taskLabels.alreadyAddedWarning');
-      expect(addLabelToTask).not.toHaveBeenCalled();
+      expect(updateTaskLabels).not.toHaveBeenCalled();
     });
   });
   
   test('handles API errors gracefully when adding labels', async () => {
-    addLabelToTask.mockRejectedValue(new Error('API error'));
+    updateTaskLabels.mockRejectedValue(new Error('API error'));
     console.error = jest.fn();
     
     await act(async () => {
@@ -391,14 +415,14 @@ describe('TaskLabels Component', () => {
     });
 
     await waitFor(() => {
-      expect(addLabelToTask).toHaveBeenCalledWith(1, 'High Priority');
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, [...initialLabels, 'High Priority']);
       expect(console.error).toHaveBeenCalled();
       expect(toast.error).toHaveBeenCalledWith('taskLabels.addErrorMessage');
     });
   });
   
   test('handles API errors gracefully when removing labels', async () => {
-    removeLabelFromTask.mockRejectedValue(new Error('API error'));
+    updateTaskLabels.mockRejectedValue(new Error('API error'));
     console.error = jest.fn();
     
     await act(async () => {
@@ -419,7 +443,7 @@ describe('TaskLabels Component', () => {
     });
     
     await waitFor(() => {
-      expect(removeLabelFromTask).toHaveBeenCalledWith(1, 'Bug');
+      expect(updateTaskLabels).toHaveBeenCalledWith(1, ['Feature']);
       expect(console.error).toHaveBeenCalled();
       expect(toast.error).toHaveBeenCalledWith('taskLabels.removeErrorMessage');
     });

@@ -347,26 +347,6 @@ public class TaskService {
         }
     }
 
-    public TaskDto addLabelToTask(User caller, Integer taskId, String label) {
-        var task = findTask(caller, taskId);
-        boardService.requireWritable(caller, task.getBoard());
-        var labels = task.getLabels() == null ? new HashSet<String>() : new HashSet<>(task.getLabels());
-        labels.add(label);
-        TaskLabels.requireValid(labels);
-        task.setLabels(labels);
-        return saveAndAnnounce(task);
-    }
-
-    public TaskDto removeLabelFromTask(User caller, Integer taskId, String label) {
-        var task = findTask(caller, taskId);
-        boardService.requireWritable(caller, task.getBoard());
-        if (task.getLabels() != null) {
-            task.getLabels().remove(label);
-            return saveAndAnnounce(task);
-        }
-        return taskMapper.apply(task);
-    }
-
     public TaskDto updateTaskLabels(User caller, Integer taskId, Set<String> labels) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());

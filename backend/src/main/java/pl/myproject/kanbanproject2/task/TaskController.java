@@ -115,20 +115,6 @@ public class TaskController {
         return ResponseEntity.ok(taskService.reorderTasks(currentUser, request.orderedIds()));
     }
 
-    @PutMapping("/{taskId}/label/{label}")
-    public ResponseEntity<TaskDto> addLabelToTask(@PathVariable Integer taskId,
-                                                  @PathVariable @Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String label,
-                                                  @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(taskService.addLabelToTask(currentUser, taskId, label));
-    }
-
-    @DeleteMapping("/{taskId}/label/{label}")
-    public ResponseEntity<TaskDto> removeLabelFromTask(@PathVariable Integer taskId,
-                                                       @PathVariable String label,
-                                                       @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(taskService.removeLabelFromTask(currentUser, taskId, label));
-    }
-
     @PatchMapping("/{taskId}/labels")
     public ResponseEntity<TaskDto> updateTaskLabels(
             @PathVariable Integer taskId,

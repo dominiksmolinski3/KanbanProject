@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import LengthHint from './LengthHint';
 import { LABEL_MAX_LENGTH } from '../services/textLimits';
 import { createPortal } from 'react-dom';
-import { addLabelToTask, removeLabelFromTask, getAllLabels } from '../services/api';
+import { updateTaskLabels, getAllLabels } from '../services/api';
 import '../styles/components/TaskLabels.css';
 import { useKanban } from '../context/KanbanContext';
 import { toast } from 'react-toastify';
@@ -121,8 +121,8 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
         return;
       }
   
-      await addLabelToTask(taskId, labelName);
       const updatedLabels = [...labels, labelName];
+      await updateTaskLabels(taskId, updatedLabels);
       setLabels(updatedLabels);
       
       if (!existingLabels.includes(labelName)) {
@@ -155,8 +155,8 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
   
   const handleRemoveLabel = async (labelName) => {
     try {
-      await removeLabelFromTask(taskId, labelName);
       const updatedLabels = labels.filter(label => label !== labelName);
+      await updateTaskLabels(taskId, updatedLabels);
       setLabels(updatedLabels);
       onLabelsChange(updatedLabels);
     } catch (error) {

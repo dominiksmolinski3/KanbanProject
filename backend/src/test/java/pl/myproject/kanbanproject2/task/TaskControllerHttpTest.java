@@ -237,10 +237,6 @@ class TaskControllerHttpTest {
     void labelIsCapped() throws Exception {
         String tooLong = "l".repeat(CreateTaskRequest.LABEL_MAX_LENGTH + 1);
 
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .put("/tasks/1/label/" + tooLong))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         mvc.perform(patch("/tasks/1/labels")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(List.of("ok", tooLong))))
@@ -251,7 +247,6 @@ class TaskControllerHttpTest {
                         .content(json.writeValueAsString(java.util.Map.of("labels", List.of(tooLong)))))
                 .andExpect(status().isBadRequest());
 
-        verify(taskService, never()).addLabelToTask(any(), any(), any());
         verify(taskService, never()).updateTaskLabels(any(), any(), any());
         verify(taskService, never()).patchTask(any(), any(), any());
     }
