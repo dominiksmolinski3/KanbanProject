@@ -25,7 +25,12 @@ function TaskCardMeta({ task, dueState, children }) {
   const hiddenLabels = labels.length - visibleLabels.length;
 
   const hasAssignees = (task.userIds || []).length > 0;
-  if (!priority && labels.length === 0 && !dueState && totalSubtasks === 0 && !hasAssignees) return null;
+  const childCount = (task.childTaskIds || []).length;
+  const hasParent = task.parentTaskId !== null && task.parentTaskId !== undefined;
+  const hasRelations = childCount > 0 || hasParent;
+  if (!priority && labels.length === 0 && !dueState && totalSubtasks === 0 && !hasAssignees && !hasRelations) {
+    return null;
+  }
 
   const due = dueState ? formatDue(task.deadline, i18n?.language) : null;
   const dueKey = { overdue: 'taskActions.dueOverdue', soon: 'taskActions.dueSoon', later: 'taskActions.dueLater' }[dueState];
@@ -65,7 +70,7 @@ function TaskCardMeta({ task, dueState, children }) {
         </div>
       )}
 
-      {(dueState || totalSubtasks > 0 || hasAssignees) && (
+      {(dueState || totalSubtasks > 0 || hasAssignees || hasRelations) && (
         <div className="task-signals">
           {dueState && (
             <span className={`due-chip due-${dueState}`} title={t(dueKey, { date: due })}>
@@ -87,6 +92,19 @@ function TaskCardMeta({ task, dueState, children }) {
               <span className="subtask-bar" aria-hidden="true">
                 <span style={{ width: `${Math.round((doneSubtasks / totalSubtasks) * 100)}%` }} />
               </span>
+            </span>
+          )}
+          {childCount > 0 && (
+            <span className="relation-chip" title={t('taskActions.childCount', { count: childCount })}>
+              <Icon name="link" size="sm" />
+              <span className="visually-hidden">{t('taskActions.childCount', { count: childCount })}</span>
+              <span aria-hidden="true">{childCount}</span>
+            </span>
+          )}
+          {hasParent && (
+            <span className="relation-chip" title={t('taskActions.hasParent')}>
+              <Icon name="link" size="sm" />
+              <span className="visually-hidden">{t('taskActions.hasParent')}</span>
             </span>
           )}
           {children}

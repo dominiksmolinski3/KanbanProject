@@ -68,7 +68,9 @@
       "attachmentUploadFailed": "No se pudo subir {{name}}",
       "attachmentDownloadFailed": "No se pudo descargar {{name}}",
       "attachmentStorageUnavailable": "El almacenamiento de archivos no está configurado, no se pueden guardar los adjuntos",
-      "avatarAlt": "Avatar del usuario"
+      "avatarAlt": "Avatar del usuario",
+      "childCount": "Tareas secundarias: {{count}}",
+      "hasParent": "Tiene una tarea principal"
     },
     "board": {
       "wip": {
@@ -581,7 +583,8 @@
             "assignees": "Asignados",
             "priority": "Prioridad"
         },
-        "close": "Cerrar tarea"
+        "close": "Cerrar tarea",
+        "childTask": "Tarea secundaria"
     },
     "app": {
         "loading": "Cargando..."
