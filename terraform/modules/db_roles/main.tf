@@ -19,7 +19,7 @@ resource "azurerm_postgresql_flexible_server_active_directory_administrator" "ad
 }
 
 resource "azurerm_role_assignment" "database_secrets" {
-  for_each = toset(["POSTGRES-USER", "POSTGRES-PASSWORD"])
+  for_each = toset(var.password_login_enabled ? ["POSTGRES-PASSWORD"] : [])
 
   scope                = "${var.key_vault_id}/secrets/${each.value}"
   role_definition_name = "Key Vault Secrets User"
@@ -56,16 +56,14 @@ resource "azurerm_container_app_job" "roles" {
     identity_ids = [azurerm_user_assigned_identity.admin.id]
   }
 
-  secret {
-    name                = "postgres-user"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-USER")
-    identity            = azurerm_user_assigned_identity.admin.id
-  }
+  dynamic "secret" {
+    for_each = var.password_login_enabled ? [1] : []
 
-  secret {
-    name                = "postgres-password"
-    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-PASSWORD")
-    identity            = azurerm_user_assigned_identity.admin.id
+    content {
+      name                = "postgres-password"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "POSTGRES-PASSWORD")
+      identity            = azurerm_user_assigned_identity.admin.id
+    }
   }
 
   template {
@@ -130,12 +128,16 @@ resource "azurerm_container_app_job" "roles" {
         value = tostring(var.password_login_enabled)
       }
       env {
-        name        = "POSTGRES_USER"
-        secret_name = "postgres-user"
+        name  = "POSTGRES_USER"
+        value = var.postgres_admin_login
       }
-      env {
-        name        = "POSTGRES_PASSWORD"
-        secret_name = "postgres-password"
+      dynamic "env" {
+        for_each = var.password_login_enabled ? [1] : []
+
+        content {
+          name        = "POSTGRES_PASSWORD"
+          secret_name = "postgres-password"
+        }
       }
     }
   }
