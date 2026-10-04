@@ -159,27 +159,6 @@ module "backup" {
   depends_on = [module.postgres]
 }
 
-module "pitr_drill" {
-  source                     = "./modules/pitr_drill"
-  env                        = var.env
-  location                   = azurerm_resource_group.main.location
-  tags                       = local.tags
-  resource_group_name        = azurerm_resource_group.main.name
-  resource_group_id          = azurerm_resource_group.main.id
-  container_app_env_id       = module.vnet.container_app_env_id
-  postgres_server_id         = module.postgres.postgres_server_id
-  postgres_subnet_id         = module.vnet.db_subnet_id
-  postgres_dns_zone_id       = module.postgres.private_dns_zone_id
-  postgres_database          = module.postgres.postgres_db_name
-  reader_identity            = module.backup.identity
-  rbac_propagation_delay     = var.rbac_propagation_delay
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-  alerts_enabled             = var.alert_email != ""
-  action_group_id            = module.diagnostics.action_group_id
-
-  depends_on = [module.db_roles]
-}
-
 module "db_roles" {
   source                 = "./modules/db_roles"
   env                    = var.env

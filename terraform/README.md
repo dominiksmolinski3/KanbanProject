@@ -539,22 +539,10 @@ subscription.
   else), restores it into a throwaway Postgres inside the job and prints `RESTORE_OK` with
   the migration and row counts. `kanban-<env>-restore-drill-failed` fires when no such
   line has appeared for 26 hours. A dump that exists and does not restore is not a backup.
-- A third, `kanban-<env>-pitr-drill`, tests the server's own backups, monthly on the 2nd at
-  04:45 UTC. It restores the server to an hour ago as a scratch server in
-  `kanban-<env>-pitr-rg`, checks it, and deletes it. Three containers share the run: `restore`
-  calls ARM directly with the drill's identity, `check` logs in as the backup identity (already
-  `kanban_reader` in every copy) and prints `PITR_OK` with the migration and row counts, and
-  `cleanup` deletes the scratch server once `check` has finished, however it finished.
-  - The drill's identity can create and delete servers in the scratch group only. On the real
-    server it can read and write, because Azure refuses a restore (`LinkedAuthorizationFailed`)
-    unless the caller can write the source. It cannot delete it: the role has no delete action,
-    and the server keeps its `CanNotDelete` lock. On the subnet and DNS zone it can join.
-  - A scratch server is billed while it exists. If one is left behind, the next run deletes it
-    before restoring.
-  - A log alert can look back two days at most, too short for a monthly job to go stale in.
-    So `kanban-<env>-pitr-drill-failed` fires on a run that printed `PITR_START` and no
-    `PITR_OK`. A job that stops running at all is a Terraform change, which the drift sweep
-    reports.
+- There is no automated point-in-time restore drill. Azure checks a restore as
+  `flexibleServers/write` on the source server and has no narrower permission, so any identity
+  that can run one can also reconfigure the production server. Run a PITR by hand with your own
+  account when you want to test it.
 
 To run it now: `az containerapp job start -g kanban-dev-rg -n kanban-dev-pg-dump`.
 To restore: download a dump and `pg_restore --no-owner --dbname=<target>`; it
