@@ -47,8 +47,13 @@ resource "azurerm_role_assignment" "drift_refresh" {
   principal_type     = "ServicePrincipal"
 }
 
+data "azurerm_resources" "vault" {
+  resource_group_name = var.environment_resource_groups[0]
+  type                = "Microsoft.KeyVault/vaults"
+}
+
 resource "azurerm_role_assignment" "drift_secrets" {
-  scope                = "${data.azurerm_subscription.current.id}/resourceGroups/${var.environment_resource_groups[0]}"
+  scope                = one(data.azurerm_resources.vault.resources).id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.drift.principal_id
   principal_type       = "ServicePrincipal"

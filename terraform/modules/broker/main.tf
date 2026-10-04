@@ -109,15 +109,16 @@ resource "time_sleep" "wait_for_secrets_user" {
   create_duration = var.rbac_propagation_delay
 }
 
-resource "random_password" "rabbitmq_password" {
+ephemeral "random_password" "rabbitmq_password" {
   length  = 32
   special = false
 }
 
 resource "azurerm_key_vault_secret" "rabbitmq_password" {
-  tags         = var.tags
-  name         = "RABBITMQ-PASSWORD"
-  value        = random_password.rabbitmq_password.result
-  content_type = "RabbitMQ STOMP relay password"
-  key_vault_id = var.key_vault_id
+  tags             = var.tags
+  name             = "RABBITMQ-PASSWORD"
+  value_wo         = ephemeral.random_password.rabbitmq_password.result
+  value_wo_version = var.password_version
+  content_type     = "RabbitMQ STOMP relay password"
+  key_vault_id     = var.key_vault_id
 }

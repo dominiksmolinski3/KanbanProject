@@ -407,22 +407,18 @@ resource "time_sleep" "wait_for_blob_contributor" {
   create_duration = var.rbac_propagation_delay
 }
 
-resource "random_password" "jwt_secret_key" {
+ephemeral "random_password" "jwt_secret_key" {
   length  = 64
   special = false
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
-  tags         = var.tags
-  name         = "JWT-SECRET-KEY"
-  value        = base64encode(random_password.jwt_secret_key.result)
-  content_type = "base64 HMAC signing key"
-  key_vault_id = var.key_vault_id
-
-  lifecycle {
-    # The JWT key is rotated out-of-band; without this an apply reverts it and signs everyone out.
-    ignore_changes = [value]
-  }
+  tags             = var.tags
+  name             = "JWT-SECRET-KEY"
+  value_wo         = base64encode(ephemeral.random_password.jwt_secret_key.result)
+  value_wo_version = var.jwt_secret_version
+  content_type     = "base64 HMAC signing key"
+  key_vault_id     = var.key_vault_id
 }
 
 resource "azurerm_key_vault_secret" "acs_email_connection_string" {
