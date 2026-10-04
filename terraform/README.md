@@ -525,7 +525,9 @@ subscription.
 - The job's identity has a custom role that can **add blobs and nothing else**: no
   read, no delete, no overwrite. The container has a 14-day time-based immutability
   policy, so even a compromised job cannot remove a recent dump. The policy is
-  unlocked on purpose: locking it is irreversible.
+  **locked**, so not even an Owner can shorten it or delete the policy: the period can
+  only be extended, and the account cannot be deleted while it holds a dump younger
+  than 14 days.
 - Lifecycle rules keep `daily/` 14 days, `weekly/` (Sundays) 8 weeks and `monthly/`
   (the 1st) a year, moving monthly dumps to Cool after 30 days.
 - The account has no private endpoint. `snet-backend` carries a
