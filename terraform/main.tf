@@ -191,6 +191,7 @@ module "db_roles" {
   key_vault_uri          = module.key_vault.uri
   tenant_id              = module.postgres.tenant_id
   password_login_enabled = module.postgres.password_auth_enabled
+  postgres_admin_login   = module.postgres.administrator_login
   postgres_server_name   = module.postgres.postgres_server_name
   postgres_fqdn          = module.postgres.fqdn
   postgres_database      = module.postgres.postgres_db_name
