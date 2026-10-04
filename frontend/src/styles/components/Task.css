@@ -30,6 +30,8 @@
   inset-inline-start: -1000px;
   box-shadow: var(--kb-shadow-lift);
   transform: rotate(-1.5deg);
+  animation: none;
+  transition: none;
   pointer-events: none;
 }
 
@@ -599,7 +601,7 @@
   }
 }
 
-.showing-task-relationships .task {
+.showing-task-relationships .task:not(.task-drag-ghost) {
   position: relative !important;
   z-index: 100 !important;
 }
