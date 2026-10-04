@@ -122,14 +122,14 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
       }
   
       const updatedLabels = [...labels, labelName];
-      await updateTaskLabels(taskId, updatedLabels);
+      const updatedTask = await updateTaskLabels(taskId, updatedLabels);
       setLabels(updatedLabels);
       
       if (!existingLabels.includes(labelName)) {
         setExistingLabels([...existingLabels, labelName]);
       }
       
-      onLabelsChange(updatedLabels);
+      onLabelsChange(updatedLabels, updatedTask);
       refreshTasks();
     } catch (error) {
       console.error('Error adding label:', error);
@@ -156,9 +156,9 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
   const handleRemoveLabel = async (labelName) => {
     try {
       const updatedLabels = labels.filter(label => label !== labelName);
-      await updateTaskLabels(taskId, updatedLabels);
+      const updatedTask = await updateTaskLabels(taskId, updatedLabels);
       setLabels(updatedLabels);
-      onLabelsChange(updatedLabels);
+      onLabelsChange(updatedLabels, updatedTask);
     } catch (error) {
       console.error('Error removing label:', error);
       toast.error(t('taskLabels.removeErrorMessage'));

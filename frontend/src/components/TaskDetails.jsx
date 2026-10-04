@@ -179,23 +179,11 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }) {
     return saved;
   };
 
-  const handleLabelsChange = (updatedLabels) => {
-    const labelsArray = Array.isArray(updatedLabels) ? updatedLabels : [];
-    const uniqueLabels = [...new Set(labelsArray)];
-    if (uniqueLabels.length !== labelsArray.length) {
-      return;
+  const handleLabelsChange = (updatedLabels, updatedTask) => {
+    setTaskLabels(Array.isArray(updatedLabels) ? updatedLabels : []);
+    if (updatedTask && typeof updatedTask.version === 'number') {
+      setTaskVersion(updatedTask.version);
     }
-
-    setTaskLabels(uniqueLabels);
-    persistTaskFields({ labels: uniqueLabels }).catch(error => {
-      if (error instanceof ConcurrentModificationError) {
-        toast.info(t('notifications.taskChangedElsewhere'));
-        loadTaskData();
-        return;
-      }
-      console.error('Error updating task labels:', error);
-      toast.error(t('notifications.labelsUpdateError'));
-    });
   };
 
   const cancelRemoveUser = useCallback(() => setUserToRemove(null), []);
