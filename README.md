@@ -252,7 +252,7 @@ without disagreeing with each other or with themselves.
 ### Azure infrastructure
 
 <p align="center">
-  <img src="docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with four subnets holding the Container Apps environment (web, api and broker), Postgres, and the Key Vault, Redis and Blob Storage private endpoints" width="100%"/>
+  <img src="docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with five subnets holding the Container Apps environment (web, api, broker and the backup, restore-drill, migration and role jobs), Postgres, and the Key Vault, Blob Storage and Redis private endpoints, plus a backup region holding the database dumps and a replicated copy of the attachments" width="100%"/>
 </p>
 
 Every push to `main` builds two images -- [backend/Dockerfile](backend/Dockerfile), the Spring Boot
@@ -272,10 +272,13 @@ The Azure environment behind it is three Container Apps in one Managed Environme
 **`kanban-web`** (nginx, the only external ingress), **`kanban-api`** (the Spring Boot jar, internal
 only, up to 5 replicas) and **`kanban-broker`** (RabbitMQ's STOMP plugin, fixed at one replica, the
 shared relay every API replica connects to) -- running under user-assigned managed identities, a
-PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled, an
-Azure Managed Redis instance backing the auth rate limiter's escalation, a Key Vault and a Storage
-account (task attachments) both closed to the internet and reached over private endpoints with no
-account key, plus the VNet/NSGs and Log Analytics. All of it is defined as Terraform in
+PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled and
+Entra-only logins, an Azure Managed Redis instance holding the rate limiters' state, a Key Vault
+and a Storage account (attachments and avatars) all closed to the internet and reached over private
+endpoints with no account key, plus the VNet/NSGs, Log Analytics and Application Insights.
+Container Apps jobs in the same environment run the Flyway migrations, a nightly `pg_dump` and a
+nightly restore drill; the dumps and a replicated copy of the attachments live in a second region
+(Sweden Central). All of it is defined as Terraform in
 [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the Azure RBAC
 prerequisites, the network layout and the per-environment state layout.
 
@@ -285,7 +288,7 @@ against a two-replica `docker-compose` stack, and an `image-scan` job that Trivy
 on every PR), `kanban-cd.yml` (build, scan, push, promote), `deployed-contract.yml` (a daily sweep
 that asks the deployed origin whether it still matches what the trunk claims), `codeql.yml` (CodeQL
 analysis of the Java backend), `migration-order.yml` (guards Flyway migration numbering across
-branches), `terraform-ci.yml` (fmt/validate/Checkov), `hadolint.yml` (both Dockerfiles),
+branches), `terraform-ci.yml` (fmt/validate/Checkov), `terraform-drift.yml` (a nightly plan of dev from `main`), `hadolint.yml` (both Dockerfiles),
 `sweep-alarm.yml` (the shared alarm every scheduled workflow reports through), and the dependency and
 attack-surface scans (`dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`,
 `external-scan.yml`, `dast.yml`).
