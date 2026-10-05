@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 820" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
-  <rect x="0" y="0" width="1080" height="820" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1025" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1200" height="1025" fill="#ffffff"/>
 
   <defs>
     <marker id="arrowSolid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -10,140 +10,218 @@
     </marker>
   </defs>
 
-  <text x="540" y="24" text-anchor="middle" font-size="18" font-weight="600" fill="#1a1a1a">Azure infrastructure — network topology (per environment)</text>
+  <text x="600" y="28" text-anchor="middle" font-size="18" font-weight="600" fill="#1a1a1a">Azure infrastructure — network topology (per environment)</text>
 
-  <!-- external row -->
-  <rect x="20" y="44" width="245" height="70" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
-  <text x="142" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">Browsers</text>
-  <text x="142" y="89" text-anchor="middle" font-size="11" fill="#555555">(Internet)</text>
+  <!-- outside the VNet -->
+  <rect x="20" y="48" width="216" height="74" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="128" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">Browsers</text>
+  <text x="128" y="91" text-anchor="middle" font-size="11" fill="#555555">https://kanbanproject.pl</text>
+  <text x="128" y="107" text-anchor="middle" font-size="10.5" fill="#555555">managed certificate</text>
 
-  <rect x="285" y="44" width="245" height="70" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
-  <text x="407" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">GHCR</text>
-  <text x="407" y="89" text-anchor="middle" font-size="11" fill="#555555">container image registry</text>
+  <rect x="256" y="48" width="216" height="74" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="364" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">GHCR</text>
+  <text x="364" y="91" text-anchor="middle" font-size="11" fill="#555555">both images, one SHA tag</text>
+  <text x="364" y="107" text-anchor="middle" font-size="10.5" fill="#555555">Trivy-scanned · cosign-signed</text>
 
-  <rect x="550" y="44" width="245" height="70" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
-  <text x="672" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">ACS Email · Google reCAPTCHA</text>
-  <text x="672" y="89" text-anchor="middle" font-size="11" fill="#555555">HTTPS egress only</text>
+  <rect x="492" y="48" width="216" height="74" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="600" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">ACS Email · Event Grid</text>
+  <text x="600" y="91" text-anchor="middle" font-size="11" fill="#555555">mail out over HTTPS</text>
+  <text x="600" y="107" text-anchor="middle" font-size="10.5" fill="#555555">delivery reports back via the edge</text>
 
-  <rect x="815" y="44" width="245" height="70" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
-  <text x="937" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">Log Analytics</text>
-  <text x="937" y="89" text-anchor="middle" font-size="11" fill="#555555">diagnostics &amp; alerts</text>
+  <rect x="728" y="48" width="216" height="74" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="836" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">Google reCAPTCHA</text>
+  <text x="836" y="91" text-anchor="middle" font-size="11" fill="#555555">siteverify</text>
+  <text x="836" y="107" text-anchor="middle" font-size="10.5" fill="#555555">HTTPS egress only</text>
+
+  <rect x="964" y="48" width="216" height="74" rx="10" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="1072" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#333333">Log Analytics · App Insights</text>
+  <text x="1072" y="91" text-anchor="middle" font-size="11" fill="#555555">logs, kanban_* meters, alerts</text>
+  <text x="1072" y="107" text-anchor="middle" font-size="10.5" fill="#555555">availability test on the origin</text>
+
+  <!-- primary region -->
+  <rect x="20" y="150" width="1160" height="590" rx="14" fill="#ffffff" stroke="#b0bec5" stroke-width="1.5"/>
+  <text x="1168" y="169" text-anchor="end" font-size="12" font-weight="600" fill="#546e7a">Poland Central — kanban-&lt;env&gt;-rg</text>
 
   <!-- VNet -->
-  <rect x="20" y="150" width="1040" height="545" rx="12" fill="#fafafa" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="8,5"/>
-  <text x="1030" y="172" text-anchor="end" font-size="13" font-weight="600" fill="#616161">VNet 10.0.0.0/16 — kanban-&lt;env&gt;-rg</text>
+  <rect x="40" y="180" width="1120" height="545" rx="12" fill="#fafafa" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="8,5"/>
+  <text x="1148" y="199" text-anchor="end" font-size="13" font-weight="600" fill="#616161">VNet 10.0.0.0/16</text>
 
   <!-- backend subnet -->
-  <rect x="50" y="190" width="980" height="170" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
-  <text x="66" y="207" font-size="12" font-weight="600" fill="#616161">snet-backend 10.0.0.0/23 — Container Apps Environment</text>
-  <rect x="990" y="196" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
-  <text x="1006" y="207" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="60" y="212" width="1080" height="253" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
+  <text x="150" y="232" font-size="12" font-weight="600" fill="#616161">snet-backend 10.0.0.0/23 — Container Apps environment · mTLS between apps</text>
+  <rect x="1100" y="220" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
+  <text x="1116" y="231" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
 
-  <rect x="70" y="230" width="300" height="100" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
-  <text x="220" y="256" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-web</text>
-  <text x="220" y="274" text-anchor="middle" font-size="11" fill="#0d3d6b">nginx · external ingress :443</text>
-  <text x="220" y="290" text-anchor="middle" font-size="11" fill="#0d3d6b">reverse proxy /api /ws /v3/api-docs</text>
-  <text x="220" y="308" text-anchor="middle" font-size="10.5" fill="#0d3d6b">up to 5 replicas</text>
+  <rect x="80" y="248" width="300" height="88" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="230" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-web</text>
+  <text x="230" y="287" text-anchor="middle" font-size="11" fill="#0d3d6b">nginx · the only external ingress</text>
+  <text x="230" y="303" text-anchor="middle" font-size="10.5" fill="#0d3d6b">serves the bundle, proxies /api /ws /v3/api-docs</text>
+  <text x="230" y="319" text-anchor="middle" font-size="10.5" fill="#0d3d6b">up to 5 replicas</text>
 
-  <rect x="390" y="230" width="300" height="100" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
-  <text x="540" y="256" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-api</text>
-  <text x="540" y="274" text-anchor="middle" font-size="11" fill="#0d3d6b">Spring Boot jar · internal ingress</text>
-  <text x="540" y="290" text-anchor="middle" font-size="11" fill="#0d3d6b">no public URL</text>
-  <text x="540" y="308" text-anchor="middle" font-size="10.5" fill="#0d3d6b">up to 5 replicas</text>
+  <rect x="450" y="248" width="300" height="88" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="600" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-api</text>
+  <text x="600" y="287" text-anchor="middle" font-size="11" fill="#0d3d6b">Spring Boot jar · internal ingress only</text>
+  <text x="600" y="303" text-anchor="middle" font-size="10.5" fill="#0d3d6b">1 vCPU · 2 GiB · up to 5 replicas</text>
+  <text x="600" y="319" text-anchor="middle" font-size="10.5" fill="#0d3d6b">30 DB connections shared by the fleet</text>
 
-  <rect x="710" y="230" width="300" height="100" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
-  <text x="860" y="256" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-broker</text>
-  <text x="860" y="274" text-anchor="middle" font-size="11" fill="#0d3d6b">RabbitMQ · internal TCP :61613</text>
-  <text x="860" y="290" text-anchor="middle" font-size="11" fill="#0d3d6b">STOMP relay for board + chat</text>
-  <text x="860" y="308" text-anchor="middle" font-size="10.5" fill="#0d3d6b">fixed at 1 replica</text>
+  <rect x="820" y="248" width="300" height="88" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="970" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#0d3d6b">kanban-broker</text>
+  <text x="970" y="287" text-anchor="middle" font-size="11" fill="#0d3d6b">RabbitMQ STOMP · internal TCP</text>
+  <text x="970" y="303" text-anchor="middle" font-size="10.5" fill="#0d3d6b">relay for board + chat events</text>
+  <text x="970" y="319" text-anchor="middle" font-size="10.5" fill="#0d3d6b">fixed at 1 replica</text>
 
-  <line x1="690" y1="280" x2="710" y2="280" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)" marker-start="url(#arrowSolid)"/>
+  <line x1="380" y1="292" x2="450" y2="292" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)"/>
+  <text x="415" y="284" text-anchor="middle" font-size="10" fill="#37474f">HTTPS</text>
+  <text x="415" y="306" text-anchor="middle" font-size="9.5" fill="#78909c">SNI + verify</text>
+
+  <line x1="750" y1="292" x2="820" y2="292" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)" marker-start="url(#arrowSolid)"/>
+  <text x="785" y="284" text-anchor="middle" font-size="10" fill="#37474f">STOMP</text>
+  <text x="785" y="306" text-anchor="middle" font-size="9.5" fill="#78909c">:61613</text>
+
+  <text x="80" y="356" font-size="11" font-weight="600" fill="#616161">Container Apps jobs (same environment)</text>
+
+  <rect x="80" y="364" width="245" height="84" rx="10" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/>
+  <text x="202.5" y="385" text-anchor="middle" font-size="12.5" font-weight="600" fill="#311b92">pg-dump</text>
+  <text x="202.5" y="402" text-anchor="middle" font-size="10.5" fill="#311b92">nightly 02:15 · read-only role</text>
+  <text x="202.5" y="418" text-anchor="middle" font-size="10.5" fill="#311b92">uploads with an add-only identity</text>
+  <text x="202.5" y="434" text-anchor="middle" font-size="10.5" fill="#311b92">to the backup region</text>
+
+  <rect x="345" y="364" width="245" height="84" rx="10" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/>
+  <text x="467.5" y="385" text-anchor="middle" font-size="12.5" font-weight="600" fill="#311b92">restore-drill</text>
+  <text x="467.5" y="402" text-anchor="middle" font-size="10.5" fill="#311b92">nightly 03:15</text>
+  <text x="467.5" y="418" text-anchor="middle" font-size="10.5" fill="#311b92">restores the newest dump into</text>
+  <text x="467.5" y="434" text-anchor="middle" font-size="10.5" fill="#311b92">a throwaway Postgres, alerts if not</text>
+
+  <rect x="610" y="364" width="245" height="84" rx="10" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/>
+  <text x="732.5" y="385" text-anchor="middle" font-size="12.5" font-weight="600" fill="#311b92">migrate</text>
+  <text x="732.5" y="402" text-anchor="middle" font-size="10.5" fill="#311b92">Flyway, once per image tag</text>
+  <text x="732.5" y="418" text-anchor="middle" font-size="10.5" fill="#311b92">owner role runs the DDL;</text>
+  <text x="732.5" y="434" text-anchor="middle" font-size="10.5" fill="#311b92">the API itself holds DML only</text>
+
+  <rect x="875" y="364" width="245" height="84" rx="10" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/>
+  <text x="997.5" y="385" text-anchor="middle" font-size="12.5" font-weight="600" fill="#311b92">db-roles</text>
+  <text x="997.5" y="402" text-anchor="middle" font-size="10.5" fill="#311b92">Entra admin identity maps</text>
+  <text x="997.5" y="418" text-anchor="middle" font-size="10.5" fill="#311b92">managed identities to the</text>
+  <text x="997.5" y="434" text-anchor="middle" font-size="10.5" fill="#311b92">owner / writer / reader roles</text>
 
   <!-- lower subnets -->
-  <rect x="50" y="390" width="313" height="260" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
-  <text x="66" y="407" font-size="12" font-weight="600" fill="#616161">snet-db 10.0.2.0/24</text>
-  <text x="66" y="421" font-size="10.5" fill="#78909c">delegated subnet</text>
-  <rect x="323" y="396" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
-  <text x="339" y="407" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="60" y="505" width="255" height="200" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
+  <text x="74" y="523" font-size="12" font-weight="600" fill="#616161">snet-db 10.0.2.0/24</text>
+  <text x="74" y="537" font-size="10.5" fill="#78909c">delegated subnet</text>
+  <rect x="275" y="511" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
+  <text x="291" y="522" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="78" y="552" width="219" height="140" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="187.5" y="578" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">PostgreSQL 17</text>
+  <text x="187.5" y="595" text-anchor="middle" font-size="11" fill="#1b4620">Flexible Server</text>
+  <text x="187.5" y="618" text-anchor="middle" font-size="10.5" fill="#1b4620">Entra logins only, no password</text>
+  <text x="187.5" y="634" text-anchor="middle" font-size="10.5" fill="#1b4620">sslmode=verify-full</text>
+  <text x="187.5" y="650" text-anchor="middle" font-size="10.5" fill="#1b4620">public access disabled</text>
+  <text x="187.5" y="666" text-anchor="middle" font-size="10.5" fill="#1b4620">35-day PITR · delete lock</text>
 
-  <rect x="70" y="440" width="273" height="100" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
-  <text x="206.5" y="470" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">PostgreSQL</text>
-  <text x="206.5" y="487" text-anchor="middle" font-size="11" fill="#1b4620">Flexible Server</text>
-  <text x="206.5" y="504" text-anchor="middle" font-size="10.5" fill="#1b4620">sslmode=verify-full</text>
-  <text x="206.5" y="521" text-anchor="middle" font-size="10.5" fill="#1b4620">public access disabled</text>
+  <rect x="335" y="505" width="255" height="200" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
+  <text x="349" y="523" font-size="12" font-weight="600" fill="#616161">snet-pe 10.0.3.0/28</text>
+  <rect x="550" y="511" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
+  <text x="566" y="522" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="353" y="552" width="219" height="140" rx="10" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
+  <text x="462.5" y="578" text-anchor="middle" font-size="13" font-weight="600" fill="#7a3e00">Key Vault</text>
+  <text x="462.5" y="595" text-anchor="middle" font-size="11" fill="#7a3e00">private endpoint only</text>
+  <text x="462.5" y="618" text-anchor="middle" font-size="10.5" fill="#7a3e00">RBAC, no access policies</text>
+  <text x="462.5" y="634" text-anchor="middle" font-size="10.5" fill="#7a3e00">read by managed identities</text>
+  <text x="462.5" y="650" text-anchor="middle" font-size="10.5" fill="#7a3e00">nginx may read GHCR-TOKEN</text>
+  <text x="462.5" y="666" text-anchor="middle" font-size="10.5" fill="#7a3e00">and nothing else</text>
 
-  <rect x="383" y="390" width="313" height="260" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
-  <text x="399" y="407" font-size="12" font-weight="600" fill="#616161">snet-pe 10.0.3.0/28</text>
-  <rect x="656" y="396" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
-  <text x="672" y="407" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="610" y="505" width="255" height="200" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
+  <text x="624" y="523" font-size="12" font-weight="600" fill="#616161">snet-storage 10.0.3.16/28</text>
+  <rect x="825" y="511" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
+  <text x="841" y="522" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="628" y="552" width="219" height="140" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="737.5" y="578" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Blob Storage</text>
+  <text x="737.5" y="595" text-anchor="middle" font-size="11" fill="#1b4620">attachments + avatars</text>
+  <text x="737.5" y="618" text-anchor="middle" font-size="10.5" fill="#1b4620">private endpoint only</text>
+  <text x="737.5" y="634" text-anchor="middle" font-size="10.5" fill="#1b4620">no account key at all</text>
+  <text x="737.5" y="650" text-anchor="middle" font-size="10.5" fill="#1b4620">streamed through the API</text>
+  <text x="737.5" y="666" text-anchor="middle" font-size="10.5" fill="#1b4620">soft delete · delete lock</text>
 
-  <rect x="403" y="440" width="273" height="80" rx="10" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
-  <text x="539.5" y="466" text-anchor="middle" font-size="13" font-weight="600" fill="#7a3e00">Key Vault</text>
-  <text x="539.5" y="483" text-anchor="middle" font-size="11" fill="#7a3e00">private endpoint · RBAC only</text>
+  <rect x="885" y="505" width="255" height="200" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
+  <text x="899" y="523" font-size="12" font-weight="600" fill="#616161">snet-redis 10.0.3.32/28</text>
+  <rect x="1100" y="511" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
+  <text x="1116" y="522" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <rect x="903" y="552" width="219" height="140" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="1012.5" y="578" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Azure Managed Redis</text>
+  <text x="1012.5" y="595" text-anchor="middle" font-size="11" fill="#1b4620">Balanced_B0 · port 10000</text>
+  <text x="1012.5" y="618" text-anchor="middle" font-size="10.5" fill="#1b4620">private endpoint only</text>
+  <text x="1012.5" y="634" text-anchor="middle" font-size="10.5" fill="#1b4620">access keys off, Entra token</text>
+  <text x="1012.5" y="650" text-anchor="middle" font-size="10.5" fill="#1b4620">rate-limit state only;</text>
+  <text x="1012.5" y="666" text-anchor="middle" font-size="10.5" fill="#1b4620">the app fails open without it</text>
 
-  <rect x="403" y="530" width="273" height="80" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
-  <text x="539.5" y="556" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Azure Managed Redis</text>
-  <text x="539.5" y="573" text-anchor="middle" font-size="11" fill="#1b4620">private endpoint · port 10000</text>
+  <!-- environment -> data subnets -->
+  <line x1="187.5" y1="465" x2="187.5" y2="501" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
+  <text x="196" y="488" font-size="10.5" fill="#37474f">5432 · Entra token</text>
+  <line x1="462.5" y1="465" x2="462.5" y2="501" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
+  <text x="471" y="488" font-size="10.5" fill="#37474f">443 · secrets</text>
+  <line x1="737.5" y1="465" x2="737.5" y2="501" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
+  <text x="746" y="488" font-size="10.5" fill="#37474f">443 · managed identity</text>
+  <line x1="1012.5" y1="465" x2="1012.5" y2="501" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
+  <text x="1021" y="488" font-size="10.5" fill="#37474f">10000 · Entra token</text>
 
-  <rect x="716" y="390" width="313" height="260" rx="10" fill="#ffffff" stroke="#9e9e9e" stroke-width="1.3" stroke-dasharray="5,4"/>
-  <text x="732" y="407" font-size="12" font-weight="600" fill="#616161">snet-storage 10.0.3.16/28</text>
-  <rect x="989" y="396" width="32" height="16" rx="3" fill="#eceff1" stroke="#78909c" stroke-width="1"/>
-  <text x="1005" y="407" text-anchor="middle" font-size="9" fill="#455a64">NSG</text>
+  <!-- internet -> web -->
+  <line x1="110" y1="122" x2="110" y2="244" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)"/>
+  <text x="118" y="140" font-size="10.5" fill="#37474f">HTTPS :443 (the only public path)</text>
 
-  <rect x="736" y="440" width="273" height="100" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
-  <text x="872.5" y="470" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Blob Storage</text>
-  <text x="872.5" y="487" text-anchor="middle" font-size="11" fill="#1b4620">private endpoint · no account key</text>
-  <text x="872.5" y="504" text-anchor="middle" font-size="10.5" fill="#1b4620">task attachments</text>
-  <text x="872.5" y="521" text-anchor="middle" font-size="10.5" fill="#1b4620">managed identity only</text>
+  <!-- control plane / egress -->
+  <line x1="364" y1="150" x2="364" y2="126" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
+  <text x="372" y="143" font-size="10" fill="#78909c">image pull</text>
+  <line x1="600" y1="150" x2="600" y2="126" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)" marker-start="url(#arrowDashed)"/>
+  <text x="608" y="143" font-size="10" fill="#78909c">egress · reports in</text>
+  <line x1="836" y1="150" x2="836" y2="126" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
+  <text x="844" y="143" font-size="10" fill="#78909c">egress</text>
+  <line x1="1000" y1="150" x2="1000" y2="126" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
+  <text x="1008" y="143" font-size="10" fill="#78909c">logs · metrics</text>
 
-  <!-- arrows: internet -> web -->
-  <line x1="142" y1="114" x2="220" y2="226" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)"/>
-  <text x="120" y="175" font-size="10.5" fill="#37474f">HTTPS :443</text>
-  <text x="95" y="188" font-size="9.5" fill="#78909c">(only public path)</text>
+  <!-- backup region -->
+  <rect x="20" y="770" width="1160" height="150" rx="14" fill="#fbfbfb" stroke="#b0bec5" stroke-width="1.5" stroke-dasharray="8,5"/>
+  <text x="60" y="789" font-size="12" font-weight="600" fill="#546e7a">Sweden Central — kanban-&lt;env&gt;-backup-rg (Poland Central has no paired region)</text>
 
-  <!-- ghcr -> backend subnet -->
-  <line x1="400" y1="186" x2="407" y2="118" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
-  <text x="330" y="150" font-size="10" fill="#78909c">image pull</text>
+  <rect x="80" y="805" width="480" height="98" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="320" y="827" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Database dumps · GRS account</text>
+  <text x="320" y="845" text-anchor="middle" font-size="10.5" fill="#1b4620">locked 14-day immutability · writer can add blobs and nothing else</text>
+  <text x="320" y="861" text-anchor="middle" font-size="10.5" fill="#1b4620">daily 14 d · weekly 8 wk · monthly 1 yr</text>
+  <text x="320" y="877" text-anchor="middle" font-size="10.5" fill="#1b4620">reached over a cross-region service endpoint, everything else denied</text>
 
-  <!-- api -> ACS/reCAPTCHA -->
-  <line x1="650" y1="186" x2="672" y2="118" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
-  <text x="660" y="150" font-size="10" fill="#78909c">egress</text>
+  <rect x="640" y="805" width="480" height="98" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="880" y="827" text-anchor="middle" font-size="13" font-weight="600" fill="#1b4620">Attachment copy · GRS account (Cool)</text>
+  <text x="880" y="845" text-anchor="middle" font-size="10.5" fill="#1b4620">object replication from the attachment account</text>
+  <text x="880" y="861" text-anchor="middle" font-size="10.5" fill="#1b4620">versioned, keeps deletes for the Postgres PITR window</text>
+  <text x="880" y="877" text-anchor="middle" font-size="10.5" fill="#1b4620">so a restored database never names a purged blob</text>
 
-  <!-- api/broker -> Log Analytics -->
-  <line x1="900" y1="186" x2="937" y2="118" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
-  <text x="847" y="150" font-size="10" fill="#78909c">logs / metrics</text>
-
-  <!-- api -> db -->
-  <line x1="540" y1="330" x2="206.5" y2="386" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
-  <text x="330" y="365" font-size="10.5" fill="#37474f">JDBC (5432)</text>
-
-  <!-- api -> pe -->
-  <line x1="540" y1="330" x2="539.5" y2="386" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
-  <text x="547" y="365" font-size="10.5" fill="#37474f">Key Vault + Redis</text>
-
-  <!-- api -> storage -->
-  <line x1="540" y1="330" x2="872.5" y2="386" stroke="#37474f" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
-  <text x="700" y="365" font-size="10.5" fill="#37474f">Blob, managed identity</text>
+  <!-- pg-dump -> dumps account, via the service endpoint -->
+  <polyline points="80,406 50,406 50,854 76,854" fill="none" stroke="#5e35b1" stroke-width="1.8" marker-end="url(#arrowSolid)"/>
+  <!-- blob -> attachment copy -->
+  <line x1="737.5" y1="692" x2="737.5" y2="801" stroke="#2e7d32" stroke-width="1.8" stroke-dasharray="6,4" marker-end="url(#arrowSolid)"/>
+  <text x="746" y="756" font-size="10.5" fill="#2e7d32">object replication</text>
 
   <!-- legend -->
-  <rect x="20" y="712" width="16" height="16" rx="3" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
-  <text x="42" y="725" font-size="11" fill="#333333">Compute (Container App)</text>
+  <rect x="20" y="943" width="16" height="16" rx="3" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="42" y="956" font-size="11" fill="#333333">Container App</text>
 
-  <rect x="220" y="712" width="16" height="16" rx="3" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
-  <text x="242" y="725" font-size="11" fill="#333333">Managed data service</text>
+  <rect x="150" y="943" width="16" height="16" rx="3" fill="#ede7f6" stroke="#5e35b1" stroke-width="1.5"/>
+  <text x="172" y="956" font-size="11" fill="#333333">Container Apps job</text>
 
-  <rect x="420" y="712" width="16" height="16" rx="3" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
-  <text x="442" y="725" font-size="11" fill="#333333">Secrets (Key Vault)</text>
+  <rect x="300" y="943" width="16" height="16" rx="3" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="322" y="956" font-size="11" fill="#333333">Managed data service</text>
 
-  <rect x="600" y="712" width="16" height="16" rx="3" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
-  <text x="622" y="725" font-size="11" fill="#333333">External / Internet</text>
+  <rect x="460" y="943" width="16" height="16" rx="3" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
+  <text x="482" y="956" font-size="11" fill="#333333">Secrets</text>
 
-  <line x1="800" y1="720" x2="830" y2="720" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)"/>
-  <text x="838" y="725" font-size="11" fill="#333333">network path</text>
+  <rect x="560" y="943" width="16" height="16" rx="3" fill="#f5f5f5" stroke="#616161" stroke-width="1.5"/>
+  <text x="582" y="956" font-size="11" fill="#333333">Outside the VNet</text>
 
-  <line x1="800" y1="742" x2="830" y2="742" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
-  <text x="838" y="747" font-size="11" fill="#333333">secrets / logs / control-plane</text>
+  <line x1="710" y1="951" x2="740" y2="951" stroke="#37474f" stroke-width="2" marker-end="url(#arrowSolid)"/>
+  <text x="748" y="956" font-size="11" fill="#333333">network path</text>
 
-  <text x="540" y="762" text-anchor="middle" font-size="10.5" fill="#78909c">nginx also holds a narrow Key Vault grant, scoped to the GHCR-TOKEN secret alone — never the vault itself.</text>
-  <text x="540" y="785" text-anchor="middle" font-size="11.5" fill="#616161">Matches the subnet and NSG layout documented in terraform/README.md § Network layout.</text>
+  <line x1="860" y1="951" x2="890" y2="951" stroke="#78909c" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowDashed)"/>
+  <text x="898" y="956" font-size="11" fill="#333333">control plane / egress</text>
+
+  <text x="600" y="993" text-anchor="middle" font-size="10.5" fill="#78909c">Every Azure data service is reached as a user-assigned managed identity with one narrow role, never with an account key or a database password.</text>
+  <text x="600" y="1012" text-anchor="middle" font-size="11" fill="#616161">Matches the subnet and NSG layout in terraform/README.md § Network layout.</text>
 </svg>

@@ -282,6 +282,10 @@ and is managed normally, with a `CanNotDelete` lock.
 
 ### Network layout
 
+<p align="center">
+  <img src="../docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with five subnets holding the Container Apps environment and its jobs, Postgres, and the Key Vault, Blob Storage and Redis private endpoints, plus the backup region" width="100%"/>
+</p>
+
 The VNet is `10.0.0.0/16` and is carved into five subnets, each with one job.
 
 | Subnet | Prefix | Holds |
