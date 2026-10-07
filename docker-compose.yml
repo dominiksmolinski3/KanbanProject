@@ -173,6 +173,7 @@ services:
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/scrape/local.yml:/etc/prometheus/scrape/local.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
@@ -200,6 +201,8 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
       - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/kanban.yml:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
     # tmpfs, not a volume: its first-run SQLite migrations crawl on a volume, and all of its state is provisioned
     tmpfs:
       - /var/lib/grafana:uid=472,gid=0

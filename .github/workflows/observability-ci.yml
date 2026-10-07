@@ -1,0 +1,58 @@
+name: Observability CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'observability/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/observability-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'observability/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/observability-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prometheus-and-grafana:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Prometheus image the stack runs
+        run: |
+          image=$(grep -oE 'prom/prometheus:[^[:space:]]+' docker-compose.yml)
+          test -n "$image"
+          echo "PROMETHEUS_IMAGE=$image" >> "$GITHUB_ENV"
+
+      - name: Check the configuration and the rules
+        run: |
+          docker run --rm -v "$PWD/observability/prometheus:/etc/prometheus:ro" --entrypoint promtool \
+            "$PROMETHEUS_IMAGE" check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/observability/prometheus:/etc/prometheus:ro" --entrypoint sh \
+            "$PROMETHEUS_IMAGE" -c 'promtool check rules /etc/prometheus/rules/*.yml'
+
+      - name: Test the rules
+        run: |
+          docker run --rm -v "$PWD/observability/prometheus:/etc/prometheus:ro" --entrypoint sh \
+            "$PROMETHEUS_IMAGE" -c 'promtool test rules /etc/prometheus/rules/tests/*.yml'
+
+      - name: Lint the dashboards
+        run: |
+          for dashboard in observability/grafana/dashboards/*.json; do
+            python3 - "$dashboard" <<'PY'
+          import json, sys
+          path = sys.argv[1]
+          dashboard = json.load(open(path))
+          for key in ("uid", "title", "panels"):
+              assert dashboard.get(key), f"{path}: no {key}"
+          for panel in dashboard["panels"]:
+              assert panel["datasource"]["uid"] == "prometheus", f"{path}: {panel['title']} names another data source"
+          PY
+          done
+          uids=$(python3 -c 'import json,glob; print("\n".join(json.load(open(p))["uid"] for p in glob.glob("observability/grafana/dashboards/*.json")))')
+          test -z "$(echo "$uids" | sort | uniq -d)" || { echo "duplicate dashboard uid" >&2; exit 1; }

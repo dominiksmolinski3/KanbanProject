@@ -1,0 +1,119 @@
+groups:
+  - name: mail
+    rules:
+      - alert: MailDeadLetter
+        expr: sum(increase(kanban_mail_outbox_dead_letters_total[15m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: The outbox relay gave up on a message.
+
+      - alert: MailBacklogStuck
+        expr: max(min_over_time(kanban_mail_outbox_pending[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: The mail outbox has not been empty once in the last hour.
+
+      - alert: MailUndelivered
+        expr: sum(increase(kanban_mail_delivery_undelivered_total[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Azure reported a message as bounced, quarantined or otherwise undelivered.
+
+  - name: refusals
+    rules:
+      - alert: AuthRateLimitRefusalsHigh
+        expr: sum(increase(kanban_auth_ratelimit_refused_total[15m])) > 50
+        labels:
+          severity: info
+        annotations:
+          summary: Over 50 credential attempts refused by the rate limiter in 15 minutes.
+
+      - alert: EditConflictsHigh
+        expr: sum(increase(kanban_task_optimistic_lock_conflicts_total[15m])) > 20
+        labels:
+          severity: info
+        annotations:
+          summary: Over 20 edits refused as conflicting in 15 minutes.
+
+      - alert: BoardSubscriptionsDropped
+        expr: sum(increase(kanban_board_subscription_dropped_total[15m])) > 20
+        labels:
+          severity: info
+        annotations:
+          summary: Over 20 board subscriptions dropped in 15 minutes.
+
+      - alert: AttachmentTransfersBusy
+        expr: sum(increase(kanban_attachment_transfer_refused_total[15m])) > 10
+        labels:
+          severity: info
+        annotations:
+          summary: Over 10 attachment transfers refused as busy in 15 minutes.
+
+  - name: api
+    rules:
+      - alert: ReplicaSilent
+        expr: present_over_time(process_uptime_seconds{job="kanban-api"}[15m]) unless process_uptime_seconds{job="kanban-api"}
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} stopped pushing metrics."
+          description: Pushed series have no up metric; a replica that scaled in also fires this until its window passes.
+
+      - alert: Api5xxRatio
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="kanban-api", status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job="kanban-api"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Over 5% of API requests answer 5xx.
+
+      - alert: ApiLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_server_requests_seconds_bucket{job="kanban-api", uri!~"/actuator.*"}[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: The API's p95 latency is over 1 s.
+
+      - alert: PoolStarved
+        expr: max by (instance) (hikaricp_connections_pending{job="kanban-api"}) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has requests waiting for a database connection."
+
+  - name: edge
+    rules:
+      - alert: SiteDown
+        expr: probe_success{job="blackbox"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} is not answering."
+
+      - alert: CertExpiring
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox"} - time() < 14 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "The certificate for {{ $labels.instance }} expires within 14 days."
+
+  - name: host
+    rules:
+      - alert: VmDiskFilling
+        expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/var/lib/prometheus"}[6h], 3 * 86400) < 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: The Prometheus data disk fills within three days at the current rate.
