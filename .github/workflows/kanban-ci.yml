@@ -151,6 +151,7 @@ jobs:
         CAPTCHA_ENABLED=false
         CAPTCHA_SECRET=
         VITE_RECAPTCHA_SITE_KEY=
+        OTLP_METRICS_ENABLED=true
         EOF
 
     - name: Cache the Cypress binary
@@ -168,9 +169,9 @@ jobs:
     - name: Build and start the stack
       run: |
         for i in 1 2 3; do
-          docker compose --profile replicas up -d --build && exit 0
+          docker compose --profile replicas --profile monitoring up -d --build && exit 0
           echo "docker compose up failed (attempt $i/3)" >&2
-          docker compose --profile replicas down -v
+          docker compose --profile replicas --profile monitoring down -v
           docker builder prune -af
           [ "$i" = 3 ] && exit 1
           sleep 15
@@ -259,6 +260,9 @@ jobs:
     - name: Check what the Application Insights agent exported
       run: node observability/appinsights-sink/assert-exported.mjs http://127.0.0.1:8099 2
 
+    - name: Check what Prometheus received
+      run: node observability/assert-prometheus.mjs http://127.0.0.1:9090 2 http://127.0.0.1:3000
+
     - name: Upload Cypress artifacts
       if: failure()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -271,7 +275,7 @@ jobs:
 
     - name: Show the stack's logs
       if: failure()
-      run: docker compose --profile replicas logs --no-color --timestamps app app2 web
+      run: docker compose --profile replicas --profile monitoring logs --no-color --timestamps app app2 web prometheus grafana
 
   image-scan:
     runs-on: ubuntu-latest
