@@ -179,6 +179,15 @@ class ConfigurationTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("metrics export over OTLP is off unless an environment turns it on")
+    void otlpExportIsOffByDefault() throws IOException {
+        assertThat(read(APP_PROPERTIES))
+                .as("on by default, every unit test, spring-boot:run and CI build pushes to a Prometheus "
+                        + "that is not there and logs a failure every step")
+                .contains("management.otlp.metrics.export.enabled=${OTLP_METRICS_ENABLED:false}");
+    }
+
     private static Set<String> readable() throws IOException {
         Set<String> readable = new TreeSet<>(placeholders().keySet());
         for (Class<?> type : BOUND_PROPERTIES) {
