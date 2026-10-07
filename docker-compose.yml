@@ -33,6 +33,9 @@ x-api: &api
     AZURE_STORAGE_CONNECTION_STRING: '${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}'
     APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://appinsights-sink:8080/;LiveEndpoint=http://appinsights-sink:8080/'
     APPLICATIONINSIGHTS_METRIC_INTERVAL_SECONDS: 10
+    OTLP_METRICS_ENABLED: ${OTLP_METRICS_ENABLED:-false}
+    OTLP_METRICS_URL: http://prometheus:9090/api/v1/otlp/v1/metrics
+    OTLP_METRICS_STEP: 10s
   deploy:
     resources:
       limits:
@@ -143,7 +146,7 @@ services:
   rabbitmq:
     image: rabbitmq:4-alpine@sha256:2531fe16e1cb4ec4086d3eaa63118c8f074dd98620d55f022f453a397b18f037
     restart: unless-stopped
-    command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && exec docker-entrypoint.sh rabbitmq-server"
+    command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp rabbitmq_prometheus && exec docker-entrypoint.sh rabbitmq-server"
     environment:
       RABBITMQ_DEFAULT_USER: kanban
       RABBITMQ_DEFAULT_PASS: kanban
@@ -158,6 +161,100 @@ services:
         limits:
           memory: 256M
 
+  prometheus:
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/scrape/local.yml:/etc/prometheus/scrape/local.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  grafana:
+    image: grafana/grafana-oss:12.4.3@sha256:2e986801428cd689c2358605289c90ab37d2b39e24808874971f54c99bcdc412
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    # tmpfs, not a volume: its first-run SQLite migrations crawl on a volume, and all of its state is provisioned
+    tmpfs:
+      - /var/lib/grafana:uid=472,gid=0
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_URI: postgres:5432/${SPRING_DATASOURCE_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${SPRING_DATASOURCE_USERNAME}
+      DATA_SOURCE_PASS: ${SPRING_DATASOURCE_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.93.0@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.29.0@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
 volumes:
   postgres_data:
   azurite_data:
+  prometheus_data:
