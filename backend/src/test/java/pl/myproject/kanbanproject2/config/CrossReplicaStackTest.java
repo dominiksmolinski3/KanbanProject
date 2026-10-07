@@ -97,7 +97,7 @@ class CrossReplicaStackTest {
         assertThat(ci)
                 .as("CI brings the stack up without the `%s` profile, so there is no second "
                         + "replica for the spec to address", PROFILE)
-                .contains("docker compose --profile " + PROFILE + " up -d --build");
+                .containsPattern("docker compose (--profile \\S+ )*--profile " + PROFILE + " (--profile \\S+ )*up -d --build");
 
         assertThat(ci)
                 .as("nothing in CI runs `npm run %s`, so the cross-replica claim is asserted by a "
