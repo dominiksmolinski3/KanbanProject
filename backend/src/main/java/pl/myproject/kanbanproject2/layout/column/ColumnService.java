@@ -81,7 +81,7 @@ public class ColumnService {
         var column = findColumn(caller, id);
         boardService.requireWritable(caller, column.getBoard());
         // Locked before tasks is first read: a card moved in concurrently then waits and fails the FK, instead of pointing at a deleted column.
-        columnRepository.lockById(id);
+        columnRepository.lockForDelete(id);
 
         // Clear before the loop: Column.tasks cascades ALL, so a mid-loop flush would re-persist tasks already deleted.
         if (column.getTasks() != null) {
