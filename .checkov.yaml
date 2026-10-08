@@ -5,6 +5,7 @@ framework:
   - terraform
   - dockerfile
   - github_actions
+  - ansible
 
 skip-path:
   - '\.terraform'
@@ -32,3 +33,4 @@ skip-check:
   - CKV2_GHA_1
   - CKV_AZURE_50
   - CKV_AZURE_93
+  - CKV2_ANSIBLE_1

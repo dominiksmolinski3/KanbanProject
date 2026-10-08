@@ -1,0 +1,26 @@
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor={{ monitoring_data_dir }}
+
+[Service]
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path={{ monitoring_data_dir }}/data \
+  --storage.tsdb.retention.time={{ prometheus_retention }} \
+  --web.listen-address=127.0.0.1:9090 \
+  --web.enable-otlp-receiver \
+  --web.enable-admin-api
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ monitoring_data_dir }}/data
+
+[Install]
+WantedBy=multi-user.target

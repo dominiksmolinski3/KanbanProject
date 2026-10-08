@@ -1,0 +1,28 @@
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: [127.0.0.1:9100]
+
+  - job_name: blackbox
+    metrics_path: /probe
+    static_configs:
+      - targets:
+          - https://kanbanproject.pl/
+          - https://kanbanproject.pl/v3/api-docs
+        labels:
+          module: http_2xx
+      - targets:
+          - https://10.0.3.52/healthz
+        labels:
+          module: monitoring_tls
+    relabel_configs:
+      - source_labels: [module]
+        target_label: __param_module
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - regex: module
+        action: labeldrop
