@@ -108,16 +108,6 @@ resource "azurerm_key_vault_secret" "push_password" {
   key_vault_id     = var.key_vault_id
 }
 
-# Written from the same ephemeral value as MONITORING-PUSH-PASSWORD, so both must change in one apply.
-resource "azurerm_key_vault_secret" "otlp_auth_header" {
-  tags             = var.tags
-  name             = "OTLP-AUTH-HEADER"
-  value_wo         = "Basic ${base64encode("kanban-api:${ephemeral.random_password.push.result}")}"
-  value_wo_version = var.credentials_version
-  content_type     = "Authorization header for the API's OTLP push"
-  key_vault_id     = var.key_vault_id
-}
-
 resource "azurerm_key_vault_secret" "read_password" {
   tags             = var.tags
   name             = "MONITORING-READ-PASSWORD"
@@ -136,9 +126,9 @@ resource "azurerm_key_vault_secret" "ca_certificate" {
   content_type     = "application/x-pem-file"
   key_vault_id     = var.key_vault_id
 
-  # Tags belong to a secret version, so every version the VM writes arrives without them.
+  # Tags and content type belong to a secret version, so a version the VM writes may arrive without them.
   lifecycle {
-    ignore_changes = [tags]
+    ignore_changes = [tags, content_type]
   }
 }
 
@@ -181,6 +171,27 @@ resource "azurerm_role_assignment" "operator" {
   scope              = azurerm_linux_virtual_machine.main.id
   role_definition_id = azurerm_role_definition.operator.role_definition_resource_id
   principal_id       = each.value
+}
+
+# VmAvailabilityMetric stops reporting while the VM is stopped, and a metric alert does not fire on missing data.
+resource "azurerm_monitor_activity_log_alert" "stopped" {
+  for_each            = var.alerts_enabled ? toset(["deallocate", "powerOff"]) : toset([])
+  tags                = var.tags
+  name                = "kanban-${var.env}-monitoring-vm-${lower(each.key)}"
+  resource_group_name = var.resource_group_name
+  location            = "global"
+  scopes              = [azurerm_linux_virtual_machine.main.id]
+  description         = "The monitoring VM was stopped (${each.key}). Prometheus is not collecting and every API push fails until it starts again."
+
+  criteria {
+    category       = "Administrative"
+    operation_name = "Microsoft.Compute/virtualMachines/${each.key}/action"
+    status         = "Succeeded"
+  }
+
+  action {
+    action_group_id = var.action_group_id
+  }
 }
 
 resource "azurerm_monitor_metric_alert" "unavailable" {
