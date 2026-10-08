@@ -21,3 +21,7 @@ output "log_analytics_workspace_name" {
 output "monitoring_vm_name" {
   value = try(module.monitoring_vm[0].vm_name, null)
 }
+
+output "grafana_url" {
+  value = try(module.grafana_app[0].url, null)
+}

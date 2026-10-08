@@ -1772,6 +1772,10 @@ and reasons in `local.refusal_alerts`.
   The `ansible` framework adds one: `CKV2_ANSIBLE_1` (a `uri` call must use HTTPS), because
   the VM's managed identity token comes from the instance metadata service, which answers
   only on `http://169.254.169.254` - link-local, never routed off the host.
+  Grafana adds `CKV_AZURE_249` (a GitHub Actions OIDC trust must be narrow): it reads every
+  `azuread_application_federated_identity_credential` as a GitHub trust, and Grafana's trusts
+  its own managed identity, issued by Entra. The drift workflow's real GitHub trust is an
+  `azurerm_federated_identity_credential`, which the check never covered.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was

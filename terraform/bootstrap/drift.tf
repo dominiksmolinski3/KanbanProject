@@ -58,3 +58,15 @@ resource "azurerm_role_assignment" "drift_secrets" {
   principal_id         = azurerm_user_assigned_identity.drift.principal_id
   principal_type       = "ServicePrincipal"
 }
+
+data "azuread_application_published_app_ids" "well_known" {}
+
+data "azuread_service_principal" "microsoft_graph" {
+  client_id = data.azuread_application_published_app_ids.well_known.result["MicrosoftGraph"]
+}
+
+resource "azuread_app_role_assignment" "drift_application_reader" {
+  app_role_id         = data.azuread_service_principal.microsoft_graph.app_role_ids["Application.Read.All"]
+  principal_object_id = azurerm_user_assigned_identity.drift.principal_id
+  resource_object_id  = data.azuread_service_principal.microsoft_graph.object_id
+}

@@ -333,3 +333,17 @@ variable "monitoring_operator_object_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "grafana_image_tag" {
+  description = "Commit to run Grafana from. Unset means app_image_tag, which is what CD builds every image at."
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "grafana_custom_domain" {
+  description = "Hostname bound to Grafana with a managed certificate, such as grafana.kanbanproject.pl. Null until DNS points at the app."
+  type        = string
+  nullable    = true
+  default     = null
+}
