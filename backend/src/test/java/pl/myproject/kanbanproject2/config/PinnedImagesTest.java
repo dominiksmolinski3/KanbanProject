@@ -21,6 +21,8 @@ class PinnedImagesTest {
     private static final Path POSTGRES = REPO.resolve(Path.of("terraform", "modules", "postgres", "main.tf"));
     private static final Pattern SERVER_VERSION = Pattern.compile("(?m)^\\s+version\\s*=\\s*\"(\\d+)\"");
     private static final Path BACKUP = REPO.resolve(Path.of("terraform", "modules", "backup", "main.tf"));
+    private static final Path GRAFANA_DOCKERFILE = REPO.resolve(Path.of("observability", "grafana", "Dockerfile"));
+    private static final Pattern DOCKERFILE_FROM = Pattern.compile("(?m)^FROM\\s+(\\S+)");
     private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
 
     @Test
@@ -47,6 +49,20 @@ class PinnedImagesTest {
                 .as("Dependabot bumps the digest in docker-compose.yml only; move modules/broker with it, "
                         + "or the deployment runs a broker no CI run has used")
                 .containsExactly(composeBroker);
+    }
+
+    @Test
+    @DisplayName("the deployed Grafana image is built on the Grafana the local stack runs")
+    void theGrafanaImageMatchesCompose() throws IOException {
+        String composeGrafana = imagesIn(COMPOSE, COMPOSE_IMAGE).stream()
+                .filter(image -> image.startsWith("grafana/"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(imagesIn(GRAFANA_DOCKERFILE, DOCKERFILE_FROM))
+                .as("Dependabot bumps one file at a time; move the other with it, or the dashboards are "
+                        + "tested on one Grafana and served by another")
+                .containsExactly(composeGrafana);
     }
 
     @Test

@@ -2,6 +2,14 @@ terraform {
   required_version = "~> 1.12"
 
   required_providers {
+    azapi = {
+      source  = "azure/azapi"
+      version = "~> 2.0"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.0"
+    }
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 5.3"
@@ -49,4 +57,13 @@ provider "azurerm" {
       purge_soft_delete_on_destroy = var.key_vault_purge_soft_delete_on_destroy
     }
   }
+}
+
+provider "azuread" {
+  use_cli = true
+}
+
+provider "azapi" {
+  use_cli         = true
+  subscription_id = var.subscription_id
 }

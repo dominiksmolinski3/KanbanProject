@@ -323,6 +323,31 @@ module "monitoring_vm" {
   depends_on = [module.key_vault]
 }
 
+module "grafana_app" {
+  source                           = "./modules/grafana_app"
+  count                            = var.monitoring_enabled ? 1 : 0
+  resource_group_name              = azurerm_resource_group.main.name
+  resource_group_id                = azurerm_resource_group.main.id
+  location                         = azurerm_resource_group.main.location
+  env                              = var.env
+  tenant_id                        = data.azurerm_client_config.current.tenant_id
+  subscription_id                  = data.azurerm_client_config.current.subscription_id
+  container_app_env_id             = module.vnet.container_app_env_id
+  container_app_env_default_domain = module.vnet.container_app_env_default_domain
+  custom_domain                    = var.grafana_custom_domain
+  image                            = "ghcr.io/${var.github_repository_owner}/kanbanproject-grafana:${coalesce(var.grafana_image_tag, var.app_image_tag)}"
+  prometheus_url                   = "https://${module.monitoring_vm[0].private_ip}"
+  read_password_secret_name        = module.monitoring_vm[0].read_password_secret_name
+  ca_certificate_secret_name       = module.monitoring_vm[0].ca_certificate_secret_name
+  key_vault_id                     = module.key_vault.id
+  key_vault_uri                    = module.key_vault.uri
+  log_analytics_workspace_id       = azurerm_log_analytics_workspace.main.id
+  ghcr_username                    = var.ghcr_username
+  ghcr_token                       = var.ghcr_token
+  rbac_propagation_delay           = var.rbac_propagation_delay
+  tags                             = local.tags
+}
+
 module "diagnostics" {
   source = "./modules/diagnostics"
 

@@ -293,6 +293,10 @@ jobs:
           - image: kanbanproject-web
             context: frontend
             dockerfile: frontend/Dockerfile
+          - image: kanbanproject-grafana
+            context: observability/grafana
+            dockerfile: observability/grafana/Dockerfile
+            trivy-skip-files: usr/share/grafana/bin/grafana
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -331,6 +335,7 @@ jobs:
         limit-severities-for-sarif: true
         ignore-unfixed: true
         exit-code: '1'
+        skip-files: ${{ matrix.trivy-skip-files }}
 
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''

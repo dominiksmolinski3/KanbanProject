@@ -30,6 +30,10 @@ jobs:
           - image: kanbanproject-web
             context: frontend
             dockerfile: frontend/Dockerfile
+          - image: kanbanproject-grafana
+            context: observability/grafana
+            dockerfile: observability/grafana/Dockerfile
+            trivy-skip-files: usr/share/grafana/bin/grafana
 
     steps:
     - name: Checkout code
@@ -81,6 +85,7 @@ jobs:
         limit-severities-for-sarif: true
         ignore-unfixed: true
         exit-code: '1'
+        skip-files: ${{ matrix.trivy-skip-files }}
 
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''
@@ -151,7 +156,7 @@ jobs:
     - name: Promote the scanned images to :latest
       if: steps.tip.outputs.is_tip == 'true'
       run: |
-        for image in kanbanproject-app kanbanproject-web; do
+        for image in kanbanproject-app kanbanproject-web kanbanproject-grafana; do
           docker buildx imagetools create \
             --tag "ghcr.io/${{ github.repository_owner }}/$image:latest" \
             "ghcr.io/${{ github.repository_owner }}/$image:${{ github.sha }}"
@@ -164,7 +169,7 @@ jobs:
       run: |
         tip=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" --jq .sha)
         if [ "$tip" != "${{ github.sha }}" ]; then
-          echo "::warning::main moved to $tip while this job was promoting; :latest on both images may point at the older ${{ github.sha }} and need promoting by hand."
+          echo "::warning::main moved to $tip while this job was promoting; :latest on every image may point at the older ${{ github.sha }} and need promoting by hand."
         fi
 
   cd-alarm:

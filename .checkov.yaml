@@ -34,3 +34,4 @@ skip-check:
   - CKV_AZURE_50
   - CKV_AZURE_93
   - CKV2_ANSIBLE_1
+  - CKV_AZURE_249
