@@ -170,6 +170,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=7d
       - --web.enable-otlp-receiver
+      - --web.enable-remote-write-receiver
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/scrape/local.yml:/etc/prometheus/scrape/local.yml:ro
@@ -256,6 +257,21 @@ services:
       resources:
         limits:
           memory: 64M
+
+  k6:
+    image: grafana/k6:2.3.0@sha256:9c2dee7f8ed74d317e4027c06a10f169b625638189de8d4555d0b3486a5aeb34
+    profiles: ["loadtest"]
+    command: ["run", "--out", "experimental-prometheus-rw", "/loadtest/kanban.js"]
+    volumes:
+      - ./loadtest:/loadtest:ro
+    environment:
+      LOAD_BASE_URL: http://web:8080/api
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99),max
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
   postgres_data:
