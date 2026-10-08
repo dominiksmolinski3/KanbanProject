@@ -155,6 +155,27 @@ class DeleteDetachesReferencesTest {
         }
 
         @Test
+        @DisplayName("locks the column before reading its tasks, so a card moved in concurrently cannot be left pointing at it")
+        void locksTheColumnBeforeReadingItsTasks() {
+            Column column = new Column();
+            column.setId(5);
+            column.setBoard(BOARD);
+            Task card = new Task();
+            card.setId(11);
+            card.setBoard(BOARD);
+            column.setTasks(new ArrayList<>(List.of(card)));
+            when(columnRepository.findById(5)).thenReturn(Optional.of(column));
+            when(historyRepository.findByColumn(column)).thenReturn(List.of());
+
+            columnService.deleteColumn(CALLER, 5);
+
+            InOrder order = Mockito.inOrder(columnRepository, taskService);
+            order.verify(columnRepository).lockById(5);
+            order.verify(taskService).deleteTask(CALLER, 11);
+            order.verify(columnRepository).delete(column);
+        }
+
+        @Test
         @DisplayName("clears column_id on history rows left by tasks that have since moved on")
         void detachesStrandedHistoryFirst() {
             Column column = new Column();

@@ -1,6 +1,8 @@
 package pl.myproject.kanbanproject2.layout.column;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
@@ -15,4 +17,8 @@ public interface ColumnRepository extends JpaRepository<Column, Integer> {
 
     @Query("SELECT MAX(column.position) FROM Column column WHERE column.board = :board")
     Optional<Integer> findMaxPosition(Board board);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT column FROM Column column WHERE column.id = :id")
+    Optional<Column> lockById(Integer id);
 }
