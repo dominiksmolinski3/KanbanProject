@@ -1,10 +1,11 @@
 locals {
-  vnet_address_space  = "10.0.0.0/16"
-  backend_subnet_cidr = "10.0.0.0/23"
-  db_subnet_cidr      = "10.0.2.0/24"
-  pe_subnet_cidr      = "10.0.3.0/28"
-  storage_subnet_cidr = "10.0.3.16/28"
-  redis_subnet_cidr   = "10.0.3.32/28"
+  vnet_address_space     = "10.0.0.0/16"
+  backend_subnet_cidr    = "10.0.0.0/23"
+  db_subnet_cidr         = "10.0.2.0/24"
+  pe_subnet_cidr         = "10.0.3.0/28"
+  storage_subnet_cidr    = "10.0.3.16/28"
+  redis_subnet_cidr      = "10.0.3.32/28"
+  monitoring_subnet_cidr = "10.0.3.48/28"
 }
 
 resource "azurerm_virtual_network" "main" {
@@ -61,6 +62,13 @@ resource "azurerm_subnet" "redis" {
   address_prefixes     = [local.redis_subnet_cidr]
 
   private_endpoint_network_policies = "NetworkSecurityGroupEnabled"
+}
+
+resource "azurerm_subnet" "monitoring" {
+  name                 = "snet-monitoring-${var.env}"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [local.monitoring_subnet_cidr]
 }
 
 resource "azurerm_subnet" "db" {

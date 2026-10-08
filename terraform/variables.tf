@@ -316,3 +316,20 @@ variable "key_vault_runner_ips" {
   type        = list(string)
   default     = []
 }
+
+variable "monitoring_enabled" {
+  description = "Create the Prometheus VM. The API's push is a separate switch, because the VM must be configured before anything pushes to it."
+  type        = bool
+  default     = false
+}
+
+variable "monitoring_vm_size" {
+  type    = string
+  default = "Standard_B2ls_v2"
+}
+
+variable "monitoring_operator_object_ids" {
+  description = "Entra object ids, people or groups, allowed to configure the monitoring VM through Run Command."
+  type        = list(string)
+  default     = []
+}

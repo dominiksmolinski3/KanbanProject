@@ -17,3 +17,7 @@ output "log_analytics_workspace_name" {
   description = "Log Analytics Workspace name used by the Container Apps environment."
   value       = azurerm_log_analytics_workspace.main.name
 }
+
+output "monitoring_vm_name" {
+  value = try(module.monitoring_vm[0].vm_name, null)
+}

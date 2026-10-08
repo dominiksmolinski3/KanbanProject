@@ -40,9 +40,12 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_eventgrid_", "Microsoft.EventGrid");
         put("azurerm_federated_identity_credential", "Microsoft.ManagedIdentity");
         put("azurerm_key_vault", "Microsoft.KeyVault");
+        put("azurerm_linux_virtual_machine", "Microsoft.Compute");
+        put("azurerm_managed_disk", "Microsoft.Compute");
         put("azurerm_log_analytics_", "Microsoft.OperationalInsights");
         put("azurerm_monitor_", "Microsoft.Insights");
         put("azurerm_application_insights", "Microsoft.Insights");
+        put("azurerm_network_interface", "Microsoft.Network");
         put("azurerm_network_security_group", "Microsoft.Network");
         put("azurerm_postgresql_", "Microsoft.DBforPostgreSQL");
         put("azurerm_private_dns_", "Microsoft.Network");
@@ -57,6 +60,7 @@ class ResourceProvidersAreRegisteredTest {
         put("azurerm_storage_", "Microsoft.Storage");
         put("azurerm_subnet", "Microsoft.Network");
         put("azurerm_user_assigned_identity", "Microsoft.ManagedIdentity");
+        put("azurerm_virtual_machine_data_disk_attachment", "Microsoft.Compute");
         put("azurerm_virtual_network", "Microsoft.Network");
     }};
 
