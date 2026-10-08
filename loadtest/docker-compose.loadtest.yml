@@ -1,0 +1,18 @@
+# Local runs only. CI keeps nginx on `app` alone, which is what cross-replica-sync.cy.js relies on.
+x-load-api: &load-api
+  environment:
+    # The root .env may hold a live ACS connection string; a seeded signup must never mail anyone.
+    ACS_EMAIL_CONNECTION_STRING: ""
+    CAPTCHA_ENABLED: "false"
+    CAPTCHA_SECRET: ""
+    OTLP_METRICS_ENABLED: "true"
+  networks:
+    default:
+      aliases: [api]
+
+services:
+  web:
+    environment:
+      API_UPSTREAM: http://api:8080
+  app: *load-api
+  app2: *load-api
