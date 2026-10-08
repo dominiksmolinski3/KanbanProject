@@ -31,9 +31,12 @@ variable "container_app_env_default_domain" {
 }
 
 variable "custom_domain" {
-  description = "A hostname bound to the app, such as grafana.kanbanproject.pl. Null serves Grafana on its default address."
-  type        = string
-  default     = null
+  description = "A hostname bound to the app with a managed certificate. Null serves Grafana on its default address."
+  type = object({
+    name             = string
+    certificate_name = string
+  })
+  default = null
 }
 
 variable "image" {

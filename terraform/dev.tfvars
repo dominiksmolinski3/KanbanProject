@@ -35,3 +35,8 @@ acs = {
   communication_service_name = "acs-kanbanproject"
   email_service_name         = "kanban-csemail"
 }
+
+grafana_custom_domain = {
+  name             = "grafana.kanbanproject.pl"
+  certificate_name = "mc-cae-dev-grafana-kanbanpr-3776"
+}
