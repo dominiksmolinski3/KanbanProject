@@ -46,3 +46,5 @@ docker-compose.override.yml
 
 frontend/cypress/screenshots/
 frontend/cypress/videos/
+
+/loadtest/.run/
