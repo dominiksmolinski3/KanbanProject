@@ -30,3 +30,5 @@ skip-check:
   - CKV_DOCKER_4
   - CKV_GHA_7
   - CKV2_GHA_1
+  - CKV_AZURE_50
+  - CKV_AZURE_93

@@ -1765,6 +1765,10 @@ and reasons in `local.refusal_alerts`.
   everything but its private endpoint and passes one left open. `CKV2_KANBAN_2` replaces it
   on the same terms as `CKV2_KANBAN_1`. The trigger names `.checkov/**` for the same reason
   it names `.checkov.yaml`.
+  The monitoring VM adds two: `CKV_AZURE_50`, because Run Command is an extension
+  operation and it is the only way anyone configures that VM, which has no public IP and
+  no inbound SSH; and `CKV_AZURE_93`, customer-managed disk keys, the trade `CKV2_AZURE_1`
+  already names.
   **It briefly needed two more and earned both back**, which is the
   shape a skip should take whenever it can: `CKV2_AZURE_33` (private endpoint) went when the app's
   traffic moved onto one, and `CKV_AZURE_59` (public network access) went when the account was

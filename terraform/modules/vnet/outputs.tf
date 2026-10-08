@@ -40,3 +40,13 @@ output "redis_subnet_id" {
   value       = azurerm_subnet.redis.id
   depends_on  = [azurerm_subnet_network_security_group_association.redis]
 }
+
+output "monitoring_subnet_id" {
+  description = "Subnet holding the Prometheus VM."
+  value       = azurerm_subnet.monitoring.id
+  depends_on  = [azurerm_subnet_network_security_group_association.monitoring]
+}
+
+output "monitoring_subnet_cidr" {
+  value = local.monitoring_subnet_cidr
+}

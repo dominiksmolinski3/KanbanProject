@@ -304,6 +304,25 @@ check "api_upstream_matches_api_app" {
   }
 }
 
+module "monitoring_vm" {
+  source              = "./modules/monitoring_vm"
+  count               = var.monitoring_enabled ? 1 : 0
+  resource_group_name = azurerm_resource_group.main.name
+  resource_group_id   = azurerm_resource_group.main.id
+  location            = azurerm_resource_group.main.location
+  env                 = var.env
+  subnet_id           = module.vnet.monitoring_subnet_id
+  subnet_cidr         = module.vnet.monitoring_subnet_cidr
+  size                = var.monitoring_vm_size
+  key_vault_id        = module.key_vault.id
+  operator_object_ids = var.monitoring_operator_object_ids
+  alerts_enabled      = var.alert_email != ""
+  action_group_id     = module.diagnostics.action_group_id
+  tags                = local.tags
+
+  depends_on = [module.key_vault]
+}
+
 module "diagnostics" {
   source = "./modules/diagnostics"
 

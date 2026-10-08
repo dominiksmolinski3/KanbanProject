@@ -1036,3 +1036,26 @@ Migrating a vault created before this change: `terraform apply` flips it from
 access-policy mode to RBAC in place. The pre-existing access policies stay recorded
 on the vault but stop being consulted; they can be cleared afterwards with
 `az keyvault delete-policy` if you want a clean resource.
+
+### Monitoring VM
+
+`monitoring_enabled` creates the Prometheus VM (`modules/monitoring_vm`) in `snet-monitoring-<env>`
+(`10.0.3.48/28`). The VM is `10.0.3.52`, the subnet's first usable address, and it has no public IP.
+Its NSG admits one thing: 443 from the Container Apps subnet. The API's push is a separate switch, because the VM must be
+configured before anything pushes to it.
+
+Nobody logs in to it. It is configured by Run Command, which goes through Azure's control plane and is
+authorised by an Azure role: resource group Owners already have it, and `monitoring_operator_object_ids`
+grants the narrow *Monitoring VM Operator* role to anyone else.
+
+```bash
+az vm run-command invoke -g kanban-dev-rg -n vm-monitoring-dev --command-id RunShellScript --scripts "uptime"
+```
+
+Its identity reads two Key Vault secrets, `MONITORING-PUSH-PASSWORD` and `MONITORING-READ-PASSWORD`, and
+writes one, `MONITORING-CA-CERT`. The VM creates its own CA, so no TLS private key is ever in Terraform
+state. `OTLP-AUTH-HEADER` is derived from the push password in the same apply, and only the API will read
+it. Bump `credentials_version` on the module to rotate both credentials.
+
+The VM reaches apt and GitHub through Azure's default outbound access, since the VNet has no NAT gateway.
+If Azure retires that for the subnet, packages and configuration updates stop; the running stack does not.
