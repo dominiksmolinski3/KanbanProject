@@ -1,0 +1,41 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: monitoring
+    image: geerlingguy/docker-ubuntu2404-ansible:latest@sha256:c2f3d808345896a7a60c6db559c4c9bba872f6d7022bbf56c8e85f07de3d410d
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+
+provisioner:
+  name: ansible
+  inventory:
+    links:
+      group_vars: ../../group_vars/
+      host_vars: host_vars/
+
+verifier:
+  name: ansible
+
+scenario:
+  test_sequence:
+    - dependency
+    - destroy
+    - create
+    - converge
+    - idempotence
+    - verify
+    - destroy

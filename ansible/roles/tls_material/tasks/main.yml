@@ -1,0 +1,94 @@
+---
+- name: Create the PKI directory on the data disk
+  ansible.builtin.file:
+    path: "{{ monitoring_pki_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Look for an existing CA
+  ansible.builtin.stat:
+    path: "{{ monitoring_pki_dir }}/ca.crt"
+  register: tls_material_ca
+
+# The API trusts this CA, so it is created once and never replaced.
+- name: Generate the CA key
+  community.crypto.openssl_privatekey:
+    path: "{{ monitoring_pki_dir }}/ca.key"
+    type: ECC
+    curve: secp384r1
+    mode: "0600"
+  when: not tls_material_ca.stat.exists
+
+- name: Generate the CA request
+  community.crypto.openssl_csr:
+    path: "{{ monitoring_pki_dir }}/ca.csr"
+    privatekey_path: "{{ monitoring_pki_dir }}/ca.key"
+    common_name: kanban monitoring CA
+    use_common_name_for_san: false
+    basic_constraints: ["CA:TRUE", "pathlen:0"]
+    basic_constraints_critical: true
+    key_usage: [keyCertSign, cRLSign]
+    key_usage_critical: true
+    mode: "0644"
+  when: not tls_material_ca.stat.exists
+
+- name: Self-sign the CA for ten years
+  community.crypto.x509_certificate:
+    path: "{{ monitoring_pki_dir }}/ca.crt"
+    csr_path: "{{ monitoring_pki_dir }}/ca.csr"
+    privatekey_path: "{{ monitoring_pki_dir }}/ca.key"
+    provider: selfsigned
+    selfsigned_not_after: "+3650d"
+    mode: "0644"
+  when: not tls_material_ca.stat.exists
+
+- name: Generate the server key
+  community.crypto.openssl_privatekey:
+    path: "{{ monitoring_pki_dir }}/server.key"
+    type: ECC
+    curve: secp256r1
+    mode: "0600"
+
+- name: Generate the server request
+  community.crypto.openssl_csr:
+    path: "{{ monitoring_pki_dir }}/server.csr"
+    privatekey_path: "{{ monitoring_pki_dir }}/server.key"
+    common_name: "{{ monitoring_private_ip }}"
+    subject_alt_name:
+      - "IP:{{ monitoring_private_ip }}"
+      - "IP:127.0.0.1"
+    extended_key_usage: [serverAuth]
+    mode: "0644"
+
+- name: Look for a server certificate that is still valid
+  community.crypto.x509_certificate_info:
+    path: "{{ monitoring_pki_dir }}/server.crt"
+    valid_at:
+      renew: "+{{ monitoring_server_cert_renew_days }}d"
+  register: tls_material_server_cert
+  failed_when: false
+
+- name: Sign the server certificate with the CA
+  community.crypto.x509_certificate:
+    path: "{{ monitoring_pki_dir }}/server.crt"
+    csr_path: "{{ monitoring_pki_dir }}/server.csr"
+    provider: ownca
+    ownca_path: "{{ monitoring_pki_dir }}/ca.crt"
+    ownca_privatekey_path: "{{ monitoring_pki_dir }}/ca.key"
+    ownca_not_after: "+{{ monitoring_server_cert_days }}d"
+    force: "{{ tls_material_server_cert.valid_at is defined and not tls_material_server_cert.valid_at.renew }}"
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Fetch the credentials from Key Vault
+  when: monitoring_secrets_source == "keyvault"
+  ansible.builtin.include_tasks: keyvault.yml
+
+- name: Use the credentials given to this run
+  when: monitoring_secrets_source == "local"
+  ansible.builtin.set_fact:
+    tls_material_push_password: "{{ monitoring_push_password }}"
+    tls_material_read_password: "{{ monitoring_read_password }}"
+  no_log: true

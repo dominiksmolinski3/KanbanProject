@@ -1,0 +1,104 @@
+---
+- name: Create the service users
+  ansible.builtin.user:
+    name: "{{ item }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+  loop: [prometheus, node_exporter, blackbox_exporter]
+
+- name: Create the download directory
+  ansible.builtin.file:
+    path: /opt/monitoring
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the pinned binaries
+  ansible.builtin.include_tasks: binary.yml
+  loop: "{{ monitoring_binaries }}"
+  loop_control:
+    loop_var: prometheus_stack_binary
+    label: "{{ prometheus_stack_binary.name }} {{ prometheus_stack_binary.version }}"
+  vars:
+    prometheus_stack_archive: "{{ prometheus_stack_binary.name }}-{{ prometheus_stack_binary.version }}.linux-amd64"
+    prometheus_stack_release: "https://github.com/prometheus/{{ prometheus_stack_binary.name }}/releases/download/v{{ prometheus_stack_binary.version }}"
+
+- name: Create the Prometheus data directory
+  ansible.builtin.file:
+    path: "{{ monitoring_data_dir }}/data"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0750"
+
+- name: Create the configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/prometheus
+    - /etc/prometheus/rules
+    - /etc/prometheus/scrape
+    - /etc/blackbox_exporter
+
+- name: Install the alert rules from the repository
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/prometheus/rules/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/local/bin/promtool check rules %s
+  with_fileglob: "{{ role_path }}/../../../observability/prometheus/rules/*.yml"
+  notify: Reload prometheus
+
+- name: Install the Azure scrape targets
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../observability/prometheus/scrape/azure.yml"
+    dest: /etc/prometheus/scrape/azure.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload prometheus
+
+- name: Install the Prometheus configuration
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../observability/prometheus/prometheus.yml"
+    dest: /etc/prometheus/prometheus.yml
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/local/bin/promtool check config %s
+  notify: Reload prometheus
+
+- name: Install the blackbox modules
+  ansible.builtin.template:
+    src: blackbox.yml.j2
+    dest: /etc/blackbox_exporter/blackbox.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart blackbox_exporter
+
+- name: Install the systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [prometheus, node_exporter, blackbox_exporter]
+  notify: "Restart {{ item }}"
+
+- name: Start the services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  loop: [prometheus, node_exporter, blackbox_exporter]

@@ -10,6 +10,7 @@ on:
       - '.github/workflows/**'
       - '.checkov.yaml'
       - '.checkov/**'
+      - 'ansible/**'
   pull_request:
     branches: [ main ]
     paths:
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/**'
       - '.checkov.yaml'
       - '.checkov/**'
+      - 'ansible/**'
   workflow_dispatch:
 
 permissions:

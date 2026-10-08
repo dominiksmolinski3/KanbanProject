@@ -1,0 +1,5 @@
+---
+monitoring_secrets_source: local
+monitoring_manage_firewall: false
+monitoring_push_password: molecule-push-password
+monitoring_read_password: molecule-read-password

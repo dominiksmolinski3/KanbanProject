@@ -5,12 +5,14 @@ on:
     branches: [ main ]
     paths:
       - 'observability/**'
+      - 'ansible/**'
       - 'docker-compose.yml'
       - '.github/workflows/observability-ci.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'observability/**'
+      - 'ansible/**'
       - 'docker-compose.yml'
       - '.github/workflows/observability-ci.yml'
 
@@ -56,3 +58,24 @@ jobs:
           done
           uids=$(python3 -c 'import json,glob; print("\n".join(json.load(open(p))["uid"] for p in glob.glob("observability/grafana/dashboards/*.json")))')
           test -z "$(echo "$uids" | sort | uniq -d)" || { echo "duplicate dashboard uid" >&2; exit 1; }
+
+  ansible:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install the same Ansible the VM gets from apt, and the test tools
+        run: pip install "ansible==9.2.0" "ansible-lint==26.9.0" "molecule==26.9.0" "molecule-plugins[docker]==26.9.28" "docker==7.2.0"
+
+      - name: Lint the playbook
+        run: ansible-lint --profile production
+
+      - name: Converge twice in a container and verify who may reach what
+        run: molecule test

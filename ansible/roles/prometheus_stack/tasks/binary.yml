@@ -1,0 +1,27 @@
+---
+- name: Download the release archive
+  ansible.builtin.get_url:
+    url: "{{ prometheus_stack_release }}/{{ prometheus_stack_archive }}.tar.gz"
+    dest: "/opt/monitoring/{{ prometheus_stack_archive }}.tar.gz"
+    checksum: "sha256:{{ prometheus_stack_binary.sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Unpack the release archive
+  ansible.builtin.unarchive:
+    src: "/opt/monitoring/{{ prometheus_stack_archive }}.tar.gz"
+    dest: /opt/monitoring
+    remote_src: true
+    creates: "/opt/monitoring/{{ prometheus_stack_archive }}/{{ prometheus_stack_binary.executables | first }}"
+
+- name: Install the executables
+  ansible.builtin.copy:
+    src: "/opt/monitoring/{{ prometheus_stack_archive }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ prometheus_stack_binary.executables }}"
+  notify: "Restart {{ prometheus_stack_binary.name }}"

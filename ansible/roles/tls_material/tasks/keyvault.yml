@@ -1,0 +1,49 @@
+---
+- name: Get a Key Vault token as the VM's identity
+  ansible.builtin.uri:
+    url: "http://169.254.169.254/metadata/identity/oauth2/token?{{ tls_material_token_query }}"
+    headers:
+      Metadata: "true"
+    return_content: true
+  vars:
+    tls_material_token_query: "api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net&client_id={{ identity_client_id }}"
+  register: tls_material_token
+  check_mode: false
+  no_log: true
+
+- name: Read the credentials and the published CA
+  ansible.builtin.uri:
+    url: "https://{{ key_vault_name }}.vault.azure.net/secrets/{{ item }}?api-version=7.4"
+    headers:
+      Authorization: "Bearer {{ tls_material_token.json.access_token }}"
+    return_content: true
+  loop: [MONITORING-PUSH-PASSWORD, MONITORING-READ-PASSWORD, MONITORING-CA-CERT]
+  register: tls_material_secrets
+  check_mode: false
+  no_log: true
+
+- name: Keep the credentials for this run
+  ansible.builtin.set_fact:
+    tls_material_push_password: "{{ tls_material_secrets.results[0].json.value }}"
+    tls_material_read_password: "{{ tls_material_secrets.results[1].json.value }}"
+    tls_material_published_ca: "{{ tls_material_secrets.results[2].json.value }}"
+  no_log: true
+
+- name: Read the local CA certificate
+  ansible.builtin.slurp:
+    src: "{{ monitoring_pki_dir }}/ca.crt"
+  register: tls_material_local_ca
+
+- name: Publish the CA certificate, which the API trusts for the push
+  ansible.builtin.uri:
+    url: "https://{{ key_vault_name }}.vault.azure.net/secrets/MONITORING-CA-CERT?api-version=7.4"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ tls_material_token.json.access_token }}"
+    body_format: json
+    body:
+      value: "{{ tls_material_local_ca.content | b64decode }}"
+      contentType: application/x-pem-file
+  when: (tls_material_local_ca.content | b64decode) != tls_material_published_ca
+  changed_when: true
+  no_log: true
