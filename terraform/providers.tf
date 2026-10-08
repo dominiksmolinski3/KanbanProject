@@ -31,6 +31,7 @@ provider "azurerm" {
     "Microsoft.App",
     "Microsoft.Cache",
     "Microsoft.Communication",
+    "Microsoft.Compute",
     "Microsoft.Consumption",
     "Microsoft.DBforPostgreSQL",
     "Microsoft.EventGrid",

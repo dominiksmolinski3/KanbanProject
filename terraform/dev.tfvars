@@ -21,6 +21,8 @@ api_max_replicas = 5
 
 api_db_connection_budget = 30
 
+monitoring_enabled = true
+
 monthly_budget = 40
 
 custom_domain = {
