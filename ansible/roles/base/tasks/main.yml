@@ -1,0 +1,88 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - chrony
+      - unattended-upgrades
+      - ufw
+      - python3-cryptography
+      - python3-passlib
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Keep unattended security upgrades on
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Find the SSH units
+  ansible.builtin.stat:
+    path: "/usr/lib/systemd/system/{{ item }}"
+  loop: [ssh.socket, ssh.service]
+  register: base_ssh_units
+
+- name: Mask SSH, since nothing can reach port 22 and Run Command is the way in
+  ansible.builtin.systemd_service:
+    name: "{{ item.item }}"
+    state: stopped
+    enabled: false
+    masked: true
+  loop: "{{ base_ssh_units.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists
+
+- name: Allow HTTPS in
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+  when: monitoring_manage_firewall
+
+- name: Deny everything else in and enable the firewall
+  community.general.ufw:
+    state: enabled
+    direction: incoming
+    policy: deny
+  when: monitoring_manage_firewall
+
+- name: Look for the data disk
+  ansible.builtin.stat:
+    path: "{{ monitoring_data_device }}"
+    follow: true
+  register: base_data_device
+
+- name: Create a filesystem on the data disk
+  community.general.filesystem:
+    dev: "{{ monitoring_data_device }}"
+    fstype: ext4
+  when: base_data_device.stat.exists
+
+- name: Read the data disk's UUID
+  ansible.builtin.command:
+    cmd: "blkid -s UUID -o value {{ monitoring_data_device }}"
+  register: base_data_uuid
+  changed_when: false
+  when: base_data_device.stat.exists
+
+- name: Mount the data disk by UUID
+  ansible.posix.mount:
+    path: "{{ monitoring_data_dir }}"
+    src: "UUID={{ base_data_uuid.stdout }}"
+    fstype: ext4
+    opts: defaults,nofail
+    state: mounted
+  when: base_data_device.stat.exists
+
+- name: Own the data directory
+  ansible.builtin.file:
+    path: "{{ monitoring_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"

@@ -1,0 +1,107 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  vars:
+    verify_ca: /var/lib/prometheus/pki/ca.crt
+    verify_sample:
+      resourceMetrics:
+        - resource:
+            attributes:
+              - key: service.name
+                value:
+                  stringValue: molecule
+          scopeMetrics:
+            - metrics:
+                - name: molecule_probe
+                  gauge:
+                    dataPoints:
+                      - asDouble: 1
+                        timeUnixNano: "{{ (ansible_date_time.epoch | int) * 1000000000 }}"
+  tasks:
+    - name: Collect the service states
+      ansible.builtin.service_facts:
+
+    - name: Every service is running
+      ansible.builtin.assert:
+        that: ansible_facts.services[item ~ '.service'].state == 'running'
+        fail_msg: "{{ item }} is not running"
+      loop: [prometheus, node_exporter, blackbox_exporter, nginx]
+
+    - name: List the listening sockets
+      ansible.builtin.command:
+        cmd: ss -Hltn
+      register: verify_sockets
+      changed_when: false
+
+    - name: Prometheus and the exporters listen on loopback only
+      ansible.builtin.assert:
+        that:
+          - verify_sockets.stdout is search('127\.0\.0\.1:' ~ item)
+          - verify_sockets.stdout is not search('(0\.0\.0\.0|\*|\[::\]):' ~ item)
+      loop: ["9090", "9100", "9115"]
+
+    - name: The push credential pushes
+      ansible.builtin.uri:
+        url: "https://127.0.0.1/api/v1/otlp/v1/metrics"
+        method: POST
+        ca_path: "{{ verify_ca }}"
+        url_username: kanban-api
+        url_password: molecule-push-password
+        force_basic_auth: true
+        body_format: json
+        body: "{{ verify_sample }}"
+        status_code: [200, 204]
+
+    - name: The read credential reads what was pushed
+      ansible.builtin.uri:
+        url: "https://127.0.0.1/api/v1/query?query=molecule_probe"
+        ca_path: "{{ verify_ca }}"
+        url_username: grafana
+        url_password: molecule-read-password
+        force_basic_auth: true
+      register: verify_read
+      until: verify_read.json.data.result | length > 0
+      retries: 10
+      delay: 3
+
+    - name: The push credential cannot read
+      ansible.builtin.uri:
+        url: "https://127.0.0.1/api/v1/query?query=molecule_probe"
+        ca_path: "{{ verify_ca }}"
+        url_username: kanban-api
+        url_password: molecule-push-password
+        force_basic_auth: true
+        status_code: 401
+
+    - name: The read credential cannot push
+      ansible.builtin.uri:
+        url: "https://127.0.0.1/api/v1/otlp/v1/metrics"
+        method: POST
+        ca_path: "{{ verify_ca }}"
+        url_username: grafana
+        url_password: molecule-read-password
+        force_basic_auth: true
+        body_format: json
+        body: "{{ verify_sample }}"
+        status_code: 401
+
+    - name: The admin API and everything unlisted answer 404 to either credential
+      ansible.builtin.uri:
+        url: "https://127.0.0.1{{ item.0 }}"
+        method: "{{ item.0 is search('snapshot|reload') | ternary('POST', 'GET') }}"
+        ca_path: "{{ verify_ca }}"
+        url_username: "{{ item.1.user }}"
+        url_password: "{{ item.1.password }}"
+        force_basic_auth: true
+        status_code: 404
+      loop: "{{ ['/api/v1/admin/tsdb/snapshot', '/-/reload', '/api/v1/targets', '/graph'] | product(verify_users) | list }}"
+      vars:
+        verify_users:
+          - {user: kanban-api, password: molecule-push-password}
+          - {user: grafana, password: molecule-read-password}
+
+    - name: The health check answers without a credential
+      ansible.builtin.uri:
+        url: "https://127.0.0.1/healthz"
+        ca_path: "{{ verify_ca }}"

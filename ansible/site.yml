@@ -1,0 +1,9 @@
+---
+- name: Configure the monitoring VM
+  hosts: all
+  become: true
+  roles:
+    - base
+    - tls_material
+    - prometheus_stack
+    - edge_proxy

@@ -1,0 +1,54 @@
+---
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Remove the default site, which listens on port 80
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Write the push credential
+  community.general.htpasswd:
+    path: /etc/nginx/htpasswd.push
+    name: "{{ monitoring_push_user }}"
+    password: "{{ tls_material_push_password }}"
+    crypt_scheme: sha512_crypt
+    owner: root
+    group: www-data
+    mode: "0640"
+  no_log: true
+
+- name: Write the read credential
+  community.general.htpasswd:
+    path: /etc/nginx/htpasswd.read
+    name: "{{ monitoring_read_user }}"
+    password: "{{ tls_material_read_password }}"
+    crypt_scheme: sha512_crypt
+    owner: root
+    group: www-data
+    mode: "0640"
+  no_log: true
+
+- name: Install the Prometheus proxy
+  ansible.builtin.template:
+    src: prometheus.conf.j2
+    dest: /etc/nginx/conf.d/prometheus.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Check the nginx configuration before any reload
+  ansible.builtin.command:
+    cmd: nginx -t
+  changed_when: false
+
+- name: Start nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: started
+    enabled: true

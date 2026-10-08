@@ -1,0 +1,32 @@
+---
+monitoring_private_ip: 10.0.3.52
+monitoring_data_device: /dev/disk/azure/scsi1/lun0
+monitoring_data_dir: /var/lib/prometheus
+monitoring_pki_dir: /var/lib/prometheus/pki
+monitoring_manage_firewall: true
+
+monitoring_secrets_source: keyvault
+key_vault_name: ""
+identity_client_id: ""
+
+monitoring_push_user: kanban-api
+monitoring_read_user: grafana
+
+monitoring_server_cert_days: 397
+monitoring_server_cert_renew_days: 30
+
+prometheus_retention: 15d
+
+monitoring_binaries:
+  - name: prometheus
+    version: 3.15.0
+    sha256: 2a542df32eac02ee17b9d844fb2aa1de00dafa5476579ba8a3ba862e9d572ea0
+    executables: [prometheus, promtool]
+  - name: node_exporter
+    version: 1.12.1
+    sha256: b51d8a76aa2a9156a55d501aca6276fae09e262259a5e4e831d2c2222f084e63
+    executables: [node_exporter]
+  - name: blackbox_exporter
+    version: 0.29.0
+    sha256: 5512929259bb6164f68ebe20ce433ec43b8609e3a79c95324f5020e931488fb4
+    executables: [blackbox_exporter]
