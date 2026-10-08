@@ -99,17 +99,46 @@ tests:
         eval_time: 15m
         exp_alerts:
           - exp_labels: {severity: warning}
-            exp_annotations: {summary: Over 5% of API requests answer 5xx.}
+            exp_annotations:
+              summary: Over 5% of API requests answer 5xx.
+              description: Probes and the API document are excluded, and below 0.1 requests per second a single error is not a ratio.
       - alertname: ApiLatencyP95
         eval_time: 15m
         exp_alerts:
           - exp_labels: {severity: warning}
-            exp_annotations: {summary: The API's p95 latency is over 1 s.}
+            exp_annotations:
+              summary: The API's p95 latency is over 1 s.
+              description: Probes and the API document are excluded, and below 0.1 requests per second one slow call is the p95.
       - alertname: PoolStarved
         eval_time: 8m
         exp_alerts:
           - exp_labels: {severity: warning, instance: a}
             exp_annotations: {summary: a has requests waiting for a database connection.}
+
+  - name: quiet traffic
+    interval: 1m
+    input_series:
+      - series: http_server_requests_seconds_count{job="kanban-api", instance="a", uri="/v3/api-docs", status="200"}
+        values: 0+4x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/v3/api-docs", le="2"}
+        values: 0x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/v3/api-docs", le="+Inf"}
+        values: 0+4x20
+      - series: http_server_requests_seconds_count{job="kanban-api", instance="a", uri="/api/tasks", status="500"}
+        values: 0+1x20
+      - series: http_server_requests_seconds_count{job="kanban-api", instance="a", uri="/api/tasks", status="200"}
+        values: 0+2x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/api/tasks", le="2"}
+        values: 0x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/api/tasks", le="+Inf"}
+        values: 0+3x20
+    alert_rule_test:
+      - alertname: ApiLatencyP95
+        eval_time: 18m
+        exp_alerts: []
+      - alertname: Api5xxRatio
+        eval_time: 18m
+        exp_alerts: []
 
   - name: edge and host
     interval: 1m
