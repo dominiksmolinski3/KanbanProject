@@ -342,8 +342,11 @@ variable "grafana_image_tag" {
 }
 
 variable "grafana_custom_domain" {
-  description = "Hostname bound to Grafana with a managed certificate, such as grafana.kanbanproject.pl. Null until DNS points at the app."
-  type        = string
-  nullable    = true
-  default     = null
+  description = "Hostname bound to Grafana with a managed certificate, and that certificate's name. Null until DNS points at the app."
+  type = object({
+    name             = string
+    certificate_name = string
+  })
+  nullable = true
+  default  = null
 }

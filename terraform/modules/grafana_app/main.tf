@@ -1,8 +1,9 @@
 locals {
   app_name     = "kanban-grafana-${var.env}"
   default_fqdn = "${local.app_name}.${var.container_app_env_default_domain}"
-  hostnames    = compact([local.default_fqdn, var.custom_domain])
-  root_url     = "https://${coalesce(var.custom_domain, local.default_fqdn)}"
+  custom_host  = try(var.custom_domain.name, null)
+  hostnames    = compact([local.default_fqdn, local.custom_host])
+  root_url     = "https://${coalesce(local.custom_host, local.default_fqdn)}"
   issuer       = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
   roles = {
     Viewer = "See the dashboards."
@@ -253,6 +254,28 @@ resource "azurerm_container_app" "grafana" {
       }
     }
   }
+}
+
+resource "azurerm_container_app_environment_managed_certificate" "custom_domain" {
+  count                        = var.custom_domain == null ? 0 : 1
+  tags                         = var.tags
+  name                         = var.custom_domain.certificate_name
+  container_app_environment_id = var.container_app_env_id
+  subject_name                 = var.custom_domain.name
+  domain_control_validation    = "CNAME"
+}
+
+resource "azurerm_container_app_custom_domain" "main" {
+  count            = var.custom_domain == null ? 0 : 1
+  name             = var.custom_domain.name
+  container_app_id = azurerm_container_app.grafana.id
+
+  # A managed certificate is bound by the platform; these two fields only name an uploaded one.
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
+
+  depends_on = [azurerm_container_app_environment_managed_certificate.custom_domain]
 }
 
 # Nothing reaches Grafana without an Entra sign-in for a user assigned one of its roles.
