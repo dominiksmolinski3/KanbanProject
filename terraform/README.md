@@ -1071,3 +1071,31 @@ az provider register -n Microsoft.Compute   # once the feature shows Registered,
 
 The VM reaches apt and GitHub through Azure's default outbound access, since the VNet has no NAT gateway.
 If Azure retires that for the subnet, packages and configuration updates stop; the running stack does not.
+
+### Grafana
+
+`monitoring_enabled` also creates `kanban-grafana-<env>` (`modules/grafana_app`), a Container App running
+`ghcr.io/<owner>/kanbanproject-grafana`, which CD builds from `observability/grafana/Dockerfile` with the
+repo's dashboards. It reads Prometheus through the VM's nginx with the read credential, and Azure Monitor
+as its own managed identity.
+
+Two sign-ins guard it, and a user sees one:
+
+1. The Container Apps ingress requires an Entra sign-in before any request reaches Grafana, so Grafana's
+   code is never exposed to anonymous traffic. A browser is redirected to Microsoft; anything else gets 401.
+2. Grafana's own Entra login runs behind it on the same session and takes the user's role from the token.
+   It authenticates as the app's managed identity through a federated credential, so there is no client
+   secret to rotate.
+
+The tenant is on the free tier of Entra ID, which cannot assign groups to an app's roles. Each person is
+assigned a role directly, and assignment is required, so anyone unassigned cannot get a token at all:
+
+```bash
+terraform/scripts/grafana-role.sh someone@example.com Viewer   # or Editor, Admin
+terraform/scripts/grafana-role.sh someone@example.com none     # offboard
+```
+
+Editor means Explore and scratch dashboards. Provisioned dashboards change through the repo only.
+
+Grafana's own image skips Trivy for `usr/share/grafana/bin/grafana` alone: its findings clear only when
+Grafana Labs ships a release. Every package the image can upgrade is still gated.
