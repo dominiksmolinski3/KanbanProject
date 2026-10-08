@@ -1,0 +1,26 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: $PROMETHEUS_URL
+    isDefault: true
+    editable: false
+    basicAuth: true
+    basicAuthUser: grafana
+    jsonData:
+      httpMethod: POST
+      tlsAuthWithCACert: true
+    secureJsonData:
+      basicAuthPassword: $PROMETHEUS_READ_PASSWORD
+      tlsCACert: $PROMETHEUS_CA_CERT
+
+  - name: Azure Monitor
+    uid: azure-monitor
+    type: grafana-azure-monitor-datasource
+    editable: false
+    jsonData:
+      azureAuthType: msi
+      subscriptionId: $AZURE_SUBSCRIPTION_ID
