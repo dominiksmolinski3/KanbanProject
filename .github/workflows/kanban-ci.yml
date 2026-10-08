@@ -257,6 +257,28 @@ jobs:
         CYPRESS_BASE_URL: http://localhost:8080
       run: node cypress/retry-browser-connect.js npm run cypress:run:replicas
 
+    - name: Seed the load-test accounts
+      if: matrix.shard == 1
+      env:
+        LOAD_PGHOST: localhost
+        LOAD_PGPORT: 5432
+        LOAD_PGDATABASE: ${{ env.POSTGRES_DB }}
+        LOAD_PGUSER: ${{ env.POSTGRES_USER }}
+        LOAD_PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+      run: node loadtest/seed.mjs
+
+    - name: Run the load smoke
+      if: matrix.shard == 1
+      run: |
+        since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        docker compose --profile loadtest run --rm --no-deps k6
+        errors=$(docker compose logs --no-color --since "$since" app app2 | grep '"level":"ERROR"' || true)
+        if [ -n "$errors" ]; then
+          echo "$errors" | head -20
+          echo "::error::the API logged ERROR lines during the load smoke"
+          exit 1
+        fi
+
     - name: Check what the Application Insights agent exported
       run: node observability/appinsights-sink/assert-exported.mjs http://127.0.0.1:8099 2
 
