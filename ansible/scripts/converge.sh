@@ -34,7 +34,7 @@ if ! command -v ansible-pull >/dev/null || ! command -v git >/dev/null; then
   apt-get install -yq ansible git >/dev/null
 fi
 export ANSIBLE_DISPLAY_OK_HOSTS=false ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ANSIBLE_NOCOLOR=1
-ansible-pull -U "$repository" -C "$commit" -d /opt/kanban-config -i localhost, \
+ansible-pull -U "$repository" -C "$commit" -d /opt/kanban-config --clean -i localhost, \
   -e key_vault_name=$key_vault_name -e identity_client_id=$identity_client_id \
   $check_args ansible/site.yml 2>&1 | tee /var/log/kanban-converge.log | tail -c 3500
 EOF
