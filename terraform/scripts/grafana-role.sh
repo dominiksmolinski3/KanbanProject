@@ -18,9 +18,8 @@ sp=$(az ad sp list --display-name "kanban-grafana-${env_name}" --query "[0].id" 
 [ -n "$sp" ] || { echo "error: no kanban-grafana-${env_name} service principal; is Grafana deployed?" >&2; exit 1; }
 principal=$(az ad user show --id "$user" --query id -o tsv)
 
-for assignment in $(az rest --method get \
-    --url "${graph}/servicePrincipals/${sp}/appRoleAssignedTo?\$filter=principalId eq ${principal}" \
-    --query "value[].id" -o tsv); do
+for assignment in $(az rest --method get --url "${graph}/servicePrincipals/${sp}/appRoleAssignedTo" \
+    --query "value[?principalId=='${principal}'].id" -o tsv); do
   az rest --method delete --url "${graph}/servicePrincipals/${sp}/appRoleAssignedTo/${assignment}"
 done
 
