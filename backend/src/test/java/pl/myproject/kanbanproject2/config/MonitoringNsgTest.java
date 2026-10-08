@@ -52,7 +52,7 @@ class MonitoringNsgTest {
     @DisplayName("the VM sits in the subnet whose NSG this test reads")
     void theVmSitsInTheMonitoringSubnet() throws IOException {
         assertThat(block(read(ROOT_MODULE), "module \"monitoring_vm\""))
-                .contains("subnet_id           = module.vnet.monitoring_subnet_id");
+                .containsPattern("subnet_id\\s*=\\s*module\\.vnet\\.monitoring_subnet_id");
     }
 
     @Test

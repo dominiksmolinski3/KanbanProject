@@ -1046,7 +1046,10 @@ configured before anything pushes to it.
 
 Nobody logs in to it. It is configured by Run Command, which goes through Azure's control plane and is
 authorised by an Azure role: resource group Owners already have it, and `monitoring_operator_object_ids`
-grants the narrow *Monitoring VM Operator* role to anyone else.
+grants the narrow *Monitoring VM Operator* role to anyone else. Running commands on the VM is root on the VM, so that role
+effectively carries the VM's Key Vault grants too, including replacing the CA the API trusts. Grant it
+like an admin role. Tested on 8 Oct with a throwaway service principal holding only this role: Run
+Command ran as uid 0, and `deallocate` was refused.
 
 ```bash
 az vm run-command invoke -g kanban-dev-rg -n vm-monitoring-dev --command-id RunShellScript --scripts "uptime"
@@ -1054,8 +1057,17 @@ az vm run-command invoke -g kanban-dev-rg -n vm-monitoring-dev --command-id RunS
 
 Its identity reads two Key Vault secrets, `MONITORING-PUSH-PASSWORD` and `MONITORING-READ-PASSWORD`, and
 writes one, `MONITORING-CA-CERT`. The VM creates its own CA, so no TLS private key is ever in Terraform
-state. `OTLP-AUTH-HEADER` is derived from the push password in the same apply, and only the API will read
-it. Bump `credentials_version` on the module to rotate both credentials.
+state. Each credential is stored once: the API builds its push header from the same password the VM
+reads, so the two cannot drift apart. Bump `credentials_version` on the module to rotate both.
+
+`encryption_at_host_enabled` needs the `Microsoft.Compute/EncryptionAtHost` subscription feature, which is
+separate from registering the resource provider and is not something `resource_providers_to_register` does.
+On a fresh subscription, before the first apply:
+
+```bash
+az feature register --namespace Microsoft.Compute --name EncryptionAtHost
+az provider register -n Microsoft.Compute   # once the feature shows Registered, to propagate it
+```
 
 The VM reaches apt and GitHub through Azure's default outbound access, since the VNet has no NAT gateway.
 If Azure retires that for the subnet, packages and configuration updates stop; the running stack does not.
