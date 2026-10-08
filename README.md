@@ -340,6 +340,25 @@ publisher and the subscriber are the same JVM and the claim is not about anythin
 up with `docker compose --profile replicas up -d` first; the spec writes to the second replica's
 own port (`127.0.0.1:8082`) while the browser goes through nginx to the first.
 
+### Load Testing
+
+[k6](https://grafana.com/docs/k6/latest/) scenarios live in `loadtest/` and run against the compose
+stack (from the root folder, after `npm ci --legacy-peer-deps` in `frontend/`, whose `pg` the seed uses):
+
+``` bash
+docker compose -f docker-compose.yml -f loadtest/docker-compose.loadtest.yml --profile replicas --profile monitoring up -d --build
+set -a && . ./.env && set +a      # the seed reads the Postgres credentials from SPRING_DATASOURCE_*
+node loadtest/seed.mjs            # 20 verified accounts on one board with 300 cards
+docker compose --profile loadtest run --rm --no-deps k6                        # 60 s smoke
+docker compose --profile loadtest run --rm --no-deps -e LOAD_PROFILE=load k6   # 9 min at 4x the smoke rate
+```
+
+`LOAD_PROFILE` is `smoke`, `load`, `stress` or `spike`; `LOAD_RATE_SCALE`, `LOAD_DURATION` and
+`LOAD_P95_MS` tune it. A run fails on any 5xx, on more than 1% unexpected responses, or on p95 over
+the profile's limit. Watch it on the **Load test** dashboard in Grafana (`http://localhost:3000`).
+The override turns mail and captcha off and spreads traffic over both API replicas. Access tokens
+last 15 minutes, so seed again before each run.
+
 ## 👥 Contributing
 
 1. Fork the repository

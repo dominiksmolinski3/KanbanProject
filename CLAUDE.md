@@ -180,6 +180,32 @@ deadline sweep claim and the Redis escalation with a genuine competitor on the o
 
 Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
 
+### Load testing
+
+k6 scenarios live in [loadtest/](loadtest/); the README has the commands. Five things are not visible from the files:
+
+- **Accounts come from `loadtest/seed.mjs`, not from k6.** Signup needs a verification code, and only
+  Postgres has it, so the seed signs up straight against `127.0.0.1:8081` (one `198.18.x.y`
+  `X-Forwarded-For` per account, or the per-address signup limit stops it at five) and writes
+  `loadtest/.run/accounts.json`. k6 reads the tokens from there, and they last fifteen minutes.
+- **Every request sends its account's address too.** The edge limits by the last
+  `X-Forwarded-For` entry, so a k6 container with no header would be one address at 50/s and the
+  run would measure the edge limiter.
+- **The executors are `ramping-arrival-rate`.** A fixed VU count sends fewer requests as the app
+  slows, which hides the slowdown (coordinated omission); a fixed arrival rate shows it as
+  `dropped_iterations` instead.
+- **`systemTags` leaves `url` out and every request carries a `name`.** Remote-written to
+  Prometheus, a `url` label is one series per task id.
+- **`loadtest/docker-compose.loadtest.yml` is for local runs only.** It turns mail and captcha off
+  and gives both replicas an `api` alias so nginx spreads load across them. CI must not use it:
+  `cross-replica-sync.cy.js` relies on nginx reaching `app` alone, and CI's `.env` already has mail
+  and captcha off.
+
+A run fails on any 5xx (`server_errors`), on more than 1% responses outside 2xx and the 404/409 a
+concurrent edit legitimately gets, or on p95 above the profile's limit. `contention` fires its writes
+concurrently with `http.batch`: three reorders of the same columns or rows, or a column delete
+against a move into it, because one request at a time almost never overlaps another.
+
 ## Architecture
 
 ### Two containers, one origin
@@ -1567,7 +1593,7 @@ severity 3 for refusals that happen in ordinary use and only mean something in b
 and reasons in `local.refusal_alerts`.
 ### CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. Leg 1 then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
   **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
   run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
