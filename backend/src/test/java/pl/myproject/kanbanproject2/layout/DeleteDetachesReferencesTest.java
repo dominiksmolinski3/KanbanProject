@@ -170,9 +170,18 @@ class DeleteDetachesReferencesTest {
             columnService.deleteColumn(CALLER, 5);
 
             InOrder order = Mockito.inOrder(columnRepository, taskService);
-            order.verify(columnRepository).lockById(5);
+            order.verify(columnRepository).lockForDelete(5);
             order.verify(taskService).deleteTask(CALLER, 11);
             order.verify(columnRepository).delete(column);
+        }
+
+        @Test
+        @DisplayName("the lock is a plain FOR UPDATE, the only row lock a foreign-key check on the column waits for")
+        void lockIsForUpdate() throws NoSuchMethodException {
+            String sql = ColumnRepository.class.getMethod("lockForDelete", Integer.class)
+                    .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+
+            assertThat(sql).containsIgnoringCase("FOR UPDATE").doesNotContainIgnoringCase("NO KEY");
         }
 
         @Test
