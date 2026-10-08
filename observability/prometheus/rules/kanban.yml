@@ -64,23 +64,27 @@ groups:
 
       - alert: Api5xxRatio
         expr: |
-          sum(rate(http_server_requests_seconds_count{job="kanban-api", status=~"5.."}[5m]))
-            / sum(rate(http_server_requests_seconds_count{job="kanban-api"}[5m])) > 0.05
+          sum(rate(http_server_requests_seconds_count{job="kanban-api", status=~"5..", uri!~"/actuator.*|/v3/api-docs"}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job="kanban-api", uri!~"/actuator.*|/v3/api-docs"}[5m])) > 0.05
+          and on () sum(rate(http_server_requests_seconds_count{job="kanban-api", uri!~"/actuator.*|/v3/api-docs"}[5m])) > 0.1
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: Over 5% of API requests answer 5xx.
+          description: Probes and the API document are excluded, and below 0.1 requests per second a single error is not a ratio.
 
       - alert: ApiLatencyP95
         expr: |
           histogram_quantile(0.95,
-            sum by (le) (rate(http_server_requests_seconds_bucket{job="kanban-api", uri!~"/actuator.*"}[5m]))) > 1
+            sum by (le) (rate(http_server_requests_seconds_bucket{job="kanban-api", uri!~"/actuator.*|/v3/api-docs"}[5m]))) > 1
+          and on () sum(rate(http_server_requests_seconds_count{job="kanban-api", uri!~"/actuator.*|/v3/api-docs"}[5m])) > 0.1
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: The API's p95 latency is over 1 s.
+          description: Probes and the API document are excluded, and below 0.1 requests per second one slow call is the p95.
 
       - alert: PoolStarved
         expr: max by (instance) (hikaricp_connections_pending{job="kanban-api"}) > 0
