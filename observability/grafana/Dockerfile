@@ -9,6 +9,7 @@ USER 472
 
 COPY --chown=472:0 dashboards.yml /etc/grafana/provisioning/dashboards/kanban.yml
 COPY --chown=472:0 dashboards/ /etc/grafana/dashboards/
+COPY --chown=472:0 azure/dashboards/ /etc/grafana/dashboards/azure/
 COPY --chown=472:0 azure/datasources.yml /etc/grafana/provisioning/datasources/azure.yml
 
 ENV GF_ANALYTICS_REPORTING_ENABLED=false \
