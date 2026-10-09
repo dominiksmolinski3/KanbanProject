@@ -108,7 +108,7 @@ tests:
           - exp_labels: {severity: warning}
             exp_annotations:
               summary: The API's p95 latency is over 1 s.
-              description: Probes and the API document are excluded, and below 0.1 requests per second one slow call is the p95.
+              description: Probes, the API document and WebSocket handshakes are excluded, and below 0.1 requests per second one slow call is the p95.
       - alertname: PoolStarved
         eval_time: 8m
         exp_alerts:
@@ -139,6 +139,34 @@ tests:
       - alertname: Api5xxRatio
         eval_time: 18m
         exp_alerts: []
+
+  - name: websocket handshakes
+    interval: 1m
+    input_series:
+      - series: http_server_requests_seconds_count{job="kanban-api", instance="a", uri="/ws/**", status="101"}
+        values: 0+300x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/ws/**", le="0.005"}
+        values: 0+300x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/ws/**", le="2"}
+        values: 0+300x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/ws/**", le="+Inf"}
+        values: 0+300x20
+      - series: http_server_requests_seconds_count{job="kanban-api", instance="a", uri="/api/tasks", status="200"}
+        values: 0+12x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/api/tasks", le="0.005"}
+        values: 0x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/api/tasks", le="2"}
+        values: 0x20
+      - series: http_server_requests_seconds_bucket{job="kanban-api", instance="a", uri="/api/tasks", le="+Inf"}
+        values: 0+12x20
+    alert_rule_test:
+      - alertname: ApiLatencyP95
+        eval_time: 18m
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: The API's p95 latency is over 1 s.
+              description: Probes, the API document and WebSocket handshakes are excluded, and below 0.1 requests per second one slow call is the p95.
 
   - name: edge and host
     interval: 1m
