@@ -35,7 +35,8 @@ function scenario(name, perSecond) {
     startRate: rate,
     timeUnit: '1s',
     preAllocatedVUs: rate * 2,
-    maxVUs: rate * 10,
+    // Past this an iteration is dropped and counted rather than given a new VU; more VUs outgrow k6's 512M limit.
+    maxVUs: rate * 4,
     stages: profile.stages.map(({ target, duration }) => ({ target: Math.round(rate * target), duration })),
   };
 }
@@ -59,12 +60,14 @@ function user() {
   return users[(exec.vu.idInTest - 1) % users.length];
 }
 
-function request(method, path, name, body, expected = RACES) {
+// A body k6 keeps is memory per VU, and a board of 300 cards is megabytes; only keep the ones a scenario reads.
+function request(method, path, name, body, expected = RACES, responseType = 'none') {
   const { token, address } = user();
   const res = http.request(method, BASE + path, body === undefined ? null : JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Forwarded-For': address },
     tags: { name },
     responseCallback: expected,
+    responseType,
   });
   if (res.status === 0 || res.status >= 500) {
     serverErrors.add(1, { name });
@@ -73,7 +76,7 @@ function request(method, path, name, body, expected = RACES) {
 }
 
 function list(path, name) {
-  const res = request('GET', path, name);
+  const res = request('GET', path, name, undefined, RACES, 'text');
   return res.status === 200 ? res.json() : [];
 }
 
@@ -140,6 +143,7 @@ function race(requests) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Forwarded-For': address },
       tags: { name },
       responseCallback: RACES,
+      responseType: 'none',
     },
   ]));
   responses.forEach((res, i) => {
@@ -151,7 +155,7 @@ function race(requests) {
 function deleteColumnUnderAMove() {
   const tasks = list(`/tasks${board}`, 'GET /tasks');
   const [inside, mover] = [pick(tasks), pick(tasks)];
-  const created = request('POST', `/columns${board}`, 'POST /columns', { name: `${SCRATCH}${exec.vu.idInTest}` });
+  const created = request('POST', `/columns${board}`, 'POST /columns', { name: `${SCRATCH}${exec.vu.idInTest}` }, RACES, 'text');
   if (!inside || !mover || inside.id === mover.id || created.status !== 201) return;
   const column = created.json().id;
   const placed = request('PATCH', `/tasks/${inside.id}`, 'PATCH /tasks/{id}', { column: { id: column }, version: inside.version });
@@ -173,9 +177,9 @@ function deleteColumnUnderAMove() {
 }
 
 export function browse() {
-  list(`/columns${board}`, 'GET /columns');
-  list(`/rows${board}`, 'GET /rows');
-  list(`/tasks${board}`, 'GET /tasks');
+  request('GET', `/columns${board}`, 'GET /columns');
+  request('GET', `/rows${board}`, 'GET /rows');
+  request('GET', `/tasks${board}`, 'GET /tasks');
 }
 
 export function search() {
