@@ -20,6 +20,7 @@
 
 - [📋 Overview](#-overview)
 - [✨ Features](#-features)
+- [📸 Screenshots](#-screenshots)
 - [🛠️ Technologies](#️-technologies)
 - [📦 Prerequisites](#-prerequisites)
 - [💻 Installation](#-installation)
@@ -48,7 +49,34 @@ KanbanProject is a web-based task management system implementing Kanban methodol
 - 👤 User assignments to tasks
 - 🏷️ Labels for task categorization
 - 📎 File attachments on tasks, streamed to and from Azure Blob Storage
+- 📈 Flow metrics: cumulative flow, cycle time and throughput from every card's move history
+- 🕑 Activity feed of who moved, assigned, completed or commented on what
 - 🌙 Dark mode that follows the operating system setting
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/board.png" alt="The board: five columns across three swimlanes, cards with labels, deadlines, subtask progress and assignees, and a WIP limit bar over In Progress" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/task-panel.png" alt="A card opened in the side panel, showing assignees, labels, deadline, description, subtasks and attachments" width="100%"/>
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/flow-metrics.png" alt="The flow screen: cumulative flow diagram, cycle-time scatter with median and 85th percentile, and daily throughput"/></td>
+    <td width="50%"><img src="docs/screenshots/activity-feed.png" alt="The activity feed, newest first, grouped by day"/></td>
+  </tr>
+  <tr>
+    <td align="center">Flow metrics</td>
+    <td align="center">Activity feed</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/board-dark.png" alt="The same board in dark mode" width="100%"/>
+</p>
 
 ## 🛠️ Technologies
 
@@ -120,6 +148,11 @@ docker-compose up -d
    A plain `redis` service backs the auth rate limiter's escalation (`security.rate-limit.redis-*`),
    so the login/signup limits mean what their numbers say even if you run more than one `app`
    replica locally. Nothing to configure -- the app finds it by service name.
+
+   `docker compose --profile monitoring up -d` adds Prometheus (`127.0.0.1:9090`) and Grafana
+   (`127.0.0.1:3000`, anonymous read-only) with the same dashboards the deployment provisions,
+   plus exporters for Postgres, Redis and the edge. The API pushes its metrics to Prometheus over
+   OTLP, the way it does in Azure.
 
 5. To stop the application:
 
@@ -239,56 +272,84 @@ The project is organized as follows:
 ### How a request flows through the system
 
 <p align="center">
-  <img src="docs/architecture/application-architecture.svg" alt="Application architecture: browser through nginx and the Spring Boot API to Postgres, Redis, RabbitMQ, Blob Storage and the email API" width="100%"/>
+  <img src="docs/architecture/application-architecture.svg" alt="Application architecture: browser through nginx and the Spring Boot API to Postgres, Redis, RabbitMQ, Blob Storage and the email API, with the API pushing metrics to Prometheus and Grafana reading them" width="100%"/>
 </p>
 
-Browser traffic lands on **nginx** (the only public address), which serves the built bundle from
+Browser traffic lands on **nginx** (the app's only public address), which serves the built bundle from
 disk and reverse-proxies `/api`, `/ws` and `/v3/api-docs` to the **Spring Boot API** over an
 internal, TLS-verified connection. The API is the only thing that talks to the five pieces of
 shared, out-of-process state -- Postgres, Azure Managed Redis, the RabbitMQ STOMP broker, Blob
 Storage and the ACS Email API -- which is what lets both `web` and `api` run more than one replica
-without disagreeing with each other or with themselves.
+without disagreeing with each other or with themselves. Every replica also pushes its metrics over
+OTLP to **Prometheus**, which **Grafana** reads.
 
 ### Azure infrastructure
 
 <p align="center">
-  <img src="docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with five subnets holding the Container Apps environment (web, api, broker and the backup, restore-drill, migration and role jobs), Postgres, and the Key Vault, Blob Storage and Redis private endpoints, plus a backup region holding the database dumps and a replicated copy of the attachments" width="100%"/>
+  <img src="docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with six subnets holding the Container Apps environment (web, api, broker, grafana and the backup, restore-drill, migration and role jobs), Postgres, the Key Vault, Blob Storage and Redis private endpoints and the monitoring VM, plus a backup region holding the database dumps, the Prometheus snapshots and a replicated copy of the attachments" width="100%"/>
 </p>
 
-Every push to `main` builds two images -- [backend/Dockerfile](backend/Dockerfile), the Spring Boot
-jar, and [frontend/Dockerfile](frontend/Dockerfile), nginx with the Vite bundle -- scans each with
-Trivy and publishes both to the GitHub Container Registry:
+Every push to `main` builds three images -- [backend/Dockerfile](backend/Dockerfile), the Spring Boot
+jar, [frontend/Dockerfile](frontend/Dockerfile), nginx with the Vite bundle, and
+[observability/grafana/Dockerfile](observability/grafana/Dockerfile), Grafana with its dashboards --
+scans each with Trivy and publishes them to the GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/dominiksmolinski3/kanbanproject-app:latest
 docker pull ghcr.io/dominiksmolinski3/kanbanproject-web:latest
+docker pull ghcr.io/dominiksmolinski3/kanbanproject-grafana:latest
 ```
 
 Images are tagged with the commit SHA as well, and `:latest` is only promoted after the vulnerability
-scan passes. **Both carry the same tag**, deliberately: the browser and the API it calls used to be
-one artifact and could not disagree, and one tag feeding both is what replaces that guarantee.
+scan passes. **All three carry the same tag**, deliberately: the browser and the API it calls used to be
+one artifact and could not disagree, and one tag feeding them is what replaces that guarantee.
 
-The Azure environment behind it is three Container Apps in one Managed Environment --
-**`kanban-web`** (nginx, the only external ingress), **`kanban-api`** (the Spring Boot jar, internal
-only, up to 5 replicas) and **`kanban-broker`** (RabbitMQ's STOMP plugin, fixed at one replica, the
-shared relay every API replica connects to) -- running under user-assigned managed identities, a
+The Azure environment behind it is four Container Apps in one Managed Environment --
+**`kanban-web`** (nginx, the app's external ingress), **`kanban-api`** (the Spring Boot jar, internal
+only, up to 5 replicas), **`kanban-broker`** (RabbitMQ's STOMP plugin, fixed at one replica, the
+shared relay every API replica connects to) and **`kanban-grafana`** (external ingress behind an
+Entra sign-in, scaled to zero when nobody is looking) -- running under user-assigned managed identities, a
 PostgreSQL Flexible Server VNet-injected into a delegated subnet with public access disabled and
 Entra-only logins, an Azure Managed Redis instance holding the rate limiters' state, a Key Vault
 and a Storage account (attachments and avatars) all closed to the internet and reached over private
 endpoints with no account key, plus the VNet/NSGs, Log Analytics and Application Insights.
 Container Apps jobs in the same environment run the Flyway migrations, a nightly `pg_dump` and a
 nightly restore drill; the dumps and a replicated copy of the attachments live in a second region
-(Sweden Central). All of it is defined as Terraform in
+(Sweden Central). Prometheus runs on a small VM in its own subnet, with no public IP and no SSH: it
+answers only on 443 and only from the Container Apps subnet, is configured by Ansible through Run
+Command, and sends a nightly snapshot to the backup region. All of it is defined as Terraform in
 [terraform/](terraform/). See [terraform/README.md](terraform/README.md) for the Azure RBAC
 prerequisites, the network layout and the per-environment state layout.
 
+### Monitoring
+
+Grafana ships with dashboards for the API, the JVM and its connection pool, Kanban's own counters
+(mail outbox, rate-limit refusals, edit conflicts), the shared infrastructure, the edge and the
+monitoring VM itself, plus an Azure Monitor dashboard for the managed services in the deployment.
+The screenshots below are from the local `monitoring` profile with two API replicas under a k6
+smoke run.
+
+<p align="center">
+  <img src="docs/screenshots/grafana-api-service.png" alt="Grafana API service dashboard: replicas reporting, request rate, 5xx ratio and p95 latency, with request rate by replica and responses by status" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grafana-jvm-pool.png" alt="Grafana JVM and pool dashboard: connections in use against pool size, threads waiting for a connection, acquire time, heap, GC pause time, CPU and live threads per replica" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grafana-infrastructure.png" alt="Grafana infrastructure dashboard: Postgres, Redis and RabbitMQ up, Postgres connections and transactions, Redis memory and commands, RabbitMQ connections and messages" width="100%"/>
+</p>
+
 Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
 Postgres and Redis service container, frontend build/lint/Jest, an `e2e` job that runs Cypress
-against a two-replica `docker-compose` stack, and an `image-scan` job that Trivy-scans both images
+against a two-replica `docker-compose` stack, and an `image-scan` job that Trivy-scans every image
 on every PR), `kanban-cd.yml` (build, scan, push, promote), `deployed-contract.yml` (a daily sweep
 that asks the deployed origin whether it still matches what the trunk claims), `codeql.yml` (CodeQL
 analysis of the Java backend), `migration-order.yml` (guards Flyway migration numbering across
-branches), `terraform-ci.yml` (fmt/validate/Checkov), `terraform-drift.yml` (a nightly plan of dev from `main`), `hadolint.yml` (both Dockerfiles),
+branches), `terraform-ci.yml` (fmt/validate/Checkov), `terraform-drift.yml` (a nightly plan of dev from `main`),
+`observability-ci.yml` (Prometheus config and rule tests, dashboard lint, ansible-lint and Molecule),
+`monitoring-drift.yml` (a nightly check-mode run of the monitoring VM's configuration), `hadolint.yml` (every Dockerfile),
 `sweep-alarm.yml` (the shared alarm every scheduled workflow reports through), and the dependency and
 attack-surface scans (`dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`,
 `external-scan.yml`, `dast.yml`).
