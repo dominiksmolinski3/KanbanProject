@@ -28,6 +28,10 @@ so the redesign changes how it looks and leaves the structure alone.
 
 ### What the board shows
 
+<p align="center">
+  <img src="../docs/screenshots/board-cards.png" alt="Three columns of cards: WIP meters in the column headers, In Progress at 4 of 5 in amber, cards with label pills, due-date chips, subtask progress and assignee avatars" width="100%"/>
+</p>
+
 - **WIP signal per column and swimlane.** `WipMeter` shows `count/limit`. The header turns amber
   at 80% of the limit (`wip-near`) and red past it (`wip-over`, plus the old `wip-exceeded` class
   so existing selectors still match). Columns also get a capacity bar driven by `--wip-fill`. As
@@ -66,6 +70,13 @@ Dark values apply under `prefers-color-scheme: dark` unless the root carries
 `FlowMetrics.css` uses, so an explicit theme switch can be added later without touching the
 components. Headers use a translucent surface with `backdrop-filter`. Motion is turned off under
 `prefers-reduced-motion`, and hover-only controls stay visible on touch devices (`hover: none`).
+
+<table>
+  <tr>
+    <td width="50%"><img src="../docs/screenshots/board-cards.png" alt="Cards with the light token values"/></td>
+    <td width="50%"><img src="../docs/screenshots/board-cards-dark.png" alt="The same cards with the dark token values"/></td>
+  </tr>
+</table>
 
 ### Accessibility
 
