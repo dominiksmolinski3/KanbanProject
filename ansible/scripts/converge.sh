@@ -25,7 +25,7 @@ esac
 
 key_vault_name=$(az keyvault list -g "$resource_group" --query "[0].name" -o tsv)
 identity_client_id=$(az identity show -g "$resource_group" -n "kanban-monitoring-identity-${env_name}" --query clientId -o tsv)
-backup_endpoint=$(az storage account list -g "kanban-${env_name}-backup-rg" --query "[0].primaryEndpoints.blob" -o tsv)
+backup_endpoint=$(az storage account list -g "kanban-${env_name}-backup-rg" --query "[?starts_with(name, 'stkbackup')].primaryEndpoints.blob | [0]" -o tsv)
 
 script=$(cat <<EOF
 set -eu
