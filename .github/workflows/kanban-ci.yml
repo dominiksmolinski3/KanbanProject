@@ -30,6 +30,9 @@ jobs:
     services:
       postgres:
         image: postgres:17
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
@@ -39,6 +42,9 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
         image: redis:7-alpine
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         ports:
           - 6379:6379
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
@@ -129,7 +135,15 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
+    - name: Log in to Docker Hub
+      if: env.DOCKERHUB_USERNAME != ''
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -320,7 +334,16 @@ jobs:
             dockerfile: observability/grafana/Dockerfile
             trivy-skip-files: usr/share/grafana/bin/grafana
 
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
+    - name: Log in to Docker Hub
+      if: env.DOCKERHUB_USERNAME != ''
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up Docker Buildx
