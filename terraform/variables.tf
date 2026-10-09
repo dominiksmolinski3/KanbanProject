@@ -350,3 +350,14 @@ variable "grafana_custom_domain" {
   nullable = true
   default  = null
 }
+
+variable "api_otlp_export_enabled" {
+  description = "Push the API's metrics to the monitoring VM. Turn it on only once the VM has been configured and has published its CA."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.api_otlp_export_enabled || var.monitoring_enabled
+    error_message = "api_otlp_export_enabled needs monitoring_enabled: there is no VM to push to."
+  }
+}

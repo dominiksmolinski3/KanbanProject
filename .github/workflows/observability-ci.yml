@@ -51,19 +51,24 @@ jobs:
 
       - name: Lint the dashboards
         run: |
-          for dashboard in observability/grafana/dashboards/*.json; do
-            python3 - "$dashboard" <<'PY'
-          import json, sys
-          path = sys.argv[1]
-          dashboard = json.load(open(path))
-          for key in ("uid", "title", "panels"):
-              assert dashboard.get(key), f"{path}: no {key}"
-          for panel in dashboard["panels"]:
-              assert panel["datasource"]["uid"] == "prometheus", f"{path}: {panel['title']} names another data source"
+          python3 - <<'PY'
+          import glob, json
+          # The local stack has only Prometheus; the Azure folder ships in the Azure image alone.
+          folders = {"observability/grafana/dashboards": "prometheus",
+                     "observability/grafana/azure/dashboards": "azure-monitor"}
+          uids = []
+          for folder, source in folders.items():
+              for path in glob.glob(f"{folder}/*.json"):
+                  dashboard = json.load(open(path))
+                  for key in ("uid", "title", "panels"):
+                      assert dashboard.get(key), f"{path}: no {key}"
+                  uids.append(dashboard["uid"])
+                  for panel in dashboard["panels"]:
+                      if panel["type"] != "row":
+                          assert panel["datasource"]["uid"] == source, f"{path}: {panel['title']} is not on {source}"
+          assert len(uids) == len(set(uids)), f"duplicate dashboard uid in {sorted(uids)}"
+          print(f"{len(uids)} dashboards")
           PY
-          done
-          uids=$(python3 -c 'import json,glob; print("\n".join(json.load(open(p))["uid"] for p in glob.glob("observability/grafana/dashboards/*.json")))')
-          test -z "$(echo "$uids" | sort | uniq -d)" || { echo "duplicate dashboard uid" >&2; exit 1; }
 
   ansible:
     runs-on: ubuntu-latest

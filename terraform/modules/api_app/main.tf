@@ -84,6 +84,18 @@ resource "azurerm_container_app" "main" {
     value = var.app_insights_connection_string
   }
 
+  dynamic "secret" {
+    for_each = var.otlp_export_enabled ? {
+      "monitoring-push-password" = var.otlp_password_secret_name
+      "monitoring-ca-cert"       = var.otlp_ca_secret_name
+    } : {}
+    content {
+      name                = secret.key
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), secret.value)
+      identity            = azurerm_user_assigned_identity.main.id
+    }
+  }
+
   secret {
     name                = "rabbitmq-password"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "RABBITMQ-PASSWORD")
@@ -225,6 +237,25 @@ resource "azurerm_container_app" "main" {
       env {
         name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
         secret_name = "app-insights-connection-string"
+      }
+
+      env {
+        name  = "OTLP_METRICS_ENABLED"
+        value = tostring(var.otlp_export_enabled)
+      }
+      env {
+        name  = "OTLP_METRICS_URL"
+        value = var.otlp_metrics_url
+      }
+      dynamic "env" {
+        for_each = var.otlp_export_enabled ? {
+          OTLP_METRICS_PASSWORD = "monitoring-push-password"
+          OTLP_METRICS_CA_PEM   = "monitoring-ca-cert"
+        } : {}
+        content {
+          name        = env.key
+          secret_name = env.value
+        }
       }
 
       env {

@@ -281,6 +281,11 @@ module "api_app" {
 
   app_insights_id                = azurerm_application_insights.main.id
   app_insights_connection_string = azurerm_application_insights.main.connection_string
+
+  otlp_export_enabled       = var.monitoring_enabled && var.api_otlp_export_enabled
+  otlp_metrics_url          = var.monitoring_enabled ? "https://${module.monitoring_vm[0].private_ip}/api/v1/otlp/v1/metrics" : ""
+  otlp_password_secret_name = try(module.monitoring_vm[0].push_password_secret_name, "")
+  otlp_ca_secret_name       = try(module.monitoring_vm[0].ca_certificate_secret_name, "")
 }
 
 check "api_connection_budget_fits_the_server" {

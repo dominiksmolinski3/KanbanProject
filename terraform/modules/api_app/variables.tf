@@ -263,3 +263,24 @@ variable "jwt_secret_version" {
   type        = number
   default     = 1
 }
+
+variable "otlp_export_enabled" {
+  description = "Push every meter to the monitoring VM over OTLP."
+  type        = bool
+  default     = false
+}
+
+variable "otlp_metrics_url" {
+  type    = string
+  default = ""
+}
+
+variable "otlp_password_secret_name" {
+  type    = string
+  default = ""
+}
+
+variable "otlp_ca_secret_name" {
+  type    = string
+  default = ""
+}

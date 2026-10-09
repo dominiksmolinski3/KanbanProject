@@ -21,3 +21,7 @@ output "read_password_secret_name" {
 output "ca_certificate_secret_name" {
   value = azurerm_key_vault_secret.ca_certificate.name
 }
+
+output "push_password_secret_name" {
+  value = azurerm_key_vault_secret.push_password.name
+}
