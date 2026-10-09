@@ -1648,6 +1648,15 @@ and reasons in `local.refusal_alerts`.
   as `DeadLetterAlertTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
+- **Every job that pulls from Docker Hub logs in first** (`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`,
+  a read-only token). Anonymously, the pull limit belongs to the runner's IP, which GitHub shares
+  with every other job on it: on 9 Oct 2026 a burst of merges failed all three e2e legs and the app
+  image scan with `toomanyrequests`, and a re-run failed the same way. The login step is skipped
+  when the username is empty, because Dependabot runs and forks get no repository secrets; the two
+  secrets therefore live in **both** the Actions and the Dependabot secret stores, or every
+  Dependabot PR still pulls anonymously. Service containers are pulled before any step runs, so the
+  backend job's postgres and redis carry `credentials:` of their own. A new job that runs `docker`
+  or builds an image needs the same step.
 - `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
   `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
   `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit
