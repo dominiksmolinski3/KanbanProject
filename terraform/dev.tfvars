@@ -24,6 +24,9 @@ api_db_connection_budget = 30
 monitoring_enabled      = true
 api_otlp_export_enabled = true
 
+# The drift workflow's identity, so monitoring-drift.yml can run the VM's configuration in check mode.
+monitoring_operator_object_ids = ["1f493a12-84ca-4024-933c-d3130883f9cc"]
+
 monthly_budget = 40
 
 custom_domain = {

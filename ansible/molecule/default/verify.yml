@@ -105,3 +105,24 @@
       ansible.builtin.uri:
         url: "https://127.0.0.1/healthz"
         ca_path: "{{ verify_ca }}"
+
+    - name: The backup script snapshots Prometheus into an archive
+      ansible.builtin.command:
+        cmd: /usr/local/sbin/prometheus-backup --dry-run
+      register: verify_backup
+      changed_when: false
+
+    - name: The archive holds the snapshot
+      ansible.builtin.assert:
+        that: verify_backup.stdout is search('^DRY_RUN_OK [1-9][0-9]* entries')
+        fail_msg: "{{ verify_backup.stdout }}"
+
+    - name: Read the backup timer's state
+      ansible.builtin.systemd_service:
+        name: prometheus-backup.timer
+      register: verify_timer
+
+    - name: With nowhere to send it, the timer stays off
+      ansible.builtin.assert:
+        that: verify_timer.status.UnitFileState == 'disabled'
+        fail_msg: "prometheus-backup.timer is {{ verify_timer.status.UnitFileState }}"

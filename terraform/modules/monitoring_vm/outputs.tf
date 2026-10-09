@@ -25,3 +25,7 @@ output "ca_certificate_secret_name" {
 output "push_password_secret_name" {
   value = azurerm_key_vault_secret.push_password.name
 }
+
+output "identity_principal_id" {
+  value = azurerm_user_assigned_identity.main.principal_id
+}

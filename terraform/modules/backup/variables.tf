@@ -81,3 +81,17 @@ variable "attachment_retention_days" {
 variable "log_analytics_workspace_id" {
   type = string
 }
+
+variable "monitoring_subnet_id" {
+  description = "The monitoring VM's subnet, admitted to the account so the VM can upload Prometheus snapshots. Null when there is no VM."
+  type        = string
+  nullable    = true
+  default     = null
+}
+
+variable "monitoring_principal_id" {
+  description = "The monitoring VM's identity, which may add snapshots to the monitoring container and nothing else."
+  type        = string
+  nullable    = true
+  default     = null
+}

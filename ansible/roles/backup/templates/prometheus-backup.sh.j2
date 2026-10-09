@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dry_run=0
+[ "${1:-}" = "--dry-run" ] && dry_run=1
+
+name=$(curl -fsS -X POST http://127.0.0.1:9090/api/v1/admin/tsdb/snapshot |
+  python3 -c 'import json, sys; print(json.load(sys.stdin)["data"]["name"])')
+snapshot="{{ monitoring_data_dir }}/data/snapshots/${name}"
+archive="{{ monitoring_data_dir }}/prometheus-${name}.tar.gz"
+trap 'rm -rf "$snapshot" "$archive"' EXIT
+
+tar -C "$snapshot" -czf "$archive" .
+
+if [ "$dry_run" = 1 ]; then
+  echo "DRY_RUN_OK $(tar -tzf "$archive" | wc -l) entries, $(stat -c %s "$archive") bytes"
+  exit 0
+fi
+
+token=$(curl -fsS -H Metadata:true \
+  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F&client_id={{ identity_client_id }}" |
+  python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
+
+blob="prometheus-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+curl -fsS -X PUT -T "$archive" \
+  -H "Authorization: Bearer ${token}" \
+  -H "x-ms-version: 2023-11-03" \
+  -H "x-ms-blob-type: BlockBlob" \
+  -H "Content-Type: application/gzip" \
+  "{{ backup_container_url }}/${blob}"
+
+metric="{{ monitoring_textfile_dir }}/prometheus_backup.prom"
+cat > "${metric}.$$" <<METRIC
+# HELP prometheus_backup_last_success_timestamp_seconds When the last Prometheus snapshot reached Blob storage.
+# TYPE prometheus_backup_last_success_timestamp_seconds gauge
+prometheus_backup_last_success_timestamp_seconds $(date +%s)
+METRIC
+mv "${metric}.$$" "$metric"
+
+echo "BACKUP_OK ${blob} $(stat -c %s "$archive") bytes"

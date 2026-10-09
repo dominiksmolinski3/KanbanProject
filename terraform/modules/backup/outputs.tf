@@ -22,3 +22,7 @@ output "identity" {
     principal_id = azurerm_user_assigned_identity.job.principal_id
   }
 }
+
+output "monitoring_container_url" {
+  value = try("${azurerm_storage_account.dumps.primary_blob_endpoint}${azurerm_storage_container.monitoring[0].name}", null)
+}

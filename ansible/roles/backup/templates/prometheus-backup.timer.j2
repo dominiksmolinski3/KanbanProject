@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly Prometheus snapshot
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

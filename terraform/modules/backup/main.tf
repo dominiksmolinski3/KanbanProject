@@ -49,7 +49,7 @@ resource "azurerm_storage_account" "dumps" {
   network_rules {
     default_action             = "Deny"
     bypass                     = ["AzureServices"]
-    virtual_network_subnet_ids = [var.writer_subnet_id]
+    virtual_network_subnet_ids = compact([var.writer_subnet_id, var.monitoring_subnet_id])
   }
 
   blob_properties {
@@ -112,6 +112,25 @@ resource "azurerm_storage_management_policy" "dumps" {
   storage_account_id = azurerm_storage_account.dumps.id
 
   dynamic "rule" {
+    for_each = var.monitoring_principal_id == null ? [] : [1]
+    content {
+      name    = "monitoring-retention"
+      enabled = true
+
+      filters {
+        blob_types   = ["blockBlob"]
+        prefix_match = ["monitoring/"]
+      }
+
+      actions {
+        base_blob {
+          delete_after_days_since_creation_greater_than = 7
+        }
+      }
+    }
+  }
+
+  dynamic "rule" {
     for_each = local.retention
     content {
       name    = "${rule.key}-retention"
@@ -145,6 +164,21 @@ resource "azurerm_role_definition" "dump_writer" {
   }
 
   assignable_scopes = [azurerm_resource_group.backup.id]
+}
+
+resource "azurerm_storage_container" "monitoring" {
+  # checkov:skip=CKV2_AZURE_21: the check wants classic storage insights, which needs the account key; the diagnostic setting above logs reads instead
+  count                 = var.monitoring_principal_id == null ? 0 : 1
+  name                  = "monitoring"
+  storage_account_id    = azurerm_storage_account.dumps.id
+  container_access_type = "private"
+}
+
+resource "azurerm_role_assignment" "monitoring_writer" {
+  count              = var.monitoring_principal_id == null ? 0 : 1
+  scope              = azurerm_storage_container.monitoring[0].id
+  role_definition_id = azurerm_role_definition.dump_writer.role_definition_resource_id
+  principal_id       = var.monitoring_principal_id
 }
 
 resource "azurerm_user_assigned_identity" "job" {

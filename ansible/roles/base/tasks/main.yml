@@ -3,6 +3,7 @@
   ansible.builtin.apt:
     name:
       - chrony
+      - curl
       - unattended-upgrades
       - ufw
       - python3-cryptography
@@ -68,6 +69,7 @@
     cmd: "blkid -s UUID -o value {{ monitoring_data_device }}"
   register: base_data_uuid
   changed_when: false
+  check_mode: false
   when: base_data_device.stat.exists
 
 - name: Mount the data disk by UUID

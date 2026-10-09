@@ -25,6 +25,7 @@ esac
 
 key_vault_name=$(az keyvault list -g "$resource_group" --query "[0].name" -o tsv)
 identity_client_id=$(az identity show -g "$resource_group" -n "kanban-monitoring-identity-${env_name}" --query clientId -o tsv)
+backup_endpoint=$(az storage account list -g "kanban-${env_name}-backup-rg" --query "[0].primaryEndpoints.blob" -o tsv)
 
 script=$(cat <<EOF
 set -eu
@@ -36,6 +37,7 @@ fi
 export ANSIBLE_DISPLAY_OK_HOSTS=false ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ANSIBLE_NOCOLOR=1
 ansible-pull -U "$repository" -C "$commit" -d /opt/kanban-config --clean -i localhost, \
   -e key_vault_name=$key_vault_name -e identity_client_id=$identity_client_id \
+  -e backup_container_url=${backup_endpoint}monitoring \
   $check_args ansible/site.yml 2>&1 | tee /var/log/kanban-converge.log | tail -c 3500
 EOF
 )
@@ -53,4 +55,8 @@ fi
 if ! echo "$recap" | grep -qE 'failed=0 .*' || ! echo "$recap" | grep -qE 'unreachable=0'; then
   echo "error: the converge failed" >&2
   exit 1
+fi
+if [ -n "$check_args" ] && ! echo "$recap" | grep -qE 'changed=0 '; then
+  echo "error: the VM has drifted from ${commit}; the tasks above would change it" >&2
+  exit 3
 fi

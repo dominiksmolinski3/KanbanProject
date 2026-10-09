@@ -45,6 +45,8 @@
     - /etc/prometheus/rules
     - /etc/prometheus/scrape
     - /etc/blackbox_exporter
+    - /var/lib/node_exporter
+    - "{{ monitoring_textfile_dir }}"
 
 - name: Install the alert rules from the repository
   ansible.builtin.copy:

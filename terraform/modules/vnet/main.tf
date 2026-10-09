@@ -69,6 +69,10 @@ resource "azurerm_subnet" "monitoring" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [local.monitoring_subnet_cidr]
+
+  service_endpoint {
+    service = "Microsoft.Storage.Global"
+  }
 }
 
 resource "azurerm_subnet" "db" {

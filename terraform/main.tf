@@ -152,6 +152,9 @@ module "backup" {
   alerts_enabled             = var.alert_email != ""
   action_group_id            = module.diagnostics.action_group_id
 
+  monitoring_subnet_id    = var.monitoring_enabled ? module.vnet.monitoring_subnet_id : null
+  monitoring_principal_id = try(module.monitoring_vm[0].identity_principal_id, null)
+
   attachment_account_id     = module.storage.id
   attachment_container_name = module.storage.container_name
   attachment_retention_days = coalesce(var.attachment_retention_days, var.postgres_backup_retention_days)

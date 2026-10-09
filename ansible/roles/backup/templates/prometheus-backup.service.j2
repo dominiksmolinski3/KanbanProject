@@ -1,0 +1,8 @@
+[Unit]
+Description=Snapshot Prometheus and upload it to Blob storage
+Requires=prometheus.service
+After=prometheus.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/prometheus-backup
