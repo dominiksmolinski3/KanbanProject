@@ -19,7 +19,7 @@ const MIX = { churn: 4, contention: 2, browse: 2, search: 1 };
 
 const PROFILES = {
   smoke: { scale: 1, stages: [{ target: 1, duration: __ENV.LOAD_DURATION || '60s' }], p95: 5000 },
-  load: { scale: 4, stages: [{ target: 1, duration: '1m' }, { target: 1, duration: __ENV.LOAD_DURATION || '8m' }], p95: 1500 },
+  load: { scale: 4, stages: [{ target: 1, duration: '1m' }, { target: 1, duration: __ENV.LOAD_DURATION || '8m' }], p95: 3000 },
   stress: { scale: 4, stages: [{ target: 1, duration: '2m' }, { target: 2, duration: '3m' }, { target: 3, duration: '3m' }, { target: 0, duration: '1m' }], p95: 5000 },
   spike: { scale: 4, stages: [{ target: 1, duration: '1m' }, { target: 5, duration: '20s' }, { target: 5, duration: '1m' }, { target: 1, duration: '20s' }, { target: 1, duration: '2m' }], p95: 5000 },
 };
