@@ -47,14 +47,17 @@ class TaskFetchingTest {
         }
 
         @Test
-        @DisplayName("every collection the mapper touches carries a batch size")
+        @DisplayName("every collection the mapper touches loads a whole board's worth in one query")
         void collectionsAreBatched() {
             for (String name : List.of("labels", "users", "childTasks", "subTasks")) {
                 BatchSize batch = field(name).getAnnotation(BatchSize.class);
                 assertThat(batch)
                         .as(name + " must be batched - the mapper touches it once per task")
                         .isNotNull();
-                assertThat(batch.size()).isGreaterThan(1);
+                assertThat(batch.size())
+                        .as(name + ": a board listing holds one connection across every batch, so a batch "
+                                + "smaller than a board is extra round trips under load; Postgres binds the ids as one array")
+                        .isGreaterThanOrEqualTo(1000);
             }
         }
     }

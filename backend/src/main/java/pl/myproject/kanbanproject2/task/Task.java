@@ -44,7 +44,7 @@ public class Task {
     @ElementCollection
     @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
     @jakarta.persistence.Column(name = "label")
-    @BatchSize(size = 50)
+    @BatchSize(size = 1000)
     private Set<String> labels;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
@@ -62,11 +62,11 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @JsonIgnoreProperties("tasks")
-    @BatchSize(size = 50)
+    @BatchSize(size = 1000)
     private Set<User> users = new HashSet<>();
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    @BatchSize(size = 50)
+    @BatchSize(size = 1000)
     private List<SubTask> subTasks = new ArrayList<>();
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_task_id")
@@ -75,6 +75,6 @@ public class Task {
 
     @OneToMany(mappedBy = "parentTask", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JsonIgnoreProperties("parentTask")
-    @BatchSize(size = 50)
+    @BatchSize(size = 1000)
     private Set<Task> childTasks = new HashSet<>();
 }
