@@ -21,7 +21,8 @@ api_max_replicas = 5
 
 api_db_connection_budget = 30
 
-monitoring_enabled = true
+monitoring_enabled      = true
+api_otlp_export_enabled = true
 
 monthly_budget = 40
 

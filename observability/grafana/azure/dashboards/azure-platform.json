@@ -1,0 +1,975 @@
+{
+  "uid": "kanban-azure-platform",
+  "title": "Azure platform",
+  "description": "Postgres, Redis and the Container Apps as Azure Monitor sees them. Azure only: the local stack has no Azure Monitor.",
+  "tags": [
+    "kanban",
+    "azure"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "subscription",
+        "label": "Subscription",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "azure-monitor"
+        },
+        "query": {
+          "queryType": "Azure Subscriptions",
+          "refId": "subscription"
+        },
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "regex": "",
+        "sort": 1,
+        "current": {}
+      },
+      {
+        "name": "resource_group",
+        "label": "Resource group",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "azure-monitor"
+        },
+        "query": {
+          "queryType": "Azure Resource Groups",
+          "subscription": "$subscription",
+          "refId": "resource_group"
+        },
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "regex": "/^kanban-[a-z]+-rg$/",
+        "sort": 1,
+        "current": {}
+      },
+      {
+        "name": "postgres",
+        "label": "Postgres",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "azure-monitor"
+        },
+        "query": {
+          "queryType": "Azure Resource Names",
+          "subscription": "$subscription",
+          "resourceGroup": "$resource_group",
+          "namespace": "microsoft.dbforpostgresql/flexibleservers",
+          "refId": "postgres"
+        },
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "regex": "",
+        "sort": 1,
+        "current": {}
+      },
+      {
+        "name": "redis",
+        "label": "Redis",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "azure-monitor"
+        },
+        "query": {
+          "queryType": "Azure Resource Names",
+          "subscription": "$subscription",
+          "resourceGroup": "$resource_group",
+          "namespace": "microsoft.cache/redisenterprise",
+          "refId": "redis"
+        },
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "regex": "",
+        "sort": 1,
+        "current": {}
+      },
+      {
+        "name": "app",
+        "label": "Container app",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "azure-monitor"
+        },
+        "query": {
+          "queryType": "Azure Resource Names",
+          "subscription": "$subscription",
+          "resourceGroup": "$resource_group",
+          "namespace": "microsoft.app/containerapps",
+          "refId": "app"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "regex": "",
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Postgres $postgres",
+      "collapsed": false,
+      "gridPos": {
+        "w": 24,
+        "h": 1,
+        "x": 0,
+        "y": 0
+      },
+      "panels": [],
+      "id": 1
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "cpu_percent",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 2
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 8,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "memory_percent",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 3
+    },
+    {
+      "type": "timeseries",
+      "title": "Storage",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 16,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "storage_percent",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 4
+    },
+    {
+      "type": "timeseries",
+      "title": "Backends",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "numbackends",
+            "aggregation": "Maximum",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 5
+    },
+    {
+      "type": "timeseries",
+      "title": "Transactions",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 8,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "xact_commit",
+            "aggregation": "Total",
+            "timeGrain": "auto"
+          }
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "xact_rollback",
+            "aggregation": "Total",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 6
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU credits remaining",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 16,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+                "resourceName": "$postgres"
+              }
+            ],
+            "metricNamespace": "microsoft.dbforpostgresql/flexibleservers",
+            "metricName": "cpu_credits_remaining",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 7
+    },
+    {
+      "type": "row",
+      "title": "Redis $redis",
+      "collapsed": false,
+      "gridPos": {
+        "w": 24,
+        "h": 1,
+        "x": 0,
+        "y": 15
+      },
+      "panels": [],
+      "id": 8
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory used",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.cache/redisenterprise",
+                "resourceName": "$redis"
+              }
+            ],
+            "metricNamespace": "microsoft.cache/redisenterprise",
+            "metricName": "usedmemorypercentage",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 9
+    },
+    {
+      "type": "timeseries",
+      "title": "Server load",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 8,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.cache/redisenterprise",
+                "resourceName": "$redis"
+              }
+            ],
+            "metricNamespace": "microsoft.cache/redisenterprise",
+            "metricName": "serverLoad",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 10
+    },
+    {
+      "type": "timeseries",
+      "title": "Operations / s",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 16,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.cache/redisenterprise",
+                "resourceName": "$redis"
+              }
+            ],
+            "metricNamespace": "microsoft.cache/redisenterprise",
+            "metricName": "operationsPerSecond",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.cache/redisenterprise",
+                "resourceName": "$redis"
+              }
+            ],
+            "metricNamespace": "microsoft.cache/redisenterprise",
+            "metricName": "connectedclients",
+            "aggregation": "Maximum",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 11
+    },
+    {
+      "type": "row",
+      "title": "Container app $app",
+      "collapsed": false,
+      "gridPos": {
+        "w": 24,
+        "h": 1,
+        "x": 0,
+        "y": 23
+      },
+      "panels": [],
+      "repeat": "app",
+      "id": 12
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.app/containerapps",
+                "resourceName": "$app"
+              }
+            ],
+            "metricNamespace": "microsoft.app/containerapps",
+            "metricName": "Requests",
+            "aggregation": "Total",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 13
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU and memory",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 8,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.app/containerapps",
+                "resourceName": "$app"
+              }
+            ],
+            "metricNamespace": "microsoft.app/containerapps",
+            "metricName": "CpuPercentage",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.app/containerapps",
+                "resourceName": "$app"
+              }
+            ],
+            "metricNamespace": "microsoft.app/containerapps",
+            "metricName": "MemoryPercentage",
+            "aggregation": "Average",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 14
+    },
+    {
+      "type": "timeseries",
+      "title": "Replicas and restarts",
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azure-monitor"
+      },
+      "gridPos": {
+        "w": 8,
+        "h": 7,
+        "x": 16,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.app/containerapps",
+                "resourceName": "$app"
+              }
+            ],
+            "metricNamespace": "microsoft.app/containerapps",
+            "metricName": "Replicas",
+            "aggregation": "Maximum",
+            "timeGrain": "auto"
+          }
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azure-monitor"
+          },
+          "queryType": "Azure Monitor",
+          "subscription": "$subscription",
+          "azureMonitor": {
+            "resources": [
+              {
+                "subscription": "$subscription",
+                "resourceGroup": "$resource_group",
+                "metricNamespace": "microsoft.app/containerapps",
+                "resourceName": "$app"
+              }
+            ],
+            "metricNamespace": "microsoft.app/containerapps",
+            "metricName": "RestartCount",
+            "aggregation": "Total",
+            "timeGrain": "auto"
+          }
+        }
+      ],
+      "id": 15
+    }
+  ]
+}
