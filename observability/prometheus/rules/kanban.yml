@@ -121,3 +121,10 @@ groups:
           severity: warning
         annotations:
           summary: The Prometheus data disk fills within three days at the current rate.
+
+      - alert: BackupStale
+        expr: time() - prometheus_backup_last_success_timestamp_seconds > 30 * 3600
+        labels:
+          severity: warning
+        annotations:
+          summary: No Prometheus snapshot has reached Blob storage for over 30 hours.

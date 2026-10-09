@@ -4,6 +4,8 @@ monitoring_data_device: /dev/disk/azure/scsi1/lun0
 monitoring_data_dir: /var/lib/prometheus
 monitoring_pki_dir: /var/lib/prometheus/pki
 monitoring_manage_firewall: true
+monitoring_textfile_dir: /var/lib/node_exporter/textfile
+backup_container_url: ""
 
 monitoring_secrets_source: keyvault
 key_vault_name: ""

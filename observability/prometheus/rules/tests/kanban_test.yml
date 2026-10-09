@@ -167,3 +167,18 @@ tests:
         exp_alerts:
           - exp_labels: {severity: warning, instance: vm, mountpoint: /var/lib/prometheus}
             exp_annotations: {summary: The Prometheus data disk fills within three days at the current rate.}
+
+  - name: backup
+    interval: 1h
+    input_series:
+      - series: prometheus_backup_last_success_timestamp_seconds{job="node", instance="vm"}
+        values: 0x40
+    alert_rule_test:
+      - alertname: BackupStale
+        eval_time: 20h
+        exp_alerts: []
+      - alertname: BackupStale
+        eval_time: 31h
+        exp_alerts:
+          - exp_labels: {severity: warning, job: node, instance: vm}
+            exp_annotations: {summary: No Prometheus snapshot has reached Blob storage for over 30 hours.}
