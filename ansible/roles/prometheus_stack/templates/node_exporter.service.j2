@@ -6,7 +6,9 @@ After=network-online.target
 [Service]
 User=node_exporter
 Group=node_exporter
-ExecStart=/usr/local/bin/node_exporter --web.listen-address=127.0.0.1:9100
+ExecStart=/usr/local/bin/node_exporter \
+  --web.listen-address=127.0.0.1:9100 \
+  --collector.textfile.directory={{ monitoring_textfile_dir }}
 Restart=on-failure
 NoNewPrivileges=true
 ProtectSystem=strict

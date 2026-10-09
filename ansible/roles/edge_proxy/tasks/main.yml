@@ -46,6 +46,7 @@
   ansible.builtin.command:
     cmd: nginx -t
   changed_when: false
+  check_mode: false
 
 - name: Start nginx
   ansible.builtin.systemd_service:

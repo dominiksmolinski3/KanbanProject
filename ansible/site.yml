@@ -7,3 +7,4 @@
     - tls_material
     - prometheus_stack
     - edge_proxy
+    - backup
