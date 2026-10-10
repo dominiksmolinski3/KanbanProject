@@ -1,0 +1,29 @@
+name: Pull Docker Hub images through a mirror
+description: >
+  Points the runner's Docker daemon at mirror.gcr.io, whose pulls do not count against the
+  Docker Hub account's quota. A miss falls back to Docker Hub itself, so a failed setup here
+  leaves the job exactly as it was before.
+
+outputs:
+  buildkitd-config:
+    description: The mirror for a docker-container builder, which does not read the daemon's config
+    value: |
+      [registry."docker.io"]
+        mirrors = ["mirror.gcr.io"]
+
+runs:
+  using: composite
+  steps:
+    - name: Add the mirror to the Docker daemon
+      shell: bash
+      run: |
+        set -euo pipefail
+        config=/etc/docker/daemon.json
+        current=$(sudo cat "$config" 2>/dev/null || echo '{}')
+        jq '."registry-mirrors" = ["https://mirror.gcr.io"]' <<<"$current" | sudo tee "$config" >/dev/null
+        if ! sudo systemctl restart docker; then
+          echo "::warning::Docker would not restart with the mirror; pulling from Docker Hub directly"
+          sudo tee "$config" <<<"$current" >/dev/null
+          sudo systemctl restart docker
+        fi
+        echo "Registry mirrors: $(docker info --format '{{.RegistryConfig.Mirrors}}')"
