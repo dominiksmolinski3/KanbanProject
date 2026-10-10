@@ -235,8 +235,10 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   security-headers snippet (`EdgeUpstreamTest`, `EdgeMissingFileTest`, `EdgeRateLimitTest`,
   `RequestIdMatchesTheEdgeTest`, `SecurityHeadersMatchTheEdgeTest`).
 - Terraform and shell files are LF (`.gitattributes`). A CRLF copy of them shows fake plan drift.
-- A job that logs in to Docker Hub runs `.github/actions/docker-hub-mirror` after checkout, and a
-  Buildx builder takes its `buildkitd-config` output (`DockerHubMirrorCoverageTest`).
+- A job that pulls images runs `.github/actions/docker-hub-mirror` after checkout and before its
+  first pull, and a Buildx builder takes its `buildkitd-config` output. Never log in to docker.io:
+  the mirror then refuses every pull once the account's quota is spent. Only `dhi.io` gets a login
+  (`DockerHubMirrorCoverageTest`).
 - A new scheduled workflow calls `sweep-alarm.yml` and is listed in `SweepAlarmCoverageTest`. A
   sweep that did not do its work must fail, never skip.
 - An alert on a `kanban_*` metric must name a meter the code registers and the agent exports
