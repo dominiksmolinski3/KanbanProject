@@ -14,7 +14,10 @@ updates:
           - "*"
 
   - package-ecosystem: docker
-    directory: /
+    directories:
+      - /backend
+      - /frontend
+      - /observability/grafana
     schedule:
       interval: weekly
     commit-message:
@@ -62,7 +65,9 @@ updates:
       include: scope
 
   - package-ecosystem: terraform
-    directory: /terraform
+    directories:
+      - /terraform
+      - /terraform/bootstrap
     schedule:
       interval: weekly
     commit-message:
