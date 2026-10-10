@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,15 +27,14 @@ class DockerHubMirrorCoverageTest {
 
     private static final Path MIRROR_ACTION = Path.of("..", ".github", "actions", "docker-hub-mirror", "action.yml");
 
-    private static Stream<String[]> dockerHubJobs() {
+    private static final Pattern PULLS = Pattern.compile("\\bdocker (compose|run|pull|build)\\b|\\bmolecule\\b");
+
+    private static Stream<String[]> allJobs() {
         List<String[]> found = new ArrayList<>();
         try (Stream<Path> files = Files.list(WORKFLOWS)) {
             for (Path file : files.filter(f -> f.toString().endsWith(".yml")).sorted().toList()) {
-                jobs(file).forEach((name, job) -> {
-                    if (steps(job).stream().anyMatch(DockerHubMirrorCoverageTest::logsInToDockerHub)) {
-                        found.add(new String[] { file.getFileName() + " " + name, file.getFileName().toString(), name });
-                    }
-                });
+                jobs(file).keySet().forEach(name -> found.add(
+                        new String[] { file.getFileName() + " " + name, file.getFileName().toString(), name }));
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -42,32 +42,43 @@ class DockerHubMirrorCoverageTest {
         return found.stream();
     }
 
+    private static Stream<String[]> pullingJobs() {
+        return allJobs().filter(job -> steps(jobs(WORKFLOWS.resolve(job[1])).get(job[2])).stream()
+                .anyMatch(DockerHubMirrorCoverageTest::pullsImages));
+    }
+
     @Test
-    @DisplayName("the guard still finds the jobs that pull from Docker Hub")
+    @DisplayName("the guard still finds the jobs that pull images")
     void theGuardFindsSomething() {
-        assertThat(dockerHubJobs().count())
-                .as("no workflow job logs in to Docker Hub any more, so this guard checks nothing")
+        assertThat(pullingJobs().count())
+                .as("no workflow job pulls an image any more, so this guard checks nothing")
                 .isGreaterThanOrEqualTo(8);
         assertThat(MIRROR_ACTION).as("the shared mirror action has moved or gone").exists();
     }
 
     @ParameterizedTest(name = "{0}")
-    @DisplayName("a job that pulls from Docker Hub goes through the mirror, after a checkout and before Buildx")
-    @MethodSource("dockerHubJobs")
+    @DisplayName("a job that pulls images goes through the mirror, after a checkout and before Buildx")
+    @MethodSource("pullingJobs")
     void theJobUsesTheMirror(String label, String workflow, String jobName) {
         List<Map<String, Object>> steps = steps(jobs(WORKFLOWS.resolve(workflow)).get(jobName));
         List<String> uses = steps.stream().map(step -> String.valueOf(step.get("uses"))).toList();
 
         int mirror = uses.indexOf(MIRROR);
         assertThat(mirror)
-                .as("%s logs in to Docker Hub without the mirror, so its pulls spend the account's "
-                        + "200-per-6-hours quota that every other job shares", label)
+                .as("%s pulls images without the mirror, so it spends the Docker Hub quota every "
+                        + "other job on the runner's address shares", label)
                 .isNotNegative();
 
         int checkout = indexOfPrefix(uses, "actions/checkout@");
         assertThat(checkout)
                 .as("%s runs a local action before checking the repository out, which fails the job", label)
                 .isBetween(0, mirror);
+
+        for (int i = 0; i < mirror; i++) {
+            assertThat(pullsImages(steps.get(i)))
+                    .as("%s pulls in step %d, before the mirror is set up", label, i)
+                    .isFalse();
+        }
 
         int buildx = indexOfPrefix(uses, "docker/setup-buildx-action@");
         if (buildx >= 0) {
@@ -82,6 +93,23 @@ class DockerHubMirrorCoverageTest {
                             + "pulls every FROM straight from Docker Hub without its own config", label)
                     .isEqualTo("${{ steps.mirror.outputs.buildkitd-config }}");
         }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("no job logs in to Docker Hub, because the daemon hands that login to the mirror")
+    @MethodSource("allJobs")
+    void noJobLogsInToDockerHub(String label, String workflow, String jobName) {
+        assertThat(steps(jobs(WORKFLOWS.resolve(workflow)).get(jobName)))
+                .as("%s logs in to Docker Hub; mirror.gcr.io checks a forwarded login against Docker Hub "
+                        + "and refuses every pull once the account's quota is spent", label)
+                .noneMatch(DockerHubMirrorCoverageTest::logsInToDockerHub);
+    }
+
+    private static boolean pullsImages(Map<String, Object> step) {
+        String uses = String.valueOf(step.get("uses"));
+        return uses.startsWith("docker/build-push-action@")
+                || uses.startsWith("docker/setup-buildx-action@")
+                || PULLS.matcher(String.valueOf(step.get("run"))).find();
     }
 
     private static boolean logsInToDockerHub(Map<String, Object> step) {
