@@ -26,30 +26,41 @@ jobs:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
-
-    services:
-      postgres:
-        image: postgres:17
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-        env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'kanban_ci' }}
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-      redis:
-        image: redis:7-alpine
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
+    - name: Log in to Docker Hub
+      if: env.DOCKERHUB_USERNAME != ''
+      continue-on-error: true
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # Steps rather than services: a service's credentials cannot be skipped, so a fork's empty secrets would fail the job.
+    - name: Start Postgres and Redis
+      run: |
+        pull() {
+          docker pull -q "$1" && return
+          echo "::warning::Docker Hub refused $1; pulling it from AWS's mirror of the official images"
+          docker pull -q "public.ecr.aws/docker/library/$1" && docker tag "public.ecr.aws/docker/library/$1" "$1"
+        }
+        pull postgres:17
+        pull redis:7-alpine
+        docker run -d --name postgres -p 5432:5432 -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
+          --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 30 postgres:17
+        docker run -d --name redis -p 6379:6379 \
+          --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30 redis:7-alpine
+        for container in postgres redis; do
+          for _ in $(seq 60); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' "$container")" = healthy ] && continue 2
+            sleep 2
+          done
+          echo "::error::$container never became healthy"
+          docker logs "$container"
+          exit 1
+        done
+
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up JDK 25
