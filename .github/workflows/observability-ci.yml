@@ -82,6 +82,11 @@ jobs:
           print(f"{len(uids)} dashboards")
           PY
 
+      - name: DEBUG daemon errors
+        if: always()
+        run: |
+          sudo journalctl -u docker --no-pager | grep -iE 'toomany|429|error|fallback|next endpoint|Trying to pull|Pulling ref|unauthorized|auth' | grep -v 'hostDir' | cut -c1-400 | head -80
+
   ansible:
     runs-on: ubuntu-latest
     defaults:

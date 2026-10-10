@@ -8,6 +8,7 @@ outputs:
   buildkitd-config:
     description: The mirror for a docker-container builder, which does not read the daemon's config
     value: |
+      debug = true
       [registry."docker.io"]
         mirrors = ["mirror.gcr.io"]
 
@@ -20,7 +21,7 @@ runs:
         set -euo pipefail
         config=/etc/docker/daemon.json
         current=$(sudo cat "$config" 2>/dev/null || echo '{}')
-        jq '."registry-mirrors" = ["https://mirror.gcr.io"]' <<<"$current" | sudo tee "$config" >/dev/null
+        jq '."registry-mirrors" = ["https://mirror.gcr.io"] | .debug = true' <<<"$current" | sudo tee "$config" >/dev/null
         if ! sudo systemctl restart docker; then
           echo "::warning::Docker would not restart with the mirror; pulling from Docker Hub directly"
           sudo tee "$config" <<<"$current" >/dev/null

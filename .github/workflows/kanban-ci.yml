@@ -330,6 +330,15 @@ jobs:
       if: failure()
       run: docker compose --profile replicas --profile monitoring logs --no-color --timestamps app app2 web prometheus grafana
 
+    - name: VERIFY which registry served each pull
+      if: always()
+      run: |
+        sudo journalctl -u docker --no-pager > dockerd.log
+        echo "lines mentioning mirror.gcr.io: $(grep -c 'mirror.gcr.io' dockerd.log)"
+        echo "lines mentioning registry-1.docker.io: $(grep -c 'registry-1.docker.io' dockerd.log)"
+        grep -oE 'https://(mirror\.gcr\.io|registry-1\.docker\.io)/v2/[a-z0-9._/-]+/manifests' dockerd.log | sort | uniq -c
+        grep -iE 'toomany|429|error|fallback|next endpoint|unauthorized' dockerd.log | cut -c1-400 | head -60
+
   image-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -411,6 +420,14 @@ jobs:
       with:
         sarif_file: trivy-results.sarif
         category: trivy-image-${{ matrix.image }}
+
+    - name: VERIFY which registry served each FROM
+      if: always()
+      run: |
+        docker logs "$(docker ps -qf name=buildx_buildkit)" > buildkitd.log 2>&1
+        echo "lines mentioning mirror.gcr.io: $(grep -c 'mirror.gcr.io' buildkitd.log)"
+        echo "lines mentioning registry-1.docker.io: $(grep -c 'registry-1.docker.io' buildkitd.log)"
+        grep -E 'mirror.gcr.io|registry-1.docker.io' buildkitd.log | head -20
 
   trunk-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
