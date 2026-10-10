@@ -1493,6 +1493,16 @@ and reasons in `local.refusal_alerts`.
   is cached on the lockfile hash, which also caches its verified state, and the job no longer
   spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
   logs on failure instead.
+  **The stack's images are built by `docker/bake-action` from the compose file, with the
+  Actions cache**, before compose starts anything: every leg used to build the same three images
+  from nothing, about 50 s of each leg's 125 s stack step. Bake tags compose's own
+  `kanbanproject-<service>` names, which is why the job pins `COMPOSE_PROJECT_NAME`; a renamed
+  project makes compose quietly build them again, uncached. Only leg 1 of a push to `main` writes
+  the cache, so pull requests read `main`'s layers and do not crowd the 10 GB quota. The bake
+  step is `continue-on-error`, so a failed bake falls through to compose's own build and its
+  three-attempt retry. `backend/Dockerfile` resolves Maven dependencies in a layer of their own
+  before `COPY src` for the same reason: a source change no longer downloads the whole of Maven
+  Central again.
   A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
   both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
