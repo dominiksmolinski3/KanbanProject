@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parseSync } from '@babel/core';
+import { parse } from 'espree';
 
 const LOCALES_DIR = path.join(process.cwd(), 'public', 'locales');
 const SOURCE_DIR = path.join(process.cwd(), 'src');
@@ -72,6 +72,7 @@ describe('nothing on screen bypasses t()', () => {
   ]);
 
   const hasLetters = (value) => /\p{L}/u.test(value);
+  const isString = (node) => node?.type === 'Literal' && typeof node.value === 'string';
 
   function walk(node, visit, parent) {
     if (!node || typeof node !== 'object') return;
@@ -89,7 +90,7 @@ describe('nothing on screen bypasses t()', () => {
 
   function displayed(expression, found) {
     if (!expression) return;
-    if (expression.type === 'StringLiteral') {
+    if (isString(expression)) {
       found.push({ value: expression.value, line: expression.loc.start.line });
       return;
     }
@@ -113,19 +114,19 @@ describe('nothing on screen bypasses t()', () => {
 
     for (const file of sourceFiles(SOURCE_DIR)) {
       const relative = path.relative(process.cwd(), file).replace(/\\/g, '/');
-      const ast = parseSync(fs.readFileSync(file, 'utf8'), {
-        babelrc: false,
-        configFile: false,
+      const ast = parse(fs.readFileSync(file, 'utf8'), {
+        ecmaVersion: 'latest',
         sourceType: 'module',
-        parserOpts: { plugins: ['jsx'] },
+        ecmaFeatures: { jsx: true },
+        loc: true,
       });
 
-      walk(ast.program, (node, parent) => {
+      walk(ast, (node, parent) => {
         if (node.type === 'JSXText' && hasLetters(node.value.trim())) {
           offenders.push(`${relative}:${node.loc.start.line}  ${JSON.stringify(node.value.trim())}`);
         }
 
-        if (node.type === 'JSXAttribute' && node.value && node.value.type === 'StringLiteral') {
+        if (node.type === 'JSXAttribute' && isString(node.value)) {
           const name = node.name.type === 'JSXNamespacedName'
             ? `${node.name.namespace.name}:${node.name.name.name}`
             : node.name.name;

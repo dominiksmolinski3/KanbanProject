@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parseSync } from '@babel/core';
+import { parse } from 'espree';
 
 const SERVICES = path.join(__dirname, '..', '..', 'services');
 
@@ -19,9 +19,9 @@ const visit = (node, onTemplate) => {
 
 const segmentsIn = (file) => {
   const source = fs.readFileSync(file, 'utf8');
-  const ast = parseSync(source, { babelrc: false, configFile: false, sourceType: 'module', parserOpts: { plugins: ['jsx'] } });
+  const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, loc: true });
   const found = [];
-  visit(ast.program, (literal) => {
+  visit(ast, (literal) => {
     literal.expressions.forEach((expression, i) => {
       if (!literal.quasis[i].value.cooked.endsWith('/')) return;
       found.push({
