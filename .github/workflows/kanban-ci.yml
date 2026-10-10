@@ -262,26 +262,31 @@ jobs:
         SEED_PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
       run: npm run cypress:seed
 
+    - name: Plan this shard
+      id: plan
+      working-directory: frontend
+      env:
+        SHARD: ${{ matrix.shard }}
+        SHARDS: ${{ strategy.job-total }}
+      run: node cypress/shard.js "$SHARD" "$SHARDS" >> "$GITHUB_OUTPUT"
+
     - name: Run this shard's Cypress specs
+      if: steps.plan.outputs.specs != ''
       working-directory: frontend
       env:
         CYPRESS_BASE_URL: http://localhost:8080
-        SHARD: ${{ matrix.shard }}
-        SHARDS: ${{ strategy.job-total }}
-      run: |
-        specs=$(node cypress/shard.js "$SHARD" "$SHARDS")
-        echo "shard $SHARD of $SHARDS: $specs"
-        node cypress/retry-browser-connect.js npm run cypress:run -- --spec "$specs"
+        SPECS: ${{ steps.plan.outputs.specs }}
+      run: node cypress/retry-browser-connect.js npm run cypress:run -- --spec "$SPECS"
 
     - name: Run the cross-replica board-sync spec
-      if: matrix.shard == 1
+      if: steps.plan.outputs.replicas == 'true'
       working-directory: frontend
       env:
         CYPRESS_BASE_URL: http://localhost:8080
       run: node cypress/retry-browser-connect.js npm run cypress:run:replicas
 
     - name: Seed the load-test accounts
-      if: matrix.shard == 1
+      if: steps.plan.outputs.load == 'true'
       env:
         LOAD_PGHOST: localhost
         LOAD_PGPORT: 5432
@@ -291,7 +296,7 @@ jobs:
       run: node loadtest/seed.mjs
 
     - name: Run the load smoke
-      if: matrix.shard == 1
+      if: steps.plan.outputs.load == 'true'
       run: |
         since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         docker compose --profile loadtest run --rm --no-deps k6
