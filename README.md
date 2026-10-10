@@ -341,8 +341,8 @@ smoke run.
   <img src="docs/screenshots/grafana-infrastructure.png" alt="Grafana infrastructure dashboard: Postgres, Redis and RabbitMQ up, Postgres connections and transactions, Redis memory and commands, RabbitMQ connections and messages" width="100%"/>
 </p>
 
-Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against a
-Postgres and Redis service container, frontend build/lint/Jest, an `e2e` job that runs Cypress
+Workflows live in [.github/workflows/](.github/workflows/): `kanban-ci.yml` (backend tests against
+Postgres and Redis containers, frontend build/lint/Jest, an `e2e` job that runs Cypress
 against a two-replica `docker-compose` stack, and an `image-scan` job that Trivy-scans every image
 on every PR), `kanban-cd.yml` (build, scan, push, promote), `deployed-contract.yml` (a daily sweep
 that asks the deployed origin whether it still matches what the trunk claims), `codeql.yml` (CodeQL
