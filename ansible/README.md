@@ -23,6 +23,10 @@ It runs `ansible-pull` through `az vm run-command` at that exact commit, so the 
 something that is on GitHub. A second converge must report `changed=0`. The full log is
 `/var/log/kanban-converge.log` on the VM.
 
+`monitoring-converge.yml` runs it on every push to `main` that touches `ansible/` or `observability/`, then
+checks that a second converge changes nothing. `monitoring-drift.yml` still checks nightly for changes made
+by hand.
+
 ## Test
 
 `molecule test` (run from this directory, in CI by `observability-ci.yml`) converges the same roles twice
