@@ -20,8 +20,10 @@ export default {
     ],
     coverageThreshold: {
       './src/App.jsx': { statements: 95, branches: 90, functions: 90, lines: 95 },
+      './src/board/': { statements: 92.5, branches: 84.5, functions: 91.5, lines: 95 },
       './src/components/': { statements: 80.5, branches: 70, functions: 74, lines: 81.5 },
       './src/context/': { statements: 78.5, branches: 76, functions: 88, lines: 78 },
       './src/services/': { statements: 84.5, branches: 77, functions: 86, lines: 84.5 },
+      './src/theme/': { statements: 95, branches: 99, functions: 99, lines: 94.5 },
     },
   };
