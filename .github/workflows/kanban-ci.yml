@@ -37,12 +37,17 @@ jobs:
         username: ${{ env.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Pull Docker Hub images through a mirror
+      uses: ./.github/actions/docker-hub-mirror
+
     # Steps rather than services: a service's credentials cannot be skipped, so a fork's empty secrets would fail the job.
     - name: Start Postgres and Redis
       run: |
         pull() {
           docker pull -q "$1" && return
-          echo "::warning::Docker Hub refused $1; pulling it from AWS's mirror of the official images"
+          echo "::warning::Docker Hub and mirror.gcr.io refused $1; pulling it from AWS's mirror of the official images"
           docker pull -q "public.ecr.aws/docker/library/$1" && docker tag "public.ecr.aws/docker/library/$1" "$1"
         }
         pull postgres:17
@@ -60,8 +65,6 @@ jobs:
           docker logs "$container"
           exit 1
         done
-
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up JDK 25
       uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -156,6 +159,9 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Pull Docker Hub images through a mirror
+      uses: ./.github/actions/docker-hub-mirror
 
     - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
@@ -357,8 +363,14 @@ jobs:
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+    - name: Pull Docker Hub images through a mirror
+      id: mirror
+      uses: ./.github/actions/docker-hub-mirror
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+      with:
+        buildkitd-config-inline: ${{ steps.mirror.outputs.buildkitd-config }}
 
     - name: Date the base upgrade
       id: date

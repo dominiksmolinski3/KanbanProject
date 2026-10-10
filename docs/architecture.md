@@ -1538,7 +1538,7 @@ and reasons in `local.refusal_alerts`.
   when the username is empty, because Dependabot runs and forks get no repository secrets; the two
   secrets therefore live in **both** the Actions and the Dependabot secret stores, or every
   Dependabot PR still pulls anonymously. A new job that runs `docker` or builds an image needs the
-  same step.
+  same step, and the mirror below.
   **The backend job starts Postgres and Redis as steps, not `services:`.** A service is pulled before
   any step runs and its `credentials:` cannot be skipped: an empty username makes GitHub reject the
   whole job, which is what a fork's PR would hit. As steps they follow the login like everything
@@ -1548,6 +1548,22 @@ and reasons in `local.refusal_alerts`.
   (`public.ecr.aws/docker/library/...`) and tags it with the Docker Hub name, with a `::warning::`
   on the run. The mirror has no published uptime commitment and anonymous limits of its own, so it is
   the fallback rather than the source.
+  **The login raised the ceiling; the mirror removes it.** A personal account gets 200 pulls per 6
+  hours, and one PR's CI spends about 45 (three e2e legs of a dozen images each, the image scans,
+  the backend job). On 10 Oct, merging #414 made Dependabot open nine PRs inside a few minutes, and
+  almost every check on all of them went red with `toomanyrequests` on a logged-in pull. Every job
+  that logs in to Docker Hub therefore runs `.github/actions/docker-hub-mirror` first, which adds
+  `mirror.gcr.io` to the runner daemon's `registry-mirrors` and restarts it. Google's cache does not
+  count against Docker Hub's quota, needs no credentials (so a fork's PR gets it too), and on a miss
+  the daemon falls through to Docker Hub by itself, so the worst case is the behaviour from before.
+  It served every image and pinned digest the stack uses when this was set up; AWS's mirror carries
+  only the official images and has no Grafana, Prometheus or exporters, which is why it stays the
+  backend job's last resort rather than the mirror. A Buildx builder created by
+  `setup-buildx-action` runs BuildKit in its own container and never reads the daemon's config, so
+  those jobs pass the action's `buildkitd-config` output to `buildkitd-config-inline` as well.
+  Nothing changes an image reference, which is what keeps Dependabot watching the real upstream.
+  `DockerHubMirrorCoverageTest` finds every job that logs in to Docker Hub and fails if one skips
+  the mirror, runs it before checkout, or creates a builder without it.
 - `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
   `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
   `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit

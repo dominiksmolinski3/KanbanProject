@@ -26,6 +26,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/actions
+
+      - name: Pull Docker Hub images through a mirror
+        uses: ./.github/actions/docker-hub-mirror
+
       - name: Resolve target
         id: target
         env:
