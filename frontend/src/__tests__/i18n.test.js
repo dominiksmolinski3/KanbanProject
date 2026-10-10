@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import * as parser from '@babel/parser';
+import { parseSync } from '@babel/core';
 
 const LOCALES_DIR = path.join(process.cwd(), 'public', 'locales');
 const SOURCE_DIR = path.join(process.cwd(), 'src');
@@ -113,9 +113,11 @@ describe('nothing on screen bypasses t()', () => {
 
     for (const file of sourceFiles(SOURCE_DIR)) {
       const relative = path.relative(process.cwd(), file).replace(/\\/g, '/');
-      const ast = parser.parse(fs.readFileSync(file, 'utf8'), {
+      const ast = parseSync(fs.readFileSync(file, 'utf8'), {
+        babelrc: false,
+        configFile: false,
         sourceType: 'module',
-        plugins: ['jsx'],
+        parserOpts: { plugins: ['jsx'] },
       });
 
       walk(ast.program, (node, parent) => {

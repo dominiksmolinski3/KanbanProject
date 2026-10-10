@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parse } from '@babel/parser';
+import { parseSync } from '@babel/core';
 
 const SERVICES = path.join(__dirname, '..', '..', 'services');
 
@@ -19,7 +19,7 @@ const visit = (node, onTemplate) => {
 
 const segmentsIn = (file) => {
   const source = fs.readFileSync(file, 'utf8');
-  const ast = parse(source, { sourceType: 'module', plugins: ['jsx'] });
+  const ast = parseSync(source, { babelrc: false, configFile: false, sourceType: 'module', parserOpts: { plugins: ['jsx'] } });
   const found = [];
   visit(ast.program, (literal) => {
     literal.expressions.forEach((expression, i) => {
