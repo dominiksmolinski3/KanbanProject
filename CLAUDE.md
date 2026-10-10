@@ -1593,7 +1593,7 @@ severity 3 for refusals that happen in ordinary use and only mean something in b
 and reasons in `local.refusal_alerts`.
 ### CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against a Postgres service container (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. Leg 1 then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. Leg 1 then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
   **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
   run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
@@ -1654,9 +1654,17 @@ and reasons in `local.refusal_alerts`.
   image scan with `toomanyrequests`, and a re-run failed the same way. The login step is skipped
   when the username is empty, because Dependabot runs and forks get no repository secrets; the two
   secrets therefore live in **both** the Actions and the Dependabot secret stores, or every
-  Dependabot PR still pulls anonymously. Service containers are pulled before any step runs, so the
-  backend job's postgres and redis carry `credentials:` of their own. A new job that runs `docker`
-  or builds an image needs the same step.
+  Dependabot PR still pulls anonymously. A new job that runs `docker` or builds an image needs the
+  same step.
+  **The backend job starts Postgres and Redis as steps, not `services:`.** A service is pulled before
+  any step runs and its `credentials:` cannot be skipped: an empty username makes GitHub reject the
+  whole job, which is what a fork's PR would hit. As steps they follow the login like everything
+  else, and the login there is `continue-on-error`, so a Docker Hub auth outage (9 Oct, from about
+  21:22 UTC: `auth.docker.io` timing out from the runners) falls through to an anonymous pull. If
+  Docker Hub refuses that too, the step pulls the same official image from AWS's mirror
+  (`public.ecr.aws/docker/library/...`) and tags it with the Docker Hub name, with a `::warning::`
+  on the run. The mirror has no published uptime commitment and anonymous limits of its own, so it is
+  the fallback rather than the source.
 - `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
   `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
   `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit
