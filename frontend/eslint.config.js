@@ -34,7 +34,7 @@ export default [
     },
   },
   {
-    files: ['cypress/shard.js', 'cypress/browserConnect.js', 'cypress/retry-browser-connect.js'],
+    files: ['cypress/shard.js', 'cypress/shardPlan.js', 'cypress/browserConnect.js', 'cypress/retry-browser-connect.js'],
     languageOptions: { globals: globals.node },
   },
 ]

@@ -1476,20 +1476,25 @@ severity 3 for refusals that happen in ordinary use and only mean something in b
 and reasons in `local.refusal_alerts`.
 ## CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. Leg 1 then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. One leg then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
   **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
   run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
-  round-robin from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep
-  in step and a new spec cannot land in no leg; an empty share is a failure, because an empty
-  `--spec` means *every* spec to Cypress.
+  from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep in step and a
+  new spec cannot land in no leg. It deals by measured seconds (`cypress/shardPlan.js`), longest
+  first onto the lightest leg, and the cross-replica spec and the load smoke are dealt as items
+  too: dealt round-robin, with both on leg 1, that leg ran ~90 s longer than the others and set
+  the length of every CI run. A spec missing from the table counts as 20 s; a timing for a spec
+  that no longer exists fails `cypressShardPlan.test.js`, and so do legs more than 30 s apart.
+  The plan goes to `$GITHUB_OUTPUT`, and a leg dealt no specs skips its Cypress run, because an
+  empty `--spec` means *every* spec to Cypress.
   **Both Cypress steps retry once, and only when Chromium never connected**
   (`cypress/retry-browser-connect.js`): about 0.8% of e2e jobs died that way before any test ran,
   on Cypress 16.0 and 16.1 alike. The match is one of Cypress's own two never-connected lines,
   `Timed out waiting for the browser to connect` and `Cypress failed to make a connection to the
   Chrome DevTools Protocol` (the debugging port refusing every attempt, `connect ECONNREFUSED`).
   A bare `ECONNREFUSED` is not matched, because a test that cannot reach the app prints one too.
-  So a failing test is never retried, and a retry leaves a `::warning` on the run. The cross-replica spec runs on leg 1. The Cypress binary
+  So a failing test is never retried, and a retry leaves a `::warning` on the run. The Cypress binary
   is cached on the lockfile hash, which also caches its verified state, and the job no longer
   spends time on `compose down` on a runner that is discarded anyway. It dumps the API and edge
   logs on failure instead.

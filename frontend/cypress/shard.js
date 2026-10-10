@@ -1,5 +1,6 @@
 import { globSync } from 'node:fs';
 import config from '../cypress.config.js';
+import { EXTRA_JOBS, planShards } from './shardPlan.js';
 
 const [shard, total] = process.argv.slice(2).map(Number);
 if (!Number.isInteger(shard) || !Number.isInteger(total) || shard < 1 || shard > total) {
@@ -11,11 +12,9 @@ const specs = globSync(config.e2e.specPattern)
   .map(path => path.replaceAll('\\', '/'))
   .sort();
 
-const mine = specs.filter((_, i) => i % total === shard - 1);
+const mine = planShards(specs, total)[shard - 1];
 
-if (mine.length === 0) {
-  console.error(`shard ${shard} of ${total} has no specs (${specs.length} in total)`);
-  process.exit(1);
-}
-
-console.log(mine.join(','));
+console.error(`shard ${shard} of ${total} (~${mine.seconds}s): ${[...mine.specs, ...mine.jobs].join(', ')}`);
+// An empty --spec means every spec to Cypress, so the workflow skips the run when this is empty.
+console.log(`specs=${mine.specs.join(',')}`);
+for (const job of Object.keys(EXTRA_JOBS)) console.log(`${job}=${mine.jobs.includes(job)}`);
