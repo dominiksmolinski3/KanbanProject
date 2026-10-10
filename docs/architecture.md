@@ -1484,7 +1484,9 @@ and reasons in `local.refusal_alerts`.
   new spec cannot land in no leg. It deals by measured seconds (`cypress/shardPlan.js`), longest
   first onto the lightest leg, and the cross-replica spec and the load smoke are dealt as items
   too: dealt round-robin, with both on leg 1, that leg ran ~90 s longer than the others and set
-  the length of every CI run. A spec missing from the table counts as 20 s; a timing for a spec
+  the length of every CI run. Each leg's first spec also carries the ~25 s Cypress spends
+  connecting to Chromium, which is what a three-short-spec leg was planned without and ran 37 s
+  over. A spec missing from the table counts as 20 s; a timing for a spec
   that no longer exists fails `cypressShardPlan.test.js`, and so do legs more than 30 s apart.
   The plan goes to `$GITHUB_OUTPUT`, and a leg dealt no specs skips its Cypress run, because an
   empty `--spec` means *every* spec to Cypress.
