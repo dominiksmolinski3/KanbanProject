@@ -28,3 +28,4 @@ runs:
           sudo systemctl restart docker
         fi
         echo "Registry mirrors: $(docker info --format '{{.RegistryConfig.Mirrors}}')"
+        docker logout
