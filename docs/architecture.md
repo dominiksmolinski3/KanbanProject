@@ -1506,6 +1506,12 @@ and reasons in `local.refusal_alerts`.
   also has to download the cached `node_modules` layer, which takes as long as `npm ci` does.
   `backend/Dockerfile` still resolves Maven dependencies in a layer of their own before
   `COPY src`, which CD's registry cache and local builds reuse.
+  **A leg's first Cypress run used to wait 20-35 s for Chromium to connect**, while a second run
+  on the same leg (the cross-replica spec) connected in 2 s. So the job runs an empty spec
+  (`cypress/warmup/`, its own config file, no `baseUrl`) in the background while the stack builds,
+  and waits for it to end before the real run: two Cypress runs at once share one browser profile.
+  It replaces the background `cypress verify`, which a run includes. A failed warm-up fails
+  nothing; the real run just pays the wait itself.
   A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
   both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a

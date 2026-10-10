@@ -187,7 +187,7 @@ jobs:
       working-directory: frontend
       run: |
         npm ci --legacy-peer-deps
-        nohup npx cypress verify > "$RUNNER_TEMP/cypress-verify.log" 2>&1 &
+        nohup npx cypress run --browser chromium --config-file cypress/warmup.config.js > "$RUNNER_TEMP/cypress-warmup.log" 2>&1 &
 
     - name: Build and start the stack
       run: |
@@ -261,6 +261,13 @@ jobs:
         SEED_PGUSER: ${{ env.POSTGRES_USER }}
         SEED_PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
       run: npm run cypress:seed
+
+    # Two Cypress runs at once share one browser profile, so the warm-up must be over first.
+    - name: Wait for the Chromium warm-up
+      run: |
+        for i in $(seq 1 120); do pgrep -f warmup.config.js >/dev/null || break; sleep 1; done
+        pkill -f warmup.config.js && echo "::warning::the Chromium warm-up was still running after 120 s"
+        tail -n 15 "$RUNNER_TEMP/cypress-warmup.log"
 
     - name: Plan this shard
       id: plan
