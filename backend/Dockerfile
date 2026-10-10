@@ -5,6 +5,7 @@ COPY pom.xml ./
 COPY mvnw ./
 COPY .mvn ./.mvn/
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+RUN ./mvnw --batch-mode --quiet dependency:go-offline
 
 COPY src ./src/
 
