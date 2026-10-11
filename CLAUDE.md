@@ -141,7 +141,7 @@ shade under the measured value.
 ### Frontend (React 19 / Vite 8 / Jest / Cypress)
 
 ```bash
-npm ci --legacy-peer-deps    # install — the legacy flag is required, plain `npm ci` fails on peer deps
+npm ci                       # install
 npm run dev                  # dev server on :5173, proxies API paths to :8080
 npm run build                # -> frontend/dist
 npm run lint                 # ESLint (flat config in eslint.config.js)
