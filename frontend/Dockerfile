@@ -1,7 +1,7 @@
 FROM dhi.io/node:26-dev@sha256:8205c64cc7ec7fd3e08fd4ced45e64fc13ec6df48efbcf9b8552ff180af402eb AS build
 WORKDIR /frontend
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 COPY . ./
 ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
