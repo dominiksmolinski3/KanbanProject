@@ -105,7 +105,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: frontend
-      run: npm ci --legacy-peer-deps
+      run: npm ci
 
     - name: Build frontend
       working-directory: frontend
@@ -186,7 +186,7 @@ jobs:
     - name: Install frontend dependencies
       working-directory: frontend
       run: |
-        npm ci --legacy-peer-deps
+        npm ci
         nohup npx cypress run --browser chromium --config-file cypress/warmup.config.js > "$RUNNER_TEMP/cypress-warmup.log" 2>&1 &
 
     - name: Build and start the stack
