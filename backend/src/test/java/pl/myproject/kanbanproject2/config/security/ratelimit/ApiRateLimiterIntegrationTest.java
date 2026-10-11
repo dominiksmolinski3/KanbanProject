@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,6 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ApiRateLimiterIntegrationTest {
     private static final ApiRateLimitProperties LIMIT = new ApiRateLimitProperties(true, 20, 100);
@@ -52,6 +54,13 @@ class ApiRateLimiterIntegrationTest {
         connectionFactory.afterPropertiesSet();
         redis = new StringRedisTemplate(connectionFactory);
         redis.afterPropertiesSet();
+        assertThatCode(() -> {
+            try (RedisConnection connection = connectionFactory.getConnection()) {
+                connection.ping();
+            }
+        })
+                .as("these tests need Redis at %s:%d; without it the limiter allows every call", host, port)
+                .doesNotThrowAnyException();
         registry = new SimpleMeterRegistry();
         account = 1_000_000 + ThreadLocalRandom.current().nextInt(1_000_000);
     }
@@ -91,18 +100,10 @@ class ApiRateLimiterIntegrationTest {
         }
 
         now.addAndGet(1_000);
-        int allowed = 0;
-        while (limiter.attempt(account).allowed()) {
-            allowed++;
-        }
-        assertThat(allowed).as("one second at twenty a second").isEqualTo(20);
+        assertThat(allowedInARow(limiter)).as("one second at twenty a second").isEqualTo(20);
 
         now.addAndGet(3_600_000);
-        allowed = 0;
-        while (limiter.attempt(account).allowed()) {
-            allowed++;
-        }
-        assertThat(allowed).as("an hour idle refills to the burst, not to 72 000").isEqualTo(100);
+        assertThat(allowedInARow(limiter)).as("an hour idle refills to the burst, not to 72 000").isEqualTo(100);
     }
 
     @Test
@@ -141,5 +142,16 @@ class ApiRateLimiterIntegrationTest {
 
         Long ttl = redis.getExpire("api-rate-limit:account:" + account);
         assertThat(ttl).isBetween(1L, 6L);
+    }
+
+    private int allowedInARow(ApiRateLimiter limiter) {
+        int allowed = 0;
+        while (limiter.attempt(account).allowed()) {
+            allowed++;
+            if (allowed > LIMIT.burst()) {
+                throw new IllegalStateException("the limiter never refused");
+            }
+        }
+        return allowed;
     }
 }
