@@ -29,6 +29,7 @@ class ConfigurationTest {
     private static final Path APP_PROPERTIES = Path.of("src", "main", "resources", "application.properties");
     private static final Path COMPOSE = REPO.resolve("docker-compose.yml");
     private static final Path ENV_EXAMPLE = REPO.resolve(".env.example");
+    private static final Path BACKEND_ENV_EXAMPLE = Path.of(".env.example");
     private static final Path API_APP = REPO.resolve(Path.of("terraform", "modules", "api_app", "main.tf"));
     private static final Path WEB_APP = REPO.resolve(Path.of("terraform", "modules", "web_app", "main.tf"));
     private static final Path EDGE_TEMPLATE = REPO.resolve(Path.of("frontend", "nginx", "default.conf.template"));
@@ -164,18 +165,30 @@ class ConfigurationTest {
         assertThat(interpolatedByCompose())
                 .as("docker-compose reads these from .env and the template does not mention them, "
                         + "so a fresh clone that copies the template cannot bring the stack up")
-                .isSubsetOf(templateKeys());
+                .isSubsetOf(templateKeys(ENV_EXAMPLE));
     }
 
     @Test
     @DisplayName(".env.example names nothing that neither the application nor docker-compose uses")
     void theTemplateNamesNothingUnused() throws IOException {
-        Set<String> unused = new TreeSet<>(templateKeys());
+        Set<String> unused = new TreeSet<>(templateKeys(ENV_EXAMPLE));
         unused.removeAll(readable());
         unused.removeAll(interpolatedByCompose());
 
         assertThat(unused)
                 .as("the template asks somebody to fill these in and nothing anywhere reads them")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("backend/.env.example names only variables application.properties resolves")
+    void theBackendTemplateNamesOnlyPlaceholders() throws IOException {
+        Set<String> ignored = new TreeSet<>(templateKeys(BACKEND_ENV_EXAMPLE));
+        ignored.removeAll(placeholders().keySet());
+
+        assertThat(ignored)
+                .as("backend/.env is imported as a properties file, and relaxed binding maps only real "
+                        + "environment variables, so a .env entry no placeholder names is silently ignored")
                 .isEmpty();
     }
 
@@ -326,11 +339,11 @@ class ConfigurationTest {
         return names;
     }
 
-    private static Set<String> templateKeys() throws IOException {
-        assertThat(ENV_EXAMPLE).as("the env template has moved or gone").isRegularFile();
+    private static Set<String> templateKeys(Path template) throws IOException {
+        assertThat(template).as("the env template %s has moved or gone", template).isRegularFile();
 
         Set<String> keys = new TreeSet<>();
-        for (String line : Files.readAllLines(ENV_EXAMPLE)) {
+        for (String line : Files.readAllLines(template)) {
             String trimmed = line.trim();
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 continue;
