@@ -227,10 +227,10 @@ The backend will start on [http://localhost:8080](http://localhost:8080)
 cd frontend
 ```
 
-2. Install dependencies (the legacy flag is required -- the dependency tree has peer conflicts):
+2. Install dependencies:
 
 ```bash
-npm ci --legacy-peer-deps
+npm ci
 ```
 
 3. Start the frontend application:
@@ -404,7 +404,7 @@ own port (`127.0.0.1:8082`) while the browser goes through nginx to the first.
 ### Load Testing
 
 [k6](https://grafana.com/docs/k6/latest/) scenarios live in `loadtest/` and run against the compose
-stack (from the root folder, after `npm ci --legacy-peer-deps` in `frontend/`, whose `pg` the seed uses):
+stack (from the root folder, after `npm ci` in `frontend/`, whose `pg` the seed uses):
 
 ``` bash
 docker compose -f docker-compose.yml -f loadtest/docker-compose.loadtest.yml --profile replicas --profile monitoring up -d --build
