@@ -1173,7 +1173,7 @@ showing and not worth interrupting them over, and `/activity` is the screen that
 
 ## Configuration and secrets
 
-`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanConfig` additionally loads dotenv directly via `io.github.cdimascio:dotenv-java`. `.env` files are gitignored.
+`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanProject2Application.main` additionally loads it via `io.github.cdimascio:dotenv-java` before Spring starts, but only when `SPRING_DATASOURCE_URL` is unset, and copies each entry into a system property unless an environment variable or system property of that name already exists. `.env` files are gitignored.
 
 **Configuration is audited at build time, in both directions (`ConfigurationTest`).** Environment
 variables are the one coupling in this repo with no compiler on either side: a variable the
