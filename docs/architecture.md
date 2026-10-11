@@ -1173,7 +1173,7 @@ showing and not worth interrupting them over, and `/activity` is the screen that
 
 ## Configuration and secrets
 
-`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). `KanbanProject2Application.main` additionally loads it via `io.github.cdimascio:dotenv-java` before Spring starts, but only when `SPRING_DATASOURCE_URL` is unset, and copies each entry into a system property unless an environment variable or system property of that name already exists. `.env` files are gitignored.
+`application.properties` resolves everything from environment variables and imports `optional:file:.env[.properties]`, so a `.env` in the backend working directory supplies local values (template: `backend/.env.example`). The `--migrate-only` path reads it the same way, because `DatabaseMigration` is a Spring application too. A real environment variable outranks a `.env` entry of the same name. The file is parsed as `.properties`, not dotenv syntax: no `export` prefix and no surrounding quotes. Only names that `application.properties` references as a placeholder are read from it: a property bound by relaxed binding alone, such as `stomp.relay.port` from `STOMP_RELAY_PORT`, maps only from a real environment variable, so its `.env` entry is ignored. `.env` files are gitignored.
 
 **Configuration is audited at build time, in both directions (`ConfigurationTest`).** Environment
 variables are the one coupling in this repo with no compiler on either side: a variable the
