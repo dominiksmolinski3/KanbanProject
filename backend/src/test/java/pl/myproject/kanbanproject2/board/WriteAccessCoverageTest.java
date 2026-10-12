@@ -74,8 +74,8 @@ class WriteAccessCoverageTest {
     @Test
     @DisplayName("chat's board-send path asks BoardService.isWritable before it accepts a message")
     void chatSendChecksWritability() throws IOException {
-        String body = read("controller/ChatController.java");
-        String method = methodBody(body, "public void sendMessage(", "controller/ChatController.java");
+        String body = read("chat/ChatController.java");
+        String method = methodBody(body, "public void sendMessage(", "chat/ChatController.java");
 
         assertThat(method)
                 .as("ChatController#sendMessage no longer checks isWritable - a viewer could post to "

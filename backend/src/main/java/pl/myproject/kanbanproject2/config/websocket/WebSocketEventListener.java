@@ -9,7 +9,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import pl.myproject.kanbanproject2.chat.ChatMessage;
 import pl.myproject.kanbanproject2.chat.ChatService;
 import pl.myproject.kanbanproject2.chat.MessageType;
-import pl.myproject.kanbanproject2.controller.ChatController;
+import pl.myproject.kanbanproject2.chat.ChatController;
 
 import java.time.LocalDateTime;
 import java.util.Map;

@@ -6,9 +6,9 @@ import com.azure.core.util.polling.PollResponse;
 import com.azure.core.util.polling.SyncPoller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailMessage;
-import pl.myproject.kanbanproject2.service.EmailSender;
+import pl.myproject.kanbanproject2.mail.EmailDeliveryException;
+import pl.myproject.kanbanproject2.mail.EmailMessage;
+import pl.myproject.kanbanproject2.mail.EmailSender;
 
 @Slf4j
 @RequiredArgsConstructor

@@ -11,8 +11,8 @@ import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.RetryOptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailMessage;
+import pl.myproject.kanbanproject2.mail.EmailDeliveryException;
+import pl.myproject.kanbanproject2.mail.EmailMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

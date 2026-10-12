@@ -10,7 +10,7 @@ import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;

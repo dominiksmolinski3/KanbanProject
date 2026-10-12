@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import pl.myproject.kanbanproject2.service.EmailMessage;
 
 import java.time.Instant;
 
