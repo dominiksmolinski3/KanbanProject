@@ -11,7 +11,6 @@ import org.springframework.security.web.header.writers.ContentSecurityPolicyHead
 import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter;
 import org.springframework.security.web.header.writers.HstsHeaderWriter;
-import org.springframework.security.web.header.writers.PermissionsPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 
@@ -33,7 +32,6 @@ class SecurityHeadersTest {
 
         HeaderWriterFilter filter = new HeaderWriterFilter(List.of(
                 new ContentSecurityPolicyHeaderWriter(SecurityHeaders.CONTENT_SECURITY_POLICY),
-                new PermissionsPolicyHeaderWriter(SecurityHeaders.PERMISSIONS_POLICY),
                 new ReferrerPolicyHeaderWriter(
                         ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN),
                 opener,
@@ -48,37 +46,21 @@ class SecurityHeadersTest {
     }
 
     @Test
-    @DisplayName("the shell is served with a content security policy")
-    void theShellCarriesThePolicy() throws Exception {
-        HttpServletResponse response = headersFor("/board");
-
-        String csp = response.getHeader("Content-Security-Policy");
-        assertThat(csp).isNotNull();
-        assertThat(csp)
-                .contains("default-src 'self'")
-                .contains("frame-ancestors 'none'")
-                .contains("https://www.google.com")
-                .contains("https://www.gstatic.com")
-                .doesNotContain("fonts.googleapis.com")
-                .doesNotContain("fonts.gstatic.com");
+    @DisplayName("an API response carries a policy that allows nothing - it is JSON, never a page")
+    void apiResponsesCarryTheLockedDownPolicy() throws Exception {
+        assertThat(headersFor("/api/tasks").getHeader("Content-Security-Policy"))
+                .isEqualTo("default-src 'none'; frame-ancestors 'none'");
+        assertThat(SecurityHeaders.CONTENT_SECURITY_POLICY)
+                .as("a host here would mean the page's policy has crept back into the API; the "
+                        + "page's is in frontend/nginx/security-headers.conf")
+                .doesNotContain("https://");
     }
 
     @Test
-    @DisplayName("the bundle gets the policy too, which is where the scan found it missing")
-    void theBundleCarriesItAsWell() throws Exception {
-        assertThat(headersFor("/assets/index-abc123.js").getHeader("Content-Security-Policy"))
-                .isEqualTo(SecurityHeaders.CONTENT_SECURITY_POLICY);
-        assertThat(headersFor("/assets/index-abc123.js").getHeader("Cross-Origin-Resource-Policy"))
-                .isEqualTo("same-origin");
-    }
+    @DisplayName("an API response still carries the cross-origin isolation headers")
+    void apiResponsesCarryTheCrossOriginHeaders() throws Exception {
+        HttpServletResponse response = headersFor("/api/tasks");
 
-    @Test
-    @DisplayName("the four headers the scan named as absent are present")
-    void theScansFindingsAreAnswered() throws Exception {
-        HttpServletResponse response = headersFor("/");
-
-        assertThat(response.getHeader("Content-Security-Policy")).isNotBlank();
-        assertThat(response.getHeader("Permissions-Policy")).isNotBlank();
         assertThat(response.getHeader("Cross-Origin-Opener-Policy")).isEqualTo("same-origin");
         assertThat(response.getHeader("Cross-Origin-Resource-Policy")).isEqualTo("same-origin");
     }
@@ -97,28 +79,10 @@ class SecurityHeadersTest {
     }
 
     @Test
-    @DisplayName("permissions policy switches off every capability rather than listing an allowance")
-    void everyCapabilityIsRefused() {
-        assertThat(SecurityHeaders.PERMISSIONS_POLICY)
-                .contains("camera=()")
-                .contains("microphone=()")
-                .contains("geolocation=()")
-                .contains("payment=()");
-        assertThat(SecurityHeaders.PERMISSIONS_POLICY).doesNotContain("self").doesNotContain("*");
-    }
-
-    @Test
     @DisplayName("HSTS is written to a request that is not secure, because none of them are")
     void strictTransportSecurityIsWrittenBehindTheIngress() throws Exception {
         assertThat(headersFor("/").getHeader("Strict-Transport-Security"))
                 .isEqualTo("max-age=31536000 ; includeSubDomains");
-    }
-
-    @Test
-    @DisplayName("the bundle gets HSTS too, on the same insecure request")
-    void theBundleCarriesHstsAsWell() throws Exception {
-        assertThat(headersFor("/assets/index-abc123.js").getHeader("Strict-Transport-Security"))
-                .isNotNull();
     }
 
     @Test

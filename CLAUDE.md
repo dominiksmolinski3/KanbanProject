@@ -223,8 +223,8 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   path reuses the drag path's handlers and must not grow a second implementation.
 - Every `fetch` path must exist on the server (`ClientRoutesExistTest`).
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
-- A new external `https://` host needs a CSP entry (`CspMatchesTheClientTest`), in both
-  `SecurityHeaders` and `frontend/nginx/security-headers.conf` (`SecurityHeadersMatchTheEdgeTest`).
+- A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
+  (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.
 - `react` and `react-dom` move together (`dependencyPairs.test.js`).
 
 **Edge and infrastructure**
