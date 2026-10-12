@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.Scheduled;
 import pl.myproject.kanbanproject2.config.EmailConfiguration;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;

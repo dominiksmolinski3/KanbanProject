@@ -3,8 +3,8 @@ package pl.myproject.kanbanproject2.task;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.Board;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.mail.EmailDeliveryException;
+import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.LocalDateTime;

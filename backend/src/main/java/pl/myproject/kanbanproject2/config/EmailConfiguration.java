@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import pl.myproject.kanbanproject2.service.EmailSender;
+import pl.myproject.kanbanproject2.mail.EmailSender;
 
 @Slf4j
 @Configuration

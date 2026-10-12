@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.time.Clock;
 import java.time.Duration;

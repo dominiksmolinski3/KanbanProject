@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.service;
+package pl.myproject.kanbanproject2.mail;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

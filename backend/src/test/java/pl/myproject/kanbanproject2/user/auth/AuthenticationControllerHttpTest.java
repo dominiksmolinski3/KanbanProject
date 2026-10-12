@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.controller;
+package pl.myproject.kanbanproject2.user.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,10 +21,6 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.User;
-import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
-import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
-import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
-import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 
 import java.time.Instant;
 import java.util.List;

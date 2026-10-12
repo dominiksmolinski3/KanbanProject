@@ -6,9 +6,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailMessage;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.time.Clock;
 import java.time.Duration;

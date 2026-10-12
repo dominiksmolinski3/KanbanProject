@@ -5,9 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailMessage;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.time.Clock;
 import java.time.Instant;
