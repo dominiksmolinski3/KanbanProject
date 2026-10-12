@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.service;
+package pl.myproject.kanbanproject2.mail;
 
 public record EmailMessage(String to, String subject, String htmlBody, String textBody) {
     public EmailMessage {

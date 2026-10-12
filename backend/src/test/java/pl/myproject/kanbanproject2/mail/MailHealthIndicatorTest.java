@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.time.Clock;
 import java.time.Instant;

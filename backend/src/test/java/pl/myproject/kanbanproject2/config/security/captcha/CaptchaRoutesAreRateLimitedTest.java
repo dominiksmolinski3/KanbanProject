@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitRule;
-import pl.myproject.kanbanproject2.controller.AuthenticationController;
+import pl.myproject.kanbanproject2.user.auth.AuthenticationController;
 import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
 
 import java.lang.reflect.Field;

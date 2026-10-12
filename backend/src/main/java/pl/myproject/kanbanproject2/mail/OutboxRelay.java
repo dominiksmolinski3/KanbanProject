@@ -8,8 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailSender;
 
 import java.time.Clock;
 import java.time.Duration;

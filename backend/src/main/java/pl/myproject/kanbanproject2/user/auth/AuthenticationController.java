@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.controller;
+package pl.myproject.kanbanproject2.user.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,15 +24,6 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
 import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
-import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;
-import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
-import pl.myproject.kanbanproject2.user.auth.DeviceContext;
-import pl.myproject.kanbanproject2.user.auth.ForgotPasswordRequest;
-import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
-import pl.myproject.kanbanproject2.user.auth.RefreshTokenRequest;
-import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
-import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
-import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
 import java.util.List;
 

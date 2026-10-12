@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.controller;
+package pl.myproject.kanbanproject2.chat;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,10 +8,6 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardService;
-import pl.myproject.kanbanproject2.chat.ChatMessage;
-import pl.myproject.kanbanproject2.chat.ChatRefusal;
-import pl.myproject.kanbanproject2.chat.ChatService;
-import pl.myproject.kanbanproject2.chat.MessageType;
 import pl.myproject.kanbanproject2.config.websocket.StompPrincipals;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;

@@ -315,6 +315,32 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
+                                        <include>pl.myproject.kanbanproject2.chat</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.95</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pl.myproject.kanbanproject2.user.auth</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.95</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
                                         <include>pl.myproject.kanbanproject2.storage</include>
                                     </includes>
                                     <limits>
@@ -348,19 +374,6 @@
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.80</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                                <rule>
-                                    <element>PACKAGE</element>
-                                    <includes>
-                                        <include>pl.myproject.kanbanproject2.controller</include>
-                                    </includes>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.85</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -465,19 +478,6 @@
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.45</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                                <rule>
-                                    <element>PACKAGE</element>
-                                    <includes>
-                                        <include>pl.myproject.kanbanproject2.service</include>
-                                    </includes>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

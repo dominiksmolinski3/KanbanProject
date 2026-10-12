@@ -1,8 +1,8 @@
 package pl.myproject.kanbanproject2.config;
 
 import lombok.extern.slf4j.Slf4j;
-import pl.myproject.kanbanproject2.service.EmailMessage;
-import pl.myproject.kanbanproject2.service.EmailSender;
+import pl.myproject.kanbanproject2.mail.EmailMessage;
+import pl.myproject.kanbanproject2.mail.EmailSender;
 
 @Slf4j
 public class DisabledEmailSender implements EmailSender {

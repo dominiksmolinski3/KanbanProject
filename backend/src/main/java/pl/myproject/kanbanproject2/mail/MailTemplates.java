@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.service;
+package pl.myproject.kanbanproject2.mail;
 
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;

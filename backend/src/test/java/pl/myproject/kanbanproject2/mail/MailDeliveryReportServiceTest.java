@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import pl.myproject.kanbanproject2.service.EmailMessage;
 
 import java.time.Clock;
 import java.time.Instant;

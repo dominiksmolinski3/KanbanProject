@@ -4,8 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
-import pl.myproject.kanbanproject2.service.EmailDeliveryException;
-import pl.myproject.kanbanproject2.service.EmailMessage;
 
 import java.time.Clock;
 import java.time.Instant;

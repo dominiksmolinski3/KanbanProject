@@ -3,7 +3,7 @@ package pl.myproject.kanbanproject2.task;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 

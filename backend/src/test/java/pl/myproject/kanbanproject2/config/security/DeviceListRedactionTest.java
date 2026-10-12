@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import pl.myproject.kanbanproject2.service.EmailService;
+import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ActiveDeviceDto;

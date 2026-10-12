@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.service;
+package pl.myproject.kanbanproject2.mail;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

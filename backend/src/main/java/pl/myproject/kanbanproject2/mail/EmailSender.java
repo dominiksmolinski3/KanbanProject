@@ -1,4 +1,4 @@
-package pl.myproject.kanbanproject2.service;
+package pl.myproject.kanbanproject2.mail;
 
 public interface EmailSender {
     String send(EmailMessage message);

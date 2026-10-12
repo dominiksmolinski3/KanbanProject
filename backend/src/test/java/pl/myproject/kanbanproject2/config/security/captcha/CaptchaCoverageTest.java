@@ -2,7 +2,7 @@ package pl.myproject.kanbanproject2.config.security.captcha;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import pl.myproject.kanbanproject2.controller.AuthenticationController;
+import pl.myproject.kanbanproject2.user.auth.AuthenticationController;
 import pl.myproject.kanbanproject2.user.auth.CaptchaDto;
 import pl.myproject.kanbanproject2.user.auth.LoginUserDto;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
