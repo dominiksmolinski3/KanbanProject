@@ -52,13 +52,13 @@ describe('apiInterceptor', () => {
     }
   });
 
-  test('the device routes are under /auth and still carry a token - they are not public', async () => {
+  test('the device routes carry a token - they are not public', async () => {
     localStorage.setItem('token', 'jwt');
     localStorage.setItem('tokenExpiration', futureExpiry());
 
-    await window.fetch('/api/auth/devices');
+    await window.fetch('/api/devices');
 
-    expect(originalFetch).toHaveBeenCalledWith('/api/auth/devices', {
+    expect(originalFetch).toHaveBeenCalledWith('/api/devices', {
       headers: expect.objectContaining({ Authorization: 'Bearer jwt' })
     });
   });

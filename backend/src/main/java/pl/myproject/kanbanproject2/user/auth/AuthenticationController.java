@@ -7,11 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,8 +20,6 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.LoginResponse;
 import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
-
-import java.util.List;
 
 @RequestMapping("/auth")
 @RestController
@@ -85,18 +79,6 @@ public class AuthenticationController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         authenticationService.logout(request.refreshToken());
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/devices")
-    public ResponseEntity<List<ActiveDeviceDto>> listDevices(@AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(authenticationService.listSessions(currentUser));
-    }
-
-    @DeleteMapping("/devices/{id}")
-    public ResponseEntity<Void> revokeDevice(@PathVariable Long id,
-                                             @AuthenticationPrincipal User currentUser) {
-        authenticationService.revokeSession(currentUser, id);
         return ResponseEntity.noContent().build();
     }
 

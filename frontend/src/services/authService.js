@@ -171,7 +171,7 @@ export const authService = {
   },
 
   listDevices: async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/devices`);
+    const response = await fetch(`${API_BASE_URL}/devices`);
 
     if (!response.ok) {
       throw await apiError(response);
@@ -181,7 +181,7 @@ export const authService = {
   },
 
   endDevice: async (sessionId) => {
-    const response = await fetch(`${API_BASE_URL}/auth/devices/${sessionId}`, {
+    const response = await fetch(`${API_BASE_URL}/devices/${sessionId}`, {
       method: 'DELETE'
     });
 

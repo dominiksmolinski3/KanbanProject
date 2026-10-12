@@ -22,9 +22,6 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.Instant;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,8 +32,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -281,60 +276,5 @@ class AuthenticationControllerHttpTest {
         assertThat(live.getResponse().getStatus()).isEqualTo(spent.getResponse().getStatus());
         assertThat(live.getResponse().getContentAsString())
                 .isEqualTo(spent.getResponse().getContentAsString());
-    }
-
-    @Test
-    @DisplayName("the device list answers 200 with what the caller can end, and never a token")
-    void theDeviceListAnswersWithSessions() throws Exception {
-        when(authenticationService.listSessions(caller)).thenReturn(List.of(new ActiveDeviceDto(
-                12L, "203.0.113.7", "Mozilla/5.0",
-                Instant.parse("2026-08-01T09:00:00Z"),
-                Instant.parse("2026-09-02T11:30:00Z"),
-                Instant.parse("2026-10-02T11:30:00Z"),
-                false)));
-
-        MvcResult listed = mvc.perform(get("/auth/devices"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(12))
-                .andExpect(jsonPath("$[0].ipAddress").value("203.0.113.7"))
-                .andExpect(jsonPath("$[0].signedInAt").exists())
-                .andExpect(jsonPath("$[0].redacted").value(false))
-                .andReturn();
-
-        assertThat(listed.getResponse().getContentAsString())
-                .as("nothing about the token itself belongs in a list a browser renders")
-                .doesNotContain("token", "Hash");
-    }
-
-    @Test
-    @DisplayName("ending a device answers 204 and passes the caller, not just the id")
-    void endingADeviceAnswers204() throws Exception {
-        mvc.perform(delete("/auth/devices/12"))
-                .andExpect(status().isNoContent());
-
-        verify(authenticationService).revokeSession(caller, 12L);
-    }
-
-    @Test
-    @DisplayName("a session that is not the caller's is 404, and nothing is withdrawn")
-    void endingSomebodyElsesDeviceIs404() throws Exception {
-        doThrow(new GlobalException(ExceptionIdentifier.SESSION_NOT_FOUND))
-                .when(authenticationService).revokeSession(caller, 99L);
-
-        mvc.perform(delete("/auth/devices/99"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("SESSION_NOT_FOUND"));
-    }
-
-    @Test
-    @DisplayName("neither device route goes anywhere near the captcha verifier")
-    void theDeviceRoutesDoNotChallenge() throws Exception {
-        when(authenticationService.listSessions(caller)).thenReturn(List.of());
-
-        mvc.perform(get("/auth/devices")).andExpect(status().isOk());
-        mvc.perform(delete("/auth/devices/12")).andExpect(status().isNoContent());
-
-        verifyNoInteractions(captchaVerifier);
-        verify(passwordResetService, never()).requestReset(any());
     }
 }
