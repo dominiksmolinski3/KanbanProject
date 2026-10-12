@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check that a deployed origin answers what this checkout says it should.
 
-Every claim below is already asserted somewhere in the build - ``SecurityHeadersTest`` and
-``SecurityHeadersMatchTheEdgeTest`` read the policy from both sides of the split,
+Every claim below is already asserted somewhere in the build - ``SecurityHeadersMatchTheEdgeTest``
+reads the page's headers out of the nginx snippet, ``SecurityHeadersTest`` the API's own policy,
 ``OpenApiContractTest`` reads the published contract, ``SpaRoutesMatchTheClientTest`` reads the
 client routes against ``App.jsx``. All of those read *source*. Nothing reads the deployment, and the two can diverge for exactly one reason:
 a deploy that did not happen. That is not hypothetical here - an environment pinned to ``latest``
@@ -15,7 +15,7 @@ whether it makes them, so a deployment falls behind visibly the moment a claim m
 and not in the environment. A revision that changes no claim is invisible to it, which is stated
 rather than solved.
 
-The claims are read out of the Java rather than copied here. A copy is a second source of truth
+The claims are read out of the source - the nginx snippet and the Java - rather than copied here. A copy is a second source of truth
 that drifts, which is the failure two thirds of the guards in this repository exist to catch, and
 it would be absurd to introduce one in the file whose whole job is catching divergence. A source
 file this cannot parse is an error, never a skipped check: a checker that quietly stops checking
@@ -32,6 +32,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SECURITY_HEADERS = REPO / "backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityHeaders.java"
+EDGE_HEADERS = REPO / "frontend/nginx/security-headers.conf"
 SPA_ROUTES = REPO / "backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java"
 
 TIMEOUT = 30
@@ -69,17 +70,24 @@ def get(url, accept="*/*"):
         raise SystemExit(1)
 
 
-def java_string_join(source, constant):
-    """Rebuild a String.join(sep, "a", "b", ...) constant from the Java that declares it."""
-    pattern = constant + r'\s*=\s*String\.join\(\s*"((?:[^"\\]|\\.)*)"\s*,(.*?)\);'
-    match = re.search(pattern, source, re.DOTALL)
+def java_string(source, constant):
+    """Read a plain string constant out of the Java that declares it."""
+    match = re.search(constant + r'\s*=\s*"((?:[^"\\]|\\.)*)"\s*;', source)
     if not match:
         raise SystemExit(
             "::error::cannot parse " + constant + " out of SecurityHeaders.java - the header this "
             "compares against is gone, so the check below would pass on nothing")
-    separator = match.group(1).encode().decode("unicode_escape")
-    parts = re.findall(r'"((?:[^"\\]|\\.)*)"', match.group(2))
-    return separator.join(part.encode().decode("unicode_escape") for part in parts)
+    return match.group(1).encode().decode("unicode_escape")
+
+
+def edge_header(source, name):
+    """Read one add_header value out of the nginx snippet the edge includes."""
+    match = re.search(r'^\s*add_header\s+' + re.escape(name) + r'\s+"([^"]*)"', source, re.MULTILINE)
+    if not match:
+        raise SystemExit(
+            "::error::cannot find add_header " + name + " in security-headers.conf - the header "
+            "this compares against is gone, so the check below would pass on nothing")
+    return match.group(1)
 
 
 def spa_routes(source):
@@ -95,6 +103,7 @@ def spa_routes(source):
 def main(origin):
     origin = origin.rstrip("/")
     headers_source = SECURITY_HEADERS.read_text(encoding="utf-8")
+    edge_source = EDGE_HEADERS.read_text(encoding="utf-8")
     routes = spa_routes(SPA_ROUTES.read_text(encoding="utf-8"))
 
     print("checking " + origin)
@@ -102,9 +111,8 @@ def main(origin):
     status, headers, body = get(origin + "/")
     check("the origin serves the app shell", status == 200, "GET / answered " + str(status))
 
-    for header, constant in (("Content-Security-Policy", "CONTENT_SECURITY_POLICY"),
-                             ("Permissions-Policy", "PERMISSIONS_POLICY")):
-        expected = java_string_join(headers_source, constant)
+    for header in ("Content-Security-Policy", "Permissions-Policy"):
+        expected = edge_header(edge_source, header)
         served = headers.get(header)
         check(header + " is the one this checkout declares", served == expected,
               "deployed: " + repr(served) + " / source: " + repr(expected))
@@ -134,8 +142,12 @@ def main(origin):
         check(asset + " is served", status == 200,
               "answered " + str(status) + " - the shell boots and the script behind it does not")
 
-    status, _, body = get(origin + "/v3/api-docs", accept="application/json")
+    status, api_headers, body = get(origin + "/v3/api-docs", accept="application/json")
     check("/v3/api-docs is public", status == 200, "answered " + str(status) + " to an anonymous caller")
+    expected = java_string(headers_source, "CONTENT_SECURITY_POLICY")
+    check("an API response carries the API's own Content-Security-Policy",
+          api_headers.get("Content-Security-Policy") == expected,
+          "deployed: " + repr(api_headers.get("Content-Security-Policy")) + " / source: " + repr(expected))
     check("/v3/api-docs is an OpenAPI document", b'"openapi"' in body, "no openapi key in the body")
 
     status, _, _ = get(origin + "/api/v3/api-docs")

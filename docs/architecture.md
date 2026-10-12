@@ -212,10 +212,8 @@ still exercises the format. `RequestIdMatchesTheEdgeTest` holds all of it togeth
 whose application lines carry an id the edge never logged.
 
 Two guards carry the parts no compiler can see. `SecurityHeadersMatchTheEdgeTest` reads
-[frontend/nginx/security-headers.conf](../frontend/nginx/security-headers.conf) and fails when it and
-`SecurityHeaders` disagree — nginx serves `index.html`, so a CSP Spring writes reaches nobody on the
-document, and the policy is now a rule in two files, the same trade `MetricAlertsMatchTheMetersTest` makes
-against the Terraform. It also pins two nginx traps: that every header is set `always` (otherwise a
+[frontend/nginx/security-headers.conf](../frontend/nginx/security-headers.conf), the only copy of the
+page's policy, and checks the fixed headers it shares with Spring. It also pins two nginx traps: that every header is set `always` (otherwise a
 404 or a 502 from the edge arrives unprotected), and that **every location adding a header of its own
 includes the snippet**, because `add_header` does not inherit into a block that sets one — which
 would serve the shell with no policy at all and nothing in the response to say so. The second guard
@@ -936,8 +934,15 @@ does it while a renewal is possible.
 
 CORS allowed origins live in one place — [AllowedOriginsProperties](../backend/src/main/java/pl/myproject/kanbanproject2/config/AllowedOriginsProperties.java), a `@ConfigurationProperties` record bound from `security.cors.allowed-origins` (`SECURITY_CORS_ALLOWED_ORIGINS`, comma-separated), which both [SecurityConfiguration](../backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityConfiguration.java) and [WebSocketConfig](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebSocketConfig.java) read. The two used to hold a copy each and had drifted — the WebSocket list additionally allowed the `http://` variants of `kanbanproject.pl` — which is why the list is single-sourced now, with `AllowedOriginsTest` as the guard. The compiled default is the two HTTPS `kanbanproject.pl` origins plus the local development ones (`http://localhost` on 5173, 5174, 3000, 8080 and 80, `http://127.0.0.1:8080` and `http://app:8080`), so a deployment must always set the variable rather than rely on it. Terraform passes `SECURITY_CORS_ALLOWED_ORIGINS` to the container app, so a new deployment origin is a tfvars change rather than a rebuild.
 
-**The browser is told what this application may load, and the policy lives in
-[SecurityHeaders](../backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityHeaders.java).**
+**The browser is told what this application may load, and the page's policy lives in
+[frontend/nginx/security-headers.conf](../frontend/nginx/security-headers.conf).** There are two
+policies with two jobs. nginx serves `index.html` and the bundle, so its policy is the one a browser
+applies to the document, and it is the only place a new host goes. The API answers JSON and never a
+page, and its ingress is internal, so
+[SecurityHeaders](../backend/src/main/java/pl/myproject/kanbanproject2/config/security/SecurityHeaders.java)
+gives it the policy for a response that should load nothing: `default-src 'none'; frame-ancestors
+'none'`, with no Permissions-Policy. The two were once one string kept identical in both files, which
+handed the API a loose policy it had no use for and made every new host a two-file change.
 Spring Security already sent `nosniff`, `X-Frame-Options: DENY` and a no-store `Cache-Control` by
 default; what was missing until now was a `Content-Security-Policy`, which matters here more than
 on most applications because one origin serves the bundle, the API and every uploaded attachment —
@@ -1629,8 +1634,8 @@ and reasons in `local.refusal_alerts`.
   guard reads source and compares it with source, Checkov reads what Terraform declares, and
   `terraform plan` reads what Terraform declared last time — **all of which stay green on an
   environment running eight-day-old code**, which is precisely what TF-09 was. The claims are read
-  out of the Java at run time rather than copied into the script (`SecurityHeaders`'s two policy
-  constants, `SpaRoutes.ALL`), because a copy is the drift every guard here exists to catch; a
+  out of the source at run time rather than copied into the script (the page's two policies from
+  the nginx snippet, the API's from `SecurityHeaders`, `SpaRoutes.ALL`), because a copy is the drift every guard here exists to catch; a
   source file the script cannot parse is an error, never a skipped check. It needs no credentials
   — only the `DEPLOYED_ORIGIN` repository variable — and an unset origin fails rather than skips.
   **What it does not do is name the deployed commit**: nothing public says which one is running, so
