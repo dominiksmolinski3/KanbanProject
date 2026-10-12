@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SessionRoutesTest {
     private static final String REFRESH = "/api/auth/refresh";
     private static final String LOGOUT = "/api/auth/logout";
-    private static final String DEVICES = "/api/auth/devices";
+    private static final String DEVICES = "/api/devices";
 
     @Test
     @DisplayName("both routes are reachable without an access token, or neither could ever be used")
@@ -29,13 +29,8 @@ class SessionRoutesTest {
     }
 
     @Test
-    @DisplayName("listing and ending a device are not public - they are the two that need a token")
+    @DisplayName("listing and ending a device are not public - they are about an account, so they need a token")
     void theDeviceRoutesAreNotPublic() {
-        assertThat(PublicPaths.AUTH_ENDPOINTS)
-                .as("every other route under /auth exists for someone who cannot prove who they "
-                        + "are yet; these two are about an account, so proving it is the whole "
-                        + "precondition")
-                .doesNotContain(DEVICES);
         assertThat(PublicPaths.isPublic(DEVICES)).isFalse();
         assertThat(PublicPaths.isPublic(DEVICES + "/12")).isFalse();
     }

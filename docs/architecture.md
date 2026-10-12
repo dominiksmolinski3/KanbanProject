@@ -807,11 +807,11 @@ resetting a password withdraws them all. Both new routes are public (the caller 
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
 access token already issued, which is why fifteen minutes rather than an hour.
 
-**A session is also something its owner can see and end (`V9`).** `GET /api/auth/devices` lists
-every live token the caller holds and `DELETE /api/auth/devices/{id}` withdraws one — the case
+**A session is also something its owner can see and end (`V9`).** `GET /api/devices` lists
+every live token the caller holds and `DELETE /api/devices/{id}` withdraws one — the case
 between logout (the session you are holding) and a password change (all of them), which is a device
-you no longer have. Both are **authenticated**, the only routes under `/auth` that are, and
-`SessionRoutesTest` fails the build if either appears in `PublicPaths`; the rate limiter covers the
+you no longer have. Both are **authenticated**, which is why they live outside `/auth`, and
+`SessionRoutesTest` fails the build if either becomes public; the rate limiter covers the
 unauthenticated routes, so neither is on it. A row that is not the caller's live session — unknown
 id, somebody else's, already revoked, expired — is one `404 SESSION_NOT_FOUND`, because ids here are
 sequential. `V9` adds `ip_address`, `user_agent` (stamped on every issue, so they say where the
@@ -906,12 +906,14 @@ hop, the 429 carries the headers, and the edge's API rate stays above the per-ac
 person meets the fleet-wide limit, with its real `Retry-After`, before the per-replica one.
 
 On the client, [apiInterceptor.js](../frontend/src/services/apiInterceptor.js) monkey-patches
-`window.fetch` at module load to attach `Authorization`, skipping the URLs that name an
-unauthenticated auth route. That skip used to be any URL containing `/auth/`, on the assumption that
-everything under the prefix is pre-authentication; `/api/auth/devices` is not, and a blanket skip
-sent it out bare. `PUBLIC_AUTH_PATHS` is the client's copy of `PublicPaths.AUTH_ENDPOINTS` and has
-to be kept in step with it by hand — the cost of forgetting is a 401 on one route, not a token
-attached to a public one. Because it wraps the global, tests and any code path
+`window.fetch` at module load to attach `Authorization`, skipping every URL under `/api/auth/`.
+**Everything under that prefix is pre-authentication**, and the server holds it to that:
+`AuthRoutesArePublicTest` fails if a route under `/api/auth` is missing from
+`PublicPaths.AUTH_ENDPOINTS`, or an entry there sits outside the prefix. The device routes once lived
+at `/api/auth/devices` and broke the prefix rule, which the client then patched over with a
+hand-kept copy of the public list; moving them to `/api/devices` removed the copy. The server still
+permits each public route by name, so a new route under `/auth` is denied until it is listed — the
+failure is a red test, never a route that is public by accident. Because it wraps the global, tests and any code path
 using `fetch` inherit it. An expired access token now renews rather than redirecting, and an
 unexpected 401 is retried once; only a refresh the server refuses ends the session and sends the
 browser to `/`. [session.js](../frontend/src/services/session.js) owns the three `localStorage` keys

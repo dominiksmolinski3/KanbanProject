@@ -14,19 +14,7 @@ export class SessionExpiredError extends Error {
   }
 }
 
-// Kept in step by hand with PublicPaths.AUTH_ENDPOINTS on the server.
-const PUBLIC_AUTH_PATHS = [
-  '/auth/signup',
-  '/auth/login',
-  '/auth/verify',
-  '/auth/resend',
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/auth/refresh',
-  '/auth/logout'
-];
-
-const isPublicAuthPath = (url) => PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+const isPublicAuthPath = (url) => url.includes('/api/auth/');
 
 function urlOf(input) {
   if (typeof input === 'string') return input;
