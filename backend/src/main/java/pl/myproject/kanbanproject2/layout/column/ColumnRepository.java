@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ColumnRepository extends JpaRepository<Column, Integer> {
+public interface ColumnRepository extends JpaRepository<BoardColumn, Integer> {
 
-    List<Column> findByBoardOrderByPositionAsc(Board board);
+    List<BoardColumn> findByBoardOrderByPositionAsc(Board board);
 
-    @Query("SELECT MAX(column.position) FROM Column column WHERE column.board = :board")
+    @Query("SELECT MAX(column.position) FROM BoardColumn column WHERE column.board = :board")
     Optional<Integer> findMaxPosition(Board board);
 
     // FOR UPDATE, not @Lock(PESSIMISTIC_WRITE): Hibernate renders that as FOR NO KEY UPDATE, which a foreign-key check does not wait on.

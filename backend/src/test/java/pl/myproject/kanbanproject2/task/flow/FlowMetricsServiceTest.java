@@ -8,7 +8,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
@@ -44,9 +44,9 @@ class FlowMetricsServiceTest {
     private User caller;
     private Board board;
     private pl.myproject.kanbanproject2.board.BoardService boardService;
-    private Column a;
-    private Column b;
-    private Column c;
+    private BoardColumn a;
+    private BoardColumn b;
+    private BoardColumn c;
     private final List<TaskColumnHistory> history = new ArrayList<>();
 
     @BeforeEach
@@ -81,8 +81,8 @@ class FlowMetricsServiceTest {
         arrive(card4, c, "2026-09-05T00:00");
     }
 
-    private Column column(int id, String name, int position) {
-        var column = new Column();
+    private BoardColumn column(int id, String name, int position) {
+        var column = new BoardColumn();
         column.setId(id);
         column.setName(name);
         column.setPosition(position);
@@ -90,7 +90,7 @@ class FlowMetricsServiceTest {
         return column;
     }
 
-    private Task task(int id, Column current) {
+    private Task task(int id, BoardColumn current) {
         var task = new Task();
         task.setId(id);
         task.setTitle("Card " + id);
@@ -99,7 +99,7 @@ class FlowMetricsServiceTest {
         return task;
     }
 
-    private void arrive(Task task, Column column, String at) {
+    private void arrive(Task task, BoardColumn column, String at) {
         var row = new TaskColumnHistory();
         row.setTask(task);
         row.setColumn(column);

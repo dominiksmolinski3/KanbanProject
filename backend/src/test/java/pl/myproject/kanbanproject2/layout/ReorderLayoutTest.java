@@ -8,7 +8,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnDto;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
@@ -48,15 +48,15 @@ class ReorderLayoutTest {
     @DisplayName("stages")
     class Columns {
 
-        private final Map<Integer, Column> stored = new HashMap<>();
+        private final Map<Integer, BoardColumn> stored = new HashMap<>();
         private final ColumnRepository columnRepository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
                 columnRepository, new ColumnMapper(new TaskMapper()),
                 mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
 
-        private Column column(int id, Board board, int position) {
-            var column = new Column();
+        private BoardColumn column(int id, Board board, int position) {
+            var column = new BoardColumn();
             column.setId(id);
             column.setBoard(board);
             column.setPosition(position);
@@ -68,7 +68,7 @@ class ReorderLayoutTest {
         private void wireRepository() {
             when(columnRepository.findById(any()))
                     .thenAnswer(call -> Optional.ofNullable(stored.get(call.getArgument(0))));
-            when(columnRepository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(columnRepository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
         }
 
         @Test

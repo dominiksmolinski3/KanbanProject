@@ -39,7 +39,7 @@ public class ColumnService {
         var board = boardService.resolve(caller, boardId);
         boardService.requireWritable(caller, board);
 
-        var column = new Column();
+        var column = new BoardColumn();
         column.setName(request.name());
         column.setWipLimit(request.wipLimit());
         column.setBoard(board);
@@ -51,7 +51,7 @@ public class ColumnService {
         return columnMapper.toResponseDto(created);
     }
 
-    private ColumnDto saveAndAnnounce(Column column) {
+    private ColumnDto saveAndAnnounce(BoardColumn column) {
         var saved = columnRepository.save(column);
         boardEvents.columnsChanged(saved.getBoard());
         return columnMapper.apply(saved);
@@ -83,7 +83,7 @@ public class ColumnService {
         // Locked before tasks is first read: a card moved in concurrently then waits and fails the FK, instead of pointing at a deleted column.
         columnRepository.lockForDelete(id);
 
-        // Clear before the loop: Column.tasks cascades ALL, so a mid-loop flush would re-persist tasks already deleted.
+        // Clear before the loop: BoardColumn.tasks cascades ALL, so a mid-loop flush would re-persist tasks already deleted.
         if (column.getTasks() != null) {
             var tasks = List.copyOf(column.getTasks());
             column.getTasks().clear();
@@ -132,7 +132,7 @@ public class ColumnService {
         return reordered;
     }
 
-    private Column findColumn(User caller, Integer id) {
+    private BoardColumn findColumn(User caller, Integer id) {
         var column = columnRepository.findById(id).orElseThrow(() -> columnNotFound(id));
         if (!column.getBoard().isVisibleTo(caller)) {
             throw columnNotFound(id);

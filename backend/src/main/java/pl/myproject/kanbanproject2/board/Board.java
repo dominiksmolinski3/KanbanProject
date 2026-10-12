@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.board;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -16,7 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.user.User;
@@ -39,14 +40,14 @@ public class Board {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @jakarta.persistence.Column(nullable = false)
+    @Column(nullable = false)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;
 
-    @jakarta.persistence.Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -59,15 +60,15 @@ public class Board {
     private Set<User> members = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
-    private List<Column> columns;
+    private List<BoardColumn> columns;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "flow_start_column_id")
-    private Column flowStartColumn;
+    private BoardColumn flowStartColumn;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "flow_done_column_id")
-    private Column flowDoneColumn;
+    private BoardColumn flowDoneColumn;
 
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<Row> rows;
@@ -83,7 +84,7 @@ public class Board {
         }
     }
 
-    public void forgetFlowColumn(Column column) {
+    public void forgetFlowColumn(BoardColumn column) {
         if (column == null || column.getId() == null) {
             return;
         }

@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.time.LocalDateTime;
@@ -27,17 +27,17 @@ public class TaskColumnHistory {
 
     @ManyToOne
     @JoinColumn(name = "column_id")
-    private Column column;
+    private BoardColumn column;
 
     private String columnName;
 
-    @jakarta.persistence.Column(name = "changed_at", nullable = false)
+    @Column(name = "changed_at", nullable = false)
     private LocalDateTime changedAt;
 
-    @jakarta.persistence.Column(name = "history_order", nullable = false)
+    @Column(name = "history_order", nullable = false)
     private Integer historyOrder;
 
-    public TaskColumnHistory(Task task, Column column) {
+    public TaskColumnHistory(Task task, BoardColumn column) {
         this.task = task;
         this.column = column;
         this.columnName = column.getName();

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import pl.myproject.kanbanproject2.board.Board;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.subtask.SubTask;
 import pl.myproject.kanbanproject2.user.User;
@@ -33,17 +33,17 @@ public class Task {
     private String title;
     private Integer position;
     private boolean completed;
-    @jakarta.persistence.Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String description;
-    @jakarta.persistence.Column(name = "deadline")
+    @Column(name = "deadline")
     private LocalDateTime deadline;
-    @jakarta.persistence.Column(name = "expired")
+    @Column(name = "expired")
     private boolean expired = false;
-    @jakarta.persistence.Column(name = "daily_focus")
+    @Column(name = "daily_focus")
     private boolean dailyFocus = false;
     @ElementCollection
     @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
-    @jakarta.persistence.Column(name = "label")
+    @Column(name = "label")
     @BatchSize(size = 1000)
     private Set<String> labels;
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,7 +51,7 @@ public class Task {
     private Board board;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "column_id")
-    private Column column;
+    private BoardColumn column;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "row_id")
     private Row row;

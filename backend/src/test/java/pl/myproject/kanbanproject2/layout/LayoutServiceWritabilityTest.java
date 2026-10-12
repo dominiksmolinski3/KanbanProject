@@ -12,7 +12,7 @@ import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnDto;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
@@ -79,8 +79,8 @@ class LayoutServiceWritabilityTest {
                     mock(TaskColumnHistoryRepository.class));
         }
 
-        private Column column(int id) {
-            var column = new Column();
+        private BoardColumn column(int id) {
+            var column = new BoardColumn();
             column.setId(id);
             column.setBoard(board);
             column.setName("To Do");

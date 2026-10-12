@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder;
@@ -142,8 +142,8 @@ class TaskServiceActivityTest {
         order.verify(taskRepository).delete(task);
     }
 
-    private Column column(int id, String name) {
-        var column = new Column();
+    private BoardColumn column(int id, String name) {
+        var column = new BoardColumn();
         column.setId(id);
         column.setName(name);
         column.setBoard(board);

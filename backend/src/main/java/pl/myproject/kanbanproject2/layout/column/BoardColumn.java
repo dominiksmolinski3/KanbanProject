@@ -17,7 +17,7 @@ import java.util.List;
 @Getter
 @Entity
 @Table(name = "columns")
-public class Column {
+public class BoardColumn {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -25,7 +25,7 @@ public class Column {
     private Integer version;
     private String name;
     private Integer position;
-    @jakarta.persistence.Column(name = "wip_limit")
+    @Column(name = "wip_limit")
     private Integer wipLimit;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)

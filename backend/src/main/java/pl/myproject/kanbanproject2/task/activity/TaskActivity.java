@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.task.activity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -38,24 +39,24 @@ public class TaskActivity {
     @JoinColumn(name = "task_id")
     private Task task;
 
-    @jakarta.persistence.Column(name = "task_title", nullable = false)
+    @Column(name = "task_title", nullable = false)
     private String taskTitle;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_id")
     private User actor;
 
-    @jakarta.persistence.Column(name = "actor_name")
+    @Column(name = "actor_name")
     private String actorName;
 
     @Enumerated(EnumType.STRING)
-    @jakarta.persistence.Column(nullable = false, length = 24)
+    @Column(nullable = false, length = 24)
     private TaskActivityType type;
 
-    @jakarta.persistence.Column(name = "detail")
+    @Column(name = "detail")
     private String detail;
 
-    @jakarta.persistence.Column(name = "occurred_at", nullable = false)
+    @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt = LocalDateTime.now();
 
     public TaskActivity(Board board, Task task, User actor, TaskActivityType type, String detail) {

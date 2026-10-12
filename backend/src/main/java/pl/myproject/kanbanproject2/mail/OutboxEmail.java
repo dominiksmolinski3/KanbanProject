@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,47 +21,47 @@ public class OutboxEmail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @jakarta.persistence.Column(name = "recipient", nullable = false, length = 320)
+    @Column(name = "recipient", nullable = false, length = 320)
     private String recipient;
 
-    @jakarta.persistence.Column(name = "subject", nullable = false, length = 255)
+    @Column(name = "subject", nullable = false, length = 255)
     private String subject;
 
-    @jakarta.persistence.Column(name = "html_body", nullable = false, columnDefinition = "text")
+    @Column(name = "html_body", nullable = false, columnDefinition = "text")
     private String htmlBody;
 
-    @jakarta.persistence.Column(name = "text_body", nullable = false, columnDefinition = "text")
+    @Column(name = "text_body", nullable = false, columnDefinition = "text")
     private String textBody;
 
     @Enumerated(EnumType.STRING)
-    @jakarta.persistence.Column(name = "status", nullable = false, length = 16)
+    @Column(name = "status", nullable = false, length = 16)
     private OutboxStatus status;
 
-    @jakarta.persistence.Column(name = "attempts", nullable = false)
+    @Column(name = "attempts", nullable = false)
     private int attempts;
 
-    @jakarta.persistence.Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @jakarta.persistence.Column(name = "next_attempt_at", nullable = false)
+    @Column(name = "next_attempt_at", nullable = false)
     private Instant nextAttemptAt;
 
-    @jakarta.persistence.Column(name = "sent_at")
+    @Column(name = "sent_at")
     private Instant sentAt;
 
-    @jakarta.persistence.Column(name = "last_error", length = 500)
+    @Column(name = "last_error", length = 500)
     private String lastError;
 
-    @jakarta.persistence.Column(name = "provider_message_id", length = 200)
+    @Column(name = "provider_message_id", length = 200)
     private String providerMessageId;
 
-    @jakarta.persistence.Column(name = "delivery_status", length = 32)
+    @Column(name = "delivery_status", length = 32)
     private String deliveryStatus;
 
-    @jakarta.persistence.Column(name = "delivery_reported_at")
+    @Column(name = "delivery_reported_at")
     private Instant deliveryReportedAt;
 
-    @jakarta.persistence.Column(name = "delivery_detail", length = 500)
+    @Column(name = "delivery_detail", length = 500)
     private String deliveryDetail;
 
     protected OutboxEmail() {

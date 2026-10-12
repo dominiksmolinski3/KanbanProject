@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.row.Row;
 
 import java.time.LocalDateTime;
@@ -41,7 +41,7 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Integer> claimTasksCrossingDeadline(@Param("now") LocalDateTime now);
 
     @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
-    List<Task> findByBoardAndColumnAndRow(Board board, Column column, Row row);
+    List<Task> findByBoardAndColumnAndRow(Board board, BoardColumn column, Row row);
 
     @Query("SELECT DISTINCT label FROM Task task JOIN task.labels label WHERE task.board = :board")
     Set<String> findDistinctLabels(Board board);

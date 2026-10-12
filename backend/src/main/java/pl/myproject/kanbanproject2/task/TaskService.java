@@ -11,7 +11,7 @@ import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
@@ -134,7 +134,7 @@ public class TaskService {
         return taskMapper.apply(saved);
     }
 
-    private int nextPositionIn(Board board, Column column, Row row) {
+    private int nextPositionIn(Board board, BoardColumn column, Row row) {
         return taskRepository.findMaxPosition(
                 board.getId(),
                 column == null ? null : column.getId(),
@@ -224,7 +224,7 @@ public class TaskService {
         }
     }
 
-    private void moveToColumn(User caller, Task task, Column newColumn) {
+    private void moveToColumn(User caller, Task task, BoardColumn newColumn) {
         var currentColumn = task.getColumn();
         boolean unchanged = currentColumn == null
                 ? newColumn == null
@@ -245,7 +245,7 @@ public class TaskService {
         task.setExpired(deadline != null && deadline.isBefore(LocalDateTime.now()));
     }
 
-    private void saveTaskColumnHistory(Task task, Column column) {
+    private void saveTaskColumnHistory(Task task, BoardColumn column) {
         var taskHistory = taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task);
         var nextHistoryOrder = 0;
 
@@ -509,7 +509,7 @@ public class TaskService {
         return task;
     }
 
-    private Column findColumn(User caller, Board board, Integer id) {
+    private BoardColumn findColumn(User caller, Board board, Integer id) {
         var column = columnRepository.findById(id).orElseThrow(() -> columnNotFound(id));
         if (!column.getBoard().isVisibleTo(caller)) {
             throw columnNotFound(id);

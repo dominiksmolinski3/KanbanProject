@@ -8,7 +8,7 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.column.ColumnService;
@@ -122,8 +122,8 @@ class TenantIsolationTest {
         return task;
     }
 
-    private Column theirColumn(int id) {
-        var column = new Column();
+    private BoardColumn theirColumn(int id) {
+        var column = new BoardColumn();
         column.setId(id);
         column.setName("theirs");
         column.setBoard(theirBoard);

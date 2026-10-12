@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.time.LocalDateTime;
@@ -18,7 +18,7 @@ public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHis
 
     List<TaskColumnHistory> findByTaskIn(List<Task> tasks);
 
-    List<TaskColumnHistory> findByColumn(Column column);
+    List<TaskColumnHistory> findByColumn(BoardColumn column);
 
     @EntityGraph(attributePaths = {"task", "task.column", "column"})
     @Query("SELECT h FROM TaskColumnHistory h WHERE h.task.board = :board AND h.changedAt < :before "
