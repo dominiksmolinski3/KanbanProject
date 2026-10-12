@@ -47,13 +47,13 @@ class OpenApiContractTest {
     }
 
     @Test
-    @DisplayName("the two authenticated routes under /auth are not swept up with their neighbours")
+    @DisplayName("the device routes carry the bearer requirement")
     void securesTheDeviceRoutes() {
-        OpenAPI openApi = customized("/api/auth/devices", "/api/auth/devices/{id}");
+        OpenAPI openApi = customized("/api/devices", "/api/devices/{id}");
 
-        assertThat(requirementNamesOn(openApi, "/api/auth/devices"))
+        assertThat(requirementNamesOn(openApi, "/api/devices"))
                 .containsExactly(OpenApiConfiguration.BEARER_SCHEME);
-        assertThat(requirementNamesOn(openApi, "/api/auth/devices/{id}"))
+        assertThat(requirementNamesOn(openApi, "/api/devices/{id}"))
                 .containsExactly(OpenApiConfiguration.BEARER_SCHEME);
     }
 

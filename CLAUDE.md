@@ -186,6 +186,8 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
 - Never write `/api` into a controller mapping; `WebConfig` adds the prefix (`ApiPathPrefixTest`).
 - Every handler takes `@AuthenticationPrincipal User currentUser` unless its path is in
   `PublicPaths` (`BoardScopedRoutesTest`, and `BoardScopedStompRoutesTest` for `@MessageMapping`).
+- Every route under `/api/auth` is public, because the client sends that prefix without a token. A
+  route that needs one lives elsewhere, as `/api/devices` does (`AuthRoutesArePublicTest`).
 - Look objects up only through the caller-scoped finders (`TaskService.findTask(caller, id)` and
   siblings). Cross-tenant access answers **404, never 403**. Compare users and boards by id, never
   by instance.
@@ -219,8 +221,7 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   a key and its values.
 - Board state and every mutation belong in `KanbanContext`, not in components. The keyboard move
   path reuses the drag path's handlers and must not grow a second implementation.
-- Every `fetch` path must exist on the server (`ClientRoutesExistTest`). `PUBLIC_AUTH_PATHS` in
-  `apiInterceptor.js` mirrors `PublicPaths.AUTH_ENDPOINTS` by hand.
+- Every `fetch` path must exist on the server (`ClientRoutesExistTest`).
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry (`CspMatchesTheClientTest`), in both
   `SecurityHeaders` and `frontend/nginx/security-headers.conf` (`SecurityHeadersMatchTheEdgeTest`).
