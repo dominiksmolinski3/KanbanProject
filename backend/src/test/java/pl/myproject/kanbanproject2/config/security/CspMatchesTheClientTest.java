@@ -29,13 +29,14 @@ class CspMatchesTheClientTest {
                 .as("the client source tree has moved; this guard is now reading nothing")
                 .exists();
 
+        String policy = EdgeSecurityHeaders.contentSecurityPolicy();
         Set<String> refused = new TreeSet<>(hostsTheClientNames());
-        refused.removeIf(host -> SecurityHeaders.CONTENT_SECURITY_POLICY.contains(host));
+        refused.removeIf(policy::contains);
 
         assertThat(refused)
-                .as("the client fetches from these and the Content-Security-Policy does not allow "
-                        + "them - the browser will refuse the request, on a screen no test opens, "
-                        + "with nothing failing anywhere")
+                .as("the client fetches from these and the Content-Security-Policy in %s does not "
+                        + "allow them - the browser will refuse the request, on a screen no test "
+                        + "opens, with nothing failing anywhere", EdgeSecurityHeaders.SNIPPET)
                 .isEmpty();
     }
 
@@ -60,13 +61,13 @@ class CspMatchesTheClientTest {
     }
 
     private static String directive(String name) {
-        return Stream.of(SecurityHeaders.CONTENT_SECURITY_POLICY.split(";"))
+        String policy = EdgeSecurityHeaders.contentSecurityPolicy();
+        return Stream.of(policy.split(";"))
                 .map(String::trim)
                 .filter(part -> part.startsWith(name + " "))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
-                        "the policy no longer has a " + name + " directive: "
-                                + SecurityHeaders.CONTENT_SECURITY_POLICY));
+                        "the policy no longer has a " + name + " directive: " + policy));
     }
 
     private static Set<String> hostsTheClientNames() throws IOException {

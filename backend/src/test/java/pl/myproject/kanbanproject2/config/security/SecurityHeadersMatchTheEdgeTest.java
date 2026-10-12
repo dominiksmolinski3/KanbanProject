@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,36 +14,39 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SecurityHeadersMatchTheEdgeTest {
-    private static final Path SNIPPET = Path.of("..", "frontend", "nginx", "security-headers.conf");
     private static final Path TEMPLATE = Path.of("..", "frontend", "nginx", "default.conf.template");
     private static final String INCLUDE = "include /etc/nginx/snippets/security-headers.conf;";
-
-    private static final Pattern ADD_HEADER =
-            Pattern.compile("^\\s*add_header\\s+(\\S+)\\s+\"([^\"]*)\"(\\s+always)?\\s*;", Pattern.MULTILINE);
 
     private static final Pattern LOCATION =
             Pattern.compile("^ {4}location\\s+([^{]+)\\{", Pattern.MULTILINE);
 
     @Test
-    @DisplayName("the edge sends the Content-Security-Policy this repository declares")
-    void sendsTheDeclaredCsp() throws IOException {
-        assertThat(snippetHeaders().get("Content-Security-Policy"))
-                .as("the edge serves index.html, so this is the copy of the policy a browser "
-                        + "actually applies to the document")
-                .isEqualTo(SecurityHeaders.CONTENT_SECURITY_POLICY);
+    @DisplayName("the page policy is the edge's, and the API keeps its own locked-down one")
+    void thePagePolicyIsNotTheApis() {
+        assertThat(EdgeSecurityHeaders.contentSecurityPolicy())
+                .as("the edge serves index.html, so its policy is the one a browser applies to the "
+                        + "document; the API answers JSON and sends a policy that allows nothing")
+                .isNotEqualTo(SecurityHeaders.CONTENT_SECURITY_POLICY)
+                .contains("default-src 'self'")
+                .contains("frame-ancestors 'none'");
     }
 
     @Test
-    @DisplayName("the edge sends the Permissions-Policy this repository declares")
-    void sendsTheDeclaredPermissionsPolicy() throws IOException {
-        assertThat(snippetHeaders().get("Permissions-Policy"))
-                .isEqualTo(SecurityHeaders.PERMISSIONS_POLICY);
+    @DisplayName("Permissions-Policy switches off every capability rather than listing an allowance")
+    void everyCapabilityIsRefused() {
+        assertThat(EdgeSecurityHeaders.read().get("Permissions-Policy"))
+                .contains("camera=()")
+                .contains("microphone=()")
+                .contains("geolocation=()")
+                .contains("payment=()")
+                .doesNotContain("self")
+                .doesNotContain("*");
     }
 
     @Test
     @DisplayName("the edge sends HSTS with the declared max-age, includeSubDomains, and no preload")
-    void sendsHsts() throws IOException {
-        String hsts = snippetHeaders().get("Strict-Transport-Security");
+    void sendsHsts() {
+        String hsts = EdgeSecurityHeaders.read().get("Strict-Transport-Security");
 
         assertThat(hsts)
                 .as("HSTS is the header this deployment never sent once, because Spring's default "
@@ -61,8 +63,8 @@ class SecurityHeadersMatchTheEdgeTest {
 
     @Test
     @DisplayName("the edge sends the fixed headers Spring Security sends")
-    void sendsTheFixedHeaders() throws IOException {
-        Map<String, String> headers = snippetHeaders();
+    void sendsTheFixedHeaders() {
+        Map<String, String> headers = EdgeSecurityHeaders.read();
 
         assertThat(headers).containsEntry("X-Content-Type-Options", "nosniff");
         assertThat(headers).containsEntry("X-Frame-Options", "DENY");
@@ -73,14 +75,14 @@ class SecurityHeadersMatchTheEdgeTest {
 
     @Test
     @DisplayName("Cross-Origin-Embedder-Policy is declined at the edge too")
-    void declinesEmbedderPolicy() throws IOException {
-        assertThat(snippetHeaders()).doesNotContainKey("Cross-Origin-Embedder-Policy");
+    void declinesEmbedderPolicy() {
+        assertThat(EdgeSecurityHeaders.read()).doesNotContainKey("Cross-Origin-Embedder-Policy");
     }
 
     @Test
     @DisplayName("every header the edge sets is set with `always`")
-    void setsEveryHeaderAlways() throws IOException {
-        Matcher matcher = ADD_HEADER.matcher(read(SNIPPET));
+    void setsEveryHeaderAlways() {
+        Matcher matcher = EdgeSecurityHeaders.ADD_HEADER.matcher(EdgeSecurityHeaders.source());
         while (matcher.find()) {
             assertThat(matcher.group(3))
                     .as("add_header %s is missing `always`, so a 404 or a 502 from the edge is "
@@ -124,19 +126,6 @@ class SecurityHeadersMatchTheEdgeTest {
                         + "inherit into a block that does — so without the include it serves that "
                         + "path with no security headers at all", name)
                 .contains(INCLUDE);
-    }
-
-    private static Map<String, String> snippetHeaders() throws IOException {
-        Map<String, String> headers = new LinkedHashMap<>();
-        Matcher matcher = ADD_HEADER.matcher(read(SNIPPET));
-        while (matcher.find()) {
-            headers.put(matcher.group(1), matcher.group(2));
-        }
-        assertThat(headers)
-                .as("no add_header directives were found in %s, which means this test is reading "
-                        + "the wrong file rather than that the edge sends nothing", SNIPPET)
-                .isNotEmpty();
-        return headers;
     }
 
     private static String read(Path path) throws IOException {

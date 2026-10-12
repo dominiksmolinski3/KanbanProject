@@ -77,8 +77,6 @@ public class SecurityConfiguration {
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp ->
                                 csp.policyDirectives(SecurityHeaders.CONTENT_SECURITY_POLICY))
-                        .permissionsPolicyHeader(permissions ->
-                                permissions.policy(SecurityHeaders.PERMISSIONS_POLICY))
                         .referrerPolicy(referrer ->
                                 referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         .crossOriginOpenerPolicy(coop ->
