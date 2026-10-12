@@ -10,7 +10,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.column.ColumnService;
@@ -109,7 +109,7 @@ class DeleteDetachesReferencesTest {
         @Test
         @DisplayName("removes each task through the path that clears its history rows")
         void deletesTasksThroughTaskService() {
-            Column column = new Column();
+            BoardColumn column = new BoardColumn();
             column.setId(2);
             column.setBoard(BOARD);
             Task task = new Task();
@@ -129,7 +129,7 @@ class DeleteDetachesReferencesTest {
         @Test
         @DisplayName("lets go of every task before deleting any, so no flush can bring one back")
         void emptiesTheCollectionBeforeTheLoop() {
-            Column column = new Column();
+            BoardColumn column = new BoardColumn();
             column.setId(4);
             column.setBoard(BOARD);
             Task first = new Task();
@@ -157,7 +157,7 @@ class DeleteDetachesReferencesTest {
         @Test
         @DisplayName("locks the column before reading its tasks, so a card moved in concurrently cannot be left pointing at it")
         void locksTheColumnBeforeReadingItsTasks() {
-            Column column = new Column();
+            BoardColumn column = new BoardColumn();
             column.setId(5);
             column.setBoard(BOARD);
             Task card = new Task();
@@ -187,7 +187,7 @@ class DeleteDetachesReferencesTest {
         @Test
         @DisplayName("clears column_id on history rows left by tasks that have since moved on")
         void detachesStrandedHistoryFirst() {
-            Column column = new Column();
+            BoardColumn column = new BoardColumn();
             column.setId(2);
             column.setBoard(BOARD);
             column.setTasks(new ArrayList<>());
@@ -209,11 +209,11 @@ class DeleteDetachesReferencesTest {
         @DisplayName("puts the board's flow definition back on the default when it named this column")
         void forgetsTheFlowColumn() {
             var board = TenancyFixtures.board(78, CALLER);
-            Column column = new Column();
+            BoardColumn column = new BoardColumn();
             column.setId(3);
             column.setBoard(board);
             column.setTasks(new ArrayList<>());
-            Column other = new Column();
+            BoardColumn other = new BoardColumn();
             other.setId(4);
             board.setFlowStartColumn(other);
             board.setFlowDoneColumn(column);

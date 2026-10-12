@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.user.auth;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -20,32 +21,32 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @jakarta.persistence.Column(name = "token_hash", nullable = false, unique = true, length = 64)
+    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
     private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @jakarta.persistence.Column(name = "issued_at", nullable = false)
+    @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;
 
-    @jakarta.persistence.Column(name = "expires_at", nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @jakarta.persistence.Column(name = "absolute_expires_at", nullable = false)
+    @Column(name = "absolute_expires_at", nullable = false)
     private Instant absoluteExpiresAt;
 
-    @jakarta.persistence.Column(name = "chain_started_at", nullable = false)
+    @Column(name = "chain_started_at", nullable = false)
     private Instant chainStartedAt;
 
-    @jakarta.persistence.Column(name = "ip_address", length = 45)
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
-    @jakarta.persistence.Column(name = "user_agent", length = 255)
+    @Column(name = "user_agent", length = 255)
     private String userAgent;
 
-    @jakarta.persistence.Column(name = "revoked_at")
+    @Column(name = "revoked_at")
     private Instant revokedAt;
 
     protected RefreshToken() {

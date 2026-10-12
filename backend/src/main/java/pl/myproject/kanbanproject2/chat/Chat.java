@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.chat;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -35,7 +36,7 @@ public class Chat {
     @Enumerated(EnumType.STRING)
     private MessageType type;
 
-    @jakarta.persistence.Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     private String sender;

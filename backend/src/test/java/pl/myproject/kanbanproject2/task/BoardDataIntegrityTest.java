@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.parser.PartTree;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
@@ -83,7 +83,7 @@ class BoardDataIntegrityTest {
         @Test
         @DisplayName("a new task is numbered from the cell it lands in, not from the table")
         void numbersWithinTheCell() {
-            Column column = column(3);
+            BoardColumn column = column(3);
             Row row = row(8);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(rowRepository.findById(8)).thenReturn(Optional.of(row));
@@ -98,7 +98,7 @@ class BoardDataIntegrityTest {
         @Test
         @DisplayName("an empty cell starts at one however many tasks the board already holds")
         void startsAtOneInAnEmptyCell() {
-            Column column = column(3);
+            BoardColumn column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(taskRepository.findMaxPosition(board.getId(), 3, null)).thenReturn(Optional.empty());
 
@@ -113,7 +113,7 @@ class BoardDataIntegrityTest {
         @Test
         @DisplayName("a position already taken in the cell is not handed out again")
         void doesNotReuseAPositionAfterADelete() {
-            Column column = column(3);
+            BoardColumn column = column(3);
             when(columnRepository.findById(3)).thenReturn(Optional.of(column));
             when(taskRepository.findMaxPosition(board.getId(), 3, null)).thenReturn(Optional.of(3));
 
@@ -237,7 +237,7 @@ class BoardDataIntegrityTest {
         assertThat(new PartTree("findByBoardAndColumnAndRow", Task.class).getParts()).hasSize(3);
         assertThat(new PartTree("findByBoardOrderByIdAsc", Task.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByTaskBoardOrderByIdAsc", SubTask.class).getParts()).hasSize(1);
-        assertThat(new PartTree("findByBoardOrderByPositionAsc", Column.class).getParts()).hasSize(1);
+        assertThat(new PartTree("findByBoardOrderByPositionAsc", BoardColumn.class).getParts()).hasSize(1);
         assertThat(new PartTree("findByBoardOrderByPositionAsc", Row.class).getParts()).hasSize(1);
     }
 
@@ -269,8 +269,8 @@ class BoardDataIntegrityTest {
         return task;
     }
 
-    private Column column(Integer id) {
-        Column column = new Column();
+    private BoardColumn column(Integer id) {
+        BoardColumn column = new BoardColumn();
         column.setId(id);
         column.setName("Column " + id);
         column.setBoard(board);

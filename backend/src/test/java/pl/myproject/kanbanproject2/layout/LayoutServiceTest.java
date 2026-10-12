@@ -10,7 +10,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnDto;
 import pl.myproject.kanbanproject2.layout.column.ColumnMapper;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
@@ -57,8 +57,8 @@ class LayoutServiceTest {
                 mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
 
-        private Column column(int id, Board board) {
-            var column = new Column();
+        private BoardColumn column(int id, Board board) {
+            var column = new BoardColumn();
             column.setId(id);
             column.setBoard(board);
             column.setName("To Do");
@@ -82,7 +82,7 @@ class LayoutServiceTest {
         @DisplayName("a new stage lands after the highest position in use, not at count + 1")
         void nextPositionComesFromTheHighestInUse() {
             when(repository.findMaxPosition(BOARD)).thenReturn(Optional.of(7));
-            when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(repository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
 
             assertThat(service.addNewColumn(CALLER, null, new CreateColumnRequest("Review", null, 2)).position())
                     .isEqualTo(8);
@@ -92,7 +92,7 @@ class LayoutServiceTest {
         @DisplayName("the first stage on an empty board is position 1")
         void theFirstStageIsPositionOne() {
             when(repository.findMaxPosition(BOARD)).thenReturn(Optional.empty());
-            when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(repository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
 
             assertThat(service.addNewColumn(CALLER, null, new CreateColumnRequest("Review", null, null)).position())
                     .isEqualTo(1);
@@ -101,7 +101,7 @@ class LayoutServiceTest {
         @Test
         @DisplayName("an explicit position is taken as given rather than recomputed")
         void anExplicitPositionWins() {
-            when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(repository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
 
             assertThat(service.addNewColumn(CALLER, null, new CreateColumnRequest("Review", 2, null)).position())
                     .isEqualTo(2);
@@ -113,7 +113,7 @@ class LayoutServiceTest {
         void aPatchOnlyTouchesWhatItNames() {
             var existing = column(1, BOARD);
             when(repository.findById(1)).thenReturn(Optional.of(existing));
-            when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(repository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
 
             var patched = service.patchColumn(CALLER, new PatchColumnRequest("Doing", null, null), 1);
 
@@ -159,7 +159,7 @@ class LayoutServiceTest {
         @DisplayName("repositioning a stage on this board writes the new position")
         void repositioningWritesThePosition() {
             when(repository.findById(1)).thenReturn(Optional.of(column(1, BOARD)));
-            when(repository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+            when(repository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
 
             assertThat(service.updateColumnPosition(CALLER, 1, 4).position()).isEqualTo(4);
         }

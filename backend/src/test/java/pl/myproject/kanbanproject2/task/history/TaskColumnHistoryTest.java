@@ -2,7 +2,7 @@ package pl.myproject.kanbanproject2.task.history;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.time.LocalDateTime;
@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TaskColumnHistoryTest {
-    private static Column column(int id, String name) {
-        var column = new Column();
+    private static BoardColumn column(int id, String name) {
+        var column = new BoardColumn();
         column.setId(id);
         column.setName(name);
         return column;

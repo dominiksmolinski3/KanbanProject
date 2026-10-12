@@ -9,7 +9,7 @@ import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.Task;
@@ -74,7 +74,7 @@ class BoardServiceTest {
 
         when(boardRepository.save(any(Board.class))).thenAnswer(call -> call.getArgument(0));
         when(boardRepository.saveAndFlush(any(Board.class))).thenAnswer(call -> call.getArgument(0));
-        when(columnRepository.save(any(Column.class))).thenAnswer(call -> call.getArgument(0));
+        when(columnRepository.save(any(BoardColumn.class))).thenAnswer(call -> call.getArgument(0));
     }
 
     private Board boardOf(User boardOwner, User... members) {
@@ -235,10 +235,10 @@ class BoardServiceTest {
             assertThat(board.getOwner()).isEqualTo(owner);
             assertThat(board.isVisibleTo(owner)).isTrue();
 
-            ArgumentCaptor<Column> seeded = ArgumentCaptor.forClass(Column.class);
+            ArgumentCaptor<BoardColumn> seeded = ArgumentCaptor.forClass(BoardColumn.class);
             verify(columnRepository, org.mockito.Mockito.times(8)).save(seeded.capture());
             assertThat(seeded.getAllValues())
-                    .extracting(Column::getName)
+                    .extracting(BoardColumn::getName)
                     .startsWith("New Issues", "Icebox")
                     .endsWith("Done", "Closed");
             assertThat(seeded.getAllValues()).allMatch(column -> column.getBoard() == board);
@@ -392,7 +392,7 @@ class BoardServiceTest {
         @DisplayName("lets go of its flow columns before it deletes them (V23)")
         void clearsTheFlowDefinitionFirst() {
             var board = boardOf(owner);
-            var done = new Column();
+            var done = new BoardColumn();
             done.setId(5);
             board.setFlowStartColumn(done);
             board.setFlowDoneColumn(done);

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
@@ -157,7 +157,7 @@ public class FlowMetricsService {
         return result;
     }
 
-    private static Column columnAt(Task task, List<TaskColumnHistory> rows, LocalDateTime at) {
+    private static BoardColumn columnAt(Task task, List<TaskColumnHistory> rows, LocalDateTime at) {
         TaskColumnHistory current = null;
         int i = 0;
         for (; i < rows.size(); i++) {
@@ -186,11 +186,11 @@ public class FlowMetricsService {
         return null;
     }
 
-    private static boolean sameColumn(Column a, Column b) {
+    private static boolean sameColumn(BoardColumn a, BoardColumn b) {
         return a != null && b != null && a.getId() != null && a.getId().equals(b.getId());
     }
 
-    private static int position(Column column) {
+    private static int position(BoardColumn column) {
         return column.getPosition() == null ? Integer.MAX_VALUE : column.getPosition();
     }
 
@@ -232,18 +232,18 @@ public class FlowMetricsService {
         return new FlowDefinitionDto(board.getId(), idOf(start), idOf(done));
     }
 
-    private static Column storedOn(List<Column> columns, Column stored) {
+    private static BoardColumn storedOn(List<BoardColumn> columns, BoardColumn stored) {
         if (stored == null || stored.getId() == null) {
             return null;
         }
         return columns.stream().filter(column -> stored.getId().equals(column.getId())).findFirst().orElse(null);
     }
 
-    private static Integer idOf(Column column) {
+    private static Integer idOf(BoardColumn column) {
         return column == null ? null : column.getId();
     }
 
-    private static Column columnOn(List<Column> columns, Integer id) {
+    private static BoardColumn columnOn(List<BoardColumn> columns, Integer id) {
         return columns.stream()
                 .filter(column -> id.equals(column.getId()))
                 .findFirst()

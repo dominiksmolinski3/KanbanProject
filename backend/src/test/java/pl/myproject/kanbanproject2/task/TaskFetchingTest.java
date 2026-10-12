@@ -84,7 +84,7 @@ class TaskFetchingTest {
                     graphOn("findByBoardAndDailyFocusTrue", pl.myproject.kanbanproject2.board.Board.class),
                     graphOn("findByBoardAndColumnAndRow",
                             pl.myproject.kanbanproject2.board.Board.class,
-                            pl.myproject.kanbanproject2.layout.column.Column.class,
+                            pl.myproject.kanbanproject2.layout.column.BoardColumn.class,
                             pl.myproject.kanbanproject2.layout.row.Row.class));
 
             for (EntityGraph graph : graphs) {
@@ -117,7 +117,7 @@ class TaskFetchingTest {
         @DisplayName("a column's and a swimlane's tasks are batched - the board renders all of them")
         void containerCollectionsAreBatched() {
             for (Class<?> type : List.of(
-                    pl.myproject.kanbanproject2.layout.column.Column.class,
+                    pl.myproject.kanbanproject2.layout.column.BoardColumn.class,
                     pl.myproject.kanbanproject2.layout.row.Row.class)) {
                 try {
                     BatchSize batch = type.getDeclaredField("tasks").getAnnotation(BatchSize.class);
@@ -136,7 +136,7 @@ class TaskFetchingTest {
         void boardIsLazyEverywhere() {
             for (Class<?> type : List.of(
                     Task.class,
-                    pl.myproject.kanbanproject2.layout.column.Column.class,
+                    pl.myproject.kanbanproject2.layout.column.BoardColumn.class,
                     pl.myproject.kanbanproject2.layout.row.Row.class)) {
                 try {
                     ManyToOne mapping = type.getDeclaredField("board").getAnnotation(ManyToOne.class);
