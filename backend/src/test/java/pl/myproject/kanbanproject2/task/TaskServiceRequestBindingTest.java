@@ -11,7 +11,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
@@ -230,8 +230,8 @@ class TaskServiceRequestBindingTest {
         return task;
     }
 
-    private Column column(int id) {
-        Column column = new Column();
+    private BoardColumn column(int id) {
+        BoardColumn column = new BoardColumn();
         column.setId(id);
         column.setName("Doing");
         column.setBoard(board);

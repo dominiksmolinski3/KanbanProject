@@ -8,7 +8,7 @@ import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.Task;
@@ -151,7 +151,7 @@ public class BoardService {
 
     private void seedDefaultColumns(Board board) {
         for (DefaultColumn seed : DEFAULT_COLUMNS) {
-            var column = new Column();
+            var column = new BoardColumn();
             column.setName(seed.name());
             column.setPosition(seed.position());
             column.setWipLimit(seed.wipLimit());

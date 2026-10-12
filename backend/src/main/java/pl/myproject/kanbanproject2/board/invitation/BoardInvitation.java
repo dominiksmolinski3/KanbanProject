@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.board.invitation;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -35,7 +36,7 @@ public class BoardInvitation {
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
 
-    @jakarta.persistence.Column(nullable = false)
+    @Column(nullable = false)
     private String email;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,17 +44,17 @@ public class BoardInvitation {
     private User invitedBy;
 
     @Enumerated(EnumType.STRING)
-    @jakarta.persistence.Column(nullable = false, length = 16)
+    @Column(nullable = false, length = 16)
     private InvitationStatus status = InvitationStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
-    @jakarta.persistence.Column(nullable = false, length = 16)
+    @Column(nullable = false, length = 16)
     private BoardRole role = BoardRole.MEMBER;
 
-    @jakarta.persistence.Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @jakarta.persistence.Column(name = "responded_at")
+    @Column(name = "responded_at")
     private LocalDateTime respondedAt;
 
     public BoardInvitation(Board board, String email, User invitedBy) {

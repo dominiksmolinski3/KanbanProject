@@ -7,7 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
-public class ColumnMapper implements Function<Column, ColumnDto> {
+public class ColumnMapper implements Function<BoardColumn, ColumnDto> {
 
     private final TaskMapper taskMapper;
 
@@ -16,7 +16,7 @@ public class ColumnMapper implements Function<Column, ColumnDto> {
     }
 
     @Override
-    public ColumnDto apply(Column column) {
+    public ColumnDto apply(BoardColumn column) {
         if (column == null) {
             return null;
         }
@@ -33,7 +33,7 @@ public class ColumnMapper implements Function<Column, ColumnDto> {
         );
     }
 
-    public ColumnResponseDto toResponseDto(Column column) {
+    public ColumnResponseDto toResponseDto(BoardColumn column) {
         if (column == null) {
             return null;
         }

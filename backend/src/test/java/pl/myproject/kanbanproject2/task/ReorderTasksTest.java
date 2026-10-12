@@ -7,7 +7,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
-import pl.myproject.kanbanproject2.layout.column.Column;
+import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.row.Row;
 
 import java.util.HashMap;
@@ -36,8 +36,8 @@ class ReorderTasksTest {
         service = TaskServiceTestSupport.withRepository(taskRepository);
     }
 
-    private Column column(int id) {
-        var column = new Column();
+    private BoardColumn column(int id) {
+        var column = new BoardColumn();
         column.setId(id);
         column.setBoard(TaskServiceTestSupport.board());
         return column;
@@ -50,7 +50,7 @@ class ReorderTasksTest {
         return row;
     }
 
-    private Task task(int id, Column column, Row row, int position) {
+    private Task task(int id, BoardColumn column, Row row, int position) {
         var task = new Task();
         task.setId(id);
         task.setBoard(TaskServiceTestSupport.board());

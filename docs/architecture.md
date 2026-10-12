@@ -285,7 +285,7 @@ Within a feature the flow is controller → service → repository, with `mapper
 
 ## Tenancy: boards with members
 
-`Board` is the unit of access. Every `Column`, `Row` and `Task` carries a non-null `board_id`, and
+`Board` is the unit of access. Every `BoardColumn`, `Row` and `Task` carries a non-null `board_id`, and
 being on a board's member list is the only thing that grants access to anything on it. The
 **owner** may rename, delete and change the membership. A **member** may do anything to the board's
 contents. A **viewer** (`board_members.role`, `V21`, FEAT-08) may see all of it and change none of
@@ -373,9 +373,9 @@ which **adopts** the ownerless board `V5` created for the seeded columns.
 
 ## The board model
 
-`Task` sits at the intersection of a `Column` (workflow stage, horizontal) and an optional `Row` (swimlane, vertical). Both `Column` and `Row` carry `position` and `wipLimit`; `Task` carries `position` within its cell. Tasks also support self-referencing parent/child links, a `SubTask` list, a `Set<String> labels` element collection, many-to-many `users`, a `deadline`/`expired` pair, and **attachments** — files that live in Azure Blob Storage with a `task_attachments` row naming them (see **Attachments**).
+`Task` sits at the intersection of a `BoardColumn` (workflow stage, horizontal) and an optional `Row` (swimlane, vertical). Both `BoardColumn` and `Row` carry `position` and `wipLimit`; `Task` carries `position` within its cell. Tasks also support self-referencing parent/child links, a `SubTask` list, a `Set<String> labels` element collection, many-to-many `users`, a `deadline`/`expired` pair, and **attachments** — files that live in Azure Blob Storage with a `task_attachments` row naming them (see **Attachments**).
 
-Because the entity is named `Column`, `jakarta.persistence.Column` cannot be imported — entity field annotations are written fully qualified as `@jakarta.persistence.Column(...)`. Keep that pattern when adding fields.
+The column entity is `BoardColumn`, not `Column`, so that `jakarta.persistence.Column` imports like any other annotation; a class named `Column` shadowed it and forced every entity field to spell out `@jakarta.persistence.Column(...)`. JPQL names the entity, so queries say `FROM BoardColumn`; the table is still `columns`.
 
 The board is carried on `Task` itself rather than read through its column, because the column is
 nullable — a task can be taken off the board — and a task with no column would otherwise be a task
