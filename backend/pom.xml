@@ -10,7 +10,7 @@
     </parent>
     <groupId>pl.myproject</groupId>
     <artifactId>KanbanProject2</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>KanbanProject2</name>
     <description>KanbanProject2</description>
     <url/>

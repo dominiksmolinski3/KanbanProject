@@ -5,7 +5,7 @@
 <h1 align="center">KanbanProject</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.1--SNAPSHOT-blue" alt="Version 0.0.1-SNAPSHOT"/>
+  <img src="https://img.shields.io/github/v/release/dominiksmolinski3/KanbanProject" alt="Latest release"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT"/>
   <img src="https://img.shields.io/badge/java-21-orange" alt="Java 21"/>
   <img src="https://img.shields.io/badge/react-19-61DAFB" alt="React 19"/>
