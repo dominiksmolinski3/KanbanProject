@@ -89,6 +89,30 @@ refers to JIRA-1337
 BREAKING CHANGE: ticket endpoints no longer supports list all entities.
 ```
 
+### Versioning and releases
+
+The version follows [Semantic Versioning](https://semver.org) and the cheatsheet's versioning rule,
+read from the commits since the last tag:
+
+- any breaking change (`!` or a `BREAKING CHANGE:` footer) → increment the **major** version;
+- otherwise any `feat` or `fix` → increment the **minor** version;
+- otherwise → increment the **patch** version.
+
+A release is one `build(release): bump version to <X.Y.Z>` PR that sets the same version in
+`backend/pom.xml`, `frontend/package.json` and `frontend/package-lock.json` (`npm version <X.Y.Z>
+--no-git-tag-version` updates both). Never a `-SNAPSHOT` or a pre-release suffix on `main`. After it
+merges:
+
+- tag the merge commit with an annotated `v<X.Y.Z>` (`git tag -a v1.2.0 -m v1.2.0`);
+- give the three ghcr images that commit's version without the `v` (`kanbanproject-app:1.2.0`, and
+  the same for `-web` and `-grafana`); they always carry the same tag;
+- publish a GitHub release titled `v<X.Y.Z>`, with notes written for a reader new to the repo:
+  what changed since the previous tag, grouped by feature, architecture and operations, with one
+  bullet per capability and not per PR, a list of breaking changes when there are any, and the
+  image tags.
+
+The README's version badge reads the latest GitHub release and needs no edit.
+
 ## Code comments
 
 **Comment only what is CRITICAL.** A comment is critical when it states a constraint that a
