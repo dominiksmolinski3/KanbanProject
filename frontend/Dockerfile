@@ -1,4 +1,4 @@
-FROM dhi.io/node:26-dev@sha256:8205c64cc7ec7fd3e08fd4ced45e64fc13ec6df48efbcf9b8552ff180af402eb AS build
+FROM dhi.io/node:26-dev@sha256:0f2693c8869e64ce84115fc6ae53b5d440049979cc9ffe053cc4678077e20980 AS build
 WORKDIR /frontend
 COPY package*.json ./
 RUN npm ci
