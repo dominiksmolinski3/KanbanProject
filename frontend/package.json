@@ -19,8 +19,8 @@
     "cypress:seed": "node cypress/seed-test-account.js"
   },
   "dependencies": {
-    "@stomp/stompjs": "^7.3.0",
-    "i18next": "^26.4.2",
+    "@stomp/stompjs": "^7.4.0",
+    "i18next": "^26.4.4",
     "i18next-browser-languagedetector": "^8.2.1",
     "i18next-http-backend": "^4.0.2",
     "react": "^19.3.0",
@@ -28,7 +28,7 @@
     "react-i18next": "^17.0.16",
     "react-router-dom": "^7.18.4",
     "react-toastify": "^11.1.0",
-    "react-xarrows": "^2.2.0",
+    "react-xarrows": "^2.2.1",
     "sockjs-client": "^1.6.1"
   },
   "overrides": {
@@ -45,7 +45,7 @@
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
@@ -62,6 +62,6 @@
     "jest-environment-jsdom": "^30.5.2",
     "jsdom": "^30.1.2",
     "pg": "^8.23.1",
-    "vite": "^8.3.3"
+    "vite": "^8.3.4"
   }
 }
