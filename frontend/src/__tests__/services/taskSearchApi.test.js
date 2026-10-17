@@ -1,4 +1,5 @@
-import * as api from '../../services/api';
+import * as api from '../../services/taskSearchApi';
+import { setActiveBoardId } from '../../services/activeBoard';
 
 describe('searching tasks', () => {
   beforeEach(() => {
@@ -62,7 +63,7 @@ describe('searching tasks', () => {
   });
 
   test('the active board rides along, the same way every other listing does', async () => {
-    api.setActiveBoardId(12);
+    setActiveBoardId(12);
 
     await api.searchTasks({ q: 'ship' });
 
@@ -86,5 +87,33 @@ describe('searching tasks', () => {
     fetch.mockResolvedValueOnce({ ok: true, json: async () => page });
 
     await expect(api.searchTasks({ q: 'ship' })).resolves.toEqual(page);
+  });
+});
+
+describe('getAllLabels', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  test('getAllLabels should return all available labels', async () => {
+    const mockLabels = ['bug', 'feature', 'critical', 'documentation'];
+      
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockLabels
+    });
+    
+    const result = await api.getAllLabels();
+    
+    expect(fetch).toHaveBeenCalledWith('/api/tasks/get/all/labels');
+    expect(result).toEqual(mockLabels);
+  });
+
+  test('getAllLabels should handle network errors', async () => {
+    fetch.mockImplementationOnce(() => {
+      throw new Error('Network error');
+    });
+      
+    await expect(api.getAllLabels()).rejects.toThrow('Network error');
   });
 });
