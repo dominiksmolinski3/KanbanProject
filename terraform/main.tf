@@ -35,7 +35,7 @@ resource "azurerm_resource_group" "main" {
     precondition {
       condition     = var.env != "prod" || var.acs != null
       error_message = <<-EOT
-        prod would deploy with mail switched off (MAIL-02).
+        prod would deploy with mail switched off.
 
         Set acs for env = "prod".
 
