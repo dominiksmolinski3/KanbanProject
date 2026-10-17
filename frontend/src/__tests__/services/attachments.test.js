@@ -1,4 +1,4 @@
-import * as api from '../../services/api';
+import * as api from '../../services/attachmentApi';
 
 describe('task attachments', () => {
   beforeEach(() => {
