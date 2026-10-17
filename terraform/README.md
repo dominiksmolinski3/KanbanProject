@@ -1,25 +1,30 @@
-# Terraform Infrastructure for Kanban Project
+# Terraform for KanbanProject
 
-This directory contains the Terraform configuration for deploying the Kanban project on Azure.
+This directory deploys the whole thing to Azure. It's also where I wrote down why the
+infrastructure looks the way it does, because most of the odd-looking settings here are odd for a
+reason, and the reason is usually something that broke.
+
+Right now **dev is the only environment**, and it is torn down to save credits. The state
+container and everything needed to rebuild it with `./tf.sh dev apply` are still there.
 
 ## Prerequisites
 
-- [Terraform CLI](https://learn.hashicorp.com/tutorials/terraform/install-cli)
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- Logged in to Azure CLI and correct subscription selected
-- An Azure Storage Account to store Terraform state
+- [Terraform CLI](https://developer.hashicorp.com/terraform/install)
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), logged in, with the right
+  subscription selected
+- An Azure Storage account for Terraform state (step 2 below creates one)
+- `bash` and `python3` on `PATH` for `tf.sh` and the scripts it calls
 
 ## Setup
 
-1) Azure login and subscription
+### 1. Log in
 
 ```powershell
 az login
-# Optional: select subscription explicitly
-az account set --subscription "<subscription-id-or-name>"
+az account set --subscription "<subscription-id-or-name>"   # if you have more than one
 ```
 
-2) Create storage for Terraform state (once per organization)
+### 2. Create the state storage (once per subscription)
 
 ```powershell
 az group create --name tfstate-rg --location "West Europe"
@@ -27,25 +32,22 @@ az storage account create --name tfstatekanban --resource-group tfstate-rg --loc
 az storage account blob-service-properties update --account-name tfstatekanban --resource-group tfstate-rg --enable-versioning true --enable-delete-retention true --delete-retention-days 30 --enable-container-delete-retention true --container-delete-retention-days 30
 ```
 
-Run these against an existing account too -- `create` is the only command above that
-fails if the account already exists; swap it for `az storage account update` with the
-same flags.
+If the account already exists, run the same thing with `az storage account update` in place of
+`create`; it's the only command above that fails on an existing account. Once the account exists,
+`terraform/bootstrap` manages it, so you only need these commands on a subscription that has none
+yet (see [Drift detection](#drift-detection)).
 
-Once the account exists, `terraform/bootstrap` manages it, so the commands above are only for a
-subscription that has none yet. See [Drift detection](#drift-detection).
+I harden this account more than you might expect. The generated secrets never reach it, but the
+ACS connection string and `captcha_secret` do, in plaintext. [Secrets](#secrets) explains why I
+accept that.
 
-The generated secrets are write-only and never reach this account, but the ACS connection
-string and `captcha_secret` do, in plaintext, which is why it is worth hardening -- see
-[Secrets](#secrets).
+Don't create the container yet. With shared key access off it has to be created with Entra auth,
+and that needs the role assignment from step 2b first.
 
-Create the container **after** step 2b, not here: with shared key access disabled it has
-to be created over Entra ID auth, which needs the role assignment to exist first.
+### 2b. Give yourself access to the state container
 
-2b) Grant yourself access to the Terraform state container
-
-This project uses the `azurerm` backend with `use_azuread_auth = true`, so you need **Storage Blob data-plane** permissions on the state storage account.
-
-Assign at least `Storage Blob Data Contributor` (recommended) on the storage account scope:
+The `azurerm` backend runs with `use_azuread_auth = true`, so you need a data-plane role on the
+state account. `Storage Blob Data Contributor` is what I use:
 
 ```powershell
 $subId = az account show --query id -o tsv
@@ -55,213 +57,207 @@ $scope = "/subscriptions/$subId/resourceGroups/tfstate-rg/providers/Microsoft.St
 az role assignment create --assignee-object-id $userObjectId --assignee-principal-type User --role "Storage Blob Data Contributor" --scope $scope
 ```
 
-If you get an authorization error creating the role assignment, ask a subscription Owner/User Access Administrator to run it.
+If that fails with an authorization error, someone with Owner or User Access Administrator on the
+subscription has to run it for you.
 
-Then create the state container. `--auth-mode login` is required because the account has
-no shared key access; if this returns `403`, give the role assignment a minute to
-propagate and retry.
+Then create the container. `--auth-mode login` is required because the account has no shared keys.
+A `403` here usually means the role assignment hasn't propagated yet; wait a minute and retry.
 
 ```powershell
 az storage container create --name tfstate --account-name tfstatekanban --auth-mode login
 ```
 
-To check an existing account against the settings above:
+To check an existing account against these settings:
 
 ```powershell
 az storage account show -n tfstatekanban -g tfstate-rg --query "{tls:minimumTlsVersion,sharedKey:allowSharedKeyAccess,publicBlob:allowBlobPublicAccess,https:enableHttpsTrafficOnly}" -o json
 ```
 
-`"sharedKey": null` means shared key access has never been set, which Azure treats as
-**enabled** -- re-run the `update` above to disable it. (Use `-o json`, not `-o table`:
-table output silently drops a column whose value is null.)
+`"sharedKey": null` means nobody ever set it, and Azure treats that as **enabled**. Re-run the
+`update` to turn it off. Use `-o json` here: `-o table` silently drops columns whose value is null.
 
-2c) Permission to create role assignments
+### 2c. Permission to create role assignments
 
-Terraform creates Azure RBAC role assignments on the Key Vault (see
-[Key Vault authorization](#key-vault-authorization) below) and on the attachment storage
-account (see [Attachment storage](#attachment-storage)), so the identity running
-`terraform apply` needs `Microsoft.Authorization/roleAssignments/write` -- i.e.
-**Owner** or **User Access Administrator** on the subscription or on the target
-resource group. `Contributor` alone is not enough and fails at apply time with
-`AuthorizationFailed` on the role assignment.
+Terraform creates role assignments on the Key Vault and on the attachment storage account, so
+whoever runs `terraform apply` needs `Microsoft.Authorization/roleAssignments/write`. In practice
+that means **Owner** or **User Access Administrator** on the subscription or the resource group.
+`Contributor` isn't enough; it fails at apply time with `AuthorizationFailed`.
 
 ```powershell
-# Check whether you already have it
 az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv) --query "[].roleDefinitionName" -o tsv
 ```
 
-3) Provide required secrets/variables
+### 3. Variables and secrets
 
-Values supplied through variables:
-- `acs` - the resource group, Communication Services resource and email service that carry mail (see [Mail](#mail)); `null` (the default) turns mail off
-- `captcha_enabled`
-- `captcha_secret`
+You supply these:
 
-`jwt_secret_key` is **not** an input -- Terraform generates it. See [Secrets](#secrets).
+- `acs`: the resource group, Communication Services resource and email service that carry mail
+  (see [Mail](#mail)). `null`, the default, turns mail off.
+- `captcha_enabled` and `captcha_secret`.
 
-Optional (recommended):
-- `app_image_tag` - container image tag deployed to Azure Container Apps. **Required, with no default, and it must be an immutable value such as the git SHA the CD pipeline pushed.** A mutable tag like `latest` does not merely cost reproducibility: the tag is the only part of the container template that changes between releases, so pinning it renders an identical template on every apply, which produces no diff and therefore no new revision. An environment on `latest` cannot be deployed to by `terraform apply` at all, while looking perfectly converged - dev sat on one revision for eight days that way.
+`jwt_secret_key` is **not** an input. Terraform generates it (see [Secrets](#secrets)).
 
-  **`tf.sh apply` refuses a pin that is not a commit on `origin/main`, and refuses one behind its tip**, because setting it correctly once is not the same as keeping it correct. The second failure is the one that actually happened: the pin was moved to phase 01's commit on 15 Sep and then left there while roughly 25 pull requests merged, so the apply meant to ship the STOMP broker relay rolled its Terraform onto a container still running week-old code. Nothing was wrong with the tag, the plan or the revision, and `plan` read *No changes* afterwards - correctly. The check runs before `terraform init`, so a refusal costs no round trip to the backend, and it compares against the local `origin/main` without fetching: an apply should not make network calls to decide what it is about to do, and a stale remote-tracking ref can only understate the gap.
+- `app_image_tag` is **required and has no default**. It has to be an immutable value, which in
+  practice means the git SHA CD pushed. A mutable tag like `latest` breaks deploys, not just
+  reproducibility. The tag is the only part of the container template that changes between
+  releases. If it never changes, every apply renders the same template, Terraform sees no diff, and
+  no new revision rolls out. Dev once sat on the same revision for eight days that way while every
+  plan said it was up to date.
 
-  `./tf.sh <env> apply --allow-stale-image` is the acknowledgement, and it has two real uses rather than being an escape hatch. CD needs a few minutes to build and push the tip's image, so a merge and an apply in quick succession legitimately want the commit before it; and rolling back to an older commit is a deliberate act that should look like one. Applying a **saved plan** skips the check and says so - the plan carries its own variable values and the var-files are not consulted.
-- `key_vault_allowed_ips` - public addresses allowed through the Key Vault firewall. Required when you apply from outside the VNet, which includes every workstation - see [Key Vault network access](#key-vault-network-access).
+  So `tf.sh apply` refuses a tag that isn't a commit on `origin/main`, and refuses one that's behind
+  the tip. Getting it right once isn't enough; I once set it correctly and then forgot to move it
+  while about 25 PRs merged, so the apply that was meant to ship the STOMP relay rolled out week-old
+  code. The check runs before `terraform init` and compares against your local `origin/main`
+  without fetching.
 
-Optional (network) - see [Container App ingress restrictions](#container-app-ingress-restrictions):
-- `allowed_ingress_cidrs` - CIDR ranges allowed to reach the app. Empty (the default) leaves ingress open to the internet.
+  `./tf.sh <env> apply --allow-stale-image` overrides it. There are two legitimate reasons to use
+  it: CD takes a few minutes to push the tip's image, so right after a merge you want the previous
+  commit; and a rollback should look deliberate. Applying a **saved plan** skips the check (and says
+  so), since the plan already carries its own values.
+- `key_vault_allowed_ips`: public addresses allowed through the Key Vault firewall. You need this
+  whenever you apply from outside the VNet, which includes every workstation (see
+  [Key Vault network access](#key-vault-network-access)).
+- `allowed_ingress_cidrs`: CIDR ranges allowed to reach the app. Empty, the default, leaves it open
+  to the internet (see [Ingress restrictions](#ingress-restrictions)).
+- `alert_email`: if set, Terraform creates an action group and the alerts in
+  `modules/diagnostics`.
+- Database sizing: `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`,
+  `postgres_high_availability_mode`, `postgres_standby_availability_zone` (see
+  [Postgres sizing and availability](#postgres-sizing-and-availability)).
+- Key Vault durability: `key_vault_purge_protection_enabled`,
+  `key_vault_purge_soft_delete_on_destroy`, `key_vault_soft_delete_retention_days` (see
+  [Key Vault durability](#key-vault-durability)).
 
-Optional (monitoring):
-- `alert_email` - if set, Terraform creates an Azure Monitor action group and basic Container Apps metric alerts (CPU + memory).
+Put anything secret or personal in `dev.local.tfvars` (copy `dev.local.tfvars.example`). It's
+gitignored, and `./tf.sh dev ...` passes it after `dev.tfvars` so it wins. The exact file name
+matters; see [Local overrides](#local-overrides-one-per-environment).
 
-Optional (database sizing) - see [Postgres sizing and availability](#postgres-sizing-and-availability):
-- `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`
-- `postgres_high_availability_mode`, `postgres_standby_availability_zone`
-
-Optional (Key Vault durability) - see [Key Vault durability](#key-vault-durability):
-- `key_vault_purge_protection_enabled`, `key_vault_purge_soft_delete_on_destroy`
-- `key_vault_soft_delete_retention_days`
-
-Recommended: copy `dev.local.tfvars.example` to `dev.local.tfvars` and fill in values for local
-development. It is gitignored, and `./tf.sh dev ...` passes it after `dev.tfvars` so it overrides
-that file without committing any secrets. One per environment, named for the environment -- see
-[Local overrides, one per environment](#local-overrides-one-per-environment) for why the name is
-load-bearing.
-
-Note: the `azurerm` provider uses the active Azure CLI context by default (`use_cli = true`). If Terraform cannot determine your subscription for any reason, set `subscription_id` in `dev.local.tfvars` or export `ARM_SUBSCRIPTION_ID`.
+The provider uses your Azure CLI login (`use_cli = true`). If Terraform says `subscription ID could
+not be determined`, set `subscription_id` in `dev.local.tfvars` or export `ARM_SUBSCRIPTION_ID`.
 
 ## Deployment
 
-Use `tf.sh`. It takes the environment name once and derives both the backend state key and the
-`-var-file` from it, which is the pairing nothing else enforces:
+Always go through `tf.sh`. It takes the environment name once and derives both the state key and the
+var-file from it, and nothing else keeps those two paired:
 
 ```bash
 ./tf.sh dev plan -out=dev.tfplan
 ./tf.sh dev apply dev.tfplan
 ```
 
-It runs `init -reconfigure` on every invocation, so switching environments cannot leave the
-previous one's backend configured.
+It runs `init -reconfigure` every time, so switching environments can't leave the previous
+backend configured.
 
-**dev is the only environment that exists.** `uat.tfvars` and `prod.tfvars` are templates, kept so
-the configuration for them stays correct: `./tf.sh uat plan -var app_image_tag=<sha>` renders one
-and creates nothing, and `tf.sh` refuses `apply`, `destroy` and `import` for both. Their regions
-are ones the subscription's policy allows (`polandcentral`, `norwayeast`, `francecentral`,
-`swedencentral`, `uksouth`); prod sits in Sweden Central rather than Poland Central because
-geo-redundant backup needs a paired region and Poland Central has none.
+`uat.tfvars` and `prod.tfvars` are templates. I keep them so their configuration doesn't rot:
+`./tf.sh uat plan -var app_image_tag=<sha>` renders a plan and creates nothing, and `tf.sh` refuses
+`apply`, `destroy` and `import` for both. Their regions are ones the subscription's policy allows
+(`polandcentral`, `norwayeast`, `francecentral`, `swedencentral`, `uksouth`). Prod would sit in
+Sweden Central because geo-redundant backup needs a paired region, and Poland Central has none.
 
-`apply` (never `plan`, never `destroy`) also runs the same check
-`.github/workflows/deployed-contract.yml` runs on a daily cron, immediately afterward and against
-this apply's own `container_app_url` output -- an `app_image_tag` pinned to `latest` once made a
-container template byte-identical on every apply, so Terraform reported the environment converged
-while it served eight-day-old code, and asking the running origin was the only thing that would
-have caught it. See the comment above `set -euo pipefail` in `tf.sh`. It needs `python3` (or
-`python`) on `PATH`; without one, or without a `container_app_url` output, it skips with a warning
-rather than failing an apply that already succeeded -- but a claim the deployment fails to answer
-does fail the command, on the theory that finding out immediately beats waiting for the cron.
+After a successful `apply`, `tf.sh` also runs the same check that
+`.github/workflows/deployed-contract.yml` runs daily, against the new `container_app_url`. It asks
+the running site whether it serves what `main` says it should. That's the check that would have
+caught the eight-day stale revision above. Without `python3` or that output it warns and skips
+instead of failing an apply that already succeeded, but a deployment that answers wrong does fail
+the command.
 
 <details>
-<summary>The same thing by hand, and why it is worth avoiding</summary>
+<summary>Doing it by hand</summary>
 
-There are no Terraform workspaces here; environments are separated by state key alone, and the key
-is passed on the command line rather than written in `providers.tf`:
+There are no Terraform workspaces. Environments are separated only by state key, which is passed on
+the command line rather than written into `providers.tf`:
 
 ```powershell
-# Development
 terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"
 terraform plan  -var-file "dev.tfvars"
 terraform apply -var-file "dev.tfvars"
 ```
 
+I'd avoid it: it's easy to pair one environment's key with another's var-file.
+
 </details>
 
-Note: if you see `subscription ID could not be determined`, set `subscription_id` in `dev.local.tfvars` (preferred) or export `ARM_SUBSCRIPTION_ID` in your shell.
-
 ## CI/CD
-The existing GitHub Actions workflow in `.github/workflows/kanban-cd.yml` builds and pushes the Docker image to GitHub Container Registry (public). The Container App pulls the public image without authentication. The Container App's managed identity is granted the `Key Vault Secrets User` role to read application secrets from Key Vault -- see [Key Vault authorization](#key-vault-authorization) for the full access model.
 
-`.github/workflows/terraform-ci.yml` runs `fmt`, `validate` and a blocking Checkov scan on every PR
-that touches `terraform/`. There is no automated `apply` -- deployment stays a deliberate manual
-step (`./tf.sh <env> apply`).
+`.github/workflows/kanban-cd.yml` builds the images and pushes them to the GitHub Container
+Registry. The apps pull them anonymously, since the packages are public. Each app reads its
+secrets from Key Vault through its own managed identity (see
+[Key Vault authorization](#key-vault-authorization)).
 
-### Plan on pull requests -- retired, not built
+`.github/workflows/terraform-ci.yml` runs `fmt -check`, `init -backend=false`, `validate` and a
+blocking Checkov scan on every PR that touches `terraform/`. There's no automated apply. Deploying
+stays a deliberate manual step (`./tf.sh <env> apply`).
 
-The workflow used to carry a `plan` job, gated off behind a `TF_PLAN_ENABLED` repository variable
-until somebody wired an Entra federated credential to it. Nobody ever did, so it never ran once.
-When it was finally measured rather than reasoned about, it turned out it could not have worked:
+### Why there's no plan on pull requests
+
+The workflow used to have a `plan` job, switched off behind a repository variable until someone
+wired up a federated credential for it. Nobody did, so it never ran. When I finally tried the exact
+command it would have run against real dev state, it would have been useless:
 
 ```
-# the exact command the job ran, against real dev state
+# what the CI job would have run
 terraform plan -refresh=false -var-file=dev.tfvars
 Plan: 0 to add, 2 to change, 15 to destroy.
 
-# the same plan a person runs, with the local var-file
+# what I run locally, with the local var-file
 ./tf.sh dev plan
 No changes. Your infrastructure matches the configuration.
 ```
 
-**The cause is the fix for TF-07 and it is not a flag.** Every environment-specific and
-secret-bearing value lives in gitignored `<env>.local.tfvars`, deliberately, so that one
-environment's variables cannot reach another's state. CI has no access to that file -- and in this
-configuration those values do not merely set attributes, they gate `count`: an empty
-`mail_delivery_report_key` is zero Event Grid resources, an empty `alert_email` is zero alerts,
-an empty `captcha_secret` is no Key Vault secret. So CI's idea of "the configuration"
-is structurally a different configuration, and the job would have posted **15 to destroy** into
-every Terraform pull request, forever.
+The difference is the gitignored `dev.local.tfvars`. I keep every secret and environment-specific
+value there on purpose, so one environment's values can't leak into another's state. CI doesn't have
+that file, and several of those values decide whether resources exist at all: an empty
+`mail_delivery_report_key` means no Event Grid resources, an empty `alert_email` means no alerts, an
+empty `captcha_secret` means no Key Vault secret. CI would have been planning a different
+configuration and posting "15 to destroy" on every Terraform PR forever. A diff that's always
+alarming just trains reviewers to skim past it.
 
-That is the failure TF-12 is filed under, at full volume, in the one place this project treats as
-its strongest signal. A permanent alarming diff does not inform a reviewer; it teaches them to skim
-the output. `app_image_tag` being required (PR 145) and living only in the local file would in fact
-have stopped the job before it printed any of it.
+The only fix would be to put dev's captcha secret and delivery-report key into GitHub secrets and
+give CI a login that can read the ACS keys, which means a mail-sending credential in CI just to get
+a review aid. I decided that wasn't worth it, so I removed the job instead of pretending it was
+fixed.
 
-**So it is retired rather than fixed**, the distinction CD-01 established: nothing was built, and
-recording it as closed would be worse than saying so. The only way to make the job truthful is to
-put dev's captcha secret and delivery-report key into GitHub secrets, and give CI a login that
-can read the ACS keys, so it can reproduce the real configuration -- a mail-sending credential in
-CI, to power a code-review aid. That trade was declined.
-
-**What still runs on every Terraform pull request:** `fmt -check`, `init -backend=false`,
-`validate`, and a **blocking** Checkov scan. What is given up is early sight of a
-destroy-and-replace surprise -- TF-06's class. The mitigations for that are the ones that have
-actually been used before every apply in this repository's history: `prevent_destroy` on Postgres,
-and a person running `./tf.sh dev plan` from an allow-listed address before merging anything
-structural.
+What I give up is seeing a destroy-and-replace surprise before merge. What covers that instead:
+`prevent_destroy` on Postgres and the other data-holding resources, and running `./tf.sh dev plan`
+myself before merging anything structural.
 
 ### Drift detection
 
 `.github/workflows/terraform-drift.yml` plans dev from `main` every night and opens a `sweep-red`
-issue through `sweep-alarm.yml` when the plan is not empty: a portal change, an apply from a
-branch that never merged, or a merge nobody applied. It answers the problem above differently
-from the retired job. **It reads the gitignored values from where Terraform already put them**
-rather than from GitHub secrets. `scripts/drift-inputs.sh` rebuilds `dev.local.tfvars` as JSON:
-the two secrets from Key Vault, `app_image_tag` and `captcha_enabled` from the running API, the
-alert address from the action group, and the vault's own IP rules. Run locally, it reproduces
-the file exactly (`./tf.sh dev plan` with only its output reads *No changes*). What that costs is
-written down rather than hidden: **drift in those six values is invisible to the sweep**, because
-they are read from the thing being compared.
+issue through `sweep-alarm.yml` if the plan isn't empty. That catches a portal change, an apply
+from a branch that never merged, or a merge nobody applied.
+
+It solves the missing-local-file problem differently: instead of keeping copies in GitHub secrets,
+it reads the values back from where Terraform already put them. `scripts/drift-inputs.sh` rebuilds
+`dev.local.tfvars` as JSON: the two secrets from Key Vault, `app_image_tag` and `captcha_enabled`
+from the running API, the alert address from the action group, and the vault's IP rules. Run
+locally, its output gives `No changes`. The catch is that **drift in those six values is invisible**,
+because they're read from the thing being compared.
 
 The run logs in as `id-kanban-terraform-drift`, a user-assigned identity with a federated
-credential for the `terraform-drift` GitHub environment, so there is no client secret anywhere.
-This repository issues OIDC subjects in GitHub's immutable-id form
-(`repo:<owner>@<id>/<repo>@<id>:environment:...`), so the credential matches that, not
+credential for the `terraform-drift` GitHub environment, so there's no client secret. This repo
+issues OIDC subjects in GitHub's immutable-id form
+(`repo:<owner>@<id>/<repo>@<id>:environment:...`), and the credential has to match that, not
 `repo:<owner>/<repo>`. A mismatch fails the login with `AADSTS700213`.
+
 It holds Reader on the subscription, Storage Blob Data Reader on the state container, Key Vault
-Secrets User on `kanban-dev-rg`, and one custom role on the three resource groups. That role is
-what a refresh was **measured** calling beyond Reader (`TF_LOG=DEBUG` on a real dev plan), plus
-`vaults/write` so the run can add its own address to the vault firewall and take it off again:
+Secrets User on `kanban-dev-rg`, and one custom role on the three resource groups. I built that role
+from what a refresh actually called beyond Reader (from `TF_LOG=DEBUG` on a real plan), plus
+`vaults/write` so the run can add its own address to the vault firewall and remove it afterwards:
 
 - `listSecrets` on the container apps and jobs, `listKeys` on ACS and the storage accounts,
-  `sharedKeys` on the workspace, and `getFullUrl` on the Event Grid subscription. The storage
-  keys are inert, since every account has shared keys off. The ACS keys and the vault's secrets
-  are not, which is why the credential trusts one GitHub environment and that environment
-  deploys from `main` only.
-- The run plans with `-lock=false`, so it never needs to write the state blob.
+  `sharedKeys` on the workspace, and `getFullUrl` on the Event Grid subscription. The storage keys
+  are harmless, since every account has shared keys off. The ACS keys and the vault's secrets
+  aren't, which is why the credential trusts only one GitHub environment, and that environment only
+  deploys from `main`.
+- The run plans with `-lock=false`, so it never writes the state blob.
 - `terraform_operator_object_id` keeps the vault's Secrets Officer assignment on the person who
-  applies, since the planner is somebody else. `key_vault_runner_ips` adds the runner to the IP
-  rules for the length of the plan, so the rule it added is not reported as drift.
+  applies, since the planner is someone else. `key_vault_runner_ips` adds the runner to the IP
+  rules during the plan, so that rule doesn't show up as drift.
 
-The identity, its roles and the state account itself are in `terraform/bootstrap`, a root of its
-own with its own state (`bootstrap/terraform.tfstate` in the same container). It is applied by
-hand, once, as a subscription Owner:
+The identity, its roles and the state account live in `terraform/bootstrap`, a separate root with
+its own state (`bootstrap/terraform.tfstate` in the same container). A subscription Owner applies it
+by hand, once:
 
 ```bash
 cd terraform/bootstrap
@@ -269,124 +265,97 @@ terraform init
 terraform apply
 ```
 
-then give the `terraform-drift` environment four variables from its outputs: `AZURE_CLIENT_ID` (`drift_client_id`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and
-`TERRAFORM_OPERATOR_OBJECT_ID`. A missing one fails the run rather than skipping it.
-`tfstate-rg` is read by name and not imported: it sits in West Europe, which the location policy
-denies, so even a tag update to it would be refused. The account inside it is in Poland Central
-and is managed normally, with a `CanNotDelete` lock.
+Then give the `terraform-drift` environment four variables from its outputs: `AZURE_CLIENT_ID`
+(`drift_client_id`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and `TERRAFORM_OPERATOR_OBJECT_ID`.
+A missing one fails the run rather than skipping it.
+
+`tfstate-rg` is read by name, not imported. It's in West Europe, which the location policy now
+denies, so even a tag update on it would be refused. The account inside it is in Poland Central and
+is managed normally, with a `CanNotDelete` lock.
 
 ## Notes
 
-- **Password generation**: the Postgres module generates the administrator password internally, and the `api_app` module generates the JWT signing key the same way; both are stored in Key Vault and never passed in as variables. See [Secrets](#secrets).
-- **Logging/analytics**: a Log Analytics Workspace is created and connected to the Container Apps Environment, so Container Apps logs/metrics are available in Azure Monitor Logs.
+A Log Analytics workspace is connected to the Container Apps environment, so every app's logs and
+platform metrics end up in Azure Monitor Logs.
 
 ### Network layout
 
 <p align="center">
-  <img src="../docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with five subnets holding the Container Apps environment and its jobs, Postgres, and the Key Vault, Blob Storage and Redis private endpoints, plus the backup region" width="100%"/>
+  <img src="../docs/architecture/azure-infrastructure.svg" alt="Azure network topology: a VNet with six subnets holding the Container Apps environment and its jobs, Postgres, the Key Vault, Blob Storage and Redis private endpoints and the monitoring VM, plus the backup region" width="100%"/>
 </p>
 
-The VNet is `10.0.0.0/16` and is carved into five subnets, each with one job.
+The VNet is `10.0.0.0/16`, split into six subnets that each do one thing:
 
 | Subnet | Prefix | Holds |
 |---|---|---|
 | `snet-backend-<env>` | `10.0.0.0/23` | the Container Apps environment (`infrastructure_subnet_id`) |
 | `snet-db-<env>` | `10.0.2.0/24` | Postgres Flexible Server, delegated to `Microsoft.DBforPostgreSQL/flexibleServers` |
-| `snet-pe-<env>` | `10.0.3.0/28` | the Key Vault private endpoint NIC |
-| `snet-storage-<env>` | `10.0.3.16/28` | the attachment blob private endpoint NIC |
-| `snet-redis-<env>` | `10.0.3.32/28` | the Managed Redis private endpoint NIC |
+| `snet-pe-<env>` | `10.0.3.0/28` | the Key Vault private endpoint |
+| `snet-storage-<env>` | `10.0.3.16/28` | the attachment blob private endpoint |
+| `snet-redis-<env>` | `10.0.3.32/28` | the Managed Redis private endpoint |
+| `snet-monitoring-<env>` | `10.0.3.48/28` | the Prometheus VM (see [Monitoring VM](#monitoring-vm)) |
 
-**The backend subnet is dedicated to the Container Apps environment.** Azure treats an
-infrastructure subnet as platform-managed and requires that nothing else live in it,
-so the Key Vault private endpoint gets its own subnet rather than sharing that one.
-Keeping the two apart also means `nsg-pe-${env}` (see
-[Network security groups](#network-security-groups)) does not have to be written
-around whatever the Container Apps platform needs.
+The backend subnet belongs to Container Apps alone. Azure treats an infrastructure subnet as
+platform-managed and doesn't want anything else in it, and keeping the endpoints out also means
+their NSGs don't have to work around whatever the platform needs.
 
-**The private endpoints get a subnet each** rather than sharing `snet-pe`. One
-subnet means one NSG, and the rule covering both would have to read "anything in the
-backend subnet may reach 443 anywhere in here" -- which is what
-`AllowKeyVaultFromBackend` already says, so the storage endpoint would inherit its
-reachability from a rule named after something else. Separate subnets keep each
-service's reachability written as its own rule.
+Each private endpoint gets its own subnet instead of sharing `snet-pe`. One subnet means one NSG,
+and a shared rule would say "anything in the backend subnet may reach 443 anywhere in here". Then
+the storage endpoint would be reachable because of a rule named `AllowKeyVaultFromBackend`. A /28
+each is cheap, and every service's access gets its own rule.
 
-**`snet-db` keeps its `Microsoft.Storage` service endpoint.** It looks unused, since nothing
-in this configuration reaches a storage account from there, but Azure adds it when the first
-flexible server lands in the subnet and the server uploads its WAL through it. Microsoft's
-networking docs warn that removing it can break the server.
+`snet-db` keeps its `Microsoft.Storage` service endpoint even though nothing here seems to use it.
+Azure adds it when the first flexible server lands in the subnet, the server ships its WAL through
+it, and Microsoft's docs warn that removing it can break the server.
 
-The backend subnet has no `Microsoft.KeyVault` service endpoint, and the vault's
-`network_acls` name no subnet. Every client in the VNet resolves the vault through the
-`privatelink.vaultcore.azure.net` zone to the private endpoint, and private endpoint
-traffic is not subject to the vault firewall, so a subnet rule only ever admitted the
-app's egress if it resolved the vault's *public* name. Nothing here does. The
-Container Apps platform resolves Key Vault secret references as a trusted service
-(`key_vault_allow_azure_services_bypass`), which is the one path besides the endpoint
-and `key_vault_allowed_ips`.
-
-Migrating an environment created before the split: `terraform apply` destroys and
-recreates the private endpoint in the new subnet, so its private IP changes. The DNS
-A record is managed by the endpoint's `private_dns_zone_group` and follows
-automatically; expect the vault to be briefly unresolvable inside the VNet while the
-replacement lands.
+The backend subnet has no `Microsoft.KeyVault` service endpoint, and the vault's `network_acls` name
+no subnet. Everything in the VNet resolves the vault through `privatelink.vaultcore.azure.net` to
+the private endpoint, and private endpoint traffic isn't subject to the vault firewall anyway. The
+Container Apps platform resolves Key Vault references as a trusted service
+(`key_vault_allow_azure_services_bypass`). That and `key_vault_allowed_ips` are the only other ways
+in.
 
 ### Secrets
 
-All application secrets live in Key Vault and are read by the Container App's managed
-identity at revision start. They get into the vault two ways.
+Every application secret lives in Key Vault, and each app reads it through its managed identity
+when a revision starts. Secrets get there in three ways.
 
-**Generated.** The Postgres admin password, the JWT signing key and the RabbitMQ password
-have no external issuer, so Terraform generates them with an ephemeral `random_password` and
-writes them through write-only attributes: nobody types or sees them, and they are never in
-Terraform state. Each is rewritten only when its version variable (`jwt_secret_version`,
-`password_version`) is bumped, which is also how to rotate one; restart the apps that read it
-afterwards. The JWT key is stored base64-encoded, because `JwtService.getSignInKey`
-runs `Decoders.BASE64.decode(...)` then `Keys.hmacShaKeyFor(...)` and throws on
-anything under 32 decoded bytes.
+**Generated.** The Postgres admin password, the JWT signing key and the RabbitMQ password have no
+outside issuer, so Terraform generates them with an ephemeral `random_password` and writes them
+through write-only attributes. Nobody types or sees them, and they're never in Terraform state. Each
+is rewritten only when its version variable (`jwt_secret_version`, `password_version`) is bumped,
+which is also how you rotate one; restart whatever reads it afterwards. The JWT key is stored
+base64-encoded, because `JwtService.getSignInKey` decodes it and throws on anything under 32 bytes.
 
-**Read from Azure.** The ACS connection string is the Communication Services resource's own
-primary key, which Terraform reads from the resource it manages (see [Mail](#mail)). It sits in
-Terraform state, not in any tfvars file.
+**Read from Azure.** The ACS connection string is the Communication Services resource's own key,
+which Terraform reads from the resource it manages (see [Mail](#mail)). It ends up in state, not in
+any tfvars file.
 
-**Supplied.** `captcha_secret` is issued by Google, so it cannot be generated. It comes in as a
-variable, which means it sits in your tfvars file and in Terraform state in plaintext.
+**Supplied.** `captcha_secret` comes from Google, so it can't be generated. It's a variable, which
+means it sits in your tfvars file and in state in plaintext.
 
-That is a deliberate acceptance, not an oversight. The identity running
-`terraform apply` is granted `Key Vault Secrets Officer` on the vault (it has to be --
-Terraform writes the Postgres secrets), so an applier can already read every secret in
-the vault with one `az keyvault secret show`. Keeping these two out of tfvars would not
-deny them anything they don't already hold. Both are also revocable from a console in
-seconds with no downtime and no data loss, so the cost of exposure is a rotation.
+I accept that on purpose. Whoever runs `terraform apply` has to hold `Key Vault Secrets Officer`
+on the vault, because Terraform writes the secrets, so they can already read every secret with one
+`az keyvault secret show`. Keeping these two out of tfvars wouldn't hide anything from them. Both
+can also be revoked from a console in seconds, so exposure costs a rotation.
 
-What follows from that: **the state blob is as sensitive as the vault**, and the
-control that actually matters is who can read it. Treat `Storage Blob Data Reader` on
-the state container as equivalent to full production credential access, and grant it
-accordingly. The account's own hardening is applied in [Setup](#setup) step 2.
+That does mean **the state blob is as sensitive as the vault**. What matters is who can read it:
+treat `Storage Blob Data Reader` on the state container like full credential access.
 
 ### Local overrides, one per environment
 
-Anything that must not be committed -- the ACS connection string, the captcha secret, the alert
-address, a workstation's own IP for the Key Vault firewall -- goes in `<env>.local.tfvars`, which is
-gitignored. `./tf.sh <env> ...` passes it *after* the committed `<env>.tfvars`, so it overrides that
-file, and a file belonging to an environment you are not running is simply not read.
+Anything that must not be committed (the ACS connection string, the captcha secret, the alert
+address, your own IP for the Key Vault firewall) goes in `<env>.local.tfvars`, which is gitignored.
+`./tf.sh <env> ...` passes it after the committed `<env>.tfvars`, and a file for another environment
+simply isn't read.
 
-**The name is load-bearing, and it used not to be.** These files were called
-`<env>.local.auto.tfvars`, and Terraform loads every `*.auto.tfvars` in the working directory on
-every run, whatever `-var-file` is passed. `tf.sh` exists to stop one environment's variables
-reaching another environment's state, and that channel went straight through it.
+These files used to be called `<env>.local.auto.tfvars`, and that was a real bug. Terraform loads
+every `*.auto.tfvars` in the directory on every run, whatever `-var-file` you pass. It didn't show,
+because the committed var-file wins for everything it sets. But `prod.tfvars` doesn't set the
+secrets, because they have no committed value. So a prod plan on my machine would have taken dev's
+ACS connection string, dev's captcha secret, dev's alert address and my home IP straight into prod.
 
-It was invisible because the committed var-file wins for everything it sets: `env`, the SKUs, the
-retention days all came out right. What `prod.tfvars` does not set is exactly the secret-bearing
-list, because those have no committed value -- so a `prod` plan run on a workstation holding
-`dev.local.auto.tfvars` took **dev's ACS connection string into the prod Key Vault secret, dev's
-captcha secret with it, dev's alert address onto the prod alerts, and a developer's home IP onto the
-prod vault firewall**. Measured rather than reasoned: with a var-file setting `env` and an auto file
-setting both `env` and a second variable, `terraform console` answers the var-file's `env` and the
-auto file's second variable.
-
-Dropping `.auto.` is the whole fix. `tf.sh` refuses to run while any `*.local.auto.tfvars` still
-exists rather than loading it alongside, because a file Terraform picks up by itself is the thing
-being removed:
+Dropping `.auto.` fixed it. `tf.sh` now refuses to run while any `*.local.auto.tfvars` exists:
 
 ```
 $ ./tf.sh dev plan
@@ -398,704 +367,574 @@ rename each to <env>.local.tfvars (drop the '.auto.'); this script passes the on
 ### Mail
 
 `modules/mail` owns the Communication Services resource, the email service, its Azure-managed
-`*.azurecomm.net` domain (which needs no DNS) and the link between them, all in the existing
-resource group `acs` names. Terraform reads the connection string and the `DoNotReply@` sender
-address from them, writes the `ACS-EMAIL-CONNECTION-STRING` Key Vault secret and passes
-`ACS_EMAIL_CONNECTION_STRING` / `ACS_EMAIL_SENDER_ADDRESS` to the container app. Nothing about mail
-is pasted into a tfvars file.
+`*.azurecomm.net` domain (no DNS needed) and the link between them, all in the existing resource
+group that `acs` names. Terraform reads the connection string and the `DoNotReply@` sender address
+from them, writes the `ACS-EMAIL-CONNECTION-STRING` secret, and passes `ACS_EMAIL_CONNECTION_STRING`
+and `ACS_EMAIL_SENDER_ADDRESS` to the API. Nothing about mail is pasted into tfvars.
 
-dev's were made by hand in the portal and adopted with `import` blocks. All four carry
-`prevent_destroy`, the domain because it is a generated GUID subdomain and a new one would change
-every sender address. The same resource feeds the diagnostic setting, the bounce alert and the
-Event Grid subscription for delivery reports, so those follow `acs` too.
+I created dev's resources in the portal and adopted them with `import` blocks. All four have
+`prevent_destroy`. The domain is a generated GUID subdomain, so a new one would change every sender
+address. The diagnostic setting, the bounce alert and the Event Grid subscription for delivery
+reports hang off the same resource, so they follow `acs` too.
 
-With `acs` unset the app starts and drops every message instead of refusing to boot, which is
-what lets CI and a fresh clone run without an Azure account. In production that same default is a
-signup that answers `200`, writes the account unverified, stores the verification code and sends
-nothing -- a user who cannot log in, and an operator looking at a healthy revision with no error in
-it.
+With `acs` unset, the app starts and silently drops every message. That's what lets CI and a fresh
+clone run without an Azure account. In production the same default would be a disaster: signup
+answers `200`, saves an unverified account and a verification code, and sends nothing. The user
+can't log in, and the revision looks healthy with nothing in the log.
 
-So **a `prod` plan refuses while `acs` is `null`**, as a precondition on the resource group,
-next to the one that catches a state key paired with the wrong var-file:
+So **a `prod` plan refuses to run while `acs` is `null`**:
 
 ```
-prod would deploy with mail switched off (MAIL-02).
+prod would deploy with mail switched off.
 
 Set acs for env = "prod".
 ```
 
-`dev` and `uat` are unaffected and are expected to run with mail off. There is no override flag, on
-purpose: a deployment that deliberately cannot send a verification code is one nobody can sign up
-to.
+`dev` and `uat` are expected to run with mail off. There's deliberately no override: a deployment
+that can't send a verification code is one nobody can sign up to.
 
 ### Postgres sizing and availability
 
-The database SKU, storage and availability zone are per-environment variables, set
-in the `*.tfvars` files. The defaults are the dev values, so an environment that
-says nothing gets the cheap shape.
+The SKU, storage and zone are per-environment variables in the `*.tfvars` files. The defaults are
+dev's, so an environment that sets nothing gets the cheap shape. The uat and prod columns are what
+the templates would build.
 
-| | dev / uat | prod |
-|---|---|---|
-| `postgres_sku_name` | `B_Standard_B1ms` | `GP_Standard_D2ds_v4` |
-| `postgres_storage_mb` | 32768 (32 GiB) | 131072 (128 GiB) |
-| `postgres_high_availability_mode` | null | `ZoneRedundant` |
-| `postgres_backup_retention_days` | 35 | 35 |
-| `postgres_geo_redundant_backup_enabled` | false | true |
+| | dev | uat | prod |
+|---|---|---|---|
+| `postgres_sku_name` | `B_Standard_B1ms` | `B_Standard_B1ms` | `GP_Standard_D2ds_v4` |
+| `postgres_storage_mb` | 32768 (32 GiB) | 32768 (32 GiB) | 131072 (128 GiB) |
+| `postgres_high_availability_mode` | null | null | `ZoneRedundant` |
+| `postgres_backup_retention_days` | 35 | 14 | 35 |
+| `postgres_geo_redundant_backup_enabled` | false | false | true |
 
-Five things about that table are worth knowing before changing it.
+Things worth knowing before you change any of it:
 
-**Burstable is a throttle, not just a small server.** A `B_` SKU runs at a fraction
-of a vCore and spends credits to exceed it. Once the credits are gone the server is
-held at its baseline for as long as the load lasts, which shows up as query latency
-that gets worse the longer the pressure continues rather than levelling off.
+- **Burstable is a throttle, not just a small server.** A `B_` SKU runs at a fraction of a vCore
+  and spends credits to go faster. When the credits run out, it's held at baseline for as long as
+  the load lasts, so latency keeps getting worse instead of levelling off. There's an alert on
+  remaining credits for this.
+- **Connections are tight on B1ms.** It allows 50, 10 are reserved, so 40 are usable.
+  `api_db_connection_budget` is split across `api_max_replicas`, and a `check` block plus
+  `DatabasePoolBudgetTest` keep the budget inside what the SKU allows.
+- **HA isn't available on Burstable.** Azure rejects that combination, but only at create time,
+  after the VNet, vault and secrets already exist. A `precondition` in the module fails the plan
+  instead. The standby is a second full server, so `ZoneRedundant` roughly doubles compute cost on
+  top of the tier change.
+- **Storage only grows.** Azure can't shrink `storage_mb`. The size also sets the IOPS ceiling, so
+  it's a throughput decision as well as a capacity one.
+- **HA isn't a backup.** A standby faithfully replicates the statement that dropped the table.
+  Point-in-time restore is what saves you from a bad migration, and
+  `postgres_backup_retention_days` is how far back it goes. Geo-redundant backup is fixed at
+  create time (turning it on later replaces the server), and Poland Central has no pair, so dev
+  can't have it.
+- **The server refuses to be destroyed.** It has `prevent_destroy = true`, because several
+  attributes (`zone` and `delegated_subnet_id` among them) force a replacement, and replacing this
+  resource means losing the data. Without that, a tfvars edit could plan a destroy that looks like an
+  ordinary diff. Tearing an environment down on purpose means deleting those lines first. That
+  friction is intentional.
 
-**High availability is a property of the tier.** Azure does not offer it on Burstable
-at all, so `postgres_high_availability_mode` and a `B_` SKU are a combination the API
-rejects - and it rejects it at create time, after the vnet, the vault and the secrets
-already exist. A `precondition` in the module fails the plan instead. The standby is a
-second full server, so `ZoneRedundant` roughly doubles compute cost on top of the tier
-change; setting the mode to `null` keeps a single-zone prod that still is not
-throttled.
-
-**Storage only grows.** Azure cannot shrink `storage_mb`, so raising it is a one-way
-door. The size also sets the IOPS ceiling - 32 GiB is the smallest tier and caps out
-correspondingly, which makes it a throughput decision as much as a capacity one.
-
-**High availability is not a backup.** A standby replicates every write, including the
-one that dropped the table. Point-in-time restore is the control that answers a bad
-migration, and `postgres_backup_retention_days` is how far back it reaches. Left unset,
-Azure gives 7 days. `postgres_geo_redundant_backup_enabled` copies those backups to the
-paired region, and Azure fixes it at create time — turning it on later replaces the
-server, so decide it before the environment carries anything. Poland Central has no
-pair, so dev cannot have it at all.
-
-**The server refuses to be destroyed.** The module carries
-`lifecycle { prevent_destroy = true }`, because several attributes here force
-replacement when they change — `zone` and `delegated_subnet_id` among them — and a
-replacement of this resource is the data. Without the block, an edit to a tfvars file
-plans a destroy that reads like an ordinary diff. Tearing an environment down on
-purpose means deleting those lines first; that is the friction being bought.
-
-Changing the SKU or storage on a live server is an in-place scale with a restart, so
-expect a short outage. `postgres_zone` is different: Azure cannot move a running
-server between zones, and after an HA failover the primary is in the standby's zone,
-which the next `terraform plan` will try to undo. Treat the zone as set at creation.
+Changing the SKU or storage on a live server is an in-place scale with a restart, so expect a short
+outage. The zone is different: Azure can't move a running server between zones, and after an HA
+failover the primary is in the standby's zone, which the next plan will try to undo. Treat the zone
+as fixed once the server exists.
 
 ### Database logins
 
-The server accepts Entra tokens, and the psqladmin password while
-`postgres_password_auth_enabled` is true. The password is ephemeral and write-only, so it is
-never in Terraform state. It sits in Key Vault as `POSTGRES-PASSWORD`, for the roles job alone,
-only while password login is on; turning it off deletes the secret and sets the server to a
-password nobody holds.
+The server accepts Entra tokens, plus the `psqladmin` password while
+`postgres_password_auth_enabled` is true. The password is ephemeral and write-only, so it's never in
+state. It's in Key Vault as `POSTGRES-PASSWORD` for the roles job only, and only while password login
+is on. Turning that off deletes the secret and sets the server to a password nobody has.
 
 | Login | Who | Can |
 |---|---|---|
-| `kanban-db-admin-identity-<env>` | the server's Entra admin; only the roles job uses it | create roles, and grant the three below |
+| `kanban-db-admin-identity-<env>` | the server's Entra admin; only the roles job uses it | create roles and grant the three below |
 | `kanban-migrator-identity-<env>` | `kanban-api-migrate-<env>` | everything `kanban_owner` can, which owns the schema |
 | `kanban-app-identity-<env>` | the API | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, through `kanban_writer` |
 | `kanban-backup-identity-<env>` | the nightly dump | `SELECT`, through `kanban_reader` |
 | `psqladmin` | break-glass while password login is on | member of `kanban_owner` |
 
-Each fetches a token per new connection through `EntraTokenAuthenticationPlugin`, which the
-JDBC URL names. The API runs with `DB_MIGRATE_ON_STARTUP=false` and cannot alter the schema.
-Migrations run in `kanban-api-migrate-<env>`, which starts the API image with `--migrate-only`
-and `SET ROLE kanban_owner` (`DB_MIGRATION_INIT_SQL`), so new tables belong to `kanban_owner`.
-Default privileges give `kanban_writer` and `kanban_reader` their rights on anything
-`kanban_owner` creates.
+Each one fetches a token per new connection through `EntraTokenAuthenticationPlugin`, which the JDBC
+URL names. The API runs with `DB_MIGRATE_ON_STARTUP=false` and can't alter the schema. Migrations
+run in `kanban-api-migrate-<env>`, which starts the API image with `--migrate-only` and
+`SET ROLE kanban_owner` (`DB_MIGRATION_INIT_SQL`), so new tables belong to `kanban_owner`. Default
+privileges give `kanban_writer` and `kanban_reader` their rights on anything `kanban_owner`
+creates.
 
 `terraform apply` starts two manual jobs and waits for each (`scripts/run-container-app-job.sh`,
 which needs `bash` and a logged-in `az`):
 
-1. `kanban-<env>-db-roles` creates the Entra roles and the three group roles, and grants the
-   memberships. It reruns when its script or an identity changes. While password login is on,
-   it also hands every table psqladmin created to `kanban_owner`. With password login off it
+1. `kanban-<env>-db-roles` creates the Entra roles and the three group roles and grants the
+   memberships. It reruns when its script or an identity changes. While password login is on, it
+   also hands every table `psqladmin` created over to `kanban_owner`. With password login off it
    checks that nothing is left to hand over, and fails if something is.
 2. `kanban-api-migrate-<env>` runs Flyway. It reruns whenever `app_image_tag` moves.
 
-The API's revision depends on both, so a failed run stops the apply before the API changes.
+The API's revision depends on both, so a failed job stops the apply before the API changes.
 
-To turn password login off, apply once with it on (the hand-over needs psqladmin), then set
-`postgres_password_auth_enabled = false` in the tfvars and apply again. Break-glass is then a
-job running as the Entra admin. Turning it back on writes a fresh password to the server and to
-Key Vault in the same apply.
+To turn password login off: apply once with it on (the hand-over needs `psqladmin`), then set
+`postgres_password_auth_enabled = false` and apply again. Break-glass is then a job running as the
+Entra admin. Turning it back on writes a fresh password to the server and to Key Vault in the same
+apply.
 
 ### Database dumps
 
-Point-in-time restore lives inside the server's blast radius: deleting the server, its
-resource group or the subscription takes the backups with it, and they cannot be
-exported. `modules/backup` keeps a copy that survives all of that except the
-subscription.
+Point-in-time restore lives inside the server's blast radius. Deleting the server, its resource
+group or the subscription takes the backups with it, and you can't export them. `modules/backup`
+keeps a copy that survives everything except losing the subscription.
 
-- A Container Apps job (`kanban-<env>-pg-dump`) runs nightly at 02:15 UTC in the
-  existing environment. An init container runs `pg_dump --format=custom`, logged in as
-  the job's own identity (`kanban_reader`, see below); the main container uploads it with
-  the same identity.
+- A Container Apps job, `kanban-<env>-pg-dump`, runs nightly at 02:15 UTC. An init container runs
+  `pg_dump --format=custom` as the job's own identity (`kanban_reader`), and the main container
+  uploads it with the same identity.
 - The dumps go to a GRS account in **its own resource group in `backup_location`**
-  (`swedencentral`), which the subscription's region policy allows and which is not
-  the database's region.
-- The job's identity has a custom role that can **add blobs and nothing else**: no
-  read, no delete, no overwrite. The container has a 14-day time-based immutability
-  policy, so even a compromised job cannot remove a recent dump. The policy is
-  **locked**, so not even an Owner can shorten it or delete the policy: the period can
-  only be extended, and the account cannot be deleted while it holds a dump younger
-  than 14 days.
-- Lifecycle rules keep `daily/` 14 days, `weekly/` (Sundays) 8 weeks and `monthly/`
-  (the 1st) a year, moving monthly dumps to Cool after 30 days.
-- The account has no private endpoint. `snet-backend` carries a
-  `Microsoft.Storage.Global` service endpoint, which is what lets a subnet in one
-  region be named in the network rules of an account in another, and the account
-  denies everything else.
-- `kanban-<env>-backup-stale` fires when no `BACKUP_OK` line has appeared in the job's
-  console logs for 26 hours.
-- A second job, `kanban-<env>-restore-drill`, runs at 03:15 UTC. It downloads the newest
-  `daily/` dump with its own identity (Storage Blob Data Reader on the container, nothing
-  else), restores it into a throwaway Postgres inside the job and prints `RESTORE_OK` with
-  the migration and row counts. `kanban-<env>-restore-drill-failed` fires when no such
-  line has appeared for 26 hours. A dump that exists and does not restore is not a backup.
-- There is no automated point-in-time restore drill. Azure checks a restore as
-  `flexibleServers/write` on the source server and has no narrower permission, so any identity
-  that can run one can also reconfigure the production server. Run a PITR by hand with your own
-  account when you want to test it.
+  (`swedencentral`), a region the policy allows and not the database's region.
+- The job's identity has a custom role that can **only add blobs**: no read, no delete, no
+  overwrite. The container has a 14-day immutability policy, so even a compromised job can't remove
+  a recent dump. The policy is **locked**: not even an Owner can shorten or remove it, and the
+  account can't be deleted while it holds a dump younger than 14 days. I ran into that when tearing
+  dev down, so plan for it.
+- Lifecycle rules keep `daily/` for 14 days, `weekly/` (Sundays) for 8 weeks and `monthly/` (the 1st)
+  for a year, moving monthly dumps to Cool after 30 days.
+- The account has no private endpoint. `snet-backend` carries a `Microsoft.Storage.Global` service
+  endpoint, which lets a subnet in one region be named in the network rules of an account in
+  another, and the account denies everything else.
+- `kanban-<env>-backup-stale` fires when no `BACKUP_OK` line has appeared in the job's logs for 26
+  hours.
+- A second job, `kanban-<env>-restore-drill`, runs at 03:15 UTC. It downloads the newest `daily/`
+  dump with its own read-only identity, restores it into a throwaway Postgres inside the job, and
+  prints `RESTORE_OK` with the migration and row counts. `kanban-<env>-restore-drill-failed` fires
+  when that line hasn't appeared for 26 hours. A dump that doesn't restore isn't a backup.
+- There's no automated point-in-time restore drill. Azure authorizes a restore as
+  `flexibleServers/write` on the source server, with nothing narrower, so any identity that could
+  run one could also reconfigure the production server. I run PITR tests by hand with my own
+  account.
 
-To run it now: `az containerapp job start -g kanban-dev-rg -n kanban-dev-pg-dump`.
-To restore: download a dump and `pg_restore --no-owner --dbname=<target>`; it
-restores into the local compose Postgres as well as a new server. The dump holds no
-attachments, which live in blob storage.
+To run a dump now: `az containerapp job start -g kanban-dev-rg -n kanban-dev-pg-dump`. To restore,
+download a dump and run `pg_restore --no-owner --dbname=<target>`. It restores into the local compose
+Postgres as well as into a new server. Dumps don't include attachments; those live in blob storage.
 
-### Two container apps
+### The web and API apps
 
-This deployment runs two HTTP-facing Container Apps in one Managed Environment, and only one of
-them has an address. (A third, `kanban-broker-<env>`, shares the same environment on a plain TCP
-ingress — see [RabbitMQ broker](#rabbitmq-broker) — but carries none of the HTTP concerns below, so
-it is covered separately.)
+Four Container Apps share one Managed Environment: `kanban-web-<env>`, `kanban-api-<env>`,
+`kanban-broker-<env>` (see [RabbitMQ broker](#rabbitmq-broker)) and `kanban-grafana-<env>` (see
+[Grafana](#grafana)). The web app is the only one the public app is reachable through:
 
 | App | Module | Ingress | What it is |
 |---|---|---|---|
-| `kanban-web-<env>` | `modules/web_app` | **external** | nginx: the Vite bundle on disk, and a reverse proxy for `/api`, `/ws` and `/v3/api-docs` |
-| `kanban-api-<env>` | `modules/api_app` | **internal** | the Spring Boot jar; reachable only from inside the environment |
+| `kanban-web-<env>` | `modules/web_app` | **external** | nginx: the Vite bundle, plus a reverse proxy for `/api`, `/ws` and `/v3/api-docs` |
+| `kanban-api-<env>` | `modules/api_app` | **internal** | the Spring Boot jar, reachable only from inside the environment |
 
-Five consequences are worth having in one place:
+What follows from that split:
 
-- **The public origin is the web app's FQDN.** `terraform output container_app_url` still names it,
-  so `DEPLOYED_ORIGIN` and anything else reading that output does not change. The API app has no
-  public URL output at all any more; `api_internal_fqdn` is the internal one, which nothing outside
-  the environment resolves.
-- **The edge speaks TLS to the API**, and that is measured rather than stylistic. An internal
-  ingress still terminates TLS and answers plain HTTP with a `301` to the https form of the same
-  URL — which nginx would hand back to the browser, pointing it at a name only the inside of the
-  environment resolves. The alternative is `allow_insecure_connections = true` on the API app; this
-  does not take it, because the certificate the internal ingress presents carries
-  `*.internal.<environment-domain>` as a SAN, is issued by *Microsoft TLS G2 RSA CA*, and verifies
-  against the stock CA bundle — so the hop is authenticated as well as encrypted, and nothing has
-  to be declared insecure.
-- **`ingress_trusted_proxy_count` is 3**, because three hops append to `X-Forwarded-For` now: the
-  web app's ingress appends the client, nginx (`$proxy_add_x_forwarded_for`) appends that ingress's
-  envoy, and the API's internal ingress appends nginx. It was 2 from the split until 24 Sep 2026,
-  one short, and nothing said so: every request keyed on the web ingress's envoy (`100.100.0.188`,
-  the `$remote_addr` in nginx's own access log), so the rate limiter held one bucket for the entire
-  internet, the `CREDENTIALS` limit stopped being per-IP, and *Signed-in devices* showed that
-  address for everybody. Counting proxies was the mistake; count the entries that get appended.
-- **`SECURITY_CORS_ALLOWED_ORIGINS` names the web app**, not the API app. nginx forwards the
-  browser's `Origin` unchanged, so what Spring sees is the address the person typed. Getting it
-  wrong is loud but confusing: every call from the board answers `Invalid CORS request` with a 403
-  while the page itself loads perfectly.
-- **One `app_image_tag` feeds both apps, deliberately.** The bundle and the API it calls used to be
-  a single artifact and could not disagree; one tag across two images is what replaces that
-  guarantee. Splitting the variable is the change that makes skew possible — don't, for convenience.
+- **The public origin is the web app's FQDN.** `terraform output container_app_url` names it. The
+  API has no public URL; `api_internal_fqdn` is internal and nothing outside the environment
+  resolves it.
+- **nginx talks TLS to the API.** It isn't optional. An internal ingress still terminates TLS and
+  answers plain HTTP with a `301` to the https URL, and nginx would hand that redirect back to the
+  browser, pointing it at a name only the environment can resolve. I could have set
+  `allow_insecure_connections = true` on the API instead, but there's no need: the internal
+  certificate carries `*.internal.<environment-domain>`, is issued by Microsoft's public CA, and
+  verifies against the stock CA bundle. So the hop is authenticated as well as encrypted.
+- **`ingress_trusted_proxy_count` is 3.** Three hops append to `X-Forwarded-For`: the web ingress
+  appends the client, nginx appends that ingress's envoy, and the API's internal ingress appends
+  nginx. I had it at 2 until 24 Sep 2026, and nothing complained. Every request was keyed on the web
+  ingress's envoy address, so the rate limiter held one bucket for the whole internet and
+  *Signed-in devices* showed the same IP for everyone. The lesson: count the entries that get
+  appended, not the proxies.
+- **`SECURITY_CORS_ALLOWED_ORIGINS` names the web app**, not the API. nginx forwards the browser's
+  `Origin` unchanged, so Spring sees the address the user typed. Get it wrong and every call from the
+  board fails with a 403 `Invalid CORS request` while the page itself loads fine.
+- **One `app_image_tag` feeds both apps.** The bundle and the API it calls used to be one artifact
+  and couldn't disagree. One tag across both images keeps that guarantee. Please don't split the
+  variable for convenience; that's what makes version skew possible.
 
-Two name patterns are composed independently — `kanban-api-<env>` in the API module, and the same
-string inside the edge's upstream in the web module — so that neither module depends on the other's
-resources. A `check` block in the root module asserts they still agree, because the failure
-otherwise is a green apply and a 502 on every API call.
+The API's name is built twice, once in the API module and once inside the edge's upstream in the web
+module, so neither module depends on the other's resources. A `check` block in the root module
+makes sure they still agree, because otherwise the failure is a green apply followed by a 502 on
+every API call.
 
-#### Moving the state, once
-
-The module rename is not free: `modules/container_app` became `modules/api_app`, and the app it
-manages was renamed from `kanban-app-<env>` to `kanban-api-<env>`. Terraform reads that as one
-module destroyed and two created. Before the first apply on an existing environment:
-
-```bash
-terraform state mv module.container_app module.api_app
-```
-
-That keeps the identity, the role assignments and the generated JWT secret where they are — without
-it, the JWT secret is recreated with a fresh key and every signed-in user is signed out. The
-container app resource itself is still replaced (its `name` changed, which forces a new resource);
-that is a normal rolling revision and the only visible effect is a restart.
-
-### The container image
+### The container images
 
 The apps pull `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>` and
 `ghcr.io/<github_repository_owner>/kanbanproject-web:<app_image_tag>`.
 
-`github_repository_owner` has to name the account **`kanban-cd.yml` publishes to** — the
-workflow pushes under the repository owner, so on a fork that is the fork's owner, not the
-upstream's. A wrong value plans cleanly and then fails at pull time, which is a slow way to
-find out.
+`github_repository_owner` has to be the account `kanban-cd.yml` publishes to. The workflow pushes
+under the repository owner, so on a fork that's the fork's owner. A wrong value plans fine and then
+fails at pull time.
 
-GHCR authenticates with an account name and a token. Unlike ACR it does not accept an Azure
-managed identity, so the app's user-assigned identity cannot do the pull. Two shapes work:
+GHCR authenticates with a user name and a token. Unlike ACR it doesn't accept an Azure managed
+identity, so the apps can't use theirs. Two setups work:
 
-- **Public package** — leave `ghcr_username` and `ghcr_token` empty. The template declares no
-  registry and the pull is anonymous. This is the default, and it is only a choice while the
-  package is genuinely public.
-- **Private package** — set both. The token (a PAT with `read:packages`) is written to Key
-  Vault as `GHCR-TOKEN` and read back through each app's identity, so it never sits in a
-  Container App template in clear text. Setting `ghcr_token` without `ghcr_username` fails the
-  plan.
+- **Public package**: leave `ghcr_username` and `ghcr_token` empty. No registry is declared and the
+  pull is anonymous. That's the default, and only makes sense while the package really is public.
+- **Private package**: set both. The token (a PAT with `read:packages`) goes into Key Vault as
+  `GHCR-TOKEN` and each app reads it through its identity, so it never appears in a template in
+  clear text. Setting `ghcr_token` without `ghcr_username` fails the plan.
 
-  The two apps read it through **different identities**, and the edge's grant is scoped to the
-  `GHCR-TOKEN` secret alone rather than to the vault. That is the one thing the split must not
-  make worse: a vault-scoped grant would let the nginx container read the Postgres password and
-  the JWT signing key, which is a strictly weaker posture than the monolith had, arrived at for
-  reasons that have nothing to do with secrets.
+  The two apps read it through **different identities**, and the web app's grant covers the
+  `GHCR-TOKEN` secret only, not the whole vault. Otherwise the nginx container could read the
+  Postgres password and the JWT key, which it has no business doing.
 
-A private package with neither set fails with `ImagePullBackOff` and nothing to authenticate
-with.
+A private package with neither set fails with `ImagePullBackOff`.
 
 ### Key Vault network access
 
-The vault denies public traffic by default (`key_vault_network_default_action = "Deny"`)
-and admits the private endpoint, trusted Azure services (Key Vault references) and
-whatever is listed in `key_vault_allowed_ips`. Nothing discovers an
-address for you -- the config used to look the caller's public IP up over the internet
-on every plan, which meant the committed allow-list silently became "whoever ran
-Terraform last", left that address on the vault until the next apply, and could never
-describe a CI runner with rotating egress.
+The vault denies public traffic (`key_vault_network_default_action = "Deny"`). It admits the
+private endpoint, trusted Azure services (Key Vault references) and whatever is in
+`key_vault_allowed_ips`. Nothing discovers your address for you. An earlier version looked up the
+caller's public IP on every plan, which quietly turned the allow-list into "whoever ran Terraform
+last" and could never describe a CI runner with changing addresses.
 
-That matters because Terraform writes secrets over the vault's **data plane**. An apply
-from outside the VNet with no matching entry fails on `azurerm_key_vault_secret` with
-`Forbidden` / `Client address is not authorized`, which reads like the RBAC propagation
-delay below but is not -- re-running will not fix it.
+This matters because Terraform writes secrets over the vault's **data plane**. An apply from outside
+the VNet without a matching entry fails on `azurerm_key_vault_secret` with `Forbidden` / `Client
+address is not authorized`. That looks like the RBAC propagation delay described below, but it isn't,
+and re-running won't help.
 
-Pick one durable path per environment:
+Pick one path per environment:
 
 | Where `terraform apply` runs | What to configure |
 |---|---|
-| A self-hosted runner inside the VNet | Nothing. The subnet is already allowed; leave `key_vault_allowed_ips` empty. |
+| A self-hosted runner inside the VNet | Nothing. Leave `key_vault_allowed_ips` empty. |
 | A runner or office with a stable egress IP | Commit that address or range to the environment's `*.tfvars`. |
-| A developer workstation | Set `key_vault_allowed_ips` in the gitignored `dev.local.tfvars`; find your address with `(Invoke-RestMethod https://api.ipify.org)`. Refresh it when your ISP rotates it. |
+| A developer workstation | Set `key_vault_allowed_ips` in the gitignored `dev.local.tfvars`. Find your address with `(Invoke-RestMethod https://api.ipify.org)`, and update it when your ISP changes it. |
 
-Keep the committed list to addresses that do not move. A workstation address belongs in
-the local override, so it never lands in the repository or in another environment's plan.
+Only commit addresses that don't move. A workstation address belongs in the local override so it
+never ends up in the repo or in another environment's plan.
+
 ### Custom domain
 
-`custom_domain` binds a hostname to the edge with an Azure-managed certificate validated over
-HTTP; dev sets `kanbanproject.pl`. Its `https://` origin is added to the API's CORS list, so it
-does not also need to be in `extra_cors_origins`. DNS stays at the registrar: the apex `A` record
-points at the environment's static IP and the `asuid` TXT record carries the verification id.
+`custom_domain` binds a hostname to the web app with an Azure-managed certificate validated over
+HTTP. Dev used `kanbanproject.pl`. Its `https://` origin is added to the API's CORS list
+automatically, so it doesn't also need to be in `extra_cors_origins`. DNS stays at the registrar:
+the apex `A` record points at the environment's static IP, and the `asuid` TXT record carries the
+verification id.
 
-Creating one from scratch is two applies, because Azure validates the certificate against a
-hostname already added to the app: add the domain with binding `Disabled` first, then create the
-certificate. dev's pair was made in the portal and adopted with `import` blocks.
+Creating one from scratch takes two applies, because Azure validates the certificate against a
+hostname that's already on the app: first add the domain with binding `Disabled`, then create the
+certificate. I made dev's pair in the portal and adopted them with `import` blocks.
 
-### Container App ingress restrictions
+### Ingress restrictions
 
-**What this is for: keeping non-prod environments off the public internet. It is not
-a defence for prod.**.
+This is for keeping non-prod environments off the public internet. **It is not a defence for
+prod.**
 
-These live on the **web** app since the split, which is the only app with a public ingress. The API
-app has none to restrict, and that is the stronger control of the two: `allowed_ingress_cidrs` is
-empty in every environment today, while `external_enabled = false` is unconditional.
+The restriction sits on the web app, the only app with a public ingress. The API has nothing to
+restrict, and that's the stronger control: `allowed_ingress_cidrs` is empty everywhere today, while
+`external_enabled = false` on the API always holds.
 
-The edge is internet-facing and proxies `/api/auth/**` -- login, signup, verification-code resend --
-which is served without authentication. `allowed_ingress_cidrs` renders one
+The web app is internet-facing and proxies `/api/auth/**` (login, signup, resending the
+verification code), which needs no authentication. `allowed_ingress_cidrs` renders one
 `ip_security_restriction` block per entry:
 
 ```hcl
 allowed_ingress_cidrs = ["203.0.113.42/32", "198.51.100.0/24"]
 ```
+
 ### Key Vault durability
 
-The vault holds the only copy of the generated secrets: they are write-only, so not even
-Terraform state has them. Losing the vault means bumping each version variable to issue new
-ones, which signs everyone out.
+The vault holds the only copy of the generated secrets. They're write-only, so not even state has
+them. Losing the vault means bumping each version variable to issue new ones, which signs everybody
+out.
 
-**The vault name carries a random suffix**, the same way the Postgres server name does:
-`kv-${env}-kanban-${suffix}`. Vault names are globally unique, so the unsuffixed name could
-already belong to another tenant -- and worse, a failed apply soft-deletes the vault and reserves
-its name for the full `soft_delete_retention_days` window, which is 90 days in uat and prod. Every
-retry then fails on the name until it expires or is purged. Adding the suffix to an environment
-that already exists **replaces the vault**: plan it before the environment carries anything you
-cannot regenerate, and note that the two secrets above are exactly what you cannot.
+The vault name has a random suffix, `kv-${env}-kanban-${suffix}`, like the Postgres server. Vault
+names are globally unique, so a plain name could already belong to another tenant. Worse, a failed
+apply soft-deletes the vault and reserves its name for the whole retention window, so every retry
+would fail on the name for 90 days.
 
-Soft delete is always on and cannot be disabled, but on its own it does not save you
-here, because the azurerm provider's `key_vault.purge_soft_delete_on_destroy` feature
-defaults to **true** -- a `terraform destroy` deletes the vault and then purges it in
-the same run. The `features` block in `providers.tf` turns that off by default.
+Soft delete is always on, but by itself it doesn't protect you, because the provider's
+`purge_soft_delete_on_destroy` defaults to **true**: `terraform destroy` deletes the vault and purges
+it in the same run. The `features` block in `providers.tf` turns that off unless an environment
+asks for it.
 
-Two settings, both per-environment:
-
-| | dev | uat / prod |
+| | dev | uat / prod templates |
 |---|---|---|
 | `key_vault_purge_protection_enabled` | `false` | `true` |
 | `key_vault_purge_soft_delete_on_destroy` | `true` | `false` |
 | `key_vault_soft_delete_retention_days` | 90 | 90 |
 
-dev is disposable on purpose. Vault names are deterministic (`kv-<env>-kanban`) and a
-soft-deleted name stays reserved for the whole retention window, so protecting dev
-would mean a teardown blocks its own rebuild for 90 days. uat and prod are the other
-way round: a destroy there leaves a recoverable vault, and the next `terraform apply`
-picks it back up, because the provider's `recover_soft_deleted_key_vaults` default
-restores a soft-deleted vault rather than failing on the name.
+Dev is disposable on purpose: tearing it down purges the vault so nothing is left behind. In uat
+and prod a destroy would leave a recoverable vault, and the next apply would pick it back up,
+because the provider restores a soft-deleted vault instead of failing on the name.
 
-Two one-way doors in that table:
+Two of those settings can't be undone:
 
-- **Purge protection cannot be switched off.** Azure accepts an apply that enables it
-  and rejects every apply that tries to disable it. Once uat or prod has been applied,
-  removing the vault before its retention window expires is not possible through
-  Terraform or the portal, and a support ticket will not shorten it either.
-- **`soft_delete_retention_days` is immutable.** The provider marks it ForceNew, so
-  changing the number plans a destroy and recreate of the vault -- which, on a
-  purge-protected vault, is a plan that cannot apply. It is pinned to 90 (Azure's
-  default and its maximum) everywhere so no environment ever plans that replacement.
+- **Purge protection can't be turned off.** Azure accepts an apply that enables it and rejects any
+  that disables it. After that, the vault can't be removed before its retention window ends, not
+  through Terraform, the portal or a support ticket.
+- **`soft_delete_retention_days` is immutable.** The provider marks it ForceNew, so changing it plans
+  a replacement, which on a purge-protected vault can't apply. I pin it to 90 (Azure's default and
+  maximum) everywhere so no environment ever plans that.
+
 ### Network security groups
 
-All five subnets carry an NSG (`nsg-backend-${env}`, `nsg-db-${env}`,
-`nsg-pe-${env}`, `nsg-storage-${env}`, `nsg-redis-${env}`), defined in
-[modules/vnet/nsg.tf](modules/vnet/nsg.tf) alongside the subnets whose CIDRs they
-reference.
+All six subnets have an NSG (`nsg-backend-${env}`, `nsg-db-${env}`, `nsg-pe-${env}`,
+`nsg-storage-${env}`, `nsg-redis-${env}`, `nsg-monitoring-${env}`), defined in
+[modules/vnet/nsg.tf](modules/vnet/nsg.tf) next to the subnets whose CIDRs they use.
 
-The reason they exist is the last of Azure's built-in rules: `AllowVnetInBound` at
-priority 65000 permits any address in the vnet to reach any port in any other subnet.
-Without an NSG, a foothold anywhere in `snet-backend` reaches Postgres on 5432
-directly. Each NSG therefore re-denies inbound `VirtualNetwork` traffic at priority
-4096 and re-allows only the documented flows:
+They exist because of one of Azure's built-in rules: `AllowVnetInBound` at priority 65000 lets
+anything in the VNet reach any port in any other subnet. Without NSGs, a foothold anywhere in
+`snet-backend` could reach Postgres on 5432 directly. So each NSG denies inbound `VirtualNetwork`
+traffic at priority 4096 and allows only the flows that should exist:
 
-| | `snet-backend` (10.0.0.0/23) | `snet-db` (10.0.2.0/24) | `snet-pe` (10.0.3.0/28) | `snet-storage` (10.0.3.16/28) | `snet-redis` (10.0.3.32/28) |
-|---|---|---|---|---|---|
-| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` | 10000 from `snet-backend` |
-| 110 | anything within the subnet | anything within the subnet | -- | -- | -- |
-| 120 | 30000-32767 from `AzureLoadBalancer` | -- | -- | -- | -- |
-| 4096 | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` | deny inbound from `VirtualNetwork` |
+| | `snet-backend` | `snet-db` | `snet-pe` | `snet-storage` | `snet-redis` | `snet-monitoring` |
+|---|---|---|---|---|---|---|
+| 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` | 10000 from `snet-backend` | 443 from `snet-backend` |
+| 110 | anything within the subnet | anything within the subnet | | | | |
+| 120 | 30000-32767 from `AzureLoadBalancer` | | | | | |
+| 4096 | deny inbound from `VirtualNetwork` | same | same | same | same | same |
 
-The deny is sourced on `VirtualNetwork` rather than `*` so the platform's
-`AllowAzureLoadBalancerInBound` at 65001 still applies. Rule 110 is not optional in
-either subnet: the Container Apps consumption environment's own components talk
-across the infrastructure subnet on unpublished ports, and flexible server replicates
-to its standby inside the delegated subnet. Neither endpoint subnet needs such a rule
--- they hold private endpoint NICs and nothing that talks to a neighbour.
+The deny's source is `VirtualNetwork` rather than `*`, so the platform's
+`AllowAzureLoadBalancerInBound` at 65001 still applies. Rule 110 is required in both of those
+subnets: Container Apps' own components talk across the infrastructure subnet on unpublished ports,
+and the flexible server replicates to its standby inside the delegated subnet.
 
-**The endpoint subnets only get an NSG because their network policies are switched
-on.** Azure does not apply NSGs to private endpoint NICs by default, which is why
-`private_endpoint_network_policies` on `snet-pe`, `snet-storage` and `snet-redis` is
-`NetworkSecurityGroupEnabled` rather than the `Disabled` that private endpoints ship
-with. Set either back to `Disabled` and its NSG stays associated and stops being
-enforced, silently. Each carries one allow rule from `snet-backend` -- 443 for the vault
-and the blob service, 10000 for Redis -- because reaching that service over its endpoint
-is the only reason anything in the vnet talks to that subnet.
+**The endpoint subnets' NSGs only work because network policies are on.** Azure doesn't apply NSGs
+to private endpoint NICs by default, which is why `private_endpoint_network_policies` on `snet-pe`,
+`snet-storage` and `snet-redis` is `NetworkSecurityGroupEnabled` instead of the default `Disabled`.
+Set it back to `Disabled` and the NSG stays attached but silently stops being enforced.
 
-They are separate subnets for the sake of those rules. Sharing a subnet
-would mean one NSG and one rule reading "anything in `snet-backend` may reach 443
-anywhere in here", so the blob endpoint would take its reachability from a rule named
-`AllowKeyVaultFromBackend`. Splitting them costs a /28 out of a /16 and keeps each
-service's reachability its own line.
+`ingress_source_address_prefixes` defaults to `["Internet"]`, which the web app's public ingress
+needs. Narrow it in a `*.tfvars` file for an environment that shouldn't be public. It only filters at
+the subnet edge, so it's a blunt tool, not a WAF.
 
-`ingress_source_address_prefixes` defaults to `["Internet"]`, which is what the
-container app's `external_enabled = true` needs. Narrow it in a `*.tfvars` file for
-an environment that should not be publicly reachable -- note that this only filters
-at the subnet edge, so it is a blunt instrument rather than a substitute for a WAF.
-
-**Outbound is deliberately left on the Azure defaults.** The app's egress does not
-reduce to service tags: it pulls its image from `ghcr.io`, sends mail over HTTPS to
-the Azure Communication Services Email API and verifies captchas against
-`google.com`, on top of what the
-consumption environment itself needs (MCR, Entra ID, Azure Monitor, Azure Files on
-445, NTP on UDP 123). A default-deny egress rule that misses one of those surfaces as
-a revision that never becomes healthy rather than as a clear error, so egress
-filtering belongs behind a NAT gateway or firewall, not here.
+**Outbound is left on Azure's defaults, deliberately.** The app's egress doesn't fit into service
+tags. It pulls images from `ghcr.io`, sends mail over HTTPS to the ACS Email API and verifies
+captchas against `google.com`, on top of what the environment itself needs (MCR, Entra ID, Azure
+Monitor, Azure Files on 445, NTP on UDP 123). A default-deny egress rule that misses one of those
+shows up as a revision that never becomes healthy, not as a clear error. If I ever filter egress, it
+will be behind a NAT gateway or firewall, not in these NSGs.
 
 ### Attachment storage
 
-Task attachments are files somebody uploaded to a card. They go to a Storage account
-(`modules/storage`) rather than into Postgres, and the arrangement is worth reading before
-changing any of it, because three settings depend on each other.
+Task attachments go to a Storage account (`modules/storage`), not Postgres. Read this before
+changing anything here, because three settings depend on each other.
 
-**Nothing outside the VNet can reach it.** `public_network_access_enabled = false`, a
-`network_rules` default of `Deny`, and a private endpoint in `snet-storage` (`10.0.3.16/28`, its own
-NSG allowing 443 from the backend subnet only). The `privatelink.blob.core.windows.net` zone linked
-to the VNet is what makes the application resolve the account to that endpoint. The only thing that
-ever talks to this account is the app, over that endpoint, as its own managed identity.
+**Nothing outside the VNet can reach it.** `public_network_access_enabled = false`, `network_rules`
+default to `Deny`, and there's a private endpoint in `snet-storage` whose NSG allows 443 from the
+backend subnet only. The `privatelink.blob.core.windows.net` zone linked to the VNet is what makes the
+API resolve the account to that endpoint. The only thing that ever talks to the account is the API,
+over that endpoint, as its own managed identity.
 
-**That is what the download route costs, and it is worth stating plainly.** The first cut of this
-feature signed a five-minute read-only SAS over one blob and let the browser fetch from Azure
-directly -- cheaper, and it keeps ten-megabyte transfers off a container sized at a quarter of a
-CPU. It also requires the account to answer every address a browser might arrive from, because that
-is where browsers are. Closing the account means the bytes come back through the application:
-`GET /api/tasks/{id}/attachments/{aid}/content` streams from storage to the response. Streamed, not
-buffered -- nothing on that path holds a whole file -- but it is the app's CPU and its bandwidth
-now, and a replica cap of 1 means one process carries all of it. If attachment traffic ever
-outgrows that, the way out is Front Door with a private origin, not reopening the account:
-[front-door-private-origin.md](front-door-private-origin.md) has the design, the cheaper things to
-try first, and the four traps -- including why turning on CDN caching in front of a SAS is a
-security bug rather than a tuning decision.
+**That's why downloads go through the API.** My first version signed a five-minute read-only SAS for
+one blob and let the browser fetch it from Azure directly. It was cheaper and kept large transfers off
+small containers, but it needed the account to accept traffic from anywhere a browser might be.
+With the account closed, `GET /api/tasks/{id}/attachments/{aid}/content` streams the file from storage
+to the response. It streams rather than buffering, but it's still the API's CPU and bandwidth. If
+attachment traffic ever outgrows that, the way out is Front Door with a private origin, not
+reopening the account. [front-door-private-origin.md](front-door-private-origin.md) has that design,
+the cheaper things to try first, and the traps, including why CDN caching in front of a SAS is a
+security bug.
 
-Two Checkov rules stopped needing skips when this changed: `CKV2_AZURE_33` (private endpoint) and
-`CKV_AZURE_59` (public network access). What remains skipped for this account is `CKV_AZURE_33`
-(queue logging, on an account with no queue service) and `CKV2_AZURE_1` (customer-managed keys).
+Checkov still skips two rules for this account: `CKV_AZURE_33` (queue logging, on an account with no
+queues) and `CKV2_AZURE_1` (customer-managed keys).
 
-**There is no account key, and no connection string could exist.** `shared_access_key_enabled
-= false`, so the only way in is Entra ID: the Container App authenticates as its user-assigned
-identity and reads and writes blobs as itself. Nothing about the storage account is a secret --
-no Key Vault entry, nothing in the container template, nothing in Terraform state. The blob
-endpoint and the identity's client id are passed as plain environment variables because neither of
-them proves anything, and both come from Terraform's own outputs rather than from anybody's
-tfvars.
-
-Mail used to be the contrast: its connection string was a value somebody pasted, because Terraform
-did not own the Communication Services resource. It does now, and reads the string itself, so
-neither has anything to carry between two systems.
+**There's no account key.** `shared_access_key_enabled = false`, so the only way in is Entra ID. The
+API authenticates as its user-assigned identity and reads and writes blobs as itself. Nothing about
+the storage account is secret: no Key Vault entry, nothing in the template or state. The blob
+endpoint and the identity's client id are plain environment variables taken from Terraform outputs.
 
 | Principal | Role | Why |
 |---|---|---|
-| The Container App's user-assigned identity | `Storage Blob Data Contributor` | Reads and writes the attachment blobs, and creates the container on first start |
+| The API's user-assigned identity | `Storage Blob Data Contributor` | Reads and writes attachment blobs, and creates the container on first start |
 
-`Contributor` rather than the narrower reader/writer pair, because **Terraform does not create the
-blob container** -- the application does, on first start. Creating a container is a data-plane call,
-which from Terraform would need either the account key back or a blob data role for whoever runs
-`apply`; the identity that writes the blobs can make the container it writes them into, and doing so
-is idempotent. That role assignment gets the same `time_sleep` the Key Vault one does, for the same
-reason, and is keyed on the assignment id the same way -- see *Role assignments propagate
-asynchronously* below.
+It's Contributor rather than a narrower role because **Terraform doesn't create the blob
+container**; the app does, on first start. Creating a container is a data-plane call, which from
+Terraform would need either the account key or a blob data role for whoever runs `apply`. The
+identity that writes the blobs can create the container itself, and doing it again is harmless. The
+role assignment gets the same keyed `time_sleep` as the Key Vault ones (see
+[Key Vault authorization](#key-vault-authorization)).
 
-Two things to know when operating it:
+Things to know when operating it:
 
-- **The account name carries a random suffix and the resource is `prevent_destroy`.** The storage
-  namespace is global, so the name cannot be derived from the environment alone -- and a replaced
-  account is a new, empty one, while every `task_attachments` row still points at the old blobs.
-- **Replication is a variable, unlike the Postgres geo-redundancy flag next door.** `GRS` is the
-  module default and what prod uses; dev and uat set `LRS` in their tfvars. Azure lets this be
-  changed after the fact, so it is not a decision that has to be right before the account holds
-  anything.
-- **Blob soft delete is tied to the database's restore window, on purpose.** `retention_days` comes
-  from `postgres_backup_retention_days` (35 in dev and prod, 14 in uat) rather than a number of
-  its own. An attachment is half a row in Postgres and half a blob here, with no foreign key and no
-  transaction across the two; the only thing that lets both be rolled back to the same instant is
-  that their recovery windows are the same length. A shorter window here means a database restored
-  three weeks back comes up holding `task_attachments` rows whose blobs were purged a fortnight
-  earlier -- rows pointing at nothing, which is precisely the failure the write ordering in
-  `TaskAttachmentService` was arranged to make impossible. `attachment_retention_days` unties them
-  when that is what you want; Azure allows 1-365 days here against a Postgres maximum of 35.
-- **The blobs are copied out of the region, by object replication.** The account has versioning
-  and the change feed on, and `modules/backup` replicates its container into a GRS account in the
-  backup resource group (Sweden Central), the same place the database dumps go. Replication is a
-  storage-service copy, so it needs no endpoint in the VNet and nothing in the app changes. A
-  delete is replicated as "the current version became a previous one", so the copy keeps a deleted
-  file for the same `retention_days`, after which a lifecycle rule on each side expires previous
-  versions. The destination container refuses writes while the policy exists; to restore, copy
-  back from it, or remove the policy first. The container name is passed to the app as
-  `AZURE_STORAGE_CONTAINER` from the same output the replication rule reads, so the two cannot
-  name different containers.
+- **The account name has a random suffix and the resource is `prevent_destroy`.** Storage names are
+  global, and a replaced account is a new empty one while every `task_attachments` row still points
+  at the old blobs.
+- **Replication is a variable.** `GRS` is the module default and what prod would use; dev and uat set
+  `LRS`. Azure lets you change this later, so it doesn't have to be right on day one.
+- **Blob soft delete matches the database's restore window.** `retention_days` comes from
+  `postgres_backup_retention_days` instead of a number of its own. An attachment is half a row in
+  Postgres and half a blob here, with no foreign key or transaction across them. The only way to roll
+  both back to the same moment is to give them recovery windows of the same length. If this one were
+  shorter, a database restored three weeks back would come up with rows pointing at purged blobs.
+  `attachment_retention_days` separates them if you really want that.
+- **Blobs are copied to another region.** The account has versioning and the change feed on, and
+  `modules/backup` replicates its container into a GRS account in the backup resource group (Sweden
+  Central), next to the database dumps. It's a storage-service copy, so it needs no VNet endpoint and
+  nothing changes in the app. A delete replicates as "the current version became a previous one", so
+  the copy keeps a deleted file for the same `retention_days`. The destination refuses writes while
+  the policy exists; to restore, copy back from it or remove the policy first.
 
-An environment that sets no storage endpoint at all still runs: the app starts, reports
-`OUT_OF_SERVICE` for `attachments` on `/actuator/health`, and refuses uploads with a `503` that says
-storage is not configured. That is the same allowance mail makes, and it is what lets CI and a fresh
-clone run without an Azure subscription.
+An environment with no storage configured still runs. The app starts, reports `attachments` as
+`OUT_OF_SERVICE` on `/actuator/health`, and refuses uploads with a `503` saying storage isn't
+configured. That's the same allowance mail makes, and it's what lets CI and a fresh clone run
+without Azure.
 
 ### Rate limiter Redis
 
-`modules/redis` provisions the **Azure Managed Redis** instance `AuthRateLimiter`'s escalation lives
-in — phase 3 of the container split plan. It was the first of that phase's two remaining
-multi-replica blockers to be cleared; the STOMP broker relay below was the other, and both are now
-done. It is Managed Redis rather than the classic Cache for Redis this module shipped with
-first: the first apply against dev of `azurerm_redis_cache` was refused outright —
-`Azure Cache for Redis is retiring, create Azure Managed Redis instance instead` — on a subscription
-that had never created either kind before. Managed Redis is Redis Enterprise underneath (still
-`Microsoft.Cache`, so `providers.tf` needed no new namespace registration), which is why several
-shapes below differ from a classic cache at once: there is no top-level access-key/TLS toggle,
-because those live on `default_database` instead, and the private endpoint's subresource and DNS
-zone both name `redisEnterprise` rather than `redis`. Four decisions carry it.
+`modules/redis` provisions the **Azure Managed Redis** instance where `AuthRateLimiter` keeps its
+escalation state, so the login and signup limits hold across API replicas. I started with classic
+Azure Cache for Redis, but the first apply was refused outright (`Azure Cache for Redis is retiring,
+create Azure Managed Redis instance instead`). Managed Redis is Redis Enterprise underneath, still
+under `Microsoft.Cache`, but several things differ from a classic cache: the access-key and TLS
+settings live on `default_database`, and the private endpoint's subresource and DNS zone are both
+`redisEnterprise`.
 
-**`Balanced_B0`, the smallest SKU in the smallest family, and that is not a cost shortcut being
-excused after the fact.** It has no replica and no SLA beyond the single node; nothing here asks
-for either, because what this cache holds is disposable by design. `RedisEscalationStore` fails
-every attempt **open** when it cannot reach Redis or cannot read what it answered — a connection
-refused, a timeout, a malformed script result — so losing the cache costs whoever is mid-escalation
-their burst back, never a request that should have been refused and was not blocked by anything the
-application actually relies on. Paying for a larger SKU would buy availability for state the code
-already treats as expendable.
+**It's `Balanced_B0`, the smallest SKU there is, and that's fine.** It has no replica and no SLA
+beyond the single node, and nothing needs more. `RedisEscalationStore` **fails open** whenever it
+can't reach Redis or can't read its answer, so losing the cache only gives someone mid-escalation
+their burst back. A bigger SKU would buy availability for state the code already treats as
+expendable.
 
-**It answers nobody but the application, the same posture attachment storage and Key Vault have.**
-`public_network_access = "Disabled"` and a private endpoint in the same subnet Key Vault's already
-uses — no new subnet, no new NSG rule, because this is a second private endpoint into an existing
-one rather than a service that needed its own. `default_database.client_protocol = "Encrypted"` is
-Managed Redis's equivalent of a classic cache's `minimum_tls_version`: there is no managed-identity
-data plane for Redis the way blob storage has one, so the access key is the only thing standing in
-for authentication, and it must never cross the wire unencrypted. The database answers on port
-`10000`, not the `6379`/`6380` a classic cache would have used — `modules/redis`'s `port` output
-names it rather than a literal anywhere else, precisely so this detail doesn't have to be re-learned
-by a second failed apply.
+**It answers only the API.** `public_network_access = "Disabled"`, and there's a private endpoint in
+`snet-redis` whose NSG allows port 10000 from the backend subnet. `client_protocol = "Encrypted"`
+enforces TLS. The database listens on `10000`, not the `6379`/`6380` of a classic cache; the module's
+`port` output carries that so nothing else hardcodes it.
 
-**There is no access key.** `access_keys_authentication_enabled = false`, and the API logs in as
-its own managed identity: `modules/api_app` grants it an
-`azurerm_managed_redis_access_policy_assignment` on the default database, and passes its client id
-and object id as `SECURITY_RATE_LIMIT_REDIS_ENTRA_CLIENT_ID` and `SECURITY_RATE_LIMIT_REDIS_USERNAME`.
-`RedisRateLimitConfiguration` hands Jedis a token manager that fetches a token for
-`https://redis.azure.com/.default` and renews it before it expires, re-authenticating the pooled
-connections in place. That removes the `REDIS-ACCESS-KEY` secret, and with it the trap where a
-regenerated key reached Key Vault but not a running revision. The container app depends on the
-assignment, so a new revision never starts before its identity may log in. With neither variable
-set (docker-compose, CI) the app connects unauthenticated, as before.
+**There's no access key.** `access_keys_authentication_enabled = false`, and the API logs in as its
+managed identity. `modules/api_app` grants it an `azurerm_managed_redis_access_policy_assignment` on
+the default database and passes its client id and object id as
+`SECURITY_RATE_LIMIT_REDIS_ENTRA_CLIENT_ID` and `SECURITY_RATE_LIMIT_REDIS_USERNAME`.
+`RedisRateLimitConfiguration` gives Jedis a token manager that fetches a token for
+`https://redis.azure.com/.default` and renews it before it expires. That got rid of the old
+`REDIS-ACCESS-KEY` secret, along with the trap where a regenerated key reached Key Vault but not the
+running revision. The API depends on the assignment, so a new revision never starts before its
+identity is allowed in. With neither variable set (docker-compose, CI), the app connects without
+authentication.
 
-Locally and in CI, `security.rate-limit.redis-host` defaults to `localhost`: docker-compose runs a
-plain `redis:7-alpine` with no password and no TLS (the same trust boundary Postgres and Azurite
-already have on that network), and the CI backend job runs one as a service container next to
-Postgres. Nothing about the escalation's behaviour differs between that and the deployment's
-encrypted Managed Redis — only the connection does, which is exactly what
+Locally and in CI, `security.rate-limit.redis-host` defaults to `localhost`. docker-compose runs a
+plain `redis:7-alpine` with no password and no TLS, and the CI backend job runs one as a service
+container. The escalation logic behaves the same; only the connection differs, which is what
 `security.rate-limit.redis-ssl` switches.
 
 ### RabbitMQ broker
 
-`modules/broker` provisions the STOMP broker `WebSocketConfig.configureMessageBroker` relays to —
-the other half of phase 3, and the last piece of in-JVM state the container split left behind: with
-no shared broker, two API replicas each held their own in-memory relay and a board event published
-by one never reached a subscriber connected to the other. It is deployed as a third Container App,
-`kanban-broker-<env>`, landing in the **same Managed Environment** as `web_app` and `api_app` rather
-than a subnet or a managed service of its own — an internal TCP ingress reachable only from other
-apps in that one environment is a materially tighter boundary than Postgres's or Redis's own private
-endpoints (reachable from anywhere in the VNet), and needs neither a subnet nor a private endpoint
-to get it.
+`modules/broker` runs the STOMP broker that `WebSocketConfig.configureMessageBroker` relays to. Each
+API replica used to keep its own in-memory broker, so a board event published on one replica never
+reached a browser connected to another. The shared broker fixed that. It's a Container App,
+`kanban-broker-<env>`, in the same environment as the web and API apps. An internal TCP ingress
+that only apps in that environment can reach is a tighter boundary than a private endpoint, which
+anything in the VNet can reach, and it needs no subnet of its own.
 
-Four decisions carry it:
+The decisions behind it:
 
-- **Fixed at `min_replicas = max_replicas = 1`, deliberately, and unrelated to `api_max_replicas`.**
-  A second, unclustered RabbitMQ would be a second broker nothing relays between — not a second
-  replica of the same one, which is the exact failure this module exists to remove. Clustering
-  RabbitMQ for its own redundancy is a separate, considerably larger undertaking this deployment
-  does not need at its current scale, the same "smallest viable thing" call the Redis SKU and the
-  JDK HTTP client already made elsewhere. Losing the broker loses in-flight board/chat frames, not
-  data: nothing here is durable, and a reconnecting client re-subscribes and re-reads rather than
-  replaying a queue.
-- **The stock `rabbitmq:4-alpine` image, pinned by digest, with the STOMP plugin turned on at
-  container start rather than baked into a custom one.** A bare tag lets a restart pull a different
-  image, which is the drift `app_image_tag` is a full SHA to prevent. Dependabot bumps the digest
-  in `docker-compose.yml`, and `PinnedImagesTest` fails the build until this module names the same
-  one, so the local stack and the deployment move together. The image ships with the plugin off; the container's `command`
-  runs `rabbitmq-plugins enable --offline rabbitmq_stomp` (needs no running broker) and then hands
-  off to the image's own entrypoint. A purpose-built image was declined — one `RUN` line does not
-  justify a third image in the CD build/scan/promote matrix.
-- **One account, `kanban`, for both `WebSocketConfig`'s client login and its system login.**
-  RabbitMQ has no notion of a caller identity past the TCP connection its STOMP plugin terminates,
-  so splitting client/system credentials would buy nothing. The password is generated
-  (`random_password`) and stored as the `RABBITMQ-PASSWORD` Key Vault secret, owned by the
-  module; the
-  broker's own identity is scoped to that one secret rather than the vault, same narrow-grant
-  pattern the web app's `GHCR-TOKEN` reader gets.
-- **Health checking is TCP-only.** There is no HTTP endpoint to ask, only a port (`61613`) that
-  either accepts a connection or does not, so all three probes are `transport = "TCP"`. The startup
-  probe's threshold is generous relative to the other two apps' — the Erlang VM plus the
-  plugin-enable step is slower to come up than either JVM.
+- **Exactly one replica, unrelated to `api_max_replicas`.** A second unclustered RabbitMQ would just
+  be another broker nobody relays between, which is the exact problem this module solves. Clustering
+  RabbitMQ is a much bigger job, and I don't think this project needs it at its size. If the broker
+  goes down, in-flight board and chat frames are lost, not data: nothing here is durable, and a
+  reconnecting client re-subscribes and reloads.
+- **The stock `rabbitmq:4-alpine` image, pinned by digest, with the STOMP plugin enabled at start.**
+  A bare tag would let a restart pull a different image. Dependabot bumps the digest in
+  `docker-compose.yml`, and `PinnedImagesTest` fails the build until this module names the same
+  digest, so local and deployed stay in step. The container's `command` runs
+  `rabbitmq-plugins enable --offline rabbitmq_stomp` and then hands over to the image's entrypoint.
+  I didn't build a custom image for this: one line didn't seem worth a third image in the CD
+  build, scan and promote steps.
+- **One account, `kanban`, for both the client and system logins.** RabbitMQ can't tell callers
+  apart beyond the TCP connection, so separate credentials wouldn't buy anything. The password is
+  generated and stored as the `RABBITMQ-PASSWORD` secret, and the broker's identity can read that one
+  secret only.
+- **Health checks are TCP only.** There's no HTTP endpoint, just port `61613`, so all three probes
+  use `transport = "TCP"`. The startup probe is more patient than the other apps', because Erlang
+  plus the plugin step starts slower than either JVM.
 
-`api_app` reads `STOMP_RELAY_HOST` / `STOMP_RELAY_PORT` / `STOMP_RELAY_USERNAME` /
-`STOMP_RELAY_PASSWORD` from this module's outputs (`app_name`, `port`, `username`, and the Key
-Vault secret by name). The root module's `depends_on` on `module.broker` for `module.api_app` exists
-for the same reason it names `module.redis` and `module.storage`: the password reference is a string
-built from the Key Vault URI, not a Terraform attribute reference the graph can see on its own.
+`api_app` takes `STOMP_RELAY_HOST`, `STOMP_RELAY_PORT`, `STOMP_RELAY_USERNAME` and
+`STOMP_RELAY_PASSWORD` from this module's outputs. The root module's `depends_on` on `module.broker`
+is there for the same reason as the ones on `module.redis` and `module.storage`: the password
+reference is a string built from the vault URI, which Terraform's graph can't see.
 
 ### Key Vault authorization
 
-The vault is created with `rbac_authorization_enabled = true`, so **Azure RBAC is the
-only thing that grants data-plane access** -- Key Vault access policies are ignored
-entirely. Two role assignments carry the whole model:
+The vault uses `rbac_authorization_enabled = true`, so **Azure RBAC is the only thing that grants
+data-plane access**. Access policies are ignored. Two kinds of assignment do all the work:
 
 | Principal | Role | Why |
 |---|---|---|
-| The identity running `terraform apply` | `Key Vault Secrets Officer` | Terraform writes the Postgres and application secrets into the vault |
-| The Container App's user-assigned identity | `Key Vault Secrets User` | The app resolves its `secret { key_vault_secret_id = ... }` references at revision start |
+| Whoever runs `terraform apply` | `Key Vault Secrets Officer` | Terraform writes the secrets |
+| Each app's user-assigned identity | `Key Vault Secrets User` (scoped to single secrets where possible) | The app resolves its `secret { key_vault_secret_id = ... }` references when a revision starts |
 
-Two consequences worth knowing:
+Two consequences:
 
-- **Control-plane roles do not imply data-plane access.** Being Owner or Contributor
-  on the resource group lets you manage the vault but not read or write its secrets.
-  To inspect secrets by hand (`az keyvault secret show`), assign yourself
-  `Key Vault Secrets User` or `Key Vault Secrets Officer` at the vault scope.
-- **Role assignments propagate asynchronously.** Each assignment is followed by a
-  `time_sleep` before anything touches a secret, because Key Vault's data plane can
-  still answer `403` on a grant Azure has already accepted. If an apply fails with
-  `Forbidden` on `azurerm_key_vault_secret` or the first Container App revision
-  fails to start, re-running `terraform apply` is usually enough.
+- **Control-plane roles don't give data-plane access.** Owner or Contributor on the resource group
+  lets you manage the vault but not read its secrets. To run `az keyvault secret show` yourself,
+  assign yourself `Key Vault Secrets User` or `Key Vault Secrets Officer` on the vault.
+- **Role assignments take a while to propagate.** Each assignment is followed by a `time_sleep`
+  before anything touches a secret, because Key Vault can still answer `403` for a grant Azure has
+  already accepted. If an apply fails with `Forbidden` on `azurerm_key_vault_secret`, or the first
+  revision won't start, running `terraform apply` again usually fixes it.
 
-  The wait is `var.rbac_propagation_delay`, `60s` by default and settable per
-  environment -- because there is nothing here to wait *on*: Azure offers no signal
-  that a grant has reached the data plane, so the number is a guess and a slower
-  tenant should be able to raise it without editing a module.
+  The wait is `var.rbac_propagation_delay`, `60s` by default. It's a guess, because Azure gives no
+  signal that a grant has arrived, so a slower tenant can raise it without editing a module.
 
-  **Each wait is keyed on the id of the assignment it waits for**, which it was not
-  originally, and the difference matters more than it looks. `depends_on` orders a
-  *create*; it does not make a resource that already exists in state create again --
-  so the original waits fired on the first apply of an environment and on no apply
-  after it. Measured on dev: all three `time_sleep` ids were timestamps from 5 Sep,
-  unchanged through every apply since. The applies that need the wait most are
-  exactly the later ones, where an assignment is *replaced* -- the vault rebuilt, the
-  identity recreated, a different operator running `apply` -- and the grant is brand
-  new while the wait is a no-op left over from months ago. Keying on the assignment
-  id recreates the wait precisely when the grant is recreated.
-
-Migrating a vault created before this change: `terraform apply` flips it from
-access-policy mode to RBAC in place. The pre-existing access policies stay recorded
-on the vault but stop being consulted; they can be cleared afterwards with
-`az keyvault delete-policy` if you want a clean resource.
+  **Each wait is keyed on the id of the assignment it waits for.** That matters more than it looks.
+  `depends_on` only orders a create; it doesn't make an existing resource run again. My first
+  version had plain waits, and on dev all of them still had timestamps from the very first apply,
+  months later. The applies that need the wait most are the ones where an assignment gets replaced
+  (vault rebuilt, identity recreated, someone else applying), and there the old wait did nothing.
+  Keying on the assignment id recreates the wait whenever the grant is recreated.
 
 ### Monitoring VM
 
-`monitoring_enabled` creates the Prometheus VM (`modules/monitoring_vm`) in `snet-monitoring-<env>`
-(`10.0.3.48/28`). The VM is `10.0.3.52`, the subnet's first usable address, and it has no public IP.
-Its NSG admits one thing: 443 from the Container Apps subnet. The API's push is a separate switch, because the VM must be
-configured before anything pushes to it.
+`monitoring_enabled` creates the Prometheus VM (`modules/monitoring_vm`) in `snet-monitoring-<env>`.
+The VM is `10.0.3.52` and has no public IP. Its NSG allows one thing: 443 from the Container Apps
+subnet. The API's metric push is a separate switch (`api_otlp_export_enabled`), because the VM has to
+be configured before anything pushes to it.
 
-Nobody logs in to it. It is configured by Run Command, which goes through Azure's control plane and is
-authorised by an Azure role: resource group Owners already have it, and `monitoring_operator_object_ids`
-grants the narrow *Monitoring VM Operator* role to anyone else. Running commands on the VM is root on the VM, so that role
-effectively carries the VM's Key Vault grants too, including replacing the CA the API trusts. Grant it
-like an admin role. Tested on 8 Oct with a throwaway service principal holding only this role: Run
-Command ran as uid 0, and `deallocate` was refused.
+Nobody logs in to it. It's configured with Run Command, which goes through Azure's control plane and
+is authorized by an Azure role. Resource group Owners already have it, and
+`monitoring_operator_object_ids` grants a narrow *Monitoring VM Operator* role to anyone else. Run
+Command means root on the VM, so that role effectively includes the VM's Key Vault access too,
+including replacing the CA the API trusts. Treat it like an admin role. I checked this on 8 Oct with
+a throwaway service principal holding only that role: Run Command ran as uid 0, and `deallocate`
+was refused.
 
 ```bash
 az vm run-command invoke -g kanban-dev-rg -n vm-monitoring-dev --command-id RunShellScript --scripts "uptime"
 ```
 
-Its identity reads two Key Vault secrets, `MONITORING-PUSH-PASSWORD` and `MONITORING-READ-PASSWORD`, and
-writes one, `MONITORING-CA-CERT`. The VM creates its own CA, so no TLS private key is ever in Terraform
-state. Each credential is stored once: the API builds its push header from the same password the VM
-reads, so the two cannot drift apart. Bump `credentials_version` on the module to rotate both.
+Its identity reads two secrets, `MONITORING-PUSH-PASSWORD` and `MONITORING-READ-PASSWORD`, and
+writes one, `MONITORING-CA-CERT`. The VM creates its own CA, so no TLS private key ever reaches
+state. Each credential is stored once, and the API builds its push header from the same password
+the VM reads, so they can't drift. Bump `credentials_version` on the module to rotate both.
 
-`encryption_at_host_enabled` needs the `Microsoft.Compute/EncryptionAtHost` subscription feature, which is
-separate from registering the resource provider and is not something `resource_providers_to_register` does.
-On a fresh subscription, before the first apply:
+`encryption_at_host_enabled` needs the `Microsoft.Compute/EncryptionAtHost` subscription feature.
+Registering the resource provider doesn't turn it on, and `resource_providers_to_register` doesn't
+cover it. On a fresh subscription, before the first apply:
 
 ```bash
 az feature register --namespace Microsoft.Compute --name EncryptionAtHost
-az provider register -n Microsoft.Compute   # once the feature shows Registered, to propagate it
+az provider register -n Microsoft.Compute   # once the feature shows Registered
 ```
 
-The VM reaches apt and GitHub through Azure's default outbound access, since the VNet has no NAT gateway.
-If Azure retires that for the subnet, packages and configuration updates stop; the running stack does not.
+The VM reaches apt and GitHub through Azure's default outbound access, since the VNet has no NAT
+gateway. If Azure retires default outbound for the subnet, package and config updates stop working,
+but the running stack keeps going.
 
 ### Grafana
 
-`monitoring_enabled` also creates `kanban-grafana-<env>` (`modules/grafana_app`), a Container App running
-`ghcr.io/<owner>/kanbanproject-grafana`, which CD builds from `observability/grafana/Dockerfile` with the
-repo's dashboards. It reads Prometheus through the VM's nginx with the read credential, and Azure Monitor
-as its own managed identity.
+`monitoring_enabled` also creates `kanban-grafana-<env>` (`modules/grafana_app`), a Container App
+running `ghcr.io/<owner>/kanbanproject-grafana`, which CD builds from
+`observability/grafana/Dockerfile` with the repo's dashboards baked in. It reads Prometheus through
+the VM's nginx with the read credential, and Azure Monitor with its own managed identity. It scales
+to zero when nobody's looking.
 
-Two sign-ins guard it, and a user sees one:
+There are two sign-ins, but users only see one:
 
-1. The Container Apps ingress requires an Entra sign-in before any request reaches Grafana, so Grafana's
-   code is never exposed to anonymous traffic. A browser is redirected to Microsoft; anything else gets 401.
-2. Grafana's own Entra login runs behind it on the same session and takes the user's role from the token.
-   It authenticates as the app's managed identity through a federated credential, so there is no client
-   secret to rotate.
+1. The Container Apps ingress requires an Entra sign-in before any request reaches Grafana, so
+   Grafana itself is never exposed to anonymous traffic. Browsers get redirected to Microsoft;
+   anything else gets a 401.
+2. Grafana's own Entra login runs behind it on the same session and takes the user's role from the
+   token. It authenticates as the app's managed identity through a federated credential, so there's
+   no client secret to rotate.
 
-The tenant is on the free tier of Entra ID, which cannot assign groups to an app's roles. Each person is
-assigned a role directly, and assignment is required, so anyone unassigned cannot get a token at all:
+The tenant is on the free Entra tier, which can't assign groups to app roles. So each person gets a
+role directly, and assignment is required, which means anyone unassigned can't get a token at all:
 
 ```bash
 terraform/scripts/grafana-role.sh someone@example.com Viewer   # or Editor, Admin
-terraform/scripts/grafana-role.sh someone@example.com none     # offboard
+terraform/scripts/grafana-role.sh someone@example.com none     # remove access
 ```
 
-Editor means Explore and scratch dashboards. Provisioned dashboards change through the repo only.
+Editor means Explore and scratch dashboards. The provisioned dashboards only change through the
+repo.
 
-Grafana's own image skips Trivy for `usr/share/grafana/bin/grafana` alone: its findings clear only when
-Grafana Labs ships a release. Every package the image can upgrade is still gated.
+The Grafana image skips Trivy for `usr/share/grafana/bin/grafana` only, since those findings clear
+only when Grafana Labs ships a release. Every package the image can upgrade is still checked.
