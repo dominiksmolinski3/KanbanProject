@@ -1,71 +1,26 @@
-import { apiError, errorFromBody } from './apiError';
+import { errorFromBody } from './apiError';
+import { read } from './http';
 
 const TASKS = '/api/tasks';
 
 export const assignParentTask = async (childTaskId, parentTaskId) => {
-  try {
-    const response = await fetch(`${TASKS}/${childTaskId}/parent/${parentTaskId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error assigning parent task for ${childTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${TASKS}/${childTaskId}/parent/${parentTaskId}`, { method: 'PUT' });
+  return read(response);
 };
 
 export const removeParentTask = async (childTaskId) => {
-  try {
-    const response = await fetch(`${TASKS}/${childTaskId}/parent`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error removing parent task for ${childTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${TASKS}/${childTaskId}/parent`, { method: 'DELETE' });
+  return read(response);
 };
 
 export const getChildTasks = async (taskId) => {
-  try {
-    const response = await fetch(`${TASKS}/${taskId}/children`);
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching child tasks for ${taskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${TASKS}/${taskId}/children`);
+  return read(response);
 };
 
 export const canTaskBeCompleted = async (taskId) => {
-  try {
-    const response = await fetch(`${TASKS}/${taskId}/can-complete`);
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error checking if task ${taskId} can be completed:`, error);
-    throw error;
-  }
+  const response = await fetch(`${TASKS}/${taskId}/can-complete`);
+  return read(response);
 };
 
 export class ParentTaskNotCompletedError extends Error {
@@ -77,12 +32,7 @@ export class ParentTaskNotCompletedError extends Error {
 }
 
 export const updateTaskCompletion = async (taskId, completed) => {
-  const response = await fetch(`${TASKS}/${taskId}/complete/${completed}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+  const response = await fetch(`${TASKS}/${taskId}/complete/${completed}`, { method: 'PATCH' });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -94,5 +44,5 @@ export const updateTaskCompletion = async (taskId, completed) => {
     throw errorFromBody(response.status, errorData);
   }
 
-  return await response.json();
+  return response.json();
 };
