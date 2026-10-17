@@ -1,114 +1,41 @@
-import { apiError } from './apiError';
+import { read, readDeleted } from './http';
 
 const SUBTASKS = '/api/subtasks';
 
 export const fetchSubTask = async (subTaskId) => {
-  try {
-    const response = await fetch(`${SUBTASKS}/${subTaskId}`);
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching subtask ${subTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${SUBTASKS}/${subTaskId}`);
+  return read(response);
 };
 
 export const fetchSubTasksByTaskId = async (taskId) => {
-  try {
-    const response = await fetch(`${SUBTASKS}/task/${taskId}`);
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching subtasks for task ${taskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${SUBTASKS}/task/${taskId}`);
+  return read(response);
 };
 
 export const addSubTask = async (taskId, title) => {
-  try {
-    const response = await fetch(SUBTASKS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        title,
-        completed: false,
-        task: {
-          id: taskId
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error adding subtask:', error);
-    throw error;
-  }
+  const response = await fetch(SUBTASKS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, completed: false, task: { id: taskId } })
+  });
+  return read(response);
 };
 
 export const updateSubTask = async (subTaskId, subTaskData) => {
-  try {
-    const response = await fetch(`${SUBTASKS}/${subTaskId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(subTaskData)
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error updating subtask ${subTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${SUBTASKS}/${subTaskId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subTaskData)
+  });
+  return read(response);
 };
 
 export const toggleSubTaskCompletion = async (subTaskId) => {
-  try {
-    const response = await fetch(`${SUBTASKS}/${subTaskId}/change`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error toggling completion for subtask ${subTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${SUBTASKS}/${subTaskId}/change`, { method: 'PATCH' });
+  return read(response);
 };
 
 export const deleteSubTask = async (subTaskId) => {
-  try {
-    const response = await fetch(`${SUBTASKS}/${subTaskId}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok && response.status !== 404) {
-      throw await apiError(response);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error(`Error deleting subtask ${subTaskId}:`, error);
-    throw error;
-  }
+  const response = await fetch(`${SUBTASKS}/${subTaskId}`, { method: 'DELETE' });
+  return readDeleted(response);
 };

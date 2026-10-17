@@ -1,19 +1,11 @@
-import { apiError } from './apiError';
 import { onActiveBoard } from './activeBoard';
+import { read } from './http';
 
 const TASKS = '/api/tasks';
 
 export const getAllLabels = async () => {
-  try {
-    const response = await fetch(onActiveBoard(`${TASKS}/get/all/labels`));
-    if (!response.ok) {
-      throw await apiError(response);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching all labels:', error);
-    throw error;
-  }
+  const response = await fetch(onActiveBoard(`${TASKS}/get/all/labels`));
+  return read(response);
 };
 
 export const MAX_SEARCH_PAGE_SIZE = 100;
@@ -57,10 +49,5 @@ export const searchTasks = async (filters = {}) => {
   const response = await fetch(
     onActiveBoard(`${TASKS}/search?${params.toString()}`)
   );
-
-  if (!response.ok) {
-    throw await apiError(response);
-  }
-
-  return await response.json();
+  return read(response);
 };

@@ -107,33 +107,6 @@ describe('API Services', () => {
       expect(result).toEqual(mockColumn);
     });
 
-    test('updateColumnWipLimit should handle JSON parsing errors', async () => {
-      const columnId = 'col1';
-      const wipLimit = 5;
-        
-      fetch.mockResolvedValueOnce({
-        status: 204, 
-        json: async () => { throw new Error('Invalid JSON'); }
-      });
-        
-      const result = await api.updateColumnWipLimit(columnId, wipLimit);
-        
-      expect(fetch).toHaveBeenCalledWith('/api/columns/col1', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          wipLimit: parseInt(wipLimit)
-        }),
-      });
-        
-      expect(result).toEqual({
-        id: columnId,
-        wipLimit: parseInt(wipLimit)
-      });
-    });
-      
     test('updateColumnPosition should update column position', async () => {
         const mockColumn = { id: 'col1', position: 2 };
         
@@ -145,10 +118,7 @@ describe('API Services', () => {
         const result = await api.updateColumnPosition('col1', 2);
       
         expect(fetch).toHaveBeenCalledWith('/api/columns/col1/position/2', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          }
+          method: 'PATCH'
         });
         expect(result).toEqual(mockColumn);
     });
@@ -317,10 +287,7 @@ describe('API Services', () => {
       expect(fetch).toHaveBeenCalledTimes(2);
       expect(fetch).toHaveBeenNthCalledWith(1, '/api/users/123/wip-status');
       expect(fetch).toHaveBeenNthCalledWith(2, '/api/tasks/1/user/123', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'PUT'
       });
       expect(result).toEqual(mockTask);
     });
@@ -409,10 +376,7 @@ describe('API Services', () => {
       const result = await api.updateTaskPosition('1', 3);
       
       expect(fetch).toHaveBeenCalledWith('/api/tasks/1/position/3', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        method: 'PATCH'
       });
       expect(result).toEqual(mockTask);
     });
@@ -428,10 +392,7 @@ describe('API Services', () => {
       const result = await api.removeUserFromTask('1', '123');
       
       expect(fetch).toHaveBeenCalledWith('/api/tasks/1/user/123', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        method: 'DELETE'
       });
       expect(result).toEqual(mockTask);
     });
@@ -762,6 +723,7 @@ describe('API Services', () => {
         const wipLimit = 3;
                 
         fetch.mockResolvedValueOnce({
+            ok: true,
             status: 200,
             json: async () => mockRow
         });
@@ -830,10 +792,7 @@ describe('API Services', () => {
         const result = await api.updateRowPosition('row1', 2);
 
         expect(fetch).toHaveBeenCalledWith('/api/rows/row1/position/2', {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            }
+            method: 'PATCH'
         });
         expect(result).toEqual(mockRow);
     });
@@ -925,6 +884,7 @@ describe('API Services', () => {
         const wipLimit = 8;
           
         fetch.mockResolvedValueOnce({
+          ok: true,
           status: 200,
           json: async () => mockRow
         });
@@ -943,33 +903,6 @@ describe('API Services', () => {
         expect(result).toEqual(mockRow);
     });
       
-    test('updateRowWipLimit should handle JSON parsing errors', async () => {
-        const rowId = 'row1';
-        const wipLimit = 8;
-        
-        fetch.mockResolvedValueOnce({
-          status: 204,
-          json: async () => { throw new Error('Invalid JSON'); }
-        });
-        
-        const result = await api.updateRowWipLimit(rowId, wipLimit);
-        
-        expect(fetch).toHaveBeenCalledWith('/api/rows/row1', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            wipLimit: parseInt(wipLimit)
-          }),
-        });
-        
-        expect(result).toEqual({
-          id: rowId,
-          wipLimit: parseInt(wipLimit)
-        });
-    });
-      
     test('updateRowPosition should update row position', async () => {
         const mockRow = { id: 'row1', position: 3 };
         
@@ -981,10 +914,7 @@ describe('API Services', () => {
         const result = await api.updateRowPosition('row1', 3);
       
         expect(fetch).toHaveBeenCalledWith('/api/rows/row1/position/3', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          }
+          method: 'PATCH'
         });
         expect(result).toEqual(mockRow);
     });
@@ -1343,10 +1273,7 @@ describe('API Services', () => {
       const result = await api.toggleSubTaskCompletion(1);
 
       expect(fetch).toHaveBeenCalledWith('/api/subtasks/1/change', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'PATCH'
       });
       expect(result).toEqual(mockSubTask);
     });
@@ -1453,10 +1380,7 @@ describe('API Services', () => {
       const result = await api.toggleSubTaskCompletion(subTaskId);
       
       expect(fetch).toHaveBeenCalledWith('/api/subtasks/sub1/change', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        method: 'PATCH'
       });
       expect(result).toEqual(mockSubTask);
     });
@@ -1543,27 +1467,6 @@ describe('API Services', () => {
       expect(fetch).toHaveBeenCalledTimes(3);
     });
     
-    test('makeRequest utility should properly handle non-JSON responses', async () => {
-      const mockTask = { id: '1', title: 'Task 1', column: { id: 'col1' } };
-      
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        headers: {
-          get: () => 'text/plain'
-        },
-        text: async () => 'Success',
-        json: async () => { throw new Error('Not JSON'); }
-      });
-      
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockTask
-      });
-      
-      const result1 = await api.updateTaskName('1', 'Task 1');
-      expect(result1).toEqual(mockTask);
-    });
-
     test('makeRequest should handle JSON parse errors with error details', async () => {
       fetch.mockResolvedValueOnce({
         ok: false,

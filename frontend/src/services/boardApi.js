@@ -1,13 +1,7 @@
 import { apiError } from './apiError';
+import { read } from './http';
 
 const BOARDS = '/api/boards';
-
-const read = async (response) => {
-  if (!response.ok) {
-    throw await apiError(response);
-  }
-  return response.json();
-};
 
 export const fetchBoards = async () => {
   const response = await fetch(BOARDS);

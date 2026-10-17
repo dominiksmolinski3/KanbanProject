@@ -244,14 +244,7 @@ export function useTaskActions({
     }
   };
 
-  const handleGetUserWipStatus = async (userId) => {
-    try {
-      return await getUserWipStatus(userId);
-    } catch (err) {
-      console.error('Error checking user WIP status:', new Error(err.message));
-      throw err;
-    }
-  };
+  const handleGetUserWipStatus = (userId) => getUserWipStatus(userId);
 
   const handleUpdateUserWipLimit = async (userId, wipLimit) => {
     try {
