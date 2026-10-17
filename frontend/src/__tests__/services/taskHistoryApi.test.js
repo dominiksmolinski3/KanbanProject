@@ -23,7 +23,7 @@ test('getTaskColumnTimeSpentSummary folds the history with one request and no bo
   expect(fetch).toHaveBeenCalledWith('/api/tasks/7/column-history');
 
   const doing = summary.find(c => c.columnId === 2);
-  expect(doing).toMatchObject({ columnName: 'Doing', totalTimeMs: 60 * 60 * 1000, formattedTime: '1h 0m' });
+  expect(doing).toEqual({ columnId: 2, columnName: 'Doing', totalTimeMs: 60 * 60 * 1000 });
   const todo = summary.find(c => c.columnId === 1);
   expect(todo.totalTimeMs).toBeGreaterThanOrEqual(2 * 60 * 60 * 1000);
 });

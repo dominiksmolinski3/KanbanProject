@@ -121,7 +121,7 @@ export function useLayoutActions({
     if (blockIfReadOnly()) return;
     try {
       const columnToUpdate = columns.find(col => String(col.id) === String(columnId));
-      const columnName = columnToUpdate ? columnToUpdate.name : 'kolumny';
+      const columnName = columnToUpdate ? columnToUpdate.name : t('taskDetails.unknownColumn');
 
       await updateColumnWipLimit(columnId, newLimit);
       const updatedColumns = await fetchColumns();
@@ -139,7 +139,7 @@ export function useLayoutActions({
     if (blockIfReadOnly()) return;
     try {
       const rowToUpdate = rows.find(r => String(r.id) === String(rowId));
-      const rowName = rowToUpdate ? rowToUpdate.name : 'wiersza';
+      const rowName = rowToUpdate ? rowToUpdate.name : t('taskDetails.unknownRow');
 
       await updateRowWipLimit(rowId, newLimit);
       const updatedRows = await fetchRows();
@@ -157,7 +157,7 @@ export function useLayoutActions({
     refuseIfReadOnly();
     try {
       const columnToDelete = columns.find(col => col.id === columnId);
-      const columnName = columnToDelete ? columnToDelete.name : 'kolumna';
+      const columnName = columnToDelete ? columnToDelete.name : t('taskDetails.unknownColumn');
 
       const alternativeColumn = columns.find(col => col.id !== columnId);
 

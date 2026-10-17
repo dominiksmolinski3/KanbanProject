@@ -6,16 +6,20 @@ import { fetchColumns, getTaskColumnHistory, getTaskColumnTimeSpentSummary } fro
 const PAGE_SIZE = 4;
 const MAX_VISIBLE_PAGES = 5;
 
-const formatDuration = (from, to) => {
-  const diffMs = Math.max(0, new Date(to.changedAt) - new Date(from.changedAt));
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
 
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m`;
-  return '< 1m';
+const formatDuration = (ms, t, language) => {
+  if (ms < MINUTE_MS) return t('taskDetails.underAMinute');
+  const days = Math.floor(ms / DAY_MS);
+  const hours = Math.floor((ms % DAY_MS) / HOUR_MS);
+  const minutes = Math.floor((ms % HOUR_MS) / MINUTE_MS);
+  const parts = days > 0 ? [[days, 'day'], [hours, 'hour']] : [[hours, 'hour'], [minutes, 'minute']];
+  const units = parts
+    .filter(([value]) => value > 0)
+    .map(([value, unit]) => new Intl.NumberFormat(language, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value));
+  return new Intl.ListFormat(language, { style: 'narrow', type: 'unit' }).format(units);
 };
 
 const visiblePages = (totalPages, current) => {
@@ -61,7 +65,7 @@ async function loadHistory(taskId) {
   return history
     .map(item => ({
       ...item,
-      columnName: item.columnName || columnNames[item.columnId] || item.column_name || `Column ${item.columnId}`
+      columnName: item.columnName || columnNames[item.columnId]
     }))
     .filter((item, index, all) => all.findIndex(other =>
       Math.abs(new Date(other.changedAt) - new Date(item.changedAt)) < 1000 &&
@@ -70,7 +74,8 @@ async function loadHistory(taskId) {
 }
 
 function TaskColumnHistory({ taskId }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage;
   const [history, setHistory] = useState([]);
   const [page, setPage] = useState(0);
   const [timeSpent, setTimeSpent] = useState([]);
@@ -150,13 +155,16 @@ function TaskColumnHistory({ taskId }) {
                   </div>
                   <div className="timeline-date">
                     {t('taskDetails.dateAtTime', {
-                      date: changedAt.toLocaleDateString(),
-                      time: changedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      date: changedAt.toLocaleDateString(language),
+                      time: changedAt.toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit' })
                     })}
                   </div>
                   {!isCurrent && (
                     <div className="timeline-duration">
-                      {t('taskDetails.duration')} {formatDuration(item, history[globalIndex + 1])}
+                      {t('taskDetails.duration', {
+                        duration: formatDuration(
+                          Math.max(0, new Date(history[globalIndex + 1].changedAt) - changedAt), t, language)
+                      })}
                     </div>
                   )}
                 </div>
@@ -223,8 +231,8 @@ function TaskColumnHistory({ taskId }) {
               {timeSpent.map((column, index) => (
                 <div key={column.columnId} className="time-stat-item">
                   <div className="stat-header">
-                    <span className="stat-column-name">{column.columnName}</span>
-                    <span className="stat-time">{column.formattedTime}</span>
+                    <span className="stat-column-name">{column.columnName || t('taskDetails.unknownColumn')}</span>
+                    <span className="stat-time">{formatDuration(column.totalTimeMs, t, language)}</span>
                   </div>
                   <div className="stat-bar-container">
                     <div
