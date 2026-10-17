@@ -8,7 +8,8 @@ import { toast } from 'react-toastify';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key) => key
+    t: (key) => key,
+    i18n: { resolvedLanguage: 'en' }
   })
 }));
 
