@@ -80,7 +80,7 @@ class ConfigurationTest {
         unread.removeAll(AGENT_READ);
 
         assertThat(unread)
-                .as("Terraform supplies these and no property binds them - this is the shape MAIL-02 had")
+                .as("Terraform supplies these and no property binds them, so the variable reaches the container and does nothing")
                 .isEmpty();
     }
 
