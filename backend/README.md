@@ -7,7 +7,7 @@ Temurin JDK 25.
 ## Run it
 
 It needs PostgreSQL, Redis and a RabbitMQ with the STOMP plugin. The root README's
-[Running Locally](../README.md#-running-locally) section has the two `docker run` lines and the
+[Running Locally](../README.md#running-locally) section has the two `docker run` lines and the
 variables. Copy `.env.example` to `.env` in this directory and fill it in, then:
 
 ```bash
