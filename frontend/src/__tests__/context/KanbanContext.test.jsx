@@ -32,7 +32,6 @@ jest.mock('../../services/api', () => ({
   updateColumnName: jest.fn(),
   getUserWipStatus: jest.fn(),
   updateUserWipLimit: jest.fn(),
-  refreshBoard: jest.fn(),
   getActiveBoardId: jest.fn(() => null),
   setActiveBoardId: jest.fn(),
 }));
