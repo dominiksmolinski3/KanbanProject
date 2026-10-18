@@ -1,9 +1,32 @@
-import { useState } from 'react';
+import { useState, type DragEvent } from 'react';
+import type { LooseId, MoveTask } from './types';
 
-export function useDragAndDrop({ moveTask, moveColumn, moveRow, reorderTask }) {
-  const [draggedItem, setDraggedItem] = useState(null);
+type DragKind = 'task' | 'column' | 'row';
 
-  const handleDragStart = (e, id, type = 'task', sourceColumnId = null, sourceRowId = null) => {
+interface DraggedItem {
+  id: LooseId;
+  type: DragKind;
+  sourceColumnId: LooseId | null;
+  sourceRowId: LooseId | null;
+}
+
+interface DragAndDropDeps {
+  moveTask: MoveTask;
+  moveColumn: (columnId: LooseId, targetColumnId: LooseId | null | undefined) => Promise<void>;
+  moveRow: (rowId: LooseId, targetRowId: LooseId | null | undefined) => Promise<void>;
+  reorderTask: (draggedTaskId: number, targetTaskId: number) => Promise<void>;
+}
+
+export function useDragAndDrop({ moveTask, moveColumn, moveRow, reorderTask }: DragAndDropDeps) {
+  const [draggedItem, setDraggedItem] = useState<DraggedItem | null>(null);
+
+  const handleDragStart = (
+    e: DragEvent<Element>,
+    id: LooseId,
+    type: DragKind = 'task',
+    sourceColumnId: LooseId | null = null,
+    sourceRowId: LooseId | null = null
+  ) => {
     let data;
 
     if (type === 'task') {
@@ -23,12 +46,12 @@ export function useDragAndDrop({ moveTask, moveColumn, moveRow, reorderTask }) {
     e.dataTransfer.effectAllowed = 'move';
     setDraggedItem({ id, type, sourceColumnId, sourceRowId });
     if (type === 'task') {
-      e.dataTransfer.setData('taskId', id);
-      e.dataTransfer.setData('columnId', sourceColumnId);
+      e.dataTransfer.setData('taskId', String(id));
+      e.dataTransfer.setData('columnId', String(sourceColumnId));
     }
   };
 
-  const handleDrop = (e, targetColumnId, targetRowId) => {
+  const handleDrop = (e: DragEvent<Element>, targetColumnId?: LooseId | null, targetRowId?: LooseId | null) => {
     e.preventDefault();
 
     if (e.dataTransfer.types.includes('application/task')) {
@@ -92,7 +115,7 @@ export function useDragAndDrop({ moveTask, moveColumn, moveRow, reorderTask }) {
     setDraggedItem(null);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: DragEvent<Element>) => {
     if (e.preventDefault) {
       e.preventDefault();
     }

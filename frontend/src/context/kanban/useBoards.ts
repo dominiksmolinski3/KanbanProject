@@ -14,11 +14,20 @@ import {
   declineInvitation,
   removeBoardMember,
 } from '../../services/boardApi';
+import type { Board, BoardInvitation, BoardRole, Id } from '../../types/api';
+import { messageOf, reportError } from './reportError';
+import type { SetState, Translate } from './types';
 
-export function useBoards({ t, setError, setLoading }) {
-  const [boards, setBoards] = useState([]);
-  const [activeBoardId, setActiveBoardId] = useState(null);
-  const [myInvitations, setMyInvitations] = useState([]);
+interface BoardsDeps {
+  t: Translate;
+  setError: SetState<string | null>;
+  setLoading: SetState<boolean>;
+}
+
+export function useBoards({ t, setError, setLoading }: BoardsDeps) {
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [activeBoardId, setActiveBoardId] = useState<Id | null>(null);
+  const [myInvitations, setMyInvitations] = useState<BoardInvitation[]>([]);
 
   const refreshMyInvitations = async () => {
     try {
@@ -43,7 +52,7 @@ export function useBoards({ t, setError, setLoading }) {
         setActiveBoardId(chosen);
       } catch (err) {
         console.error('Error resolving the board:', err);
-        setError(err.message);
+        setError(messageOf(err));
         setLoading(false);
       }
     };
@@ -55,7 +64,7 @@ export function useBoards({ t, setError, setLoading }) {
   const activeBoard = boards.find(board => board.id === activeBoardId) || null;
   const isViewer = activeBoard?.role === 'VIEWER';
 
-  const selectBoard = (boardId) => {
+  const selectBoard = (boardId: Id) => {
     if (boardId === activeBoardId) {
       return;
     }
@@ -69,7 +78,7 @@ export function useBoards({ t, setError, setLoading }) {
     return available;
   };
 
-  const handleCreateBoard = async (name) => {
+  const handleCreateBoard = async (name: string) => {
     try {
       const board = await createBoard(name);
       await refreshBoards();
@@ -78,12 +87,12 @@ export function useBoards({ t, setError, setLoading }) {
       return board;
     } catch (err) {
       console.error('Error creating board:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return null;
     }
   };
 
-  const handleRenameBoard = async (boardId, name) => {
+  const handleRenameBoard = async (boardId: Id, name: string) => {
     try {
       await renameBoard(boardId, name);
       await refreshBoards();
@@ -91,12 +100,12 @@ export function useBoards({ t, setError, setLoading }) {
       return true;
     } catch (err) {
       console.error('Error renaming board:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleDeleteBoard = async (boardId) => {
+  const handleDeleteBoard = async (boardId: Id) => {
     try {
       await deleteBoard(boardId);
       const remaining = await refreshBoards();
@@ -113,36 +122,36 @@ export function useBoards({ t, setError, setLoading }) {
       return true;
     } catch (err) {
       console.error('Error deleting board:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleInviteToBoard = async (boardId, email, role) => {
+  const handleInviteToBoard = async (boardId: Id, email: string, role?: BoardRole) => {
     try {
       const invitation = await inviteToBoard(boardId, email, role);
       toast.info(t('notifications.boardInvitationSent'));
       return invitation;
     } catch (err) {
       console.error('Error sending an invitation:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return null;
     }
   };
 
-  const handleRevokeInvitation = async (boardId, invitationId) => {
+  const handleRevokeInvitation = async (boardId: Id, invitationId: Id) => {
     try {
       await revokeBoardInvitation(boardId, invitationId);
       toast.success(t('notifications.boardInvitationRevoked'));
       return true;
     } catch (err) {
       console.error('Error revoking an invitation:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleAcceptInvitation = async (invitationId) => {
+  const handleAcceptInvitation = async (invitationId: Id) => {
     try {
       const board = await acceptInvitation(invitationId);
       await refreshBoards();
@@ -152,12 +161,12 @@ export function useBoards({ t, setError, setLoading }) {
       return board;
     } catch (err) {
       console.error('Error accepting an invitation:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return null;
     }
   };
 
-  const handleDeclineInvitation = async (invitationId) => {
+  const handleDeclineInvitation = async (invitationId: Id) => {
     try {
       await declineInvitation(invitationId);
       await refreshMyInvitations();
@@ -165,12 +174,12 @@ export function useBoards({ t, setError, setLoading }) {
       return true;
     } catch (err) {
       console.error('Error declining an invitation:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleRemoveBoardMember = async (boardId, userId) => {
+  const handleRemoveBoardMember = async (boardId: Id, userId: Id) => {
     try {
       const board = await removeBoardMember(boardId, userId);
       await refreshBoards();
@@ -178,7 +187,7 @@ export function useBoards({ t, setError, setLoading }) {
       return board;
     } catch (err) {
       console.error('Error removing board member:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return null;
     }
   };
