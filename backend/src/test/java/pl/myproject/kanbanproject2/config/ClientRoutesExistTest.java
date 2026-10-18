@@ -33,6 +33,15 @@ class ClientRoutesExistTest {
     private static final Map<String, List<String>> CALLER_SUPPLIED_PATHS = Map.of(
             "{}/positions", List.of("/api/tasks/positions", "/api/columns/positions", "/api/rows/positions"));
 
+    private static final String HTTP_MODULE = "http.ts";
+
+    private static final List<String> REQUEST_HELPERS = List.of(
+            "getJson", "postJson", "patchJson", "putJson", "deleteJson",
+            "postVoid", "patchVoid", "deleteChecked", "deleteQuietly");
+
+    private static final Set<String> OTHER_HTTP_EXPORTS = Set.of(
+            "read", "readVoid", "readOk", "readDeleted", "readUnless", "queryString", "withRetries");
+
     @Test
     @DisplayName("every path the client fetches is a path some controller answers on")
     void everyClientCallReachesARoute() throws IOException {
@@ -106,6 +115,38 @@ class ClientRoutesExistTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("every request helper in http.ts is one this test reads the path of")
+    void everyHttpHelperIsKnown() throws IOException {
+        Set<String> known = new TreeSet<>(REQUEST_HELPERS);
+        known.addAll(OTHER_HTTP_EXPORTS);
+
+        Map<String, String> unknown = new TreeMap<>();
+        Matcher exported = HTTP_EXPORT.matcher(Files.readString(SERVICES.resolve(HTTP_MODULE)));
+        while (exported.find()) {
+            if (!known.contains(exported.group(1))) {
+                unknown.put(exported.group(1), HTTP_MODULE);
+            }
+        }
+        for (Path file : serviceFiles()) {
+            Matcher imports = HTTP_IMPORT.matcher(withoutComments(Files.readString(file)));
+            while (imports.find()) {
+                for (String name : imports.group(1).split(",")) {
+                    String imported = name.trim();
+                    if (!imported.isEmpty() && !known.contains(imported)) {
+                        unknown.put(imported, file.getFileName().toString());
+                    }
+                }
+            }
+        }
+
+        assertThat(unknown)
+                .as("a request helper this test does not know: calls through it are not read, so its "
+                        + "paths are never checked against a controller. Add it to REQUEST_HELPERS if "
+                        + "its first argument is the path, or to OTHER_HTTP_EXPORTS if it sends nothing")
+                .isEmpty();
+    }
+
     private static Set<String> servedRoutes() {
         ClassPathScanningCandidateComponentProvider scanner =
                 new ClassPathScanningCandidateComponentProvider(false);
@@ -144,7 +185,11 @@ class ClientRoutesExistTest {
         return mapping.value();
     }
 
-    private static final Pattern FETCH = Pattern.compile("\\bfetch\\s*\\(");
+    private static final Pattern FETCH = Pattern.compile(
+            "\\b(?:fetch|" + String.join("|", REQUEST_HELPERS) + ")\\s*(?:<[^()]*>)?\\s*\\(");
+    private static final Pattern HTTP_IMPORT =
+            Pattern.compile("import\\s*\\{([^}]*)}\\s*from\\s*'\\./http'");
+    private static final Pattern HTTP_EXPORT = Pattern.compile("export const (\\w+)");
     private static final Pattern CONSTANT =
             Pattern.compile("const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(`[^`]*`|'[^']*'|\"[^\"]*\")\\s*;");
     private static final Pattern HELPER =
@@ -234,7 +279,11 @@ class ClientRoutesExistTest {
     private static List<Path> serviceFiles() throws IOException {
         assertThat(SERVICES).as("the client's service layer has moved or gone").isDirectory();
         try (Stream<Path> files = Files.list(SERVICES)) {
-            return files.filter(file -> file.toString().endsWith(".js")).sorted().toList();
+            return files
+                    .filter(file -> file.toString().endsWith(".ts") || file.toString().endsWith(".js"))
+                    .filter(file -> !file.getFileName().toString().equals(HTTP_MODULE))
+                    .sorted()
+                    .toList();
         }
     }
 
