@@ -780,6 +780,17 @@ it invisible and the route check would pass on less than it covered.
 `i18n.test.js` and `pathSegments.test.js` read sources through `@typescript-eslint/typescript-estree`
 for the same reason: a parser that cannot read `.ts` would make them pass on nothing.
 
+**Dialogs share one primitive.** [Modal.tsx](../frontend/src/components/ui/Modal.tsx) wraps Radix
+`Dialog`, and `FormModal` and `ConfirmDialog` are thin callers of it. There used to be three
+hand-built versions: `FormModal` had a document `keydown` listener and set `body.style.overflow`,
+`ConfirmDialog` had a capture-phase Escape handler and no dialog role at all, and the task panel has
+its own. What the primitive adds is a focus trap, a name (`aria-label`, or the heading for the
+confirm dialog), `role="alertdialog"` for confirmations, and page-scroll locking that does not depend
+on who set `overflow` last. Two choices are deliberate. The container takes focus on open, not the
+first control, so a destructive "yes" is never focused by default. And Escape is stopped at the
+dialog, because the task panel behind a confirmation listens on `document` and would otherwise close
+with it. The panel itself is not a `Modal` yet, so that stop is what keeps the two apart.
+
 **Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
 cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
 only be dragged could not be moved by anyone without a pointer, which on a Kanban board is the
