@@ -1,4 +1,4 @@
-import { deleteUser, fetchUser, fetchUsers, getUserAvatar, getUserWipStatus, updateUserWipLimit } from '../../services/userApi';
+import { deleteUser, fetchUser, fetchUsers, getUserAvatar, getUserWipStatus, updateUserWipLimit, uploadUserAvatar } from '../../services/userApi';
 
 global.fetch = jest.fn();
 URL.createObjectURL = jest.fn().mockReturnValue('mock-blob-url');
@@ -6,6 +6,26 @@ URL.createObjectURL = jest.fn().mockReturnValue('mock-blob-url');
 beforeEach(() => {
   fetch.mockClear();
   URL.createObjectURL.mockClear();
+});
+
+test('uploadUserAvatar posts the file as multipart form data and resolves to nothing', async () => {
+  fetch.mockResolvedValueOnce({ ok: true, status: 204 });
+  const file = new Blob(['png'], { type: 'image/png' });
+
+  await expect(uploadUserAvatar('123', file)).resolves.toBeUndefined();
+
+  const [url, init] = fetch.mock.calls[0];
+  expect(url).toBe('/api/users/123/avatar');
+  expect(init.method).toBe('POST');
+  expect(init.headers).toBeUndefined();
+  expect(init.body).toBeInstanceOf(FormData);
+  expect(init.body.get('file')).toBeInstanceOf(Blob);
+});
+
+test('uploadUserAvatar refuses a failed upload with an API error', async () => {
+  fetch.mockResolvedValueOnce({ ok: false, status: 413, json: async () => ({}) });
+
+  await expect(uploadUserAvatar('123', new Blob(['png']))).rejects.toMatchObject({ status: 413 });
 });
 
 test('updateUserWipLimit should update user WIP limit', async () => {

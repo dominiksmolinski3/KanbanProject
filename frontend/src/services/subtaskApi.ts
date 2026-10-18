@@ -10,7 +10,10 @@ export const fetchSubTasksByTaskId = (taskId: Id) => getJson<SubTask[]>(`${SUBTA
 export const addSubTask = (taskId: Id, title: string) =>
   postJson<SubTask>(SUBTASKS, { title, completed: false, task: { id: taskId } });
 
-export const updateSubTask = (subTaskId: Id, subTaskData: Partial<Omit<SubTask, 'id' | 'taskId'>>) =>
+export const updateSubTask = (
+  subTaskId: Id,
+  subTaskData: Partial<Omit<SubTask, 'id' | 'taskId'>> & { task?: { id: Id } }
+) =>
   patchJson<SubTask>(`${SUBTASKS}/${subTaskId}`, subTaskData);
 
 export const toggleSubTaskCompletion = (subTaskId: Id) => patchJson<SubTask>(`${SUBTASKS}/${subTaskId}/change`);

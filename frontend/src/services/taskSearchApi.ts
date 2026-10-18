@@ -4,7 +4,7 @@ import type { Id, PageRequest, TaskSearchResults } from '../types/api';
 
 const TASKS = '/api/tasks';
 
-export const getAllLabels = () => getJson<string[]>(onActiveBoard(`${TASKS}/get/all/labels`));
+export const getAllLabels = async () => getJson<string[]>(onActiveBoard(`${TASKS}/get/all/labels`));
 
 export const MAX_SEARCH_PAGE_SIZE = 100;
 
