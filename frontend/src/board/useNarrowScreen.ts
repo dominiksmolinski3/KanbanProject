@@ -4,7 +4,7 @@ const QUERY = '(max-width: 640px)';
 
 const matches = () => typeof window.matchMedia === 'function' && window.matchMedia(QUERY).matches;
 
-export default function useNarrowScreen() {
+export default function useNarrowScreen(): boolean {
   const [narrow, setNarrow] = useState(matches);
 
   useEffect(() => {

@@ -19,7 +19,7 @@ function eagerStylesheets() {
         css.add(target);
         continue;
       }
-      const resolved = ['', '.jsx', '.js'].map(ext => target + ext)
+      const resolved = ['', '.tsx', '.ts', '.jsx', '.js'].map(ext => target + ext)
         .find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
       if (resolved) walk(resolved);
     }
