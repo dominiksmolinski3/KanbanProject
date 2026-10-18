@@ -1,18 +1,25 @@
 import { onActiveBoard } from './activeBoard';
-import { read } from './http';
+import { getJson } from './http';
+import type { Id, PageRequest, TaskSearchResults } from '../types/api';
 
 const TASKS = '/api/tasks';
 
-export const getAllLabels = async () => {
-  const response = await fetch(onActiveBoard(`${TASKS}/get/all/labels`));
-  return read(response);
-};
+export const getAllLabels = () => getJson<string[]>(onActiveBoard(`${TASKS}/get/all/labels`));
 
 export const MAX_SEARCH_PAGE_SIZE = 100;
 
 export const SEARCH_PAGE_SIZE = 25;
 
-export const searchTasks = async (filters = {}) => {
+export interface TaskSearchFilters extends PageRequest {
+  q?: string;
+  labels?: string[];
+  assignees?: Id[];
+  completed?: boolean | null;
+  deadlineFrom?: string | null;
+  deadlineTo?: string | null;
+}
+
+export const searchTasks = async (filters: TaskSearchFilters = {}) => {
   const {
     q = '',
     labels = [],
@@ -46,8 +53,5 @@ export const searchTasks = async (filters = {}) => {
   params.set('page', String(page));
   params.set('size', String(size));
 
-  const response = await fetch(
-    onActiveBoard(`${TASKS}/search?${params.toString()}`)
-  );
-  return read(response);
+  return getJson<TaskSearchResults>(onActiveBoard(`${TASKS}/search?${params.toString()}`));
 };

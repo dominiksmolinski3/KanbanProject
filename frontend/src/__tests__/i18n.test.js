@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parse } from 'espree';
+import { parse } from '@typescript-eslint/typescript-estree';
 
 const LOCALES_DIR = path.join(process.cwd(), 'public', 'locales');
 const SOURCE_DIR = path.join(process.cwd(), 'src');
@@ -26,7 +26,7 @@ function sourceFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return entry.name === '__tests__' ? [] : sourceFiles(full);
-    return /\.jsx?$/.test(entry.name) ? [full] : [];
+    return /\.[jt]sx?$/.test(entry.name) ? [full] : [];
   });
 }
 
@@ -114,12 +114,7 @@ describe('nothing on screen bypasses t()', () => {
 
     for (const file of sourceFiles(SOURCE_DIR)) {
       const relative = path.relative(process.cwd(), file).replace(/\\/g, '/');
-      const ast = parse(fs.readFileSync(file, 'utf8'), {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-        loc: true,
-      });
+      const ast = parse(fs.readFileSync(file, 'utf8'), { filePath: file, loc: true });
 
       walk(ast, (node, parent) => {
         if (node.type === 'JSXText' && hasLetters(node.value.trim())) {

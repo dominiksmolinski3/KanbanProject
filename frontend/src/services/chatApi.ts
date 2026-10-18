@@ -1,21 +1,32 @@
 import SockJS from 'sockjs-client';
-import { Client } from '@stomp/stompjs';
+import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
+import type { Id } from '../types/api';
+
+type MessageHandler = (message: IMessage) => void;
 
 export default class ChatApi {
-  constructor(onMessageReceived, onError, onRefusal) {
-    this.stompClient = null;
+  stompClient: Client | null = null;
+  onMessageReceived: MessageHandler;
+  onError: (error: unknown) => void;
+  onRefusal: (refusal: unknown) => void;
+  boardSubscription: StompSubscription | null = null;
+  boardId: Id | null = null;
+  serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+  constructor(
+    onMessageReceived: MessageHandler,
+    onError: (error: unknown) => void,
+    onRefusal: (refusal: unknown) => void
+  ) {
     this.onMessageReceived = onMessageReceived;
     this.onError = onError;
     this.onRefusal = onRefusal;
-    this.boardSubscription = null;
-    this.boardId = null;
-    this.serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
   }
 
-  connect(token) {
+  connect(token?: string | null): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.stompClient = new Client({
+        const client = new Client({
           webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
           connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
           debug: () => {},
@@ -23,8 +34,8 @@ export default class ChatApi {
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           onConnect: () => {
-            this.stompClient.subscribe('/user/queue/messages', this.onMessageReceived);
-            this.stompClient.subscribe('/user/queue/errors', (frame) => {
+            client.subscribe('/user/queue/messages', this.onMessageReceived);
+            client.subscribe('/user/queue/errors', (frame) => {
               try {
                 this.onRefusal(JSON.parse(frame.body));
               } catch {
@@ -42,8 +53,9 @@ export default class ChatApi {
             reject(error);
           }
         });
+        this.stompClient = client;
 
-        this.stompClient.activate();
+        client.activate();
       } catch (error) {
         this.onError(error);
         reject(error);
@@ -63,7 +75,7 @@ export default class ChatApi {
     return false;
   }
 
-  joinBoard(boardId) {
+  joinBoard(boardId: Id | null | undefined) {
     if (!this.stompClient || !this.stompClient.active || boardId === null || boardId === undefined) {
       return false;
     }
@@ -82,7 +94,7 @@ export default class ChatApi {
     return true;
   }
 
-  leaveBoard(boardId) {
+  leaveBoard(boardId: Id | null) {
     if (!this.stompClient || !this.stompClient.active) return false;
 
     if (this.boardSubscription) {
@@ -97,7 +109,7 @@ export default class ChatApi {
     return true;
   }
 
-  sendMessage(messageType, message, boardId, recipient) {
+  sendMessage(messageType: string, message: string, boardId?: Id | null, recipient?: string | null) {
     if (!this.stompClient || !this.stompClient.active || !message.trim()) return false;
 
     if (messageType === 'private') {
