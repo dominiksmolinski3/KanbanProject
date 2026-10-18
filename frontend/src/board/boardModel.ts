@@ -50,10 +50,17 @@ interface BoardModelInput<C extends WipSubject, R extends WipSubject, T extends 
   dailyFocusOnly?: boolean;
 }
 
+export interface BoardModel<C extends WipSubject, R extends WipSubject, T extends PlacedTask> {
+  columns: (C & WipDecoration)[];
+  rows: (R & WipDecoration)[];
+  dailyFocusCount: number;
+  tasksIn: (columnId: Id, rowId?: Id | null) => T[];
+}
+
 // WIP counts always cover every task; only the cells honour the daily-focus filter.
 export function buildBoardModel<C extends WipSubject, R extends WipSubject, T extends PlacedTask>(
   { columns = [], rows = [], tasks = [], dailyFocusOnly = false }: BoardModelInput<C, R, T>
-) {
+): BoardModel<C, R, T> {
   const columnCounts = new Map<Id, number>();
   const rowCounts = new Map<Id | null, number>();
   const cells = new Map<string, T[]>();
