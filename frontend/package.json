@@ -27,6 +27,7 @@
     "i18next-http-backend": "^4.0.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-hook-form": "^7.90.0",
     "react-i18next": "^17.0.16",
     "react-router-dom": "^7.18.4",
     "react-toastify": "^11.1.0",

@@ -791,6 +791,23 @@ first control, so a destructive "yes" is never focused by default. And Escape is
 dialog, because the task panel behind a confirmation listens on `document` and would otherwise close
 with it. The panel itself is not a `Modal` yet, so that stop is what keeps the two apart.
 
+**The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
+owns a single React Hook Form instance holding every field the screen has (email, password, username,
+the confirmation, the verification code and the three reset fields) and shares it through a
+`FormProvider`. That keeps what the screen always did with separate `useState` pairs: an address
+typed on the sign-in tab is still there on the register tab, the verification and reset flows
+prefill it, and a reset clears the password. The handlers live in
+[useAuthFlow.ts](../frontend/src/components/auth/useAuthFlow.ts), the captcha in `useCaptcha` and
+`CaptchaField`, and each face in its own small component under `components/auth/`.
+
+The shared submit button used to sit outside both `<form>` elements and call the handler from
+`onClick`, so Enter did nothing and the `required` attributes were never checked. It is now a real
+submit button tied to the visible form by `form="auth-form"`, and the browser validates before
+`handleSubmit` runs. React Hook Form's `handleSubmit` is asynchronous, which is why a test that
+asserts a server call did *not* happen has to let the event loop turn first or it passes on a
+mutant. It also makes the sign-in page the heaviest part of the entry bundle: the library is about
+12 kB gzipped of the 150 kB budget.
+
 **Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
 cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
 only be dragged could not be moved by anyone without a pointer, which on a Kanban board is the
