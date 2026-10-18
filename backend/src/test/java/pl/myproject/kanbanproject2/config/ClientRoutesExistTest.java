@@ -102,7 +102,11 @@ class ClientRoutesExistTest {
 
             Matcher matcher = FETCH.matcher(live);
             while (matcher.find()) {
-                String path = resolve(firstArgument(live, matcher.end()), names);
+                String argument = firstArgument(live, matcher.end());
+                if (isHelperOwnFetch(file, argument)) {
+                    continue;
+                }
+                String path = resolve(argument, names);
                 if (!path.startsWith("/api") && !path.startsWith("{}")) {
                     skipped.computeIfAbsent(siteOf(file, source, matcher.start()), site -> List.of(path));
                 }
@@ -122,17 +126,26 @@ class ClientRoutesExistTest {
         known.addAll(OTHER_HTTP_EXPORTS);
 
         Map<String, String> unknown = new TreeMap<>();
-        Matcher exported = HTTP_EXPORT.matcher(Files.readString(SERVICES.resolve(HTTP_MODULE)));
+        String httpSource = withoutComments(Files.readString(SERVICES.resolve(HTTP_MODULE)));
+        Matcher exported = HTTP_EXPORT.matcher(httpSource);
         while (exported.find()) {
             if (!known.contains(exported.group(1))) {
                 unknown.put(exported.group(1), HTTP_MODULE);
             }
         }
+        if (HTTP_UNNAMED_EXPORT.matcher(httpSource).find()) {
+            unknown.put("an export list, re-export or default export", HTTP_MODULE);
+        }
         for (Path file : serviceFiles()) {
             Matcher imports = HTTP_IMPORT.matcher(withoutComments(Files.readString(file)));
             while (imports.find()) {
-                for (String name : imports.group(1).split(",")) {
-                    String imported = name.trim();
+                String clause = imports.group(1).trim().replaceFirst("^type\\s+", "");
+                if (!clause.startsWith("{")) {
+                    unknown.put("import " + clause, file.getFileName().toString());
+                    continue;
+                }
+                for (String name : clause.replaceAll("[{}]", "").split(",")) {
+                    String imported = name.trim().replaceFirst("^type\\s+", "").split("\\s+as\\s+")[0];
                     if (!imported.isEmpty() && !known.contains(imported)) {
                         unknown.put(imported, file.getFileName().toString());
                     }
@@ -186,10 +199,12 @@ class ClientRoutesExistTest {
     }
 
     private static final Pattern FETCH = Pattern.compile(
-            "\\b(?:fetch|" + String.join("|", REQUEST_HELPERS) + ")\\s*(?:<[^()]*>)?\\s*\\(");
+            "\\b(?:fetch|" + String.join("|", REQUEST_HELPERS) + ")\\s*(?:<.*?>)?\\s*\\(");
     private static final Pattern HTTP_IMPORT =
-            Pattern.compile("import\\s*\\{([^}]*)}\\s*from\\s*'\\./http'");
-    private static final Pattern HTTP_EXPORT = Pattern.compile("export const (\\w+)");
+            Pattern.compile("import\\s+([^;]*?)\\s*from\\s*['\"]\\./http(?:\\.ts)?['\"]");
+    private static final Pattern HTTP_EXPORT =
+            Pattern.compile("export\\s+(?:async\\s+)?(?:const|let|var|function|class)\\s+(\\w+)");
+    private static final Pattern HTTP_UNNAMED_EXPORT = Pattern.compile("export\\s*(?:\\{|\\*|default\\b)");
     private static final Pattern CONSTANT =
             Pattern.compile("const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(`[^`]*`|'[^']*'|\"[^\"]*\")\\s*;");
     private static final Pattern HELPER =
@@ -208,6 +223,9 @@ class ClientRoutesExistTest {
             Matcher matcher = FETCH.matcher(source);
             while (matcher.find()) {
                 String argument = firstArgument(source, matcher.end());
+                if (isHelperOwnFetch(file, argument)) {
+                    continue;
+                }
                 String path = resolve(argument, names);
                 if (path.startsWith("/api") || path.startsWith("{}")) {
                     calls.putIfAbsent(normalise(path), siteOf(file, source, matcher.start()));
@@ -281,10 +299,13 @@ class ClientRoutesExistTest {
         try (Stream<Path> files = Files.list(SERVICES)) {
             return files
                     .filter(file -> file.toString().endsWith(".ts") || file.toString().endsWith(".js"))
-                    .filter(file -> !file.getFileName().toString().equals(HTTP_MODULE))
                     .sorted()
                     .toList();
         }
+    }
+
+    private static boolean isHelperOwnFetch(Path file, String argument) {
+        return file.getFileName().toString().equals(HTTP_MODULE) && argument.equals("path");
     }
 
     private static Map<String, String> namesIn(String source) {
