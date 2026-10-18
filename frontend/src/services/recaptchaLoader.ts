@@ -3,15 +3,26 @@ const API_SELECTOR = 'script[src*="recaptcha/api.js"]';
 const READY_TIMEOUT_MS = 20000;
 const POLL_INTERVAL_MS = 50;
 
-let pending = null;
-let abandonPending = null;
+export interface Grecaptcha {
+  render: (...args: unknown[]) => unknown;
+  reset?: (widgetId?: unknown) => void;
+}
 
-function apiIfCallable() {
+declare global {
+  interface Window {
+    grecaptcha?: Grecaptcha;
+  }
+}
+
+let pending: Promise<Grecaptcha> | null = null;
+let abandonPending: (() => void) | null = null;
+
+function apiIfCallable(): Grecaptcha | null {
   const grecaptcha = typeof window !== 'undefined' ? window.grecaptcha : undefined;
   return grecaptcha && typeof grecaptcha.render === 'function' ? grecaptcha : null;
 }
 
-export function recaptchaLanguage(i18n) {
+export function recaptchaLanguage(i18n?: { resolvedLanguage?: string; language?: string } | null): string {
   const tag = i18n?.resolvedLanguage || i18n?.language || 'en';
   return tag.split('-')[0];
 }
@@ -25,12 +36,11 @@ export function resetRecaptchaLoader() {
   }
 }
 
-export function loadRecaptcha() {
+export function loadRecaptcha(): Promise<Grecaptcha> {
   if (pending) return pending;
 
-  pending = new Promise((resolve, reject) => {
-    let pollId = null;
-    let deadlineId = null;
+  pending = new Promise<Grecaptcha>((resolve, reject) => {
+    let pollId: ReturnType<typeof setTimeout> | undefined;
     let settled = false;
 
     const stop = () => {
@@ -39,7 +49,7 @@ export function loadRecaptcha() {
       clearTimeout(deadlineId);
     };
 
-    const finish = (settle, value) => {
+    const finish = <T>(settle: (value: T) => void, value: T) => {
       if (settled) return;
       stop();
       settle(value);
@@ -53,7 +63,7 @@ export function loadRecaptcha() {
       else pollId = setTimeout(poll, POLL_INTERVAL_MS);
     };
 
-    deadlineId = setTimeout(
+    const deadlineId = setTimeout(
       () => finish(reject, new Error('reCAPTCHA did not finish loading in time')),
       READY_TIMEOUT_MS,
     );

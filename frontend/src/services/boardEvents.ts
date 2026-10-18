@@ -1,17 +1,23 @@
 import SockJS from 'sockjs-client';
-import { Client } from '@stomp/stompjs';
+import { Client, type StompSubscription } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
+import type { Id } from '../types/api';
+
+export interface BoardEvent {
+  type: string;
+  boardId: Id;
+}
+
+type BoardEventHandler = (event: BoardEvent) => void;
 
 export default class BoardEvents {
-  constructor() {
-    this.client = null;
-    this.subscription = null;
-    this.boardId = null;
-    this.onEvent = null;
-    this.serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  }
+  client: Client | null = null;
+  subscription: StompSubscription | null = null;
+  boardId: Id | null = null;
+  onEvent: BoardEventHandler | null = null;
+  serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-  watch(boardId, onEvent) {
+  watch(boardId: Id, onEvent: BoardEventHandler) {
     this.onEvent = onEvent;
     this.boardId = boardId;
 
@@ -36,7 +42,9 @@ export default class BoardEvents {
           }
         }
         const token = getAccessToken();
-        this.client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        if (this.client) {
+          this.client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        }
       },
 
       onConnect: () => this.resubscribe(),

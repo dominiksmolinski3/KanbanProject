@@ -1,13 +1,20 @@
-import { apiError } from './apiError';
+import { apiError, type ErrorBody } from './apiError';
+import { deleteQuietly, getJson } from './http';
+import type { Id, TaskAttachment } from '../types/api';
 
 const TASKS = '/api/tasks';
 
-const attachmentsOf = (taskId) => `${TASKS}/${taskId}/attachments`;
+const attachmentsOf = (taskId: Id) => `${TASKS}/${taskId}/attachments`;
 
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
+type UploadFailure = 'tooLarge' | 'storageUnavailable' | 'failed';
+
 export class AttachmentUploadError extends Error {
-  constructor(reason, status) {
+  reason: UploadFailure;
+  status: number;
+
+  constructor(reason: UploadFailure, status: number) {
     super(`Attachment upload failed: ${reason}`);
     this.name = 'AttachmentUploadError';
     this.reason = reason;
@@ -15,17 +22,9 @@ export class AttachmentUploadError extends Error {
   }
 }
 
-export const fetchTaskAttachments = async (taskId) => {
-  const response = await fetch(attachmentsOf(taskId));
+export const fetchTaskAttachments = (taskId: Id) => getJson<TaskAttachment[]>(attachmentsOf(taskId));
 
-  if (!response.ok) {
-    throw await apiError(response);
-  }
-
-  return await response.json();
-};
-
-export const uploadTaskAttachment = async (taskId, file) => {
+export const uploadTaskAttachment = async (taskId: Id, file: File): Promise<TaskAttachment> => {
   if (file.size > MAX_ATTACHMENT_SIZE) {
     throw new AttachmentUploadError('tooLarge', 413);
   }
@@ -39,7 +38,7 @@ export const uploadTaskAttachment = async (taskId, file) => {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+    const body: ErrorBody = await response.json().catch(() => ({}));
 
     if (response.status === 413 || body.code === 'ATTACHMENT_TOO_LARGE') {
       throw new AttachmentUploadError('tooLarge', response.status);
@@ -55,15 +54,18 @@ export const uploadTaskAttachment = async (taskId, file) => {
 
 const DOWNLOAD_RESUME_ATTEMPTS = 3;
 
-const collectInto = async (url, state) => {
+interface DownloadState {
+  chunks: BlobPart[];
+  received: number;
+}
+
+const collectInto = async (url: string, state: DownloadState) => {
   const response = state.received > 0
     ? await fetch(url, { headers: { Range: `bytes=${state.received}-` } })
     : await fetch(url);
 
   if (!response.ok) {
-    const error = await apiError(response);
-    error.fatal = true;
-    throw error;
+    throw Object.assign(await apiError(response), { fatal: true });
   }
 
   if (state.received > 0 && response.status !== 206) {
@@ -89,24 +91,23 @@ const collectInto = async (url, state) => {
   }
 };
 
-export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => {
+export const downloadTaskAttachment = async (taskId: Id, attachmentId: number, fileName?: string) => {
   const url = `${attachmentsOf(taskId)}/${attachmentId}/content`;
-  const state = { chunks: [], received: 0 };
+  const state: DownloadState = { chunks: [], received: 0 };
 
   for (let attempt = 0; ; attempt++) {
     try {
       await collectInto(url, state);
       break;
     } catch (error) {
-      if (error.fatal || state.received === 0 || attempt >= DOWNLOAD_RESUME_ATTEMPTS) {
+      if ((error as { fatal?: boolean }).fatal || state.received === 0 || attempt >= DOWNLOAD_RESUME_ATTEMPTS) {
         throw error;
       }
     }
   }
 
-  const blob = state.chunks.length === 1 && state.chunks[0] instanceof Blob
-    ? state.chunks[0]
-    : new Blob(state.chunks);
+  const [first] = state.chunks;
+  const blob = state.chunks.length === 1 && first instanceof Blob ? first : new Blob(state.chunks);
   const objectUrl = URL.createObjectURL(blob);
 
   const link = document.createElement('a');
@@ -120,14 +121,5 @@ export const downloadTaskAttachment = async (taskId, attachmentId, fileName) => 
   return true;
 };
 
-export const deleteTaskAttachment = async (taskId, attachmentId) => {
-  const response = await fetch(`${attachmentsOf(taskId)}/${attachmentId}`, {
-    method: 'DELETE'
-  });
-
-  if (!response.ok && response.status !== 404) {
-    throw await apiError(response);
-  }
-
-  return true;
-};
+export const deleteTaskAttachment = (taskId: Id, attachmentId: number) =>
+  deleteQuietly(`${attachmentsOf(taskId)}/${attachmentId}`);

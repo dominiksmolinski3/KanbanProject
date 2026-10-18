@@ -1,4 +1,5 @@
 import { apiError } from './apiError';
+import type { Id } from '../types/api';
 
 export class ConcurrentModificationError extends Error {
   constructor(what = 'item') {
@@ -7,7 +8,7 @@ export class ConcurrentModificationError extends Error {
   }
 }
 
-export const reorder = async (endpoint, orderedIds, what) => {
+export const reorder = async <T>(endpoint: string, orderedIds: Id[], what: string): Promise<T> => {
   const response = await fetch(`${endpoint}/positions`, {
     method: 'PATCH',
     headers: {

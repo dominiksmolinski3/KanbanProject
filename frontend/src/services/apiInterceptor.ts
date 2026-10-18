@@ -14,9 +14,9 @@ export class SessionExpiredError extends Error {
   }
 }
 
-const isPublicAuthPath = (url) => url.includes('/api/auth/');
+const isPublicAuthPath = (url: string) => url.includes('/api/auth/');
 
-function urlOf(input) {
+function urlOf(input: RequestInfo | URL): string {
   if (typeof input === 'string') return input;
   if (input instanceof URL) return input.href;
   return input?.url ?? '';
@@ -25,12 +25,12 @@ function urlOf(input) {
 export function setupApiInterceptors() {
   const originalFetch = window.fetch;
 
-  const send = (input, options, token) =>
+  const send = (input: RequestInfo | URL, options: RequestInit, token: string) =>
     originalFetch(input, {
       ...options,
       headers: {
         'Accept': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string> | undefined),
         'Authorization': `Bearer ${token}`
       }
     });
@@ -47,7 +47,7 @@ export function setupApiInterceptors() {
     throw new SessionExpiredError();
   };
 
-  window.fetch = async (input, options = {}) => {
+  window.fetch = async (input: RequestInfo | URL, options: RequestInit = {}) => {
     if (isPublicAuthPath(urlOf(input))) {
       return originalFetch(input, options);
     }

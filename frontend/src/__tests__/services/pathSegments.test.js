@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parse } from 'espree';
+import { parse } from '@typescript-eslint/typescript-estree';
 
 const SERVICES = path.join(__dirname, '..', '..', 'services');
 
@@ -19,13 +19,13 @@ const visit = (node, onTemplate) => {
 
 const segmentsIn = (file) => {
   const source = fs.readFileSync(file, 'utf8');
-  const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'module', ecmaFeatures: { jsx: true }, loc: true });
+  const ast = parse(source, { filePath: file, loc: true, range: true });
   const found = [];
   visit(ast, (literal) => {
     literal.expressions.forEach((expression, i) => {
       if (!literal.quasis[i].value.cooked.endsWith('/')) return;
       found.push({
-        text: source.slice(expression.start, expression.end),
+        text: source.slice(...expression.range),
         expression,
         line: expression.loc.start.line,
       });
@@ -41,7 +41,7 @@ const isSafe = ({ text, expression }) =>
 
 describe('service URL path segments', () => {
   const files = fs.readdirSync(SERVICES)
-    .filter((name) => name.endsWith('.js'))
+    .filter((name) => /\.[jt]s$/.test(name))
     .map((name) => path.join(SERVICES, name));
 
   test('the scan finds the id segments it is meant to check', () => {
