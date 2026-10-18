@@ -789,7 +789,10 @@ confirm dialog), `role="alertdialog"` for confirmations, and page-scroll locking
 on who set `overflow` last. Two choices are deliberate. The container takes focus on open, not the
 first control, so a destructive "yes" is never focused by default. And Escape is stopped at the
 dialog, because the task panel behind a confirmation listens on `document` and would otherwise close
-with it. The panel itself is not a `Modal` yet, so that stop is what keeps the two apart.
+with it. The panel itself is not a `Modal`, so that stop is what keeps the two apart, and it should
+stay that way until `TaskLabels` stops portalling its picker and custom-label form into `body`:
+Radix sets `pointer-events: none` on `body` while a modal is open, so anything portalled outside the
+dialog's own content would stop receiving clicks.
 
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,
