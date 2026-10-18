@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TextLimitsMatchTheClientTest {
-    private static final Path CLIENT_LIMITS = Path.of("..", "frontend", "src", "services", "textLimits.js");
+    private static final Path CLIENT_LIMITS = Path.of("..", "frontend", "src", "services", "textLimits.ts");
     private static final Pattern CONSTANT = Pattern.compile("export const (\\w+) = (\\d+);");
 
     private static Map<String, Integer> clientLimits() throws IOException {
