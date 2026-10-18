@@ -1,11 +1,12 @@
-import React from 'react';
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import useUserAvatar from '../board/useUserAvatar';
 import { hueOf, initialsOf } from '../board/cardModel';
+import type { BoardMember, Id } from '../types/api';
 
 const MAX_VISIBLE = 3;
 
-function Avatar({ userId, name }) {
+function Avatar({ userId, name }: { userId: Id; name?: string }) {
   const { t } = useTranslation();
   const url = useUserAvatar(userId);
   const label = name || t('taskActions.avatarAlt');
@@ -27,18 +28,23 @@ function Avatar({ userId, name }) {
       role="img"
       aria-label={label}
       title={label}
-      style={{ '--avatar-hue': hueOf(userId) }}
+      style={{ '--avatar-hue': hueOf(userId) } as CSSProperties}
     >
       {initialsOf(name)}
     </span>
   );
 }
 
-function AvatarStack({ userIds = [], members = [] }) {
+interface AvatarStackProps {
+  userIds?: Id[];
+  members?: Pick<BoardMember, 'id' | 'name'>[];
+}
+
+function AvatarStack({ userIds = [], members = [] }: AvatarStackProps) {
   const { t } = useTranslation();
   if (userIds.length === 0) return null;
 
-  const nameOf = (id) => members.find((member) => String(member.id) === String(id))?.name;
+  const nameOf = (id: Id) => members.find((member) => String(member.id) === String(id))?.name;
   const visible = userIds.slice(0, MAX_VISIBLE);
   const hidden = userIds.length - visible.length;
 
