@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 
-const readTheme = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+type DocumentTheme = 'light' | 'dark';
 
-export function useDocumentTheme() {
+const readTheme = (): DocumentTheme => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
+export function useDocumentTheme(): DocumentTheme {
   const [theme, setTheme] = useState(readTheme);
 
   useEffect(() => {

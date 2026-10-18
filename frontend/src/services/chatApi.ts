@@ -4,11 +4,15 @@ import type { Id } from '../types/api';
 
 type MessageHandler = (message: IMessage) => void;
 
+export interface ChatRefusal {
+  reason?: string;
+}
+
 export default class ChatApi {
   stompClient: Client | null = null;
   onMessageReceived: MessageHandler;
   onError: (error: unknown) => void;
-  onRefusal: (refusal: unknown) => void;
+  onRefusal: (refusal: ChatRefusal | null | undefined) => void;
   boardSubscription: StompSubscription | null = null;
   boardId: Id | null = null;
   serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -16,7 +20,7 @@ export default class ChatApi {
   constructor(
     onMessageReceived: MessageHandler,
     onError: (error: unknown) => void,
-    onRefusal: (refusal: unknown) => void
+    onRefusal: (refusal: ChatRefusal | null | undefined) => void
   ) {
     this.onMessageReceived = onMessageReceived;
     this.onError = onError;

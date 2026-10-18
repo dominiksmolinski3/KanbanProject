@@ -8,7 +8,7 @@ export const SESSION_ID_KEY = 'sessionId';
 
 const EXPIRY_SKEW_MS = 10_000;
 
-type StoredSession = Pick<LoginResponse, 'token' | 'expiresIn'> & Partial<Pick<LoginResponse, 'refreshToken' | 'sessionId'>>;
+export type StoredSession = Pick<LoginResponse, 'token' | 'expiresIn'> & Partial<Pick<LoginResponse, 'refreshToken' | 'sessionId'>>;
 
 export function storeSession({ token, expiresIn, refreshToken, sessionId }: StoredSession) {
   localStorage.setItem(TOKEN_KEY, token);

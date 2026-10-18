@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { Id } from '../types/api';
 
-const storageKey = (boardId) => `kanban.collapsedLanes.${boardId ?? 'default'}`;
+type LaneId = Id | string;
 
-function read(boardId) {
+const storageKey = (boardId: Id | null | undefined) => `kanban.collapsedLanes.${boardId ?? 'default'}`;
+
+function read(boardId: Id | null | undefined): Set<string> {
   try {
     const stored = JSON.parse(localStorage.getItem(storageKey(boardId)) || '[]');
     return new Set(Array.isArray(stored) ? stored.map(String) : []);
@@ -11,14 +14,14 @@ function read(boardId) {
   }
 }
 
-export default function useCollapsedLanes(boardId) {
+export default function useCollapsedLanes(boardId: Id | null | undefined) {
   const [collapsed, setCollapsed] = useState(() => read(boardId));
 
   useEffect(() => {
     setCollapsed(read(boardId));
   }, [boardId]);
 
-  const toggle = useCallback((laneId) => {
+  const toggle = useCallback((laneId: LaneId) => {
     setCollapsed((previous) => {
       const next = new Set(previous);
       const key = String(laneId);
@@ -33,7 +36,7 @@ export default function useCollapsedLanes(boardId) {
     });
   }, [boardId]);
 
-  const isCollapsed = useCallback((laneId) => collapsed.has(String(laneId)), [collapsed]);
+  const isCollapsed = useCallback((laneId: LaneId) => collapsed.has(String(laneId)), [collapsed]);
 
   return { isCollapsed, toggle };
 }
