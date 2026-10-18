@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getUserAvatar } from '../services/api';
+import type { Id } from '../types/api';
 
 // One request per account per session, however many cards it is on; the object URLs live as long as the page.
-const cache = new Map();
+const cache = new Map<string, Promise<string | null>>();
 
 export function clearAvatarCache() {
   for (const pending of cache.values()) {
@@ -13,16 +14,18 @@ export function clearAvatarCache() {
   cache.clear();
 }
 
-function load(userId) {
+function load(userId: Id): Promise<string | null> {
   const key = String(userId);
-  if (!cache.has(key)) {
-    cache.set(key, getUserAvatar(userId).catch(() => null));
+  let pending = cache.get(key);
+  if (!pending) {
+    pending = getUserAvatar(userId).catch(() => null);
+    cache.set(key, pending);
   }
-  return cache.get(key);
+  return pending;
 }
 
-export default function useUserAvatar(userId) {
-  const [url, setUrl] = useState(null);
+export default function useUserAvatar(userId: Id | null | undefined): string | null {
+  const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId === undefined || userId === null) return undefined;

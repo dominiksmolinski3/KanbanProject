@@ -1,23 +1,25 @@
-export const PRIORITY_LEVELS = ['urgent', 'high', 'medium', 'low'];
+export const PRIORITY_LEVELS = ['urgent', 'high', 'medium', 'low'] as const;
 
-const PRIORITY_PATTERNS = [
+export type Priority = (typeof PRIORITY_LEVELS)[number];
+
+const PRIORITY_PATTERNS: [Priority, RegExp][] = [
   ['urgent', /^(urgent|critical|blocker|p0)$|^(priority[\s:_-]*)?(urgent|critical)([\s_-]*priority)?$/i],
   ['high', /^(high|p1)$|^(priority[\s:_-]*)?high([\s_-]*priority)?$/i],
   ['medium', /^(medium|normal|p2)$|^(priority[\s:_-]*)?(medium|normal)([\s_-]*priority)?$/i],
   ['low', /^(low|p3)$|^(priority[\s:_-]*)?low([\s_-]*priority)?$/i],
 ];
 
-export function priorityOfLabel(label) {
+export function priorityOfLabel(label: unknown): Priority | null {
   const text = String(label ?? '').trim();
   const match = PRIORITY_PATTERNS.find(([, pattern]) => pattern.test(text));
   return match ? match[0] : null;
 }
 
 // Priority is not a field of its own: it is read off the labels, and the highest one wins.
-export function splitPriority(labels = []) {
-  let priority = null;
-  let priorityLabel = null;
-  const rest = [];
+export function splitPriority(labels: string[] = []) {
+  let priority: Priority | null = null;
+  let priorityLabel: string | null = null;
+  const rest: string[] = [];
   for (const label of labels) {
     const level = priorityOfLabel(label);
     if (level && (priority === null || PRIORITY_LEVELS.indexOf(level) < PRIORITY_LEVELS.indexOf(priority))) {
@@ -33,7 +35,9 @@ export function splitPriority(labels = []) {
 
 export const DUE_SOON_MS = 48 * 60 * 60 * 1000;
 
-export function deadlineState(deadline, now = new Date()) {
+export type DeadlineState = 'overdue' | 'soon' | 'later';
+
+export function deadlineState(deadline: string | Date | null | undefined, now = new Date()): DeadlineState | null {
   if (!deadline) return null;
   const due = new Date(deadline);
   if (Number.isNaN(due.getTime())) return null;
@@ -43,21 +47,21 @@ export function deadlineState(deadline, now = new Date()) {
   return 'later';
 }
 
-function hash(text) {
+function hash(text: unknown): number {
   let value = 0;
   for (const char of String(text)) {
-    value = (value * 31 + char.codePointAt(0)) >>> 0;
+    value = (value * 31 + char.codePointAt(0)!) >>> 0;
   }
   return value;
 }
 
 const GOLDEN_ANGLE = 137.508;
 
-export function hueOf(text) {
+export function hueOf(text: unknown): number {
   return Math.round((hash(text) * GOLDEN_ANGLE) % 360);
 }
 
-export function initialsOf(name) {
+export function initialsOf(name: unknown): string {
   const parts = String(name ?? '').trim().split(/[\s@._-]+/).filter(Boolean);
   if (parts.length === 0) return '?';
   const first = [...parts[0]][0] ?? '';
@@ -65,7 +69,7 @@ export function initialsOf(name) {
   return (first + second).toUpperCase();
 }
 
-export function readStoredLabelColors() {
+export function readStoredLabelColors(): Record<string, string> {
   try {
     const stored = localStorage.getItem('labelColors');
     const parsed = stored ? JSON.parse(stored) : null;

@@ -1,14 +1,63 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import type { IMessage } from '@stomp/stompjs';
 import { useAuth } from './AuthContext';
 import { useKanban } from './KanbanContext';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import ChatApi from '../services/chatApi';
+import ChatApi, { type ChatRefusal } from '../services/chatApi';
 import { fetchBoardChatHistory, fetchDirectChatHistory, DEFAULT_PAGE_SIZE } from '../services/chatHistoryApi';
+import type { ChatMessage, ChatMessageResults, Id } from '../types/api';
 
-const ChatContext = createContext();
+type ConversationKind = 'board' | 'private';
 
-const initialState = {
+export type ChatEntry = Omit<ChatMessage, 'id'> & { id: Id | string; read: boolean };
+
+type IncomingMessage = Omit<ChatEntry, 'read'>;
+
+interface ChatState {
+  isOpen: boolean;
+  messages: ChatEntry[];
+  message: string;
+  isConnected: boolean;
+  unreadCount: number;
+  recipient: string;
+  messageType: ConversationKind;
+  historyPage: number;
+  hasMoreHistory: boolean;
+  isLoadingHistory: boolean;
+}
+
+type ChatAction =
+  | { type: 'TOGGLE_CHAT' }
+  | { type: 'SET_CONNECTED'; payload: boolean }
+  | { type: 'SET_MESSAGE'; payload: string }
+  | { type: 'ADD_MESSAGE'; payload: IncomingMessage }
+  | { type: 'HISTORY_LOADING' }
+  | { type: 'HISTORY_LOADED'; payload: ChatMessageResults }
+  | { type: 'HISTORY_FAILED' }
+  | { type: 'RESET_CONVERSATION' }
+  | { type: 'MARK_MESSAGES_READ' }
+  | { type: 'SET_MESSAGE_TYPE'; payload: ConversationKind }
+  | { type: 'SET_RECIPIENT'; payload: string }
+  | { type: 'RESET_MESSAGE' };
+
+interface ChatValue extends ChatState {
+  activeBoardId: Id | null | undefined;
+  isBoardReadOnly: boolean;
+  toggleChat: () => void;
+  sendMessage: () => void;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  loadOlderMessages: () => void;
+  reloadConversation: () => void;
+  setMessage: (message: string) => void;
+  setMessageType: (type: ConversationKind) => void;
+  setRecipient: (recipient: string) => void;
+}
+
+const ChatContext = createContext<ChatValue | undefined>(undefined);
+
+const initialState: ChatState = {
   isOpen: false,
   messages: [],
   message: '',
@@ -21,10 +70,10 @@ const initialState = {
   isLoadingHistory: false,
 };
 
-const chronological = (messages) =>
-  [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+const chronological = (messages: ChatEntry[]) =>
+  [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-function chatReducer(state, action) {
+function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case 'TOGGLE_CHAT':
       return { ...state, isOpen: !state.isOpen };
@@ -72,13 +121,13 @@ function chatReducer(state, action) {
   }
 }
 
-export function ChatProvider({ children }) {
+export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const { user, token } = useAuth();
   const { activeBoardId, activeBoard } = useKanban();
   const isBoardReadOnly = activeBoard?.role === 'VIEWER';
   const { t } = useTranslation();
-  const chatApiRef = useRef(null);
+  const chatApiRef = useRef<ChatApi | null>(null);
 
   useEffect(() => {
     if (state.isOpen) {
@@ -86,7 +135,7 @@ export function ChatProvider({ children }) {
     }
   }, [state.isOpen]);
 
-  const onMessageReceived = (payload) => {
+  const onMessageReceived = (payload: IMessage) => {
     try {
       const receivedMessage = JSON.parse(payload.body);
       dispatch({
@@ -102,13 +151,13 @@ export function ChatProvider({ children }) {
     }
   };
 
-  const onError = (error) => {
+  const onError = (error: unknown) => {
     console.error('WebSocket error:', error);
     dispatch({ type: 'SET_CONNECTED', payload: false });
     toast.error(t('chat.connectionError'));
   };
 
-  const onRefusal = (refusal) => {
+  const onRefusal = (refusal: ChatRefusal | null | undefined) => {
     toast.warning(t(refusal?.reason || 'chat.errors.notSent'));
   };
 
@@ -208,7 +257,7 @@ export function ChatProvider({ children }) {
     }
   };
 
-  const setMessageType = (type) => {
+  const setMessageType = (type: ConversationKind) => {
     if (type === state.messageType) return;
     dispatch({ type: 'SET_MESSAGE_TYPE', payload: type });
     dispatch({ type: 'RESET_CONVERSATION' });
@@ -229,7 +278,7 @@ export function ChatProvider({ children }) {
     dispatch({ type: 'TOGGLE_CHAT' });
   };
 
-  const value = {
+  const value: ChatValue = {
     ...state,
     activeBoardId,
     isBoardReadOnly,
@@ -250,7 +299,7 @@ export function ChatProvider({ children }) {
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
-export const useChat = () => {
+export const useChat = (): ChatValue => {
   const context = useContext(ChatContext);
   if (!context) {
     throw new Error('useChat must be used within a ChatProvider');

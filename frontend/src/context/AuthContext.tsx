@@ -1,11 +1,21 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { clearSession, endSession, getAccessToken, storeSession } from '../services/session';
+import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
+import { clearSession, endSession, getAccessToken, storeSession, type StoredSession } from '../services/session';
+import type { User } from '../types/api';
 
-const AuthContext = createContext();
+interface AuthValue {
+  token: string | null;
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (session: StoredSession) => void;
+  logout: () => Promise<void>;
+}
 
-export function AuthProvider({ children }) {
+const AuthContext = createContext<AuthValue | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState(getAccessToken());
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +54,7 @@ export function AuthProvider({ children }) {
     verifyToken();
   }, [token]);
 
-  const login = (session) => {
+  const login = (session: StoredSession) => {
     storeSession(session);
     setToken(session.token);
   };
@@ -61,7 +71,7 @@ export function AuthProvider({ children }) {
     await endSession();
   };
 
-  const value = {
+  const value: AuthValue = {
     token,
     user,
     isAuthenticated: !!token,
@@ -77,4 +87,10 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthValue => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
