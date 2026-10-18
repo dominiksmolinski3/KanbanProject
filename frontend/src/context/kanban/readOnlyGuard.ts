@@ -1,6 +1,7 @@
 import { toast } from 'react-toastify';
+import type { ReadOnlyGuard, Translate } from './types';
 
-export function readOnlyGuard(isViewer, t) {
+export function readOnlyGuard(isViewer: boolean, t: Translate): ReadOnlyGuard {
   const blockIfReadOnly = () => {
     if (isViewer) {
       toast.error(t('notifications.readOnlyBoard'));

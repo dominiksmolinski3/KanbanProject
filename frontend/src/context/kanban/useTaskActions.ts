@@ -13,12 +13,20 @@ import {
   updateTaskRow,
   updateUserWipLimit,
 } from '../../services/api';
+import type { Id } from '../../types/api';
+import { reportError } from './reportError';
+import type { LooseId, SharedActionDeps } from './types';
+
+type TaskActionDeps = Pick<
+  SharedActionDeps,
+  't' | 'blockIfReadOnly' | 'refuseIfReadOnly' | 'columns' | 'rows' | 'tasks' | 'setTasks' | 'refreshTasks'
+>;
 
 export function useTaskActions({
   t, blockIfReadOnly, refuseIfReadOnly,
   columns, rows, tasks, setTasks, refreshTasks,
-}) {
-  const handleUpdateTaskName = async (taskId, newName) => {
+}: TaskActionDeps) {
+  const handleUpdateTaskName = async (taskId: Id, newName: string) => {
     if (blockIfReadOnly()) return false;
     try {
       await updateTaskName(taskId, newName);
@@ -29,12 +37,12 @@ export function useTaskActions({
       return true;
     } catch (err) {
       console.error('Error updating task name:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleAddTask = async (title, columnId, deadline = null, rowId = null) => {
+  const handleAddTask = async (title: string, columnId?: Id | null, deadline: string | null = null, rowId: Id | null = null) => {
     refuseIfReadOnly();
     if (!columns || columns.length === 0) {
       const errorMessage = t('notifications.noColumnError');
@@ -64,12 +72,12 @@ export function useTaskActions({
       toast.success(t('notifications.taskAdded', { title }));
       return newTask;
     } catch (err) {
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       throw err;
     }
   };
 
-  const handleMoveTask = async (taskId, newColumnId, newRowId) => {
+  const handleMoveTask = async (taskId: LooseId, newColumnId?: LooseId | null, newRowId?: LooseId | null): Promise<void> => {
     if (blockIfReadOnly()) return;
     try {
       const task = tasks.find(t => t.id === taskId);
@@ -86,15 +94,17 @@ export function useTaskActions({
       const updatedTask = { ...task };
 
       if (columnChanged) {
-        await updateTaskColumn(taskId, newColumnId);
-        updatedTask.columnId = newColumnId;
+        const columnId = newColumnId as Id;
+        await updateTaskColumn(task.id, columnId);
+        updatedTask.columnId = columnId;
         const targetColumn = columns.find(col => col.id === newColumnId);
         targetColumnName = targetColumn ? targetColumn.name : '';
       }
 
       if (rowChanged) {
-        await updateTaskRow(taskId, newRowId);
-        updatedTask.rowId = newRowId;
+        const rowId = newRowId as Id;
+        await updateTaskRow(task.id, rowId);
+        updatedTask.rowId = rowId;
 
         const targetRow = rows.find(row => row.id === newRowId);
         targetRowName = targetRow ? targetRow.name : '';
@@ -126,12 +136,12 @@ export function useTaskActions({
       toast.success(message);
     } catch (err) {
       console.error('Error moving task:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshTasks();
     }
   };
 
-  const handleTaskReorder = async (draggedTaskId, targetTaskId) => {
+  const handleTaskReorder = async (draggedTaskId: Id, targetTaskId: Id): Promise<void> => {
     if (blockIfReadOnly()) return;
     try {
       const draggedTask = tasks.find(t => t.id === draggedTaskId);
@@ -184,12 +194,12 @@ export function useTaskActions({
 
     } catch (err) {
       console.error('Error reordering tasks:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshTasks();
     }
   };
 
-  const handleUpdateTaskCompletion = async (taskId, completed) => {
+  const handleUpdateTaskCompletion = async (taskId: Id, completed: boolean) => {
     if (blockIfReadOnly()) return false;
     try {
       const updated = await updateTaskCompletion(taskId, completed);
@@ -208,13 +218,13 @@ export function useTaskActions({
         toast.error(t('notifications.parentTaskNotCompleted'));
       } else {
         console.error('Error updating task completion:', err);
-        toast.error(t('notifications.errorOccurred', { message: err.message }));
+        reportError(t, err);
       }
       return false;
     }
   };
 
-  const handleSetDailyFocus = async (taskId, dailyFocus) => {
+  const handleSetDailyFocus = async (taskId: Id, dailyFocus: boolean) => {
     if (blockIfReadOnly()) return false;
     try {
       await setTaskDailyFocus(taskId, dailyFocus);
@@ -227,26 +237,26 @@ export function useTaskActions({
       return true;
     } catch (err) {
       console.error('Error updating daily focus:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
+  const handleDeleteTask = async (taskId: Id) => {
     refuseIfReadOnly();
     try {
       await deleteTask(taskId);
       setTasks(previous => previous.filter(task => task.id !== taskId));
       toast.success(t('notifications.taskDeleted'));
     } catch (err) {
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       throw err;
     }
   };
 
-  const handleGetUserWipStatus = (userId) => getUserWipStatus(userId);
+  const handleGetUserWipStatus = (userId: Id) => getUserWipStatus(userId);
 
-  const handleUpdateUserWipLimit = async (userId, wipLimit) => {
+  const handleUpdateUserWipLimit = async (userId: Id, wipLimit: number | string) => {
     try {
       const result = await updateUserWipLimit(userId, wipLimit);
 
@@ -254,7 +264,7 @@ export function useTaskActions({
       return result;
     } catch (err) {
       console.error('Error updating user WIP limit:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       throw err;
     }
   };

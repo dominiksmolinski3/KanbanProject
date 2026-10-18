@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKeyboardMove } from './keyboardMove';
 import { readOnlyGuard } from './kanban/readOnlyGuard';
@@ -8,12 +8,11 @@ import { useBoardData } from './kanban/useBoardData';
 import { useLayoutActions } from './kanban/useLayoutActions';
 import { useTaskActions } from './kanban/useTaskActions';
 import { useDragAndDrop } from './kanban/useDragAndDrop';
+import type { LooseId } from './kanban/types';
 
-const KanbanContext = createContext();
-
-export function KanbanProvider({ children }) {
+function useKanbanValue() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
   const { t } = useTranslation();
 
@@ -31,18 +30,18 @@ export function KanbanProvider({ children }) {
   });
 
   const keyboardMoveRaw = useKeyboardMove({ columns: data.columns, rows: data.rows, moveTask: taskActions.moveTask });
-  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [draggedTaskId, setDraggedTaskId] = useState<LooseId | null>(null);
   const linkFocusId = draggedTaskId ?? keyboardMoveRaw.held?.taskId ?? null;
 
   const keyboardMove = {
     ...keyboardMoveRaw,
-    grab: (...args) => {
+    grab: (...args: Parameters<typeof keyboardMoveRaw.grab>) => {
       if (boards.isViewer) return;
       keyboardMoveRaw.grab(...args);
     }
   };
 
-  const value = {
+  return {
     boards: boards.boards,
     activeBoard: boards.activeBoard,
     activeBoardId: boards.activeBoardId,
@@ -92,11 +91,19 @@ export function KanbanProvider({ children }) {
     linkFocusId,
     setDraggedTaskId
   };
+}
+
+export type KanbanValue = ReturnType<typeof useKanbanValue>;
+
+const KanbanContext = createContext<KanbanValue | undefined>(undefined);
+
+export function KanbanProvider({ children }: { children: ReactNode }) {
+  const value = useKanbanValue();
 
   return <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>;
 }
 
-export const useKanban = () => {
+export const useKanban = (): KanbanValue => {
   const context = useContext(KanbanContext);
   if (!context) {
     throw new Error('useKanban must be used within a KanbanProvider');
