@@ -784,7 +784,7 @@ describe('TaskDetails Component', () => {
     });
     
     const overlay = screen.getByText('taskActions.confirmDeleteSubTask').closest('.delete-confirmation-overlay');
-    fireEvent.click(overlay);
+    fireEvent.pointerDown(overlay);
     
     await waitFor(() => {
       expect(screen.queryByText('taskActions.confirmDeleteSubTask')).not.toBeInTheDocument();
@@ -817,7 +817,7 @@ describe('TaskDetails Component', () => {
     fireEvent.click((await screen.findAllByTitle('forms.deleteUser'))[0]);
     const title = await screen.findByText('taskActions.confirmDeleteAssignedUser');
 
-    fireEvent.click(title.closest('.delete-confirmation-overlay'));
+    fireEvent.pointerDown(title.closest('.delete-confirmation-overlay'));
 
     await waitFor(() =>
       expect(screen.queryByText('taskActions.confirmDeleteAssignedUser')).not.toBeInTheDocument());

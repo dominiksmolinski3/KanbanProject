@@ -1,18 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type SetStateAction } from 'react';
 import { fetchColumns, fetchRows, fetchTasks } from '../../services/api';
 import BoardEvents from '../../services/boardEvents';
+import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
+import { messageOf } from './reportError';
+import type { BoardData, SetState } from './types';
 
 const LIVE_REFRESH_WINDOW_MS = 250;
 
-export function useBoardData({ activeBoardId, setLoading, setError }) {
-  const [columns, setColumns] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [rows, setRows] = useState([]);
-  const [columnMap, setColumnMap] = useState({});
+interface BoardDataDeps {
+  activeBoardId: Id | null;
+  setLoading: SetState<boolean>;
+  setError: SetState<string | null>;
+}
+
+export function useBoardData({ activeBoardId, setLoading, setError }: BoardDataDeps): BoardData {
+  const [columns, setColumns] = useState<ColumnSummary[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [rows, setRows] = useState<RowSummary[]>([]);
+  const [columnMap, setColumnMap] = useState<Record<string, Id>>({});
   const refreshes = useRef(0);
   const localChanges = useRef(0);
 
-  const setTasksLocally = (update) => {
+  const setTasksLocally = (update: SetStateAction<Task[]>) => {
     localChanges.current += 1;
     setTasks(update);
   };
@@ -40,7 +49,7 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
         }
 
         const sortedColumns = columnsData.sort((a, b) => a.position - b.position);
-        const newColumnMap = {};
+        const newColumnMap: Record<string, Id> = {};
         sortedColumns.forEach(column => {
           const columnKey = column.name.toLowerCase().replace(/\s+/g, '-');
           newColumnMap[columnKey] = column.id;
@@ -67,7 +76,7 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
         if (superseded) {
           return;
         }
-        setError(err.message);
+        setError(messageOf(err));
         setLoading(false);
       }
     };
@@ -90,7 +99,7 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
       setLoading(false);
     } catch (err) {
       console.error('Error refreshing tasks:', err);
-      setError(err.message);
+      setError(messageOf(err));
       setLoading(false);
     }
   };
@@ -107,12 +116,12 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
       setLoading(false);
     } catch (err) {
       console.error('Error refreshing board data:', err);
-      setError(err.message);
+      setError(messageOf(err));
       setLoading(false);
     }
   };
 
-  const liveRefresh = useRef(null);
+  const liveRefresh = useRef({ refreshTasks, refreshBoard });
   liveRefresh.current = { refreshTasks, refreshBoard };
 
   useEffect(() => {
@@ -121,8 +130,8 @@ export function useBoardData({ activeBoardId, setLoading, setError }) {
     }
 
     const events = new BoardEvents();
-    let pending = null;
-    let wanted = null;
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    let wanted: 'board' | 'tasks' | null = null;
 
     events.watch(activeBoardId, ({ type }) => {
       if (type === 'COMMENTS') {

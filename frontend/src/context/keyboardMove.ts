@@ -1,13 +1,39 @@
 import { useCallback, useState } from 'react';
+import type { Id, Task } from '../types/api';
+import type { LooseId, MoveTask } from './kanban/types';
 
-const STEPS = {
+export type Direction = 'left' | 'right' | 'up' | 'down';
+
+export interface Cell {
+  columnId: LooseId;
+  rowId: LooseId;
+}
+
+interface Held {
+  taskId: Id;
+  title: string;
+  from: Cell;
+  cell: Cell;
+}
+
+interface Announcement {
+  key: string;
+  values: Record<string, string>;
+}
+
+interface Named {
+  id: LooseId;
+  name: string;
+}
+
+const STEPS: Record<string, { columns: number; rows: number }> = {
   left: { columns: -1, rows: 0 },
   right: { columns: 1, rows: 0 },
   up: { columns: 0, rows: -1 },
   down: { columns: 0, rows: 1 }
 };
 
-export const neighbourOf = (items, id, offset) => {
+export const neighbourOf = (items: { id: LooseId }[], id: LooseId, offset: number): LooseId => {
   const index = items.findIndex(item => String(item.id) === String(id));
   if (index < 0) {
     return id;
@@ -16,7 +42,10 @@ export const neighbourOf = (items, id, offset) => {
   return items[next].id;
 };
 
-export const stepCell = ({ columns, rows, cell, direction }) => {
+export const stepCell = (
+  { columns, rows, cell, direction }:
+  { columns: { id: LooseId }[]; rows: { id: LooseId }[]; cell: Cell; direction: string }
+): Cell => {
   const step = STEPS[direction];
   if (!step) {
     return cell;
@@ -27,22 +56,24 @@ export const stepCell = ({ columns, rows, cell, direction }) => {
   };
 };
 
-export const sameCell = (one, other) =>
+export const sameCell = (one: Cell, other: Cell): boolean =>
   String(one.columnId) === String(other.columnId) && String(one.rowId) === String(other.rowId);
 
-const nameOf = (items, id) => {
+const nameOf = (items: Named[], id: LooseId): string => {
   const found = items.find(item => String(item.id) === String(id));
   return found ? found.name : '';
 };
 
-export function useKeyboardMove({ columns, rows, moveTask }) {
-  const [held, setHeld] = useState(null);
+export function useKeyboardMove(
+  { columns, rows, moveTask }: { columns: Named[]; rows: Named[]; moveTask: MoveTask }
+) {
+  const [held, setHeld] = useState<Held | null>(null);
 
-  const [announcement, setAnnouncement] = useState(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
 
-  const announce = useCallback((key, values) => setAnnouncement({ key, values }), []);
+  const announce = useCallback((key: string, values: Record<string, string>) => setAnnouncement({ key, values }), []);
 
-  const grab = useCallback((task, columnId, rowId) => {
+  const grab = useCallback((task: Pick<Task, 'id' | 'title'> | null | undefined, columnId?: LooseId | null, rowId?: LooseId | null) => {
     if (!task || columnId === undefined || columnId === null || rowId === undefined || rowId === null) {
       return;
     }
@@ -55,7 +86,7 @@ export function useKeyboardMove({ columns, rows, moveTask }) {
     announce('board.keyboardMove.grabbed', { title: task.title });
   }, [announce]);
 
-  const step = useCallback((direction) => {
+  const step = useCallback((direction: Direction) => {
     setHeld(current => {
       if (!current) {
         return current;
@@ -101,11 +132,11 @@ export function useKeyboardMove({ columns, rows, moveTask }) {
   }, [columns, rows, moveTask, announce]);
 
   const isHeld = useCallback(
-    (taskId) => Boolean(held) && String(held.taskId) === String(taskId),
+    (taskId: LooseId) => Boolean(held) && String(held!.taskId) === String(taskId),
     [held]);
 
   const isTarget = useCallback(
-    (columnId, rowId) => Boolean(held) && sameCell(held.cell, { columnId, rowId }),
+    (columnId: LooseId, rowId: LooseId) => Boolean(held) && sameCell(held!.cell, { columnId, rowId }),
     [held]);
 
   return { held, announcement, grab, step, drop, cancel, isHeld, isTarget };

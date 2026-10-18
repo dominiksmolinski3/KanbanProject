@@ -258,6 +258,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
 - Never steer a component by `jest.spyOn(React, 'useState')`. A file that imports both `React` and
   `{ useState }` gets Babel's copy of the module, which the spy does not touch, so the mocks are
   consumed by whichever other file imports only `{ useState }`.
+- A modal is `components/ui/Modal` (Radix Dialog), not a hand-built overlay: it traps focus, names
+  itself and stops Escape from reaching a panel behind it. It closes on `pointerdown` outside, so a
+  test that clicks the overlay sends `fireEvent.pointerDown`.
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
   (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.

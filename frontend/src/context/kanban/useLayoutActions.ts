@@ -16,13 +16,16 @@ import {
   updateTaskColumn,
   updateTaskRow,
 } from '../../services/api';
+import type { Id } from '../../types/api';
+import { reportError } from './reportError';
+import type { LooseId, SharedActionDeps } from './types';
 
 export function useLayoutActions({
   t, blockIfReadOnly, refuseIfReadOnly,
   columns, setColumns, rows, setRows, tasks, setTasks, columnMap, setColumnMap,
   refreshTasks, refreshBoard,
-}) {
-  const handleUpdateColumnName = async (columnId, newName) => {
+}: SharedActionDeps) {
+  const handleUpdateColumnName = async (columnId: Id, newName: string) => {
     if (blockIfReadOnly()) return false;
     try {
       await updateColumnName(columnId, newName);
@@ -49,12 +52,12 @@ export function useLayoutActions({
       return true;
     } catch (err) {
       console.error('Error updating column name:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleUpdateRowName = async (rowId, newName) => {
+  const handleUpdateRowName = async (rowId: Id, newName: string) => {
     if (blockIfReadOnly()) return false;
     try {
       await updateRowName(rowId, newName);
@@ -65,12 +68,12 @@ export function useLayoutActions({
       return true;
     } catch (err) {
       console.error('Error updating row name:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       return false;
     }
   };
 
-  const handleAddColumn = async (name, wipLimit) => {
+  const handleAddColumn = async (name: string, wipLimit: number | string) => {
     refuseIfReadOnly();
     try {
       const newColumn = await addColumn(name, wipLimit);
@@ -84,12 +87,12 @@ export function useLayoutActions({
       toast.success(t('notifications.columnAdded', { name }));
       return newColumn;
     } catch (err) {
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       throw err;
     }
   };
 
-  const handleAddRow = async (name, wipLimit) => {
+  const handleAddRow = async (name: string, wipLimit: number | string) => {
     refuseIfReadOnly();
     try {
       const newRow = await addRow(name, wipLimit);
@@ -112,12 +115,12 @@ export function useLayoutActions({
       toast.success(t('notifications.rowAdded', { name }));
       return newRow;
     } catch (err) {
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       throw err;
     }
   };
 
-  const handleUpdateWipLimit = async (columnId, newLimit) => {
+  const handleUpdateWipLimit = async (columnId: Id, newLimit: number | string) => {
     if (blockIfReadOnly()) return;
     try {
       const columnToUpdate = columns.find(col => String(col.id) === String(columnId));
@@ -131,11 +134,11 @@ export function useLayoutActions({
       toast.success(t('notifications.wipLimitUpdated', { name: columnName, limit: newLimit }));
     } catch (err) {
       console.error('Failed to update WIP limit:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
     }
   };
 
-  const handleUpdateRowWipLimit = async (rowId, newLimit) => {
+  const handleUpdateRowWipLimit = async (rowId: Id, newLimit: number | string) => {
     if (blockIfReadOnly()) return;
     try {
       const rowToUpdate = rows.find(r => String(r.id) === String(rowId));
@@ -149,11 +152,11 @@ export function useLayoutActions({
       toast.success(t('notifications.rowWipLimitUpdated', { name: rowName, limit: newLimit }));
     } catch (err) {
       console.error('Failed to update row WIP limit:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
     }
   };
 
-  const handleDeleteColumn = async (columnId) => {
+  const handleDeleteColumn = async (columnId: Id) => {
     refuseIfReadOnly();
     try {
       const columnToDelete = columns.find(col => col.id === columnId);
@@ -200,13 +203,13 @@ export function useLayoutActions({
 
     } catch (err) {
       console.error('Error deleting column:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshBoard();
       throw err;
     }
   };
 
-  const handleDeleteRow = async (rowId) => {
+  const handleDeleteRow = async (rowId: Id) => {
     refuseIfReadOnly();
     try {
       const rowToDelete = rows.find(row => row.id === rowId);
@@ -259,13 +262,13 @@ export function useLayoutActions({
       }
     } catch (err) {
       console.error('Error deleting row:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshBoard();
       throw err;
     }
   };
 
-  const handleMoveColumn = async (columnId, targetColumnId) => {
+  const handleMoveColumn = async (columnId: LooseId, targetColumnId: LooseId | null | undefined) => {
     if (blockIfReadOnly()) return;
     try {
       const columnIndex = columns.findIndex(col => col.id === columnId);
@@ -294,12 +297,12 @@ export function useLayoutActions({
       toast.success(t('notifications.columnMoved', { name: movedColumn.name }));
     } catch (err) {
       console.error('Error moving column:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshBoard();
     }
   };
 
-  const handleMoveRow = async (rowId, targetRowId) => {
+  const handleMoveRow = async (rowId: LooseId, targetRowId: LooseId | null | undefined) => {
     if (blockIfReadOnly()) return;
     try {
       const rowIndex = rows.findIndex(row => row.id === rowId);
@@ -329,7 +332,7 @@ export function useLayoutActions({
       toast.success(t('notifications.rowMoved', { name: movedRow.name }));
     } catch (err) {
       console.error('Error moving row:', err);
-      toast.error(t('notifications.errorOccurred', { message: err.message }));
+      reportError(t, err);
       await refreshBoard();
     }
   };
