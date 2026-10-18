@@ -1,4 +1,4 @@
-import { apiError } from './apiError';
+import { read } from './http';
 import type { Id } from '../types/api';
 
 export class ConcurrentModificationError extends Error {
@@ -20,9 +20,5 @@ export const reorder = async <T>(endpoint: string, orderedIds: Id[], what: strin
   if (response.status === 409) {
     throw new ConcurrentModificationError(what);
   }
-  if (!response.ok) {
-    throw await apiError(response);
-  }
-
-  return await response.json();
+  return read<T>(response);
 };

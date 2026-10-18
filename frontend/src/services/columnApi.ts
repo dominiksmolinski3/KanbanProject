@@ -7,7 +7,7 @@ const COLUMNS = '/api/columns';
 
 export const fetchColumns = (retries = 3) => withRetries(() => getJson<Column[]>(onActiveBoard(COLUMNS)), retries);
 
-export const addColumn = (name: string, wipLimit: number | string) =>
+export const addColumn = async (name: string, wipLimit: number | string) =>
   postJson<ColumnSummary>(onActiveBoard(COLUMNS), { name, wipLimit: parseInt(String(wipLimit), 10) || 0 });
 
 export const updateColumnWipLimit = (columnId: Id, wipLimit: number | string) =>

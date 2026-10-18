@@ -40,7 +40,8 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
   if (pending) return pending;
 
   pending = new Promise<Grecaptcha>((resolve, reject) => {
-    let pollId: ReturnType<typeof setTimeout> | undefined;
+    let pollId: ReturnType<typeof setTimeout> | undefined = undefined;
+    let deadlineId: ReturnType<typeof setTimeout> | undefined = undefined;
     let settled = false;
 
     const stop = () => {
@@ -63,7 +64,7 @@ export function loadRecaptcha(): Promise<Grecaptcha> {
       else pollId = setTimeout(poll, POLL_INTERVAL_MS);
     };
 
-    const deadlineId = setTimeout(
+    deadlineId = setTimeout(
       () => finish(reject, new Error('reCAPTCHA did not finish loading in time')),
       READY_TIMEOUT_MS,
     );

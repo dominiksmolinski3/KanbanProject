@@ -7,7 +7,7 @@ const ROWS = '/api/rows';
 
 export const fetchRows = (retries = 3) => withRetries(() => getJson<Row[]>(onActiveBoard(ROWS)), retries);
 
-export const addRow = (name: string, wipLimit: number | string) =>
+export const addRow = async (name: string, wipLimit: number | string) =>
   postJson<RowSummary>(onActiveBoard(ROWS), { name, wipLimit: parseInt(String(wipLimit), 10) || 0 });
 
 export const updateRowWipLimit = (rowId: Id, wipLimit: number | string) =>

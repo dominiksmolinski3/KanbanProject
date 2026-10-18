@@ -33,7 +33,7 @@ export default class BoardEvents {
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
 
-      beforeConnect: async () => {
+      beforeConnect: async (client) => {
         if (isAccessTokenExpired()) {
           try {
             await refreshSession();
@@ -42,9 +42,7 @@ export default class BoardEvents {
           }
         }
         const token = getAccessToken();
-        if (this.client) {
-          this.client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-        }
+        client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
       },
 
       onConnect: () => this.resubscribe(),

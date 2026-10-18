@@ -41,7 +41,7 @@ const isSafe = ({ text, expression }) =>
 
 describe('service URL path segments', () => {
   const files = fs.readdirSync(SERVICES)
-    .filter((name) => /\.[jt]s$/.test(name))
+    .filter((name) => /\.[jt]sx?$/.test(name))
     .map((name) => path.join(SERVICES, name));
 
   test('the scan finds the id segments it is meant to check', () => {
