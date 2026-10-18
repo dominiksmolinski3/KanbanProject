@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { toast } from 'react-toastify';
 import HomePage from '../../components/HomePage';
@@ -111,6 +111,36 @@ describe('HomePage', () => {
     expect(login).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+
+  test('the sign-in button submits the form, so an empty required field stops it', async () => {
+    render(<HomePage />);
+
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.click(screen.getByText('Sign In'));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(authService.login).not.toHaveBeenCalled();
+  });
+
+  test('submitting the form from the keyboard signs in', async () => {
+    authService.login.mockResolvedValue({ token: 'jwt' });
+    render(<HomePage />);
+
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'hunter22' } });
+    fireEvent.submit(screen.getByPlaceholderText('Email').closest('form'));
+
+    await waitFor(() => expect(authService.login).toHaveBeenCalledTimes(1));
+  });
+
+  test('the email typed on the sign-in tab is still there on the register tab', () => {
+    render(<HomePage />);
+
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.click(screen.getByText('Register'));
+
+    expect(screen.getByPlaceholderText('Email')).toHaveValue('ada@example.com');
   });
 
   test('registering with mismatched passwords never calls the server', async () => {
