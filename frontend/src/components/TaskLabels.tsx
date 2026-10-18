@@ -1,24 +1,16 @@
-import { useState, useRef, useEffect, type MouseEvent } from 'react';
-import LengthHint from './LengthHint';
-import { LABEL_MAX_LENGTH } from '../services/textLimits';
-import { createPortal } from 'react-dom';
-import { updateTaskLabels, getAllLabels } from '../services/api';
-import '../styles/components/TaskLabels.css';
-import { useKanban } from '../context/KanbanContext';
-import { readStoredLabelColors } from '../board/cardModel';
+import { useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import Icon from './Icon';
+import { updateTaskLabels } from '../services/api';
+import { useKanban } from '../context/KanbanContext';
 import type { Id, Task } from '../types/api';
-
-const PREDEFINED_LABELS = [
-  { name: 'High Priority', color: '#FF4D4D' },
-  { name: 'Medium Priority', color: '#FFA500' },
-  { name: 'Low Priority', color: '#4CAF50' },
-  { name: 'Bug', color: '#FF0000' },
-  { name: 'Feature', color: '#2196F3' },
-  { name: 'Documentation', color: '#9C27B0' }
-];
+import CustomLabelForm from './labels/CustomLabelForm';
+import LabelChip from './labels/LabelChip';
+import LabelPicker from './labels/LabelPicker';
+import { DEFAULT_LABEL_COLOR } from './labels/labelPalette';
+import { useLabelColors } from './labels/useLabelColors';
+import { useLabelOverlays } from './labels/useLabelOverlays';
+import '../styles/components/TaskLabels.css';
 
 interface TaskLabelsProps {
   taskId: Id;
@@ -27,100 +19,15 @@ interface TaskLabelsProps {
   readOnly?: boolean;
 }
 
-interface Position {
-  top: number;
-  left: number;
-}
-
 const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = false }: TaskLabelsProps) => {
   const [labels, setLabels] = useState(initialLabels);
-  const [showLabelPicker, setShowLabelPicker] = useState(false);
-  const [showCustomForm, setShowCustomForm] = useState(false);
   const [customLabelName, setCustomLabelName] = useState('');
-  const [customLabelColor, setCustomLabelColor] = useState('#888888');
-  const [pickerPosition, setPickerPosition] = useState<Position>({ top: 0, left: 0 });
-  const [formPosition, setFormPosition] = useState<Position>({ top: 0, left: 0 });
-  const [isPickerReady, setIsPickerReady] = useState(false);
-  const [isFormReady, setIsFormReady] = useState(false);
-  const [existingLabels, setExistingLabels] = useState<string[]>([]);
-  const [labelColors, setLabelColors] = useState<Record<string, string>>({});
+  const [customLabelColor, setCustomLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const { refreshTasks } = useKanban();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const fetchExistingLabels = async () => {
-      try {
-        const labelsData = await getAllLabels();
-        setExistingLabels(labelsData);
-
-        const mergedColors = { ...readStoredLabelColors() };
-        PREDEFINED_LABELS.forEach(label => {
-          mergedColors[label.name] = label.color;
-        });
-
-        setLabelColors(mergedColors);
-      } catch (error) {
-        console.error('Error fetching existing labels:', error);
-      }
-    };
-
-    fetchExistingLabels();
-  }, []);
-
-  useEffect(() => {
-    if (Object.keys(labelColors).length > 0) {
-      localStorage.setItem('labelColors', JSON.stringify(labelColors));
-    }
-  }, [labelColors]);
-
-  const toggleLabelPicker = () => {
-    if (!showLabelPicker) {
-      setIsPickerReady(false);
-      if (buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-
-        let leftPos = rect.left + window.scrollX;
-        if (leftPos + 250 > viewportWidth) {
-          leftPos = viewportWidth - 260;
-        }
-
-        setPickerPosition({
-          top: rect.bottom + window.scrollY + 5,
-          left: leftPos
-        });
-
-        setTimeout(() => {
-          setIsPickerReady(true);
-        }, 50);
-      }
-    }
-    setShowLabelPicker(!showLabelPicker);
-  };
-
-  const showCustomLabelForm = () => {
-    setIsFormReady(false);
-    setShowLabelPicker(false);
-
-    const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-    const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-
-    let leftPos = viewportWidth / 2 - 150;
-    if (leftPos + 300 > viewportWidth) {
-      leftPos = viewportWidth - 310;
-    }
-
-    setFormPosition({
-      top: Math.max(50, viewportHeight / 2 - 150),
-      left: Math.max(10, leftPos)
-    });
-
-    setTimeout(() => {
-      setShowCustomForm(true);
-      setIsFormReady(true);
-    }, 50);
-  };
+  const { existingLabels, colorOf, rememberColor, rememberLabel } = useLabelColors();
+  const overlays = useLabelOverlays(buttonRef);
 
   const handleAddLabel = async (labelName: string) => {
     try {
@@ -136,10 +43,7 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
       const updatedLabels = [...labels, labelName];
       const updatedTask = await updateTaskLabels(taskId, updatedLabels);
       setLabels(updatedLabels);
-
-      if (!existingLabels.includes(labelName)) {
-        setExistingLabels([...existingLabels, labelName]);
-      }
+      rememberLabel(labelName);
 
       onLabelsChange(updatedLabels, updatedTask);
       refreshTasks();
@@ -153,13 +57,11 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
     if (!customLabelName.trim()) return;
 
     try {
-      const newLabelColors = { ...labelColors };
-      newLabelColors[customLabelName] = customLabelColor;
-      setLabelColors(newLabelColors);
+      rememberColor(customLabelName, customLabelColor);
 
       await handleAddLabel(customLabelName);
       setCustomLabelName('');
-      setShowCustomForm(false);
+      overlays.closeForm();
     } catch (error) {
       console.error('Error adding custom label:', error);
     }
@@ -177,75 +79,22 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
     }
   };
 
-  const getLabelColor = (labelName: string) => {
-    if (labelColors[labelName]) {
-      return labelColors[labelName];
-    }
-
-    const predefined = PREDEFINED_LABELS.find(l => l.name === labelName);
-    return predefined?.color || '#888888';
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: globalThis.MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (showLabelPicker && !target.closest('.label-picker') &&
-          target !== buttonRef.current) {
-        setShowLabelPicker(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showLabelPicker]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: globalThis.MouseEvent) => {
-      if (showCustomForm && !(event.target as HTMLElement).closest('.custom-label-form-portal')) {
-        setShowCustomForm(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showCustomForm]);
-
-  const stopClick = (e: MouseEvent) => {
-    e.stopPropagation();
+  const pick = (labelName: string) => {
+    handleAddLabel(labelName);
+    overlays.closePicker();
   };
 
   return (
     <div className="task-labels">
       <div className="labels-container">
         {labels.map((label) => (
-          <span
+          <LabelChip
             key={label}
-            className="label"
-            title={label}
-            data-tooltip={label}
-          >
-            <span
-              className="label-color-dot"
-              style={{ backgroundColor: getLabelColor(label) }}
-            ></span>
-            <span className="label-text">{label}</span>
-            {!readOnly && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveLabel(label);
-                }}
-                className="remove-label-button"
-                aria-label={label}
-              >
-                <Icon name="close" size="sm" />
-              </button>
-            )}
-          </span>
+            label={label}
+            color={colorOf(label)}
+            readOnly={readOnly}
+            onRemove={handleRemoveLabel}
+          />
         ))}
         {!readOnly && (
           <button
@@ -253,7 +102,7 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
             className="add-label-button"
             onClick={(e) => {
               e.stopPropagation();
-              toggleLabelPicker();
+              overlays.togglePicker();
             }}
           >
             {t('taskLabels.addLabel')}
@@ -261,125 +110,26 @@ const TaskLabels = ({ taskId, initialLabels = [], onLabelsChange, readOnly = fal
         )}
       </div>
 
-      {showLabelPicker && isPickerReady && createPortal(
-        <div
-          className="label-picker animated fadeIn"
-          style={{
-            position: 'absolute',
-            top: `${pickerPosition.top}px`,
-            left: `${pickerPosition.left}px`,
-            zIndex: 2000
-          }}
-          onClick={stopClick}
-        >
-          <div className="label-picker-header">
-            {t('taskLabels.chooseLabelHeader')}
-          </div>
-
-          <div className="label-section">
-            <div className="section-title">{t('taskLabels.predefinedLabels')}</div>
-            {PREDEFINED_LABELS.map((label) => (
-              <div
-                key={label.name}
-                className="label-option"
-                onClick={() => {
-                  handleAddLabel(label.name);
-                  setShowLabelPicker(false);
-                }}
-              >
-                <span
-                  className="color-dot"
-                  style={{ backgroundColor: label.color }}
-                ></span>
-                {label.name}
-              </div>
-            ))}
-          </div>
-
-          {existingLabels.length > 0 && (
-            <div className="label-section">
-              <div className="section-title">{t('taskLabels.existingLabels')}</div>
-              {existingLabels
-                .filter(label => !PREDEFINED_LABELS.some(p => p.name === label))
-                .map((label) => (
-                  <div
-                    key={label}
-                    className="label-option"
-                    onClick={() => {
-                      handleAddLabel(label);
-                      setShowLabelPicker(false);
-                    }}
-                  >
-                    <span
-                      className="color-dot"
-                      style={{ backgroundColor: getLabelColor(label) }}
-                    ></span>
-                    {label}
-                  </div>
-                ))}
-            </div>
-          )}
-
-          <div
-            className="custom-label-option"
-            onClick={showCustomLabelForm}
-          >
-            <span className="color-dot custom"></span>
-            {t('taskLabels.addCustomLabel')}
-          </div>
-        </div>,
-        document.body
+      {overlays.picker.visible && (
+        <LabelPicker
+          position={overlays.picker.position}
+          existingLabels={existingLabels}
+          colorOf={colorOf}
+          onPick={pick}
+          onCustom={overlays.openForm}
+        />
       )}
 
-      {showCustomForm && isFormReady && createPortal(
-        <div
-          className="custom-label-form-portal animated fadeIn"
-          style={{
-            position: 'fixed',
-            top: `${formPosition.top}px`,
-            left: `${formPosition.left}px`,
-            zIndex: 3000
-          }}
-          onClick={stopClick}
-        >
-          <h3 className="form-title">{t('taskLabels.addCustomLabelTitle')}</h3>
-          <div className="form-group">
-            <label>{t('taskLabels.labelName')}</label>
-            <input
-              type="text"
-              value={customLabelName}
-              maxLength={LABEL_MAX_LENGTH}
-              onChange={(e) => setCustomLabelName(e.target.value)}
-              placeholder={t('taskLabels.labelNamePlaceholder')}
-              autoFocus
-            />
-            <LengthHint value={customLabelName} max={LABEL_MAX_LENGTH} />
-          </div>
-          <div className="form-group">
-            <label>{t('taskLabels.labelColor')}</label>
-            <input
-              type="color"
-              value={customLabelColor}
-              onChange={(e) => setCustomLabelColor(e.target.value)}
-            />
-          </div>
-          <div className="form-actions">
-            <button
-              onClick={handleAddCustomLabel}
-              disabled={!customLabelName.trim()}
-              className={`add-button ${!customLabelName.trim() ? 'disabled' : ''}`}
-            >
-              {t('taskLabels.add')}
-            </button>
-            <button
-              onClick={() => setShowCustomForm(false)}
-              className="cancel-button"
-            >
-              {t('taskLabels.cancel')}
-            </button>
-          </div>
-        </div>,
-        document.body
+      {overlays.form.visible && (
+        <CustomLabelForm
+          position={overlays.form.position}
+          name={customLabelName}
+          color={customLabelColor}
+          onNameChange={setCustomLabelName}
+          onColorChange={setCustomLabelColor}
+          onAdd={handleAddCustomLabel}
+          onCancel={overlays.closeForm}
+        />
       )}
     </div>
   );
