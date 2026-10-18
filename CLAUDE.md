@@ -169,6 +169,7 @@ npm ci                       # install
 npm run dev                  # dev server on :5173, proxies API paths to :8080
 npm run build                # -> frontend/dist
 npm run lint                 # ESLint (flat config in eslint.config.js)
+npm run typecheck            # tsc --noEmit; CI runs it
 npm test                     # Jest
 npm run test:coverage        # Jest + coverage -> frontend/coverage
 npx jest src/__tests__/components/Board.test.jsx     # one test file
@@ -245,7 +246,13 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   a key and its values.
 - Board state and every mutation belong in `KanbanContext`, not in components. The keyboard move
   path reuses the drag path's handlers and must not grow a second implementation.
-- Every `fetch` path must exist on the server (`ClientRoutesExistTest`).
+- Every `fetch` path must exist on the server (`ClientRoutesExistTest`). The test reads
+  `frontend/src/services` as text: pass the path as the first argument of `fetch` or of a request
+  helper from `services/http.ts`, and a new helper there has to be named in the test.
+- Source-reading guards (`i18n.test.js`, `pathSegments.test.js`) parse `.ts` and `.tsx` as well as
+  `.js` and `.jsx`; a new guard that lists files by extension must do the same, or it passes on nothing.
+- TypeScript is being adopted layer by layer: `allowJs` is on and `checkJs` is off, so a `.ts` file
+  imports the `.js` it has not replaced. New code is `.ts`/`.tsx` and passes `npm run typecheck`.
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
   (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.
