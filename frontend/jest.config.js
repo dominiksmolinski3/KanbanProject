@@ -12,8 +12,9 @@ export default {
     testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
     moduleDirectories: ['node_modules', 'src'],
     collectCoverageFrom: [
-      'src/**/*.{js,jsx}',
-      '!src/**/*.test.{js,jsx}',
+      'src/**/*.{js,jsx,ts,tsx}',
+      '!src/**/*.test.{js,jsx,ts,tsx}',
+      '!src/**/*.d.ts',
       '!src/__mocks__/**',
       '!src/main.jsx',
       '!src/i18n.js',

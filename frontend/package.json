@@ -8,6 +8,7 @@
     "build": "vite build",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -41,11 +42,13 @@
     "@babel/core": "^8.0.7",
     "@babel/preset-env": "^8.0.7",
     "@babel/preset-react": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.7",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
+    "@types/jest": "^30.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
@@ -62,6 +65,8 @@
     "jest-environment-jsdom": "^30.5.2",
     "jsdom": "^30.1.2",
     "pg": "^8.23.1",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4"
   }
 }

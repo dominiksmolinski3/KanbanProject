@@ -2,13 +2,14 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
 
 export default [
   {
     ignores: ['dist', 'coverage', 'src/__tests__', 'cypress.config.js', 'cypress/e2e/*', 'cypress/replicas/*', 'cypress/warmup/*', 'cypress/warmup.config.js', 'cypress/support/*', 'cypress/seed-test-account.js'],
   },  
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -31,6 +32,14 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  ...tseslint.configs.recommended.map((config) => ({ ...config, files: ['**/*.{ts,tsx}'] })),
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
   {
