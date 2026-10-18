@@ -261,9 +261,10 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
 - A modal is `components/ui/Modal` (Radix Dialog), not a hand-built overlay: it traps focus, names
   itself and stops Escape from reaching a panel behind it. It closes on `pointerdown` outside, so a
   test that clicks the overlay sends `fireEvent.pointerDown`.
-- A test that a server call did *not* happen after a React Hook Form submit must let the event loop
-  turn before asserting: `handleSubmit` is async, so a synchronous check passes on code that does
-  call. Run such a test against a mutant once.
+- A test that something did *not* happen must wait out whatever could have made it happen, and be
+  run against a mutant once: React Hook Form's `handleSubmit` is async, events fired inside one
+  `act` are batched so the handler sees stale state, and the label picker only appears after a 50 ms
+  delay. Each of these made a "nothing happened" assertion pass on code that did the wrong thing.
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
   (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.
