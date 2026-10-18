@@ -752,10 +752,27 @@ Three React contexts, composed in [App.jsx](../frontend/src/App.jsx): `AuthProvi
 applied in a single transaction. It used to be one `updateTaskPosition` per item, which stopped
 being merely wasteful once the entities gained a `@Version`: a card somebody else moved makes one
 of those calls a 409 and leaves the earlier ones applied, so a failed drag left the board half in
-the old order. A 409 now surfaces as `ConcurrentModificationError` from `api.js`, which the context
+the old order. A 409 now surfaces as `ConcurrentModificationError` from `api.ts`, which the context
 answers with the `notifications.changedBySomeoneElse` toast and a refresh rather than an error —
 nothing was applied, so nothing is broken. New board behavior belongs here rather than in
 components.
+
+**The service layer is TypeScript, and every request goes through one of a few helpers.**
+[http.ts](../frontend/src/services/http.ts) holds `getJson`, `postJson`, `patchJson`, `putJson`,
+`deleteJson`, `postVoid`, `patchVoid`, `deleteChecked` and `deleteQuietly`; each takes the path as its
+first argument and sends exactly what the hand-written `fetch` it replaced sent, so the service tests
+still assert on the raw `fetch` call. The suffix is how the answer is read: `Json` parses a body,
+`Void` expects none, `deleteQuietly` accepts a 404 for a thing already gone and `deleteChecked`
+does not. A call that must look at the status first (a 409, or a 400 with one particular code)
+keeps its own `fetch` and finishes with `read` or `readUnless`. The wire types are in
+[types/api.ts](../frontend/src/types/api.ts) and mirror the backend DTO records.
+
+The helpers hide `fetch` from `ClientRoutesExistTest`, which reads the service sources as text, so
+the test knows their names and treats the first argument of each as a path. It also fails when
+`http.ts` exports, or a service imports, a name it has not classified; without that, a new helper
+would make every call through it invisible and the route check would pass on less than it covered.
+`i18n.test.js` and `pathSegments.test.js` read sources through `@typescript-eslint/typescript-estree`
+for the same reason: a parser that cannot read `.ts` would make them pass on nothing.
 
 **Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
 cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
@@ -903,7 +920,7 @@ Postgres sat at 16% while the JVM was at 400%, so caching would only have made t
 hop, the 429 carries the headers, and the edge's API rate stays above the per-account one - so a
 person meets the fleet-wide limit, with its real `Retry-After`, before the per-replica one.
 
-On the client, [apiInterceptor.js](../frontend/src/services/apiInterceptor.js) monkey-patches
+On the client, [apiInterceptor.ts](../frontend/src/services/apiInterceptor.ts) monkey-patches
 `window.fetch` at module load to attach `Authorization`, skipping every URL under `/api/auth/`.
 **Everything under that prefix is pre-authentication**, and the server holds it to that:
 `AuthRoutesArePublicTest` fails if a route under `/api/auth` is missing from
@@ -914,7 +931,7 @@ permits each public route by name, so a new route under `/auth` is denied until 
 failure is a red test, never a route that is public by accident. Because it wraps the global, tests and any code path
 using `fetch` inherit it. An expired access token now renews rather than redirecting, and an
 unexpected 401 is retried once; only a refresh the server refuses ends the session and sends the
-browser to `/`. [session.js](../frontend/src/services/session.js) owns the three `localStorage` keys
+browser to `/`. [session.ts](../frontend/src/services/session.ts) owns the three `localStorage` keys
 and **serialises renewal through one in-flight promise** — rotation means two concurrent refreshes
 would present the same token twice, which the server reads as a stolen chain, so a normal board load
 firing a dozen requests at once must make exactly one refresh call.
@@ -999,7 +1016,7 @@ STOMP over SockJS at `/ws`, relayed to a real broker (RabbitMQ, via its STOMP pl
 [StompRelayProperties](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/StompRelayProperties.java)
 and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`;
 `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not
-`useState`) and delegates the connection to [chatApi.js](../frontend/src/services/chatApi.js), which
+`useState`) and delegates the connection to [chatApi.ts](../frontend/src/services/chatApi.ts), which
 points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat
 server on a separate host would need a configured URL rather than the page's.
 
@@ -1098,7 +1115,7 @@ the STOMP broker relay forwards the destination to RabbitMQ's STOMP plugin as-is
 parses everything after `/topic/` as one AMQP routing key, refusing the whole destination the
 moment it contains a further `/` — and the client re-reads; `board/event/` holds the publisher,
 `config/websocket/BoardSubscriptionInterceptor` holds the check on who may listen, and
-[boardEvents.js](../frontend/src/services/boardEvents.js) holds the client's own connection.
+[boardEvents.ts](../frontend/src/services/boardEvents.ts) holds the client's own connection.
 
 Six decisions carry it, and none of them is visible from the destination name:
 
@@ -1822,7 +1839,7 @@ beside the hardcoded string. That is the argument for the guard rather than for 
 keys were never the hard part.
 
 **A server error reaches the screen as a sentence keyed by its `code`, never as its body.** Every
-service throws through `services/apiError.js`, which translates `errors.codes.<CODE>` and falls
+service throws through `services/apiError.ts`, which translates `errors.codes.<CODE>` and falls
 back by status, then to `errors.generic`. Before that, most calls threw
 `new Error(await response.text())`, so a wrong password showed
 `{"code":"INVALID_CREDENTIALS",...}` in the sign-in box. **A new `ExceptionIdentifier` needs a

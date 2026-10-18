@@ -393,6 +393,7 @@ cd frontend
 npm test                  # Jest unit tests
 npm run test:coverage     # Jest with a coverage report
 npm run lint              # ESLint
+npm run typecheck         # TypeScript, no emit
 npm run cypress:open      # Cypress, interactive
 npm run cypress:run       # Cypress, headless in Chromium (no Chromium? append: -- --browser chrome)
 npm run cypress:run:replicas   # the specs that need two API replicas (see below)
