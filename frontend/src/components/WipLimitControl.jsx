@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import '../styles/components/Forms.css';
 import FormModal from './FormModal';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 function WipLimitControl({ onClose }) {
   const { columns, rows, updateWipLimit, updateRowWipLimit } = useKanban();
   const [selectedItem, setSelectedItem] = useState('');
   const [wipLimit, setWipLimit] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const { pending: isSubmitting, error, setError, run } = useAsyncAction();
   const [activeTab, setActiveTab] = useState('column');
   const { t } = useTranslation();
   
@@ -59,24 +59,19 @@ function WipLimitControl({ onClose }) {
       return;
     }
     
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      
+    const updated = await run(async () => {
       if (activeTab === 'column') {
         await updateWipLimit(selectedItem, parsedLimit);
       } else {
         await updateRowWipLimit(selectedItem, parsedLimit);
       }
-      
+    }, t('notifications.errorOccurred', { message: '' }));
+
+    if (updated) {
       setSelectedItem('');
       setWipLimit('');
-      
+
       if (onClose) onClose();
-    } catch (err) {
-      setError(err.message || t('notifications.errorOccurred', { message: '' }));
-    } finally {
-      setIsSubmitting(false);
     }
   };
   

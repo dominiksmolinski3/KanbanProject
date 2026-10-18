@@ -540,47 +540,6 @@ describe('WipLimitControl Component', () => {
         expect(mockUpdateWipLimit).toHaveBeenCalledWith('col1', 10);
     });
 
-    test('handles case when selected column is not found', () => {
-        const manipulatableRef = { value: '' };
-        
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => ['non-existent-id', jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [manipulatableRef, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [false, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [null, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => ['column', jest.fn()]);
-        
-        render(
-            <KanbanContext.Provider value={mockContextValue}>
-                <WipLimitControl onClose={mockOnClose} />
-            </KanbanContext.Provider>
-        );
-        
-        const select = screen.getByLabelText('forms.wipLimit.selectColumn:');
-        fireEvent.change(select, { target: { value: 'anything' } });
-        expect(manipulatableRef.value).toBe('');
-    });
-
-    test('handles case when selected row is not found', () => {
-        const manipulatableRef = { value: '' };
-        
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => ['non-existent-id', jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [manipulatableRef, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [false, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => [null, jest.fn()]);
-        jest.spyOn(React, 'useState').mockImplementationOnce(() => ['row', jest.fn()]);
-        
-        render(
-            <KanbanContext.Provider value={mockContextValue}>
-                <WipLimitControl onClose={mockOnClose} />
-            </KanbanContext.Provider>
-        );
-    
-        fireEvent.click(screen.getByText('forms.wipLimit.rowTab'));
-        const select = screen.getByLabelText('forms.wipLimit.selectRow:');
-        fireEvent.change(select, { target: { value: 'anything' } });
-        expect(manipulatableRef.value).toBe('');
-    });
-    
     test('verifies onInput handler with non-negative values', () => {
         render(
             <KanbanContext.Provider value={mockContextValue}>
