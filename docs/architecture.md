@@ -411,7 +411,7 @@ task on the board, which reads as a search that has quietly stopped working. Ord
 because it is total: any order with ties makes paging skip and repeat rows, silently, and only on
 boards big enough to page.
 
-On the client, `TaskSearch.jsx` sits in the board toolbar and **asks the server rather than
+On the client, `TaskSearch.tsx` sits in the board toolbar and **asks the server rather than
 filtering the board already in memory** — one predicate, on the side that owns the data, instead of
 a second copy in JavaScript that can drift from it. Requests are debounced to one per pause in
 typing and guarded by a sequence number, because a slow answer to `de` landing after a fast answer
