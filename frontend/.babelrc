@@ -1,4 +1,7 @@
 {
-    "presets": ["@babel/preset-env", "@babel/preset-react", "@babel/preset-typescript"],
-    "plugins": ["babel-plugin-transform-vite-meta-env"]
+    "presets": ["@babel/preset-env", "@babel/preset-typescript"],
+    "plugins": ["babel-plugin-transform-vite-meta-env"],
+    "overrides": [
+        { "test": ["**/*.js", "**/*.jsx", "**/*.tsx"], "presets": ["@babel/preset-react"] }
+    ]
 }
