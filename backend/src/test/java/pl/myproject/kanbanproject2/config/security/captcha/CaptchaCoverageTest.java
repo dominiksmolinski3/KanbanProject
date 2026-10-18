@@ -23,7 +23,7 @@ class CaptchaCoverageTest {
     }
 
     @Test
-    @DisplayName("the field is the shape authService.js posts, so no client change is needed")
+    @DisplayName("the field is the shape authService.ts posts, so no client change is needed")
     void theFieldMatchesTheClientPayload() {
         assertThat(captchaFieldOf(LoginUserDto.class).getType()).isEqualTo(CaptchaDto.class);
         assertThat(captchaFieldOf(RegisterUserDto.class).getType()).isEqualTo(CaptchaDto.class);

@@ -26,7 +26,7 @@ class AuthRoutesArePublicTest {
 
         assertThat(authRoutes).as("the scan found the auth controller").hasSizeGreaterThanOrEqualTo(8);
         assertThat(authRoutes)
-                .as("apiInterceptor.js sends anything under %s without a token, so a route there "
+                .as("apiInterceptor.ts sends anything under %s without a token, so a route there "
                         + "that needs one answers 401 forever - add it to PublicPaths.AUTH_ENDPOINTS, "
                         + "or serve it from outside the prefix, as /api/devices is", AUTH_PREFIX)
                 .allMatch(PublicPaths::isPublic);
