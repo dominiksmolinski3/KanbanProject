@@ -19,7 +19,7 @@ styles load with the lazily loaded board route, not with the sign-in screen
 | State | `src/context/KanbanContext.tsx` | Fetching, mutations, drag-and-drop handlers, live sync. Unchanged by the redesign. |
 | Derived model (pure) | `src/board/boardModel.js`, `src/board/cardModel.js` | Per-column/per-lane counts and WIP state, the tasks in each cell, priority read from labels, deadline state, initials and label hues. No React, so each is tested directly in `src/__tests__/board/`. |
 | View hooks | `src/board/useCollapsedLanes.js`, `src/board/useUserAvatar.js` | Which swimlanes are collapsed (per board, in `localStorage`), and a session-wide avatar cache with one request per account. |
-| Presentation | `Board.jsx`, `Task.tsx`, `TaskCardMeta.jsx`, `WipMeter.jsx`, `AvatarStack.tsx` | Rendering only. They read the model and call context actions. |
+| Presentation | `Board.tsx`, `Task.tsx`, `TaskCardMeta.jsx`, `WipMeter.jsx`, `AvatarStack.tsx` | Rendering only. They read the model and call context actions. |
 
 The board still renders as a `<table>`: columns are workflow stages and rows are swimlanes, which
 is the data model (`Task` sits at a column and an optional row). The Cypress suite and the keyboard
