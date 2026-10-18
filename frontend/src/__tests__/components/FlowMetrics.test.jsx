@@ -136,6 +136,17 @@ describe('FlowMetrics', () => {
     await waitFor(() => expect(fetchFlowMetrics).toHaveBeenLastCalledWith(expect.objectContaining({ done: '11' })));
   });
 
+  test('choosing where work starts asks the server again with that column', async () => {
+    fetchFlowMetrics.mockResolvedValue(metrics());
+
+    render(<FlowMetrics />);
+    await screen.findByText('flow.cumulativeFlow');
+
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '10' } });
+
+    await waitFor(() => expect(fetchFlowMetrics).toHaveBeenLastCalledWith(expect.objectContaining({ start: '10' })));
+  });
+
   test('a longer window widens the request', async () => {
     fetchFlowMetrics.mockResolvedValue(metrics());
 

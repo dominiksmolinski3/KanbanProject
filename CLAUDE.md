@@ -261,6 +261,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
 - A modal is `components/ui/Modal` (Radix Dialog), not a hand-built overlay: it traps focus, names
   itself and stops Escape from reaching a panel behind it. It closes on `pointerdown` outside, so a
   test that clicks the overlay sends `fireEvent.pointerDown`.
+- A test that a server call did *not* happen after a React Hook Form submit must let the event loop
+  turn before asserting: `handleSubmit` is async, so a synchronous check passes on code that does
+  call. Run such a test against a mutant once.
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
   (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.
