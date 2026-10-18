@@ -1,8 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-export function useAsyncAction() {
+interface AsyncActionOptions {
+  onError?: (error: unknown) => void;
+}
+
+export function useAsyncAction({ onError }: AsyncActionOptions = {}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   const run = useCallback(async (action: () => Promise<unknown>, fallback?: string): Promise<boolean> => {
     setPending(true);
@@ -12,6 +18,7 @@ export function useAsyncAction() {
       return true;
     } catch (err) {
       setError((err as Error).message || fallback || null);
+      onErrorRef.current?.(err);
       return false;
     } finally {
       setPending(false);

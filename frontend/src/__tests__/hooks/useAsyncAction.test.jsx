@@ -76,6 +76,29 @@ describe('useAsyncAction', () => {
     expect(result.current.error).toBe('A name is required');
   });
 
+  test('hands a failure to the onError it was given, the latest one, as well as keeping the message', async () => {
+    const first = jest.fn();
+    const latest = jest.fn();
+    const failure = new Error('Name taken');
+    const { result, rerender } = renderHook(({ onError }) => useAsyncAction({ onError }), { initialProps: { onError: first } });
+    rerender({ onError: latest });
+
+    await act(async () => { await result.current.run(() => Promise.reject(failure)); });
+
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledWith(failure);
+    expect(result.current.error).toBe('Name taken');
+  });
+
+  test('does not call onError when the action succeeds', async () => {
+    const onError = jest.fn();
+    const { result } = renderHook(() => useAsyncAction({ onError }));
+
+    await act(async () => { await result.current.run(() => Promise.resolve()); });
+
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   test('run keeps its identity across renders', () => {
     const { result, rerender } = renderHook(() => useAsyncAction());
     const first = result.current.run;
