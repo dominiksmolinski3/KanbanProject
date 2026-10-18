@@ -45,11 +45,42 @@ describe('FormModal', () => {
     expect(latest).toHaveBeenCalledTimes(1);
   });
 
-  test('restores the page scroll on close', () => {
-    document.body.style.overflow = 'auto';
+  test('locks the page scroll while open and releases it on close', () => {
     const { unmount } = render(<Host onClose={() => {}} />);
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body).toHaveAttribute('data-scroll-locked');
     unmount();
-    expect(document.body.style.overflow).toBe('auto');
+    expect(document.body).not.toHaveAttribute('data-scroll-locked');
+  });
+
+  test('is named by the label it is given', () => {
+    render(
+      <FormModal onClose={() => {}} ariaLabel="Add a task">
+        <input aria-label="name" />
+      </FormModal>
+    );
+    expect(screen.getByRole('dialog', { name: 'Add a task' })).toBeInTheDocument();
+  });
+
+  test('Escape does not reach a listener behind the dialog', () => {
+    const behind = jest.fn();
+    document.addEventListener('keydown', behind);
+    render(<Host onClose={() => {}} />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    document.removeEventListener('keydown', behind);
+    expect(behind).not.toHaveBeenCalled();
+  });
+
+  test('a click on the overlay closes it, a click inside does not', () => {
+    const onClose = jest.fn();
+    render(<Host onClose={onClose} />);
+    act(() => jest.runAllTimers());
+
+    fireEvent.pointerDown(screen.getByLabelText('name'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(document.querySelector('.modal-overlay'));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
