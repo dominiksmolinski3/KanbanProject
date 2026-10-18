@@ -75,7 +75,7 @@ describe('apiError', () => {
 describe('the service layer', () => {
   const services = path.join(__dirname, '..', '..', 'services');
   const sources = fs.readdirSync(services)
-    .filter((file) => /\.[jt]s$/.test(file))
+    .filter((file) => /\.[jt]sx?$/.test(file))
     .map((file) => [file, fs.readFileSync(path.join(services, file), 'utf8')]);
 
   test.each(sources)('%s builds no error out of a raw response', (_, source) => {

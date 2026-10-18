@@ -6,11 +6,11 @@ import type { Id, Task, TaskPatch, WipStatus } from '../types/api';
 
 const TASKS = '/api/tasks';
 
-export const fetchTasks = () => getJson<Task[]>(onActiveBoard(TASKS));
+export const fetchTasks = async () => getJson<Task[]>(onActiveBoard(TASKS));
 
 export const fetchTask = (taskId: Id) => getJson<Task>(`${TASKS}/${taskId}`);
 
-export const addTask = (title: string, columnId: Id, deadline: string | null = null) =>
+export const addTask = async (title: string, columnId: Id, deadline: string | null = null) =>
   postJson<Task>(onActiveBoard(TASKS), { title, column: { id: columnId }, deadline });
 
 export const updateTask = async (taskId: Id, taskData: TaskPatch) => {
@@ -65,7 +65,7 @@ export const updateTaskRow = (taskId: Id, rowId: Id | null) =>
 
 export const updateTaskName = (id: Id, name: string) => patchJson<Task>(`${TASKS}/${id}`, { title: name });
 
-export const fetchDailyFocusTasks = () => getJson<Task[]>(onActiveBoard(`${TASKS}/daily-focus`));
+export const fetchDailyFocusTasks = async () => getJson<Task[]>(onActiveBoard(`${TASKS}/daily-focus`));
 
 export const setTaskDailyFocus = (taskId: Id, dailyFocus: boolean) =>
   patchJson<Task>(`${TASKS}/${taskId}/daily-focus/${dailyFocus}`);

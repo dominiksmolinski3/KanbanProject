@@ -16,7 +16,7 @@ jest.mock('@stomp/stompjs', () => ({
     this.activate = jest.fn();
     this.deactivate = jest.fn();
     this.completeConnect = async () => {
-      await this.beforeConnect();
+      await this.beforeConnect(this);
       this.connected = true;
       this.onConnect();
     };
