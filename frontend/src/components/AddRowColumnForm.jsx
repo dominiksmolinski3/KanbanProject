@@ -6,13 +6,13 @@ import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import '../styles/components/Forms.css';
 import FormModal from './FormModal';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 function AddRowColumnForm({ onClose, defaultTab = 'column' }) {
   const { addColumn, addRow } = useKanban();
   const [name, setName] = useState('');
   const [wipLimit, setWipLimit] = useState('0');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const { pending: isSubmitting, error, setError, run } = useAsyncAction();
   const [activeTab, setActiveTab] = useState(defaultTab);
   const { t } = useTranslation();
 
@@ -24,24 +24,19 @@ function AddRowColumnForm({ onClose, defaultTab = 'column' }) {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      setError(null);
-
+    const added = await run(async () => {
       if (activeTab === 'column') {
         await addColumn(name, wipLimit);
       } else {
         await addRow(name, parseInt(wipLimit) || 0);
       }
-      
+    }, t(`forms.addRowColumn.error.addFailed.${activeTab}`));
+
+    if (added) {
       setName('');
       setWipLimit('0');
 
       if (onClose) onClose();
-    } catch (err) {
-      setError(err.message || t(`forms.addRowColumn.error.addFailed.${activeTab}`));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

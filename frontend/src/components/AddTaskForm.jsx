@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import '../styles/components/Forms.css'; 
 import FormModal from './FormModal';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
   const { addTask, refreshTasks, columns, rows } = useKanban();
@@ -13,8 +14,7 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
   const [deadline, setDeadline] = useState('');
   const [selectedColumnId, setSelectedColumnId] = useState(defaultColumnId || '');
   const [selectedRowId, setSelectedRowId] = useState(defaultRowId || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const { pending: isSubmitting, error, setError, run } = useAsyncAction();
   const { t } = useTranslation();
   
   const handleSubmit = async (e) => {
@@ -25,22 +25,17 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
       return;
     }
     
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      
-  await addTask(title, selectedColumnId || null, deadline || null, selectedRowId || null);
+    const added = await run(async () => {
+      await addTask(title, selectedColumnId || null, deadline || null, selectedRowId || null);
       await refreshTasks();
-      
+    }, t('forms.addTaskForm.addError'));
+
+    if (added) {
       setTitle('');
       setDeadline('');
       setSelectedColumnId('');
-  setSelectedRowId('');
+      setSelectedRowId('');
       if (onClose) onClose();
-    } catch (err) {
-      setError(err.message || t('forms.addTaskForm.addError'));
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
