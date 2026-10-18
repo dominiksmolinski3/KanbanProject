@@ -4,8 +4,9 @@ const READY_TIMEOUT_MS = 20000;
 const POLL_INTERVAL_MS = 50;
 
 export interface Grecaptcha {
-  render: (...args: unknown[]) => unknown;
-  reset?: (widgetId?: unknown) => void;
+  render: (container: HTMLElement, parameters: Record<string, unknown>) => number;
+  reset: (widgetId?: number) => void;
+  getResponse: (widgetId?: number) => string;
 }
 
 declare global {

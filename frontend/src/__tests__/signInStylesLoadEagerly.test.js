@@ -2,7 +2,15 @@ import fs from 'fs';
 import path from 'path';
 
 const SRC = path.resolve(__dirname, '..');
-const SIGN_IN_COMPONENTS = ['components/HomePage.jsx', 'components/LanguageSwitcher.jsx', 'components/DemoBanner.jsx'];
+const AUTH_COMPONENTS = fs.readdirSync(path.join(SRC, 'components', 'auth'))
+  .filter(name => /\.[jt]sx$/.test(name))
+  .map(name => `components/auth/${name}`);
+const SIGN_IN_COMPONENTS = [
+  'components/HomePage.tsx',
+  ...AUTH_COMPONENTS,
+  'components/LanguageSwitcher.jsx',
+  'components/DemoBanner.jsx',
+];
 
 function eagerStylesheets() {
   const seen = new Set();
@@ -63,6 +71,10 @@ describe('the sign-in screen', () => {
       }
     }
     expect(stranded).toEqual([]);
+  });
+
+  test('the scan reads the auth components, not only the page that hosts them', () => {
+    expect(AUTH_COMPONENTS.length).toBeGreaterThan(5);
   });
 
   test('the reader still sees the split it exists for', () => {

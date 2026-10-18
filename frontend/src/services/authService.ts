@@ -6,6 +6,7 @@ const API_BASE_URL = '/api';
 
 interface CaptchaFields {
   captchaToken?: string;
+  captcha?: { token: string };
 }
 
 export interface Credentials extends CaptchaFields {
