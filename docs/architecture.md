@@ -97,8 +97,8 @@ There are two images and one public address. [frontend/Dockerfile](../frontend/D
 Vite bundle and copies it into `nginx-unprivileged`; [backend/Dockerfile](../backend/Dockerfile) builds
 the Spring Boot jar. nginx serves the bundle from disk and reverse-proxies `/api`, `/ws` and
 `/v3/api-docs` to the API container, so the **browser still sees exactly one origin** — which is the
-whole point of proxying rather than publishing an `api.` host alongside. `api.js` calling relative
-paths like `/api/columns` just works, `apiInterceptor.js` keeps matching on substrings, both SockJS
+whole point of proxying rather than publishing an `api.` host alongside. `api.ts` calling relative
+paths like `/api/columns` just works, `apiInterceptor.ts` keeps matching on substrings, both SockJS
 clients keep pointing at `window.location.origin`, and `connect-src 'self'` keeps covering the
 WebSocket. **No JavaScript changed when the deployment split, and none should have to.**
 
@@ -764,13 +764,19 @@ first argument and sends exactly what the hand-written `fetch` it replaced sent,
 still assert on the raw `fetch` call. The suffix is how the answer is read: `Json` parses a body,
 `Void` expects none, `deleteQuietly` accepts a 404 for a thing already gone and `deleteChecked`
 does not. A call that must look at the status first (a 409, or a 400 with one particular code)
-keeps its own `fetch` and finishes with `read` or `readUnless`. The wire types are in
+keeps its own `fetch` and finishes with `read` or `readUnless`. Anything that reads
+`localStorage` before the request (`onActiveBoard`) is declared `async`, so a blocked store rejects
+the returned promise as it always did instead of throwing into the caller. `queryString` leaves out
+a `null` or `undefined` value; the hand-written code sent the text `null` or `undefined`, which the
+server refused anyway. The wire types are in
 [types/api.ts](../frontend/src/types/api.ts) and mirror the backend DTO records.
 
 The helpers hide `fetch` from `ClientRoutesExistTest`, which reads the service sources as text, so
-the test knows their names and treats the first argument of each as a path. It also fails when
-`http.ts` exports, or a service imports, a name it has not classified; without that, a new helper
-would make every call through it invisible and the route check would pass on less than it covered.
+the test knows their names and treats the first argument of each as a path. `http.ts` is read like
+any other service; the one call it skips is a `fetch(path` inside a helper, whose path is its
+caller's. The test also fails when `http.ts` exports, or a service imports, a name it has not
+classified, in any import or export form; without that, a new helper would make every call through
+it invisible and the route check would pass on less than it covered.
 `i18n.test.js` and `pathSegments.test.js` read sources through `@typescript-eslint/typescript-estree`
 for the same reason: a parser that cannot read `.ts` would make them pass on nothing.
 
@@ -1500,7 +1506,7 @@ severity 3 for refusals that happen in ordinary use and only mean something in b
 and reasons in `local.refusal_alerts`.
 ## CI/CD and infrastructure
 
-- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone) and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. One leg then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
+- `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone), type-checks with `tsc --noEmit` and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. One leg then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
   **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
   run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
