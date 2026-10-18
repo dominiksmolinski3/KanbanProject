@@ -380,7 +380,7 @@ nullable — a task can be taken off the board — and a task with no column wou
 with no owner. `TaskService` refuses any move that would put a task in a column or swimlane on a
 different board (`BOARD_MISMATCH`).
 
-**WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.jsx](../frontend/src/components/Board.jsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API.
+**WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.tsx](../frontend/src/components/Board.tsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API.
 
 `TaskService.reorderTasks` requires every id to name a task in the **same cell** — the same column
 *and* the same swimlane, comparing ids so that "no column" is a cell of its own rather than a
@@ -831,7 +831,7 @@ Three details carry it:
   (a `role="status"` live region on the board) rather than being visible from the card's position.
 - **The announcement is a key and its values, never a sentence** — the activity feed's rule, for the
   same reason: a sentence composed in JavaScript is one the other eight bundles cannot translate.
-  `Board.jsx` renders it through `t()`.
+  `Board.tsx` renders it through `t()`.
 
 Drag payloads are typed through `dataTransfer` MIME types — `application/task`, `application/column`, `application/row` — and `handleDrop` branches on which type is present, with a `taskId`/`columnId` plain-text fallback.
 

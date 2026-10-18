@@ -1,32 +1,41 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import LengthHint from './LengthHint';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
-import '../styles/components/Forms.css'; 
+import '../styles/components/Forms.css';
 import FormModal from './FormModal';
 import { useAsyncAction } from '../hooks/useAsyncAction';
+import type { LooseId } from '../context/kanban/types';
+import type { Id } from '../types/api';
 
-function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
+interface AddTaskFormProps {
+  onClose: () => void;
+  defaultColumnId?: LooseId;
+  defaultRowId?: LooseId;
+}
+
+function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }: AddTaskFormProps) {
   const { addTask, refreshTasks, columns, rows } = useKanban();
   const [title, setTitle] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [selectedColumnId, setSelectedColumnId] = useState(defaultColumnId || '');
-  const [selectedRowId, setSelectedRowId] = useState(defaultRowId || '');
+  const [selectedColumnId, setSelectedColumnId] = useState<LooseId>(defaultColumnId || '');
+  const [selectedRowId, setSelectedRowId] = useState<LooseId>(defaultRowId || '');
   const { pending: isSubmitting, error, setError, run } = useAsyncAction();
   const { t } = useTranslation();
-  
-  const handleSubmit = async (e) => {
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       setError(t('forms.addTaskForm.titleRequired'));
       return;
     }
-    
+
     const added = await run(async () => {
-      await addTask(title, selectedColumnId || null, deadline || null, selectedRowId || null);
+      // The selects hand back strings, and the board has always sent them on as they are.
+      await addTask(title, (selectedColumnId || null) as Id | null, deadline || null, (selectedRowId || null) as Id | null);
       await refreshTasks();
     }, t('forms.addTaskForm.addError'));
 
@@ -38,25 +47,25 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
       if (onClose) onClose();
     }
   };
-  
+
   return (
     <FormModal onClose={onClose} ariaLabel={t('forms.addTaskForm.title')}>
     <div className="form-container">
       <form onSubmit={handleSubmit}>
         <div className="form-header">
           <h3>{t('forms.addTaskForm.title')}</h3>
-          <button 
-            type="button" 
-            className="close-button" 
+          <button
+            type="button"
+            className="close-button"
             onClick={onClose}
             aria-label={t('forms.addRowColumn.close')}
           >
             <Icon name="close" />
           </button>
         </div>
-        
+
         {error && <div className="error-message">{error}</div>}
-        
+
         <div className="form-group">
           <label htmlFor="task-title">{t('forms.addTaskForm.titleLabel')}</label>
           <input
@@ -70,7 +79,7 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
           />
           <LengthHint value={title} max={NAME_MAX_LENGTH} />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="task-column">{t('forms.addTaskForm.columnLabel')}</label>
           <select
@@ -108,7 +117,7 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
             <small className="help-text">{t('forms.addTaskForm.rowHelp', 'Optional. Defaults to the first row if none is selected.')}</small>
           </div>
         )}
-        
+
         <div className="form-group">
           <label htmlFor="task-deadline">{t('forms.addTaskForm.deadlineLabel', 'Deadline')}</label>
           <input
@@ -121,16 +130,16 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }) {
           />
           <small className="help-text">{t('forms.addTaskForm.deadlineHelp', 'Optional. Tasks will be marked as expired when the deadline passes.')}</small>
         </div>
-        
+
         <div className="form-actions">
-          <button 
+          <button
             type="submit"
             disabled={isSubmitting}
           >
             {isSubmitting ? t('forms.addTaskForm.adding') : t('header.addTask')}
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="cancel-button"
             onClick={onClose}
             disabled={isSubmitting}
