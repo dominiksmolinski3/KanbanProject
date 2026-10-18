@@ -747,7 +747,7 @@ from parts the repo already had, and each part keeps its original rule:
 
 Three React contexts, composed in [App.jsx](../frontend/src/App.jsx): `AuthProvider` wraps the router; `KanbanProvider` and `ChatProvider` wrap the protected routes.
 
-[KanbanContext.jsx](../frontend/src/context/KanbanContext.jsx) is the single source of board state (columns, rows, tasks, users) and owns every mutation plus all HTML5 drag-and-drop handlers. Its pattern throughout: call the API, optimistically update local state, fire a `react-toastify` notification keyed through `t()`, and often follow with `refreshTasks()`/`refreshBoard()` to resync. Reordering issues **one** call for the whole container — `reorderTasks`, `reorderColumns`,
+[KanbanContext.tsx](../frontend/src/context/KanbanContext.tsx) is the single source of board state (columns, rows, tasks, users) and owns every mutation plus all HTML5 drag-and-drop handlers. Its pattern throughout: call the API, optimistically update local state, fire a `react-toastify` notification keyed through `t()`, and often follow with `refreshTasks()`/`refreshBoard()` to resync. Reordering issues **one** call for the whole container — `reorderTasks`, `reorderColumns`,
 `reorderRows`, each a `PATCH /api/{tasks,columns,rows}/positions` carrying `{ orderedIds }` and
 applied in a single transaction. It used to be one `updateTaskPosition` per item, which stopped
 being merely wasteful once the entities gained a `@Version`: a card somebody else moved makes one
@@ -783,7 +783,7 @@ for the same reason: a parser that cannot read `.ts` would make them pass on not
 **Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
 cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
 only be dragged could not be moved by anyone without a pointer, which on a Kanban board is the
-gesture the board exists for. [keyboardMove.js](../frontend/src/context/keyboardMove.js) holds the
+gesture the board exists for. [keyboardMove.ts](../frontend/src/context/keyboardMove.ts) holds the
 state machine and `KanbanContext` exposes it as `keyboardMove`, built on the same `handleMoveTask`
 `handleDrop` calls — so the toast, the resync and the activity entry cannot drift from the dragged
 path. Space picks a card up, the arrows choose a cell, Space or Enter drops it, Escape puts it back
