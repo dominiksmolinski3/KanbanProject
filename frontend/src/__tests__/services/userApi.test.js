@@ -204,3 +204,15 @@ test('getUserAvatar should handle connection errors gracefully', async () => {
   const result = await getUserAvatar('user1');
   expect(result).toBeNull();
 });
+
+test('updateUserWipLimit sends null, not a number, to take the limit off', async () => {
+  fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 123, wipLimit: null }) });
+
+  await updateUserWipLimit('123', null);
+
+  expect(fetch).toHaveBeenCalledWith('/api/users/123/wip-limit', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: 'null',
+  });
+});
