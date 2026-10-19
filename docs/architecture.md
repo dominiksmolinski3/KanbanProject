@@ -783,18 +783,23 @@ for the same reason: a parser that cannot read `.ts` would make them pass on not
 **Dialogs share one primitive.** [Modal.tsx](../frontend/src/components/ui/Modal.tsx) wraps Radix
 `Dialog`, and `FormModal` and `ConfirmDialog` are thin callers of it. There used to be three
 hand-built versions: `FormModal` had a document `keydown` listener and set `body.style.overflow`,
-`ConfirmDialog` had a capture-phase Escape handler and no dialog role at all, and the task panel has
+`ConfirmDialog` had a capture-phase Escape handler and no dialog role at all, and the task panel had
 its own. What the primitive adds is a focus trap, a name (`aria-label`, or the heading for the
 confirm dialog), `role="alertdialog"` for confirmations, and page-scroll locking that does not depend
 on who set `overflow` last. Two choices are deliberate. The container takes focus on open, not the
 first control, so a destructive "yes" is never focused by default. And Escape is stopped at the
-dialog, because the task panel behind a confirmation listens on `document` and would otherwise close
-with it. The panel itself is not a `Modal`, so that stop is what keeps the two apart, and it should
-stay that way until the label picker and custom-label form stop being portalled into `body`: Radix
-sets `pointer-events: none` on `body` while a modal is open, so anything portalled outside the
-dialog's own content would stop receiving clicks. Both now go through one component,
-[FloatingLayer.tsx](../frontend/src/components/labels/FloatingLayer.tsx), so pointing them at the
-panel's own content is a change to that file and nowhere else.
+dialog, because the header menu listens on `document` and would otherwise close with it, and so would
+the task panel behind a confirmation.
+
+The task panel is a `Modal` too, and the label picker and custom-label form are the reason it took a
+second step. Radix sets `pointer-events: none` on `body` while a modal is open and treats anything
+outside the dialog's own content as an outside click, so a layer portalled into `body` would be dead
+and would close the panel when used. `Modal` therefore publishes its content element through
+[FloatingContainer.tsx](../frontend/src/components/ui/FloatingContainer.tsx), and
+[FloatingLayer.tsx](../frontend/src/components/labels/FloatingLayer.tsx) portals into it, falling back
+to `body` outside a dialog. The layers are `position: fixed` and placed from the anchor's viewport
+rectangle, with no scroll offset. `TaskDetailsLabels.test.jsx` is the guard: it fails if the layer
+goes back to `body`.
 
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,

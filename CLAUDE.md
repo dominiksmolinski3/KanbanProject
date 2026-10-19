@@ -259,8 +259,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   `{ useState }` gets Babel's copy of the module, which the spy does not touch, so the mocks are
   consumed by whichever other file imports only `{ useState }`.
 - A modal is `components/ui/Modal` (Radix Dialog), not a hand-built overlay: it traps focus, names
-  itself and stops Escape from reaching a panel behind it. It closes on `pointerdown` outside, so a
-  test that clicks the overlay sends `fireEvent.pointerDown`.
+  itself and stops Escape from reaching a layer behind it. A popup opened from inside one goes
+  through `FloatingLayer`, never `createPortal(..., document.body)`: Radix makes `body` inert. It
+  closes on `pointerdown` outside, so a test that clicks the overlay sends `fireEvent.pointerDown`.
 - A test that something did *not* happen must wait out whatever could have made it happen, and be
   run against a mutant once: React Hook Form's `handleSubmit` is async, events fired inside one
   `act` are batched so the handler sees stale state, and the label picker only appears after a 50 ms

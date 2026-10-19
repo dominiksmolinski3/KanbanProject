@@ -2,19 +2,15 @@ import { formPositionFor, pickerPositionFor } from '../../components/labels/labe
 
 describe('pickerPositionFor', () => {
   test('sits just below the button, level with its left edge', () => {
-    expect(pickerPositionFor({ left: 100, bottom: 40 }, { x: 0, y: 0 }, 1000)).toEqual({ top: 45, left: 100 });
-  });
-
-  test('follows the page scroll', () => {
-    expect(pickerPositionFor({ left: 100, bottom: 40 }, { x: 30, y: 200 }, 1000)).toEqual({ top: 245, left: 130 });
+    expect(pickerPositionFor({ left: 100, bottom: 40 }, 1000)).toEqual({ top: 45, left: 100 });
   });
 
   test('moves left rather than run off the right edge of the viewport', () => {
-    expect(pickerPositionFor({ left: 900, bottom: 40 }, { x: 0, y: 0 }, 1000)).toEqual({ top: 45, left: 740 });
+    expect(pickerPositionFor({ left: 900, bottom: 40 }, 1000)).toEqual({ top: 45, left: 740 });
   });
 
   test('a button whose picker just fits stays where it is', () => {
-    expect(pickerPositionFor({ left: 750, bottom: 0 }, { x: 0, y: 0 }, 1000).left).toBe(750);
+    expect(pickerPositionFor({ left: 750, bottom: 0 }, 1000).left).toBe(750);
   });
 });
 
