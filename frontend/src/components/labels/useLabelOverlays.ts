@@ -23,11 +23,7 @@ export function useLabelOverlays(buttonRef: RefObject<HTMLButtonElement | null>)
       setPickerReady(false);
       if (buttonRef.current) {
         const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-        setPickerPosition(pickerPositionFor(
-          buttonRef.current.getBoundingClientRect(),
-          { x: window.scrollX, y: window.scrollY },
-          viewportWidth
-        ));
+        setPickerPosition(pickerPositionFor(buttonRef.current.getBoundingClientRect(), viewportWidth));
         timers.current.push(setTimeout(() => setPickerReady(true), READY_DELAY_MS));
       }
     }

@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../context/KanbanContext';
 import type { Task } from '../types/api';
@@ -14,6 +13,7 @@ import TaskDetailsTitle from './taskDetails/TaskDetailsTitle';
 import TaskRelations from './taskDetails/TaskRelations';
 import TaskSubtasks from './taskDetails/TaskSubtasks';
 import { useTaskDetails } from './taskDetails/useTaskDetails';
+import Modal from './ui/Modal';
 import '../styles/components/TaskDetails.css';
 
 type View = 'details' | 'comments' | 'history';
@@ -30,30 +30,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }: TaskDetailsProps_) {
   const state = useTaskDetails(task);
   const [currentView, setCurrentView] = useState<View>('details');
 
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
-
-  if (state.loading) {
-    return createPortal(
-      <>
-        <div className="task-details-overlay" />
-        <section className="task-details-panel loading" aria-busy="true">
-          <p>{t('board.loading')}</p>
-        </section>
-      </>,
-      document.body
-    );
-  }
-
   const title = state.title.value || task.title;
-  const titleId = `task-sheet-title-${task.id}`;
   const columnName = columns.find((column) => String(column.id) === String(task.columnId))?.name;
   const rowName = rows.find((row) => String(row.id) === String(task.rowId))?.name;
 
@@ -91,77 +68,74 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }: TaskDetailsProps_) {
     );
   };
 
-  return createPortal(
-    <>
-      <div
-        className="task-details-overlay"
-        onClick={(event) => {
-          event.stopPropagation();
-          onClose();
-        }}
-      />
-      <section
-        className="task-details-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <div className="panel-header">
-          {(columnName || rowName) && (
-            <div className="sheet-crumbs">
-              {columnName && <span>{columnName}</span>}
-              {columnName && rowName && <Icon name="chevron-right" size="sm" />}
-              {rowName && <span>{rowName}</span>}
+  return (
+    <Modal
+      onClose={onClose}
+      overlayClassName="task-details-overlay"
+      contentClassName={`task-details-panel${state.loading ? ' loading' : ''}`}
+      label={title}
+      busy={state.loading}
+    >
+      {state.loading ? (
+        <p>{t('board.loading')}</p>
+      ) : (
+        <>
+          <div className="panel-header">
+            {(columnName || rowName) && (
+              <div className="sheet-crumbs">
+                {columnName && <span>{columnName}</span>}
+                {columnName && rowName && <Icon name="chevron-right" size="sm" />}
+                {rowName && <span>{rowName}</span>}
+              </div>
+            )}
+            <TaskDetailsTitle task={task} state={state} title={title} onClose={onClose} />
+            <TaskDetailsProps task={task} state={state} />
+            <div className="sheet-tabs" role="tablist" aria-label={title}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`sheet-tab-${tab.id}`}
+                  aria-selected={currentView === tab.id}
+                  aria-controls="sheet-body"
+                  className="sheet-tab"
+                  onClick={() => setCurrentView(tab.id)}
+                >
+                  {tab.icon && <Icon name={tab.icon} size="sm" />}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="task-details-main"
+            id="sheet-body"
+            role="tabpanel"
+            aria-labelledby={`sheet-tab-${currentView}`}
+          >
+            {renderView()}
+
+            {state.userToRemove && (
+              <ConfirmDialog
+                title={t('taskActions.confirmDeleteAssignedUser')}
+                subject={state.userToRemove.name}
+                onConfirm={state.removeUser}
+                onCancel={state.cancelRemoveUser}
+              />
+            )}
+          </div>
+
+          {state.saved && (
+            <div className="success-message" role="status">
+              <Icon name="check" size="sm" />
+              {t('notifications.taskUpdated')}
             </div>
           )}
-          <TaskDetailsTitle task={task} state={state} titleId={titleId} title={title} onClose={onClose} />
-          <TaskDetailsProps task={task} state={state} />
-          <div className="sheet-tabs" role="tablist" aria-label={title}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`sheet-tab-${tab.id}`}
-                aria-selected={currentView === tab.id}
-                aria-controls="sheet-body"
-                className="sheet-tab"
-                onClick={() => setCurrentView(tab.id)}
-              >
-                {tab.icon && <Icon name={tab.icon} size="sm" />}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div
-          className="task-details-main"
-          id="sheet-body"
-          role="tabpanel"
-          aria-labelledby={`sheet-tab-${currentView}`}
-        >
-          {renderView()}
-
-          {state.userToRemove && (
-            <ConfirmDialog
-              title={t('taskActions.confirmDeleteAssignedUser')}
-              subject={state.userToRemove.name}
-              onConfirm={state.removeUser}
-              onCancel={state.cancelRemoveUser}
-            />
-          )}
-        </div>
-
-        {state.saved && (
-          <div className="success-message" role="status">
-            <Icon name="check" size="sm" />
-            {t('notifications.taskUpdated')}
-          </div>
-        )}
-      </section>
-    </>,
-    document.body
+        </>
+      )}
+    </Modal>
   );
 }
 

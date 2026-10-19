@@ -559,7 +559,7 @@ describe('TaskDetails Component', () => {
     });
     
     const overlay = document.querySelector('.task-details-overlay');
-    fireEvent.click(overlay);
+    fireEvent.pointerDown(overlay);
     
     expect(onCloseMock).toHaveBeenCalled();
   });

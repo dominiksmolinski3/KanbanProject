@@ -29,7 +29,7 @@ export default function LabelPicker({ position, existingLabels, colorOf, onPick,
       <div
         className="label-picker animated fadeIn"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: `${position.top}px`,
           left: `${position.left}px`,
           zIndex: 2000
