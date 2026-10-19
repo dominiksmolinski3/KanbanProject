@@ -1,9 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render as baseRender, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import FlowMetrics from '../../components/FlowMetrics';
 import { defineFlow, fetchFlowMetrics } from '../../services/flowApi';
 import { toast } from 'react-toastify';
+import { createQueryClient } from '../../services/queryClient';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -58,8 +60,15 @@ const metrics = (overrides = {}) => ({
   ...overrides
 });
 
+let client;
+
+const render = (ui) => baseRender(ui, {
+  wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
+});
+
 describe('FlowMetrics', () => {
   beforeEach(() => {
+    client = createQueryClient();
     fetchFlowMetrics.mockReset();
     defineFlow.mockReset();
     toast.success.mockReset();
@@ -268,6 +277,30 @@ describe('FlowMetrics', () => {
     render(<FlowMetrics />);
 
     expect(await screen.findByText('flow.failed')).toBeInTheDocument();
+  });
+
+  test('the column choices stay on screen while a longer window loads', async () => {
+    fetchFlowMetrics.mockResolvedValueOnce(metrics());
+    fetchFlowMetrics.mockImplementationOnce(() => new Promise(() => {}));
+
+    render(<FlowMetrics />);
+    await screen.findByText('flow.cumulativeFlow');
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '90' } });
+
+    expect(await screen.findByText('flow.loading')).toBeInTheDocument();
+    expect(within(screen.getAllByRole('combobox')[2]).getAllByRole('option')).toHaveLength(columns.length + 1);
+  });
+
+  test('a read that fails after a good one shows the failure, not the old charts', async () => {
+    fetchFlowMetrics.mockResolvedValueOnce(metrics({ doneColumnId: 11, definedDoneColumnId: 11 }));
+    fetchFlowMetrics.mockRejectedValue(new Error('500'));
+    defineFlow.mockResolvedValue({ boardId: 3, startColumnId: null, doneColumnId: null });
+
+    render(<FlowMetrics />);
+    fireEvent.click(await screen.findByText('flow.resetDefinition'));
+
+    expect(await screen.findByText('flow.failed')).toBeInTheDocument();
+    expect(screen.queryByText('flow.cumulativeFlow')).not.toBeInTheDocument();
   });
 
   describe("the board's own definition (FLOW-02)", () => {

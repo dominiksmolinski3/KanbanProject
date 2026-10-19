@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import ProtectedLayout from '../../components/ProtectedLayout';
 import { useAuth } from '../../context/AuthContext';
@@ -61,5 +62,25 @@ describe('ProtectedLayout', () => {
     expect(screen.getByText('Footer')).toBeInTheDocument();
     expect(screen.getByText('Chat')).toBeInTheDocument();
     expect(screen.getByText('Board content')).toBeInTheDocument();
+  });
+
+  test('gives the signed-in pages a query client', async () => {
+    useAuth.mockReturnValue({ token: 'jwt', isLoading: false });
+    const Page = () => {
+      const { data } = useQuery({ queryKey: ['probe'], queryFn: async () => 'read' });
+      return <div>{data ?? 'reading'}</div>;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/board']}>
+        <Routes>
+          <Route element={<ProtectedLayout />}>
+            <Route path="/board" element={<Page />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('read')).toBeInTheDocument();
   });
 });
