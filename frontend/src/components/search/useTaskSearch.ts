@@ -1,16 +1,18 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { searchTasks } from '../../services/api';
+import { getActiveBoardId } from '../../services/activeBoard';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { SearchFilters } from './useSearchFilters';
 
 const DEBOUNCE_MS = 300;
 
 export function useTaskSearch(isOpen: boolean, filters: SearchFilters) {
+  const activeBoardId = getActiveBoardId();
   const { term, labels, assignees, completed, deadlineFrom, deadlineTo, page } = filters;
   const wanted = useDebouncedValue({ term, labels, assignees, completed, deadlineFrom, deadlineTo, page }, DEBOUNCE_MS);
 
   const query = useQuery({
-    queryKey: ['search', wanted],
+    queryKey: ['search', activeBoardId, wanted],
     enabled: isOpen,
     placeholderData: keepPreviousData,
     queryFn: () => searchTasks({

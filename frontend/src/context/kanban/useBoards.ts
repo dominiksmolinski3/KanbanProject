@@ -110,19 +110,22 @@ export function useBoards({ t }: { t: Translate }) {
     }
   };
 
+  const moveOffBoard = async (remaining: { id: Id }[], goneId: Id) => {
+    const next = remaining.find(board => board.id !== goneId);
+    persistActiveBoardId(next ? next.id : null);
+    setActiveBoardId(next ? next.id : null);
+    if (!next) {
+      const replacement = await fetchCurrentBoard();
+      await refreshBoards();
+      persistActiveBoardId(replacement.id);
+      setActiveBoardId(replacement.id);
+    }
+  };
+
   const handleDeleteBoard = async (boardId: Id) => {
     try {
       await deleteBoard(boardId);
-      const remaining = await refreshBoards();
-      const next = remaining.find(board => board.id !== boardId);
-      persistActiveBoardId(next ? next.id : null);
-      setActiveBoardId(next ? next.id : null);
-      if (!next) {
-        const replacement = await fetchCurrentBoard();
-        await refreshBoards();
-        persistActiveBoardId(replacement.id);
-        setActiveBoardId(replacement.id);
-      }
+      await moveOffBoard(await refreshBoards(), boardId);
       toast.success(t('notifications.boardDeleted'));
       return true;
     } catch (err) {
@@ -187,7 +190,10 @@ export function useBoards({ t }: { t: Translate }) {
   const handleRemoveBoardMember = async (boardId: Id, userId: Id) => {
     try {
       const board = await removeBoardMember(boardId, userId);
-      await refreshBoards();
+      const remaining = await refreshBoards();
+      if (boardId === activeBoardId && !remaining.some(candidate => candidate.id === boardId)) {
+        await moveOffBoard(remaining, boardId);
+      }
       toast.success(t('notifications.boardMemberRemoved'));
       return board;
     } catch (err) {
