@@ -11,7 +11,7 @@ const PATHS = [
   'M1604 2105 c-5 -11 -24 -15 -80 -15 l-73 0 -6 -37 c-4 -21 -11 -51 -16 -67 -5 -16 -9 -33 -9 -37 0 -5 108 -9 239 -9 l240 0 10 53 c5 28 12 69 16 90 l6 37 -161 0 c-134 0 -162 -3 -166 -15z',
 ];
 
-function BrandMark({ className }) {
+function BrandMark({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="82 175 336 160" aria-hidden="true" focusable="false">
       <g transform="translate(0,500) scale(0.1,-0.1)">

@@ -1,21 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import LengthHint from './LengthHint';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 
-function EditableText({
+interface EditableTextProps<Id> {
+  id: Id;
+  text: string;
+  onUpdate: (id: Id, value: string, type: string) => Promise<boolean | void> | boolean | void;
+  className?: string;
+  inputClassName?: string;
+  type?: string;
+  disabled?: boolean;
+  maxLength?: number;
+}
+
+function EditableText<Id>({
   id,
   text,
   onUpdate,
-  className = "",
-  inputClassName = "",
-  type = "default",
+  className = '',
+  inputClassName = '',
+  type = 'default',
   disabled = false,
   maxLength = NAME_MAX_LENGTH
-}) {
+}: EditableTextProps<Id>) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(text);
-  const inputRef = useRef(null);
-  const spanRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -28,26 +38,22 @@ function EditableText({
     setValue(text);
   }, [text]);
 
-  const handleDoubleClick = () => {
-    if (disabled) return;
-    setIsEditing(true);
-  };
-
   const handleBlur = async () => {
-    if (value.trim() !== text && value.trim() !== '') {
-      const success = await onUpdate(id, value.trim(), type);
+    const trimmed = value.trim();
+    if (trimmed !== text && trimmed !== '') {
+      const success = await onUpdate(id, trimmed, type);
       if (!success) {
-        setValue(text); 
+        setValue(text);
       }
-    } else if (value.trim() === '') {
-      setValue(text); 
+    } else if (trimmed === '') {
+      setValue(text);
     }
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      inputRef.current.blur();
+      inputRef.current?.blur();
     } else if (e.key === 'Escape') {
       setValue(text);
       setIsEditing(false);
@@ -75,8 +81,7 @@ function EditableText({
 
   return (
     <span
-      ref={spanRef}
-      onDoubleClick={handleDoubleClick}
+      onDoubleClick={() => !disabled && setIsEditing(true)}
       className={`editable-text ${className}`}
       title={text}
       data-type={type}

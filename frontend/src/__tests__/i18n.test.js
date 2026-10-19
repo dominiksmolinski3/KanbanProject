@@ -150,7 +150,7 @@ describe('nothing on screen bypasses t()', () => {
   });
 
   test('the scan reads the components - a silent zero would pass the assertion above', () => {
-    expect(sourceFiles(SOURCE_DIR).filter((file) => file.endsWith('.jsx')).length)
+    expect(sourceFiles(SOURCE_DIR).filter((file) => /\.[jt]sx$/.test(file)).length)
       .toBeGreaterThan(20);
   });
 });

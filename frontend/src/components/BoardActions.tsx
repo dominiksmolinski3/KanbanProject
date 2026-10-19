@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import AddTaskForm from './AddTaskForm';
 import AddRowColumnForm from './AddRowColumnForm';
 import WipLimitControl from './WipLimitControl';
 
+type Form = 'task' | 'boardItem' | 'wip';
+
 function BoardActions() {
-  const [activeForm, setActiveForm] = useState(null);
+  const [activeForm, setActiveForm] = useState<Form | null>(null);
   const { t } = useTranslation();
 
-  const toggle = (form) => setActiveForm(activeForm === form ? null : form);
+  const toggle = (form: Form) => setActiveForm(activeForm === form ? null : form);
   const close = () => setActiveForm(null);
 
   return (

@@ -8,7 +8,7 @@ const AUTH_COMPONENTS = fs.readdirSync(path.join(SRC, 'components', 'auth'))
 const SIGN_IN_COMPONENTS = [
   'components/HomePage.tsx',
   ...AUTH_COMPONENTS,
-  'components/LanguageSwitcher.jsx',
+  'components/LanguageSwitcher.tsx',
   'components/DemoBanner.jsx',
 ];
 

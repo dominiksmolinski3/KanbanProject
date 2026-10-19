@@ -1,4 +1,6 @@
-const PATHS = {
+import type { ReactNode } from 'react';
+
+const PATHS: Record<string, ReactNode> = {
   'board': <><rect x="3.5" y="4" width="4.5" height="16" rx="1" /><rect x="10" y="4" width="4.5" height="11" rx="1" /><rect x="16.5" y="4" width="4" height="7" rx="1" /></>,
   'people': <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7" /><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></>,
   'activity': <path d="M3 12h4l3-8 4 16 3-8h4" />,
@@ -48,7 +50,14 @@ const PATHS = {
 const FILLED_ICONS = new Set(['grip', 'more']);
 const DIRECTIONAL_ICONS = new Set(['chevron-right', 'chevron-left', 'open', 'send', 'logout', 'arrow-right']);
 
-function Icon({ name, size = 'md', filled = FILLED_ICONS.has(name), className = '' }) {
+interface IconProps {
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+  filled?: boolean;
+  className?: string;
+}
+
+function Icon({ name, size = 'md', filled = FILLED_ICONS.has(name), className = '' }: IconProps) {
   const classes = ['kb-icon', `kb-icon--${size}`];
   if (filled) classes.push('kb-icon--fill');
   if (DIRECTIONAL_ICONS.has(name)) classes.push('kb-icon--dir');

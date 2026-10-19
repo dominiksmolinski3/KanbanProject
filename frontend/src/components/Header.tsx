@@ -1,10 +1,11 @@
 import { Link, NavLink } from 'react-router-dom';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
 import BoardSwitcher from './BoardSwitcher';
 import { useAuth } from '../context/AuthContext';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 import BrandMark from './BrandMark';
 import Icon from './Icon';
 
@@ -17,7 +18,7 @@ const PAGES = [
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { logout } = useAuth();
   const { t } = useTranslation();
 
@@ -26,26 +27,19 @@ function Header() {
     window.location.href = '/';
   };
 
+  useOutsideClick(menuRef, menuOpen, () => setMenuOpen(false));
+
   useEffect(() => {
     if (!menuOpen) {
       return undefined;
     }
-    const closeOnOutsideClick = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-    };
-    const closeOnEscape = (event) => {
+    const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMenuOpen(false);
       }
     };
-    document.addEventListener('mousedown', closeOnOutsideClick);
     document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
+    return () => document.removeEventListener('keydown', closeOnEscape);
   }, [menuOpen]);
 
   return (

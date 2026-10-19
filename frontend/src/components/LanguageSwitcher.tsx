@@ -1,28 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 import { updateUserLocale } from '../services/api';
 import '../styles/components/LanguageSwitcher.css';
+
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'pl', label: 'Polski' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'ar', label: 'العربية' }
+];
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation();
   const user = useAuth()?.user;
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const languages = [
-    { code: 'en', label: 'English' },
-    { code: 'pl', label: 'Polski' },
-    { code: 'de', label: 'Deutsch' },
-    { code: 'es', label: 'Español' },
-    { code: 'fr', label: 'Français' },
-    { code: 'it', label: 'Italiano' },
-    { code: 'ja', label: '日本語' },
-    { code: 'ru', label: 'Русский' },
-    { code: 'ar', label: 'العربية' }
-  ];
+  useOutsideClick(dropdownRef, isOpen, () => setIsOpen(false));
 
-  const changeLanguage = (e, lng) => {
+  const changeLanguage = (e: MouseEvent, lng: string) => {
     e.preventDefault();
     e.stopPropagation();
     i18n.changeLanguage(lng);
@@ -36,48 +39,30 @@ function LanguageSwitcher() {
     });
   };
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const toggleDropdown = (e) => {
+  const toggleDropdown = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsOpen(!isOpen);
   };
 
-  const getCurrentLanguageLabel = () => {
-    const currentLang = languages.find(lang => 
-      i18n.language.startsWith(lang.code)
-    );
-    return currentLang ? currentLang.label : 'English';
-  };
+  const current = LANGUAGES.find(lang => i18n.language.startsWith(lang.code)) ?? LANGUAGES[0];
 
   return (
     <div className="language-switcher" ref={dropdownRef}>
-      <button 
+      <button
         className="language-switcher-button"
         onClick={toggleDropdown}
         aria-haspopup="true"
         aria-expanded={isOpen}
         type="button"
       >
-        <span className="current-language">{getCurrentLanguageLabel()}</span>
+        <span className="current-language">{current.label}</span>
         <span className="dropdown-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
-      
+
       {isOpen && (
         <div className="language-dropdown">
-          {languages.map((lang) => (
+          {LANGUAGES.map((lang) => (
             <button
               key={lang.code}
               onClick={(e) => changeLanguage(e, lang.code)}

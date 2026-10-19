@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import FormModal from './FormModal';
+import FormTabs from './ui/FormTabs';
 import WipLimitFields from './wipLimit/WipLimitFields';
 import { useWipLimitForm, type WipTarget } from './wipLimit/useWipLimitForm';
 import '../styles/components/Forms.css';
@@ -16,9 +17,9 @@ function WipLimitControl({ onClose = noop }: { onClose?: () => void }) {
     return null;
   }
 
-  const tabs: { id: WipTarget; label: string; empty: boolean }[] = [
-    { id: 'column', label: t('forms.wipLimit.columnTab'), empty: columns.length === 0 },
-    { id: 'row', label: t('forms.wipLimit.rowTab'), empty: rows.length === 0 },
+  const tabs: { id: WipTarget; label: string; disabled: boolean }[] = [
+    { id: 'column', label: t('forms.wipLimit.columnTab'), disabled: columns.length === 0 },
+    { id: 'row', label: t('forms.wipLimit.rowTab'), disabled: rows.length === 0 },
   ];
 
   return (
@@ -32,19 +33,7 @@ function WipLimitControl({ onClose = noop }: { onClose?: () => void }) {
             </button>
           </div>
 
-          <div className="tab-container">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`tab-btn ${target === tab.id ? 'active' : ''}`}
-                onClick={() => form.switchTarget(tab.id)}
-                disabled={tab.empty}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <FormTabs active={target} onChange={form.switchTarget} tabs={tabs} />
 
           {form.error && <div className="error-message">{form.error}</div>}
 

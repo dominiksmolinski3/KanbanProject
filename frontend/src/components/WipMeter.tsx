@@ -1,9 +1,15 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { WipState } from '../board/boardModel';
 
 const MAX_PIPS = 12;
 
-function WipMeter({ count, limit, state }) {
+interface WipMeterProps {
+  count: number;
+  limit: number;
+  state: WipState;
+}
+
+function WipMeter({ count, limit, state }: WipMeterProps) {
   const { t } = useTranslation();
   const hasLimit = limit > 0;
   const label = hasLimit
