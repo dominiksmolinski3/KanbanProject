@@ -22,7 +22,7 @@ import type { LooseId, SharedActionDeps } from './types';
 
 export function useLayoutActions({
   t, blockIfReadOnly, refuseIfReadOnly,
-  columns, setColumns, rows, setRows, tasks, setTasks, columnMap, setColumnMap,
+  columns, setColumns, rows, setRows, tasks, setTasks,
   refreshTasks, refreshBoard,
 }: SharedActionDeps) {
   const handleUpdateColumnName = async (columnId: Id, newName: string) => {
@@ -32,21 +32,6 @@ export function useLayoutActions({
       setColumns(columns.map(column =>
         column.id === columnId ? { ...column, name: newName } : column
       ));
-
-      const updatedColumn = columns.find(column => column.id === columnId);
-      if (updatedColumn) {
-        const oldKey = updatedColumn.name.toLowerCase().replace(/\s+/g, '-');
-        const newKey = newName.toLowerCase().replace(/\s+/g, '-');
-
-        setColumnMap(prevMap => {
-          const newMap = { ...prevMap };
-          if (newMap[oldKey]) {
-            delete newMap[oldKey];
-            newMap[newKey] = columnId;
-          }
-          return newMap;
-        });
-      }
 
       toast.success(t('notifications.columnUpdated'));
       return true;
@@ -77,12 +62,6 @@ export function useLayoutActions({
     refuseIfReadOnly();
     try {
       const newColumn = await addColumn(name, wipLimit);
-      const columnKey = name.toLowerCase().replace(/\s+/g, '-');
-      setColumnMap(prev => ({
-        ...prev,
-        [columnKey]: newColumn.id
-      }));
-
       setColumns(prev => [...prev, newColumn]);
       toast.success(t('notifications.columnAdded', { name }));
       return newColumn;
@@ -181,14 +160,6 @@ export function useLayoutActions({
       }
 
       await deleteColumn(columnId);
-      const updatedColumnMap = { ...columnMap };
-      for (const [key, value] of Object.entries(updatedColumnMap)) {
-        if (value === columnId) {
-          delete updatedColumnMap[key];
-          break;
-        }
-      }
-      setColumnMap(updatedColumnMap);
       setColumns(columns.filter(column => column.id !== columnId));
 
       const updatedTasks = tasks.map(task =>

@@ -1,11 +1,22 @@
-import { useEffect, useRef, useState, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, type SetStateAction } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchColumns, fetchRows, fetchTasks } from '../../services/api';
-import BoardEvents from '../../services/boardEvents';
 import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
+import { boardKeys, byPosition } from './boardQueries';
 import { messageOf } from './reportError';
 import type { BoardData, SetState } from './types';
+import { useLiveBoardSync } from './useLiveBoardSync';
 
-const LIVE_REFRESH_WINDOW_MS = 250;
+const NONE: never[] = [];
+
+async function logged<T>(label: string, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (err) {
+    console.error(label, err);
+    throw err;
+  }
+}
 
 interface BoardDataDeps {
   activeBoardId: Id | null;
@@ -14,167 +25,85 @@ interface BoardDataDeps {
 }
 
 export function useBoardData({ activeBoardId, setLoading, setError }: BoardDataDeps): BoardData {
-  const [columns, setColumns] = useState<ColumnSummary[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [rows, setRows] = useState<RowSummary[]>([]);
-  const [columnMap, setColumnMap] = useState<Record<string, Id>>({});
-  const refreshes = useRef(0);
+  const queryClient = useQueryClient();
+  const enabled = activeBoardId !== null;
   const localChanges = useRef(0);
-
-  const setTasksLocally = (update: SetStateAction<Task[]>) => {
-    localChanges.current += 1;
-    setTasks(update);
+  const keys = {
+    columns: boardKeys.columns(activeBoardId),
+    rows: boardKeys.rows(activeBoardId),
+    tasks: boardKeys.tasks(activeBoardId),
   };
 
+  const columnsQuery = useQuery({
+    queryKey: keys.columns,
+    enabled,
+    queryFn: async () => byPosition(await logged('Error fetching columns:', fetchColumns)),
+  });
+  const rowsQuery = useQuery({
+    queryKey: keys.rows,
+    enabled,
+    queryFn: async () => byPosition(await logged('Error fetching rows:', fetchRows)),
+  });
+  // A local edit made while this read was in flight wins over what the read brings back.
+  const tasksQuery = useQuery({
+    queryKey: keys.tasks,
+    enabled,
+    queryFn: async () => {
+      const changesAtStart = localChanges.current;
+      const fetched = await logged('Error fetching tasks:', fetchTasks);
+      return changesAtStart === localChanges.current
+        ? fetched
+        : queryClient.getQueryData<Task[]>(keys.tasks) ?? fetched;
+    },
+  });
+
+  const columns: ColumnSummary[] = columnsQuery.data ?? NONE;
+  const rows: RowSummary[] = rowsQuery.data ?? NONE;
+  const storedTasks: Task[] = tasksQuery.data ?? NONE;
+  const tasks = useMemo(
+    () => (rows.length > 0 ? storedTasks.map(task => (task.rowId ? task : { ...task, rowId: rows[0].id })) : storedTasks),
+    [storedTasks, rows]
+  );
+
+  const loadingFirstRead = enabled && (columnsQuery.isPending || rowsQuery.isPending || tasksQuery.isPending);
   useEffect(() => {
-    if (activeBoardId === null) {
-      return;
+    if (enabled) {
+      setLoading(loadingFirstRead);
     }
+  }, [enabled, loadingFirstRead, setLoading]);
 
-    let superseded = false;
+  const failure = columnsQuery.error ?? tasksQuery.error;
+  useEffect(() => {
+    if (failure) {
+      setError(messageOf(failure));
+    }
+  }, [failure, setError]);
 
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [columnsData, rowsData, tasksData] = await Promise.all([
-          fetchColumns(),
-          fetchRows().catch(rowErr => {
-            console.error('Error fetching rows:', rowErr);
-            return [];
-          }),
-          fetchTasks(),
-        ]);
-        if (superseded) {
-          return;
-        }
-
-        const sortedColumns = columnsData.sort((a, b) => a.position - b.position);
-        const newColumnMap: Record<string, Id> = {};
-        sortedColumns.forEach(column => {
-          const columnKey = column.name.toLowerCase().replace(/\s+/g, '-');
-          newColumnMap[columnKey] = column.id;
-        });
-
-        setColumns(sortedColumns);
-        setColumnMap(newColumnMap);
-
-        const sortedRows = rowsData.sort((a, b) => a.position - b.position);
-        setRows(sortedRows);
-
-        if (sortedRows.length > 0) {
-          const defaultRowId = sortedRows[0].id;
-          const updatedTasks = tasksData.map(task =>
-            (!task.rowId || task.rowId === null) ? { ...task, rowId: defaultRowId } : task
-          );
-          setTasks(updatedTasks);
-        } else {
-          setTasks(tasksData);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        if (superseded) {
-          return;
-        }
-        setError(messageOf(err));
-        setLoading(false);
-      }
-    };
-
-    loadData();
-    return () => {
-      superseded = true;
-    };
-  }, [activeBoardId, setLoading, setError]);
+  const writer = <T,>(key: readonly unknown[], onWrite?: () => void) => (update: SetStateAction<T[]>) => {
+    onWrite?.();
+    queryClient.setQueryData<T[]>(key, previous =>
+      typeof update === 'function' ? (update as (value: T[]) => T[])(previous ?? []) : update
+    );
+  };
 
   const refreshTasks = async () => {
-    const started = ++refreshes.current;
-    const changesAtStart = localChanges.current;
-    try {
-      const tasksData = await fetchTasks();
-      const stillCurrent = started === refreshes.current && changesAtStart === localChanges.current;
-      if (stillCurrent) {
-        setTasks(tasksData);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error('Error refreshing tasks:', err);
-      setError(messageOf(err));
-      setLoading(false);
-    }
+    await queryClient.invalidateQueries({ queryKey: keys.tasks });
   };
 
   const refreshBoard = async () => {
-    try {
-      setLoading(true);
-      const [columnsData, rowsData] = await Promise.all([fetchColumns(), fetchRows()]);
-      const sortedColumns = columnsData.sort((a, b) => a.position - b.position);
-      setColumns(sortedColumns);
-      const sortedRows = rowsData.sort((a, b) => a.position - b.position);
-      setRows(sortedRows);
-      refreshTasks();
-      setLoading(false);
-    } catch (err) {
-      console.error('Error refreshing board data:', err);
-      setError(messageOf(err));
-      setLoading(false);
-    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: keys.columns }),
+      queryClient.invalidateQueries({ queryKey: keys.rows }),
+      queryClient.invalidateQueries({ queryKey: keys.tasks }),
+    ]);
   };
 
-  const liveRefresh = useRef({ refreshTasks, refreshBoard });
-  liveRefresh.current = { refreshTasks, refreshBoard };
-
-  useEffect(() => {
-    if (activeBoardId === null) {
-      return undefined;
-    }
-
-    const events = new BoardEvents();
-    let pending: ReturnType<typeof setTimeout> | null = null;
-    let wanted: 'board' | 'tasks' | null = null;
-
-    events.watch(activeBoardId, ({ type }) => {
-      if (type === 'COMMENTS') {
-        window.dispatchEvent(new CustomEvent('task-comments-changed'));
-        return;
-      }
-      if (type === 'ATTACHMENTS') {
-        window.dispatchEvent(new CustomEvent('task-attachments-changed'));
-        return;
-      }
-      if (type === 'SUBTASKS') {
-        window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
-      }
-      wanted = wanted === 'board' || (type !== 'TASKS' && type !== 'SUBTASKS') ? 'board' : 'tasks';
-      if (pending) {
-        return;
-      }
-      pending = setTimeout(() => {
-        const read = wanted;
-        pending = null;
-        wanted = null;
-        const handlers = liveRefresh.current;
-        if (read === 'board') {
-          handlers.refreshBoard();
-        } else {
-          handlers.refreshTasks();
-        }
-      }, LIVE_REFRESH_WINDOW_MS);
-    });
-
-    return () => {
-      if (pending) {
-        clearTimeout(pending);
-      }
-      events.stop();
-    };
-  }, [activeBoardId]);
+  useLiveBoardSync(activeBoardId, { refreshTasks, refreshBoard });
 
   return {
-    columns, setColumns,
-    tasks, setTasks: setTasksLocally,
-    rows, setRows,
-    columnMap, setColumnMap,
+    columns, setColumns: writer<ColumnSummary>(keys.columns),
+    tasks, setTasks: writer<Task>(keys.tasks, () => { localChanges.current += 1; }),
+    rows, setRows: writer<RowSummary>(keys.rows),
     refreshTasks,
     refreshBoard,
   };

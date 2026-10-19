@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { KanbanProvider, useKanban } from '../../context/KanbanContext';
+import { useKanban } from '../../context/KanbanContext';
+import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 import * as api from '../../services/api';
 
 const watchers = [];

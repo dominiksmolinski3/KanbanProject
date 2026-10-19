@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import Bench from '../../components/Bench';
 import { fetchUsers, getUserAvatar, updateUserWipLimit } from '../../services/api';
-import { KanbanProvider } from '../../context/KanbanContext';
+import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => {

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import KanbanContext, { KanbanProvider, useKanban } from '../../context/KanbanContext';
+import KanbanContext, { useKanban } from '../../context/KanbanContext';
+import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 import * as api from '../../services/api';
 import * as boardApi from '../../services/boardApi';
 
