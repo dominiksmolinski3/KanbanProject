@@ -156,6 +156,7 @@
     "taskUpdated": "Zodanie zostało zaktualizowane",
     "noColumnError": "Nie ma żadnej kolumny. Dodaj najpierw kolumnę.",
     "lastRowDeleted": "Ostatni wiersz \"{{name}}\" został usunięty",
+    "rowDeletedCardsNotMoved": "Wiersz \"{{name}}\" został usunięty, ale nie udało się wcześniej przenieść niektórych kart",
     "lastColumnDeleted": "Ostatnia kolumna \"{{name}}\" została usunięta",
     "userWipLimitUpdated": "Limit WIP użytkownika został zaktualizowany do {{limit}}",
     "rowWipLimitUpdated": "Limit WIP dla wiersza {{name}} został zaktualizowany do {{limit}}",

@@ -156,6 +156,7 @@
     "taskUpdated": "Task has been updated",
     "noColumnError": "There are no columns. Please add a column first.",
     "lastRowDeleted": "Last row \"{{name}}\" has been deleted",
+    "rowDeletedCardsNotMoved": "Row \"{{name}}\" was deleted, but some cards could not be moved out of it first",
     "lastColumnDeleted": "Last column \"{{name}}\" has been deleted",
     "userWipLimitUpdated": "User's WIP limit has been updated to {{limit}}",
     "rowWipLimitUpdated": "WIP limit for row {{name}} has been updated to {{limit}}",

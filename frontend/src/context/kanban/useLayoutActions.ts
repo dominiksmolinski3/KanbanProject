@@ -188,6 +188,7 @@ export function useLayoutActions({
 
       const isLastRow = rows.length === 1;
       const tasksToUpdate = tasks.filter(task => task.rowId === rowId);
+      let moveFailed = false;
 
       if (!isLastRow) {
         const remainingRows = rows.filter(row => row.id !== rowId);
@@ -197,6 +198,7 @@ export function useLayoutActions({
           try {
             await updateTaskRow(task.id, targetRowId);
           } catch (moveErr) {
+            moveFailed = true;
             console.error('Could not move a task out of the row being deleted:', moveErr);
           }
         }
@@ -213,6 +215,7 @@ export function useLayoutActions({
           try {
             await updateTaskRow(task.id, null);
           } catch (updateErr) {
+            moveFailed = true;
             console.error('Error updating task row to null:', updateErr);
           }
         }
@@ -226,7 +229,9 @@ export function useLayoutActions({
       }
       await refreshBoard();
 
-      if (isLastRow) {
+      if (moveFailed) {
+        toast.warning(t('notifications.rowDeletedCardsNotMoved', { name: rowName }));
+      } else if (isLastRow) {
         toast.info(t('notifications.lastRowDeleted', { name: rowName }));
       } else {
         toast.success(t('notifications.rowDeleted', { name: rowName }));
