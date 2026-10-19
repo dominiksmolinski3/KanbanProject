@@ -1,30 +1,21 @@
-import { useEffect, useMemo, useRef, type SetStateAction } from 'react';
+import { useMemo, useRef, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchColumns, fetchRows, fetchTasks } from '../../services/api';
 import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
-import { boardKeys, byPosition } from './boardQueries';
+import { boardKeys, byPosition, logged } from './boardQueries';
 import { messageOf } from './reportError';
-import type { BoardData, SetState } from './types';
+import type { BoardData } from './types';
 import { useLiveBoardSync } from './useLiveBoardSync';
 
 const NONE: never[] = [];
 
-async function logged<T>(label: string, read: () => Promise<T>): Promise<T> {
-  try {
-    return await read();
-  } catch (err) {
-    console.error(label, err);
-    throw err;
-  }
-}
-
 interface BoardDataDeps {
   activeBoardId: Id | null;
-  setLoading: SetState<boolean>;
-  setError: SetState<string | null>;
 }
 
-export function useBoardData({ activeBoardId, setLoading, setError }: BoardDataDeps): BoardData {
+export type BoardRead = BoardData & { loading: boolean; error: string | null };
+
+export function useBoardData({ activeBoardId }: BoardDataDeps): BoardRead {
   const queryClient = useQueryClient();
   const enabled = activeBoardId !== null;
   const localChanges = useRef(0);
@@ -65,19 +56,9 @@ export function useBoardData({ activeBoardId, setLoading, setError }: BoardDataD
     [storedTasks, rows]
   );
 
-  const loadingFirstRead = enabled && (columnsQuery.isPending || rowsQuery.isPending || tasksQuery.isPending);
-  useEffect(() => {
-    if (enabled) {
-      setLoading(loadingFirstRead);
-    }
-  }, [enabled, loadingFirstRead, setLoading]);
-
+  const loading = enabled && (columnsQuery.isPending || rowsQuery.isPending || tasksQuery.isPending);
   const failure = columnsQuery.error ?? tasksQuery.error;
-  useEffect(() => {
-    if (failure) {
-      setError(messageOf(failure));
-    }
-  }, [failure, setError]);
+  const error = failure ? messageOf(failure) : null;
 
   const writer = <T,>(key: readonly unknown[], onWrite?: () => void) => (update: SetStateAction<T[]>) => {
     onWrite?.();
@@ -106,5 +87,7 @@ export function useBoardData({ activeBoardId, setLoading, setError }: BoardDataD
     rows, setRows: writer<RowSummary>(keys.rows),
     refreshTasks,
     refreshBoard,
+    loading,
+    error,
   };
 }
