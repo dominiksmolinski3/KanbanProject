@@ -12,16 +12,12 @@ const FORM_EDGE_GAP = 310;
 const FORM_MIN_TOP = 50;
 const FORM_MIN_LEFT = 10;
 
-export function pickerPositionFor(
-  anchor: { left: number; bottom: number },
-  scroll: { x: number; y: number },
-  viewportWidth: number
-): Position {
-  let left = anchor.left + scroll.x;
+export function pickerPositionFor(anchor: { left: number; bottom: number }, viewportWidth: number): Position {
+  let left = anchor.left;
   if (left + PICKER_WIDTH > viewportWidth) {
     left = viewportWidth - PICKER_EDGE_GAP;
   }
-  return { top: anchor.bottom + scroll.y + PICKER_BELOW_BUTTON, left };
+  return { top: anchor.bottom + PICKER_BELOW_BUTTON, left };
 }
 
 export function formPositionFor(viewportWidth: number, viewportHeight: number): Position {

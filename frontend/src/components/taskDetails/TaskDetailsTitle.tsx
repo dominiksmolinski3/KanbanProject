@@ -10,12 +10,11 @@ import type { TaskDetailsState } from './useTaskDetails';
 interface TaskDetailsTitleProps {
   task: Task;
   state: TaskDetailsState;
-  titleId: string;
   title: string;
   onClose: () => void;
 }
 
-export default function TaskDetailsTitle({ task, state, titleId, title, onClose }: TaskDetailsTitleProps) {
+export default function TaskDetailsTitle({ task, state, title, onClose }: TaskDetailsTitleProps) {
   const { t } = useTranslation();
   const { readOnly, setDailyFocus, updateTaskCompletion } = useKanban();
   const field = state.title;
@@ -58,7 +57,7 @@ export default function TaskDetailsTitle({ task, state, titleId, title, onClose 
         aria-label={completeLabel}
         title={completeLabel}
       />
-      <h2 className="sheet-title" id={titleId}>{title}</h2>
+      <h2 className="sheet-title">{title}</h2>
       <div className="panel-actions">
         {setDailyFocus && (
           <button
