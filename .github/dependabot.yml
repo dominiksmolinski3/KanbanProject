@@ -64,10 +64,28 @@ updates:
         patterns:
           - "react"
           - "react-dom"
+      capacitor:
+        patterns:
+          - "@capacitor/*"
       minor-and-patch:
         update-types: [minor, patch]
         patterns:
           - "*"
+
+  - package-ecosystem: gradle
+    directory: /frontend/android
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      gradle:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: maven
     directory: /backend
