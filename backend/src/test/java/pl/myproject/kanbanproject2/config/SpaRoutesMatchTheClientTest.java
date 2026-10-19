@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SpaRoutesMatchTheClientTest {
-    private static final Path APP_JSX = Path.of("..", "frontend", "src", "App.jsx");
+    private static final Path APP_TSX = Path.of("..", "frontend", "src", "App.tsx");
 
     private static final Pattern ROUTE_PATH =
             Pattern.compile("<Route\\b[^>]*?\\bpath\\s*=\\s*\"([^\"]*)\"", Pattern.DOTALL);
@@ -26,7 +26,7 @@ class SpaRoutesMatchTheClientTest {
         Set<String> declared = clientRoutes();
 
         assertThat(declared)
-                .as("no <Route path=...> was found in App.jsx, so this test would pass on nothing "
+                .as("no <Route path=...> was found in App.tsx, so this test would pass on nothing "
                         + "rather than because the two lists agree")
                 .isNotEmpty();
 
@@ -35,7 +35,7 @@ class SpaRoutesMatchTheClientTest {
         declared.remove("*");
 
         assertThat(SpaRoutes.ALL)
-                .as("SpaRoutes.ALL and App.jsx disagree. Its only consumers now are the "
+                .as("SpaRoutes.ALL and App.tsx disagree. Its only consumers now are the "
                         + "deployed-contract sweep and this test, so a route missing here is a "
                         + "route the sweep silently stops checking rather than a deep link that "
                         + "403s.")
@@ -43,10 +43,10 @@ class SpaRoutesMatchTheClientTest {
     }
 
     private static Set<String> clientRoutes() throws IOException {
-        assertThat(APP_JSX).as("App.jsx has moved or gone").isRegularFile();
+        assertThat(APP_TSX).as("App.tsx has moved or gone").isRegularFile();
 
         Set<String> routes = new LinkedHashSet<>();
-        Matcher matcher = ROUTE_PATH.matcher(Files.readString(APP_JSX, StandardCharsets.UTF_8));
+        Matcher matcher = ROUTE_PATH.matcher(Files.readString(APP_TSX, StandardCharsets.UTF_8));
         while (matcher.find()) {
             routes.add(matcher.group(1));
         }
