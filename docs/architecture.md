@@ -944,10 +944,25 @@ contract and the delivery-report webhook are public; everything else — the who
 requires authentication. The shell and the bundle are no longer on that list because they are no
 longer served here at all; see **Two containers, one origin**. Signup goes through an emailed verification code before login works, and
 login can require a Google reCAPTCHA check. **`POST /api/auth/verify` answers with a session**,
-the same `LoginResponse` login returns: the code came from the mailbox and is spent in redeeming
-it, so asking for the password on the next screen proves nothing new. It answered `204` before,
-and the client — which already read a token out of that response if one was there — had nothing
-to act on, so a verified account was left sitting on the verification form.
+the same `LoginResponse` login returns, so a verified account is not left sitting on the
+verification form. It answered `204` before, and the client had nothing to act on.
+
+**Verification proves the mailbox, and the password has to be proved alongside it.** The code shows
+that the caller reads the mailbox. It does not show that they chose the password on the row, and
+until both were checked, anyone could register an address before its owner. A signup for an
+address that already had an account returned early, so the owner's own signup changed nothing. The
+owner then resent the code and verified, and the account came up with the first registrant's
+password and name. The first registrant kept signing in from then on. Measured on the compose stack.
+Two rules close it:
+
+- A signup for an address that is **still unverified** replaces the pending password, name and
+  locale, and mails a fresh code, so the latest signup wins. A verified address is still left
+  alone, and all three cases answer `202` alike, so signup confirms nothing about an address.
+- `verify` takes the password with the code, and a wrong one is reported as
+  `INVALID_VERIFICATION_CODE`, like a wrong code. That closes the race the first rule leaves: a
+  registrant who signs up again between the owner's signup and verify replaces the password, and
+  the owner, who never typed that password, cannot complete. They sign up once more and win. The
+  client sends the password still in the signup form, so nobody types it twice.
 
 **A session is a row, not the JWT.** `RefreshToken` (`refresh_tokens`, `V7`) stores a SHA-256
 digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads

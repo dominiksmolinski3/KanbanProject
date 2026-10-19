@@ -208,6 +208,18 @@ describe('HomePage', () => {
     expect(navigate).toHaveBeenCalledWith('/board');
   });
 
+  test('verifying sends the password chosen at signup with the code', async () => {
+    await registerThenReachVerification();
+    authService.verifyAccount.mockResolvedValue({ token: 'jwt', refreshToken: 'rt', expiresIn: 900000 });
+
+    fireEvent.change(screen.getByPlaceholderText('Verification Code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByText('Verify Account'));
+
+    await waitFor(() => expect(authService.verifyAccount).toHaveBeenCalledWith({
+      email: 'ada@example.com', verificationCode: '123456', password: 'hunter22',
+    }));
+  });
+
   test('resending the verification code calls the server', async () => {
     await registerThenReachVerification();
     authService.resendVerificationCode.mockResolvedValue({});

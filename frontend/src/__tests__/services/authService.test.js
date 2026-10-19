@@ -101,12 +101,15 @@ describe('authService verification', () => {
     });
 
     await expect(
-      authService.verifyAccount({ email: 'a@example.test', verificationCode: '111111' })
+      authService.verifyAccount({ email: 'a@example.test', verificationCode: '111111', password: 'correct-horse' })
     ).resolves.toEqual(session);
 
     const [url, options] = window.fetch.mock.calls[0];
     expect(url).toBe('/api/auth/verify');
     expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({
+      email: 'a@example.test', verificationCode: '111111', password: 'correct-horse',
+    });
   });
 
   test('an empty 204 resolves to something without a token, and is not mistaken for a session', async () => {
@@ -119,7 +122,7 @@ describe('authService verification', () => {
     });
 
     const response = await authService.verifyAccount({
-      email: 'a@example.test', verificationCode: '111111',
+      email: 'a@example.test', verificationCode: '111111', password: 'correct-horse',
     });
 
     expect(response && response.token).toBeFalsy();
@@ -133,7 +136,7 @@ describe('authService verification', () => {
     });
 
     await expect(
-      authService.verifyAccount({ email: 'a@example.test', verificationCode: '222222' })
+      authService.verifyAccount({ email: 'a@example.test', verificationCode: '222222', password: 'correct-horse' })
     ).rejects.toMatchObject({ code: 'INVALID_VERIFICATION_CODE', message: 'Invalid verification code' });
   });
 });

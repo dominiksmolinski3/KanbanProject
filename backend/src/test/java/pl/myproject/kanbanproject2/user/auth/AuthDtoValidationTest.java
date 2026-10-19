@@ -34,9 +34,14 @@ class AuthDtoValidationTest {
     }
 
     private static VerifyUserDto verify(String email, String code) {
+        return verify(email, code, "correct-horse");
+    }
+
+    private static VerifyUserDto verify(String email, String code, String password) {
         var dto = new VerifyUserDto();
         dto.setEmail(email);
         dto.setVerificationCode(code);
+        dto.setPassword(password);
         return dto;
     }
 
@@ -90,10 +95,20 @@ class AuthDtoValidationTest {
     }
 
     @Test
-    @DisplayName("verification requires both an email and a code")
-    void verifyRequiresBothFields() {
+    @DisplayName("verification requires an email, a code and the password chosen at signup")
+    void verifyRequiresAllThreeFields() {
         assertThat(validator.validate(verify("anna@example.test", "123456"))).isEmpty();
         assertThat(validator.validate(verify("anna@example.test", "  "))).isNotEmpty();
         assertThat(validator.validate(verify("  ", "123456"))).isNotEmpty();
+        assertThat(validator.validate(verify("anna@example.test", "123456", null))).isNotEmpty();
+        assertThat(validator.validate(verify("anna@example.test", "123456", "  "))).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("verification carries the same password bounds as signup and login")
+    void verifyPasswordBoundsMatch() {
+        assertThat(validator.validate(verify("anna@example.test", "123456", "short12"))).isNotEmpty();
+        assertThat(validator.validate(verify("anna@example.test", "123456", "x".repeat(73)))).isNotEmpty();
+        assertThat(validator.validate(verify("anna@example.test", "123456", "x".repeat(72)))).isEmpty();
     }
 }
