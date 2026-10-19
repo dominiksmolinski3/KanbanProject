@@ -232,6 +232,33 @@ npm run dev
 The frontend runs on [http://localhost:5173](http://localhost:5173) and proxies API calls to the
 backend on `:8080`.
 
+#### Android app
+
+The same React app is wrapped for Android with [Capacitor](https://capacitorjs.com). The app
+carries its own copy of the web build and talks to a deployed API, so there is no local server in
+it.
+
+1. Put the address of the API in `frontend/.env.mobile.local` (git ignores it):
+
+```
+VITE_API_ORIGIN=https://your-deployment.example
+```
+
+2. Build the web app for the device and copy it into the Android project:
+
+```bash
+npm run cap:sync
+```
+
+3. Open the project in Android Studio and run it, which needs the Android SDK:
+
+```bash
+npm run cap:open
+```
+
+The API only answers browsers whose origin it knows, and the app's origin is `https://localhost`.
+Add it to `SECURITY_CORS_ALLOWED_ORIGINS` on the deployment you point the app at.
+
 ## Using the board
 
 1. Create columns for your workflow stages, e.g. "To Do", "In Progress", "Done".

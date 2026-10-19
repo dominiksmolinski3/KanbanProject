@@ -2,6 +2,7 @@ import SockJS from 'sockjs-client';
 import { Client, type StompSubscription } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
 import type { Id } from '../types/api';
+import { socketOrigin } from './apiOrigin';
 
 export interface BoardEvent {
   type: string;
@@ -15,7 +16,7 @@ export default class BoardEvents {
   subscription: StompSubscription | null = null;
   boardId: Id | null = null;
   onEvent: BoardEventHandler | null = null;
-  serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  serverUrl = socketOrigin();
 
   watch(boardId: Id, onEvent: BoardEventHandler) {
     this.onEvent = onEvent;
