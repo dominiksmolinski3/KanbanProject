@@ -1,4 +1,3 @@
-import React from 'react';
 import Bench from './Bench';
 import Board from './Board';
 
