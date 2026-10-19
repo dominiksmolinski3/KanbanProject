@@ -735,9 +735,9 @@ from parts the repo already had, and each part keeps its original rule:
   section. `author_id` is `ON DELETE SET NULL`, so the thread outlives an account and the client
   shows "former member".
 - **A comment announces `COMMENTS`, not `TASKS`.** Nothing on the board changed, so a board
-  re-read would fetch every card for one sentence. `KanbanContext` turns the frame into a
-  `task-comments-changed` window event (the same channel `subtask-updated` uses), and the open
-  task panel re-reads its own thread. The frame names the board, not the card, so every open
+  re-read would fetch every card for one sentence. `useLiveBoardSync` turns the frame into an
+  `invalidateQueries` on the `['comments']` prefix, and the open task panel's query re-reads its
+  own thread. The frame names the board, not the card, so every open
   thread on the board re-reads; that is one page of one card, and it keeps the payload to the
   `{type, boardId}` shape the live-sync section requires. A new comment also writes a `COMMENTED`
   activity entry with no detail. The words stay in the thread, and a copy in the feed would be
@@ -832,6 +832,13 @@ The rows read may fail without failing the board (an empty lane list is a board)
 tasks reads may not. Tests of anything under the board wrap it in `KanbanProvider` from
 `test-utils/KanbanTestProvider`, which brings its own client, and `jest.setup.js` gives Query a
 microtask scheduler because its default, `setTimeout(0)`, never fires under fake timers.
+
+The task panel's reads are queries as well, keyed by kind and task (`['comments', id]`,
+`['subtasks', id]`, `['attachments', id]`, `['history', id]`), and the window events that told them to
+re-read are gone: a live-sync frame invalidates the kind. The comment thread's read asks for as many
+comments as are on screen, so a post does not shrink a thread the reader had paged into, and "load
+older" is a write to the cache rather than a second query. `useTaskDetails` is not a query: it is an
+edit form seeded from a read, and a refetch landing in a half-typed field is the wrong behaviour.
 
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,
@@ -1278,9 +1285,10 @@ last subtask left the warning on every other screen until a reload. The count no
 listing, a subtask write announces `SUBTASKS`, and the client answers that with the same
 `refreshTasks()` a `TASKS` frame gets - which also retired one request per card on every board load.
 Attachments are the other shape: only the open task panel shows them, so `ATTACHMENTS` takes no
-board read at all and becomes a window event the panel re-reads on, exactly as `COMMENTS` does. A
-subtask frame fires that panel event too (`task-subtasks-changed`), because the panel's own subtask
-list is not something any task read reaches.
+board read at all and invalidates the `['attachments']` queries, exactly as `COMMENTS` invalidates
+`['comments']`. A subtask frame invalidates `['subtasks']` too, because the panel's own subtask
+list is not something any task read reaches. Only a query somebody is looking at re-reads at once;
+the rest are marked stale and read again when their panel next opens.
 
 **The cross-replica half is tested by a spec that needs two replicas to exist.**
 `cypress/replicas/cross-replica-sync.cy.js` opens the board through nginx — whose upstream is the

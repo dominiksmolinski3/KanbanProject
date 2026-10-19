@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useKanban } from '../../context/KanbanContext';
 import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 import * as api from '../../services/api';
@@ -38,8 +39,11 @@ jest.mock('../../services/boardApi', () => ({
   acceptInvitation: jest.fn(), declineInvitation: jest.fn(), removeBoardMember: jest.fn(),
 }));
 
+let client;
+
 const Probe = () => {
   useKanban();
+  client = useQueryClient();
   return <div data-testid="probe" />;
 };
 
@@ -95,30 +99,37 @@ describe('KanbanContext live board sync', () => {
     expect(api.fetchRows).toHaveBeenCalledTimes(1);
   });
 
-  it('a comment event re-reads no board state and tells the open task panel instead', async () => {
-    const heard = jest.fn();
-    window.addEventListener('task-comments-changed', heard);
+  const seed = () => {
+    client.setQueryData(['comments', 5], { comments: [], total: 0 });
+    client.setQueryData(['subtasks', 5], []);
+    client.setQueryData(['attachments', 5], []);
+    client.setQueryData(['history', 5], []);
+  };
+  const stale = (key) => client.getQueryState(key).isInvalidated;
+
+  it('a comment event re-reads no board state and marks the comment threads stale', async () => {
+    seed();
 
     emit('COMMENTS');
     await settle();
 
-    expect(heard).toHaveBeenCalledTimes(1);
+    expect(stale(['comments', 5])).toBe(true);
+    expect(stale(['subtasks', 5])).toBe(false);
+    expect(stale(['attachments', 5])).toBe(false);
     expect(api.fetchTasks).not.toHaveBeenCalled();
     expect(api.fetchColumns).not.toHaveBeenCalled();
-    window.removeEventListener('task-comments-changed', heard);
   });
 
-  it('a subtask event re-reads the tasks, since the card carries its open count, and tells the panel', async () => {
-    const heard = jest.fn();
-    window.addEventListener('task-subtasks-changed', heard);
+  it('a subtask event re-reads the tasks, since the card carries its open count, and marks the open panel subtasks stale', async () => {
+    seed();
 
     emit('SUBTASKS');
     await settle();
 
-    expect(heard).toHaveBeenCalledTimes(1);
+    expect(stale(['subtasks', 5])).toBe(true);
+    expect(stale(['comments', 5])).toBe(false);
     expect(api.fetchTasks).toHaveBeenCalledTimes(1);
     expect(api.fetchColumns).not.toHaveBeenCalled();
-    window.removeEventListener('task-subtasks-changed', heard);
   });
 
   it('a subtask event in a burst of task events is still one task read', async () => {
@@ -129,17 +140,17 @@ describe('KanbanContext live board sync', () => {
     expect(api.fetchColumns).not.toHaveBeenCalled();
   });
 
-  it('an attachment event re-reads no board state and tells the open task panel instead', async () => {
-    const heard = jest.fn();
-    window.addEventListener('task-attachments-changed', heard);
+  it('an attachment event re-reads no board state and marks the attachment lists stale', async () => {
+    seed();
 
     emit('ATTACHMENTS');
     await settle();
 
-    expect(heard).toHaveBeenCalledTimes(1);
+    expect(stale(['attachments', 5])).toBe(true);
+    expect(stale(['comments', 5])).toBe(false);
+    expect(stale(['history', 5])).toBe(false);
     expect(api.fetchTasks).not.toHaveBeenCalled();
     expect(api.fetchColumns).not.toHaveBeenCalled();
-    window.removeEventListener('task-attachments-changed', heard);
   });
 
   it('a comment inside a burst of task events does not widen or swallow the task read', async () => {

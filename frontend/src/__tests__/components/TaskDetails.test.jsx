@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import TaskDetails from '../../components/TaskDetails';
 import { useKanban } from '../../context/KanbanContext';
 import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
+import { createQueryClient } from '../../services/queryClient';
 import * as api from '../../services/api';
 import { toast } from 'react-toastify';
 
@@ -94,9 +95,12 @@ describe('TaskDetails Component', () => {
     jest.useRealTimers();
   });
   
+  let client;
+
   const renderTaskDetails = () => {
+    client = createQueryClient();
     return render(
-      <KanbanProvider value={mockContextValue}>
+      <KanbanProvider client={client} value={mockContextValue}>
         <TaskDetails 
           task={mockTask} 
           onClose={onCloseMock} 
@@ -885,8 +889,8 @@ describe('TaskDetails Component', () => {
     api.fetchSubTasksByTaskId.mockResolvedValue([{ ...mockSubtasks[0], title: 'Ticked elsewhere' }]);
 
     await act(async () => {
-      window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
-      window.dispatchEvent(new CustomEvent('task-attachments-changed'));
+      await client.invalidateQueries({ queryKey: ['subtasks'] });
+      await client.invalidateQueries({ queryKey: ['attachments'] });
     });
 
     expect(api.fetchSubTasksByTaskId).toHaveBeenCalledWith(mockTask.id);
