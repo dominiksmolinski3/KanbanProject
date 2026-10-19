@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TaskPatch } from '../../types/api';
 import EditIcon from './EditIcon';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function TaskDeadline({ deadline, readOnly, onSave }) {
+interface TaskDeadlineProps {
+  deadline: string | null | undefined;
+  readOnly: boolean;
+  onSave: (fields: TaskPatch) => Promise<boolean | void>;
+}
+
+function TaskDeadline({ deadline, readOnly, onSave }: TaskDeadlineProps) {
   const { t, i18n } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
 
-  const isExpired = deadline && new Date(deadline) < new Date();
-  const isUpcoming = deadline && !isExpired && (new Date(deadline) - new Date()) < DAY_MS;
+  const expiry = deadline ? new Date(deadline).getTime() : null;
+  const isExpired = expiry !== null && expiry < Date.now();
+  const isUpcoming = expiry !== null && !isExpired && expiry - Date.now() < DAY_MS;
 
   const startEditing = () => {
     setValue(deadline ? new Date(deadline).toISOString().slice(0, 16) : '');
