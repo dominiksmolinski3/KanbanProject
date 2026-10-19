@@ -78,12 +78,12 @@ export function useAuthFlow({ getValues, setValue }: UseFormReturn<AuthFields>, 
   };
 
   const submitVerify = async () => {
-    const { verificationCode } = getValues();
+    const { verificationCode, password } = getValues();
     setError('');
     setLoading(true);
 
     try {
-      const response = await authService.verifyAccount({ email: verificationEmail, verificationCode }) as Partial<LoginResponse> | string | null;
+      const response = await authService.verifyAccount({ email: verificationEmail, verificationCode, password }) as Partial<LoginResponse> | string | null;
 
       if (response && typeof response === 'object' && response.token) {
         login(response as LoginResponse);

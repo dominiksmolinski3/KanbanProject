@@ -116,10 +116,22 @@ class AuthenticationControllerHttpTest {
 
         mvc.perform(post("/auth/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"111111\"}"))
+                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"111111\",\"password\":\"correct-horse\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("signed-access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("a-refresh-token"));
+    }
+
+    @Test
+    @DisplayName("verify without the password chosen at signup is a 400, before the service is reached")
+    void verifyNeedsThePassword() throws Exception {
+        mvc.perform(post("/auth/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"111111\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        verifyNoInteractions(authenticationService);
     }
 
     @Test
@@ -130,7 +142,7 @@ class AuthenticationControllerHttpTest {
 
         mvc.perform(post("/auth/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"222222\"}"))
+                        .content("{\"email\":\"new@example.test\",\"verificationCode\":\"222222\",\"password\":\"correct-horse\"}"))
                 .andExpect(jsonPath("$.code").value("INVALID_VERIFICATION_CODE"))
                 .andExpect(jsonPath("$.token").doesNotExist());
     }

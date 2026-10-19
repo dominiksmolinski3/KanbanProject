@@ -33,7 +33,7 @@ export const authService = {
   login: async (credentials: Credentials) =>
     postJson<LoginResponse>(`${API_BASE_URL}/auth/login`, withCaptcha(credentials)),
 
-  verifyAccount: async (verificationData: { email: string; verificationCode: string }): Promise<unknown> => {
+  verifyAccount: async (verificationData: { email: string; verificationCode: string; password: string }): Promise<unknown> => {
     const response = await fetch(`${API_BASE_URL}/auth/verify`, {
       method: 'POST',
       headers: {

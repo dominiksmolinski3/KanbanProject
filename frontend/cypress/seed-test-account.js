@@ -93,7 +93,7 @@ async function ensureVerified(client, account) {
   console.log(`[seed] verifying ${account.email} via POST /api/auth/verify`);
   await fetchJson('/auth/verify', {
     method: 'POST',
-    body: { email: account.email, verificationCode },
+    body: { email: account.email, verificationCode, password: account.password },
   });
 
   console.log(`[seed] ${account.email} is verified`);

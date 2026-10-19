@@ -56,7 +56,7 @@ async function createUser(db, i) {
   });
   const session = await call(SIGNUP_URL, 'POST', '/auth/verify', {
     address,
-    body: { email, verificationCode: await codeFor(db, email) },
+    body: { email, verificationCode: await codeFor(db, email), password: PASSWORD },
   });
   return { email, address, token: session.token };
 }
