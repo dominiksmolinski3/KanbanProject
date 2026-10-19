@@ -20,6 +20,7 @@ import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimitProper
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 import pl.myproject.kanbanproject2.config.websocket.BoardSubscriptionInterceptor;
+import pl.myproject.kanbanproject2.config.websocket.StompDestinationPolicy;
 import pl.myproject.kanbanproject2.config.websocket.StompRelayProperties;
 import pl.myproject.kanbanproject2.config.websocket.WebSocketAuthInterceptor;
 import pl.myproject.kanbanproject2.config.websocket.WebSocketConfig;
@@ -119,7 +120,7 @@ class AllowedOriginsTest {
         var registry = mock(StompEndpointRegistry.class);
         when(registry.addEndpoint("/ws")).thenReturn(registration);
 
-        new WebSocketConfig(mock(WebSocketAuthInterceptor.class),
+        new WebSocketConfig(mock(WebSocketAuthInterceptor.class), mock(StompDestinationPolicy.class),
                 mock(BoardSubscriptionInterceptor.class), origins,
                 new StompRelayProperties("localhost", 61613, "guest", "guest"))
                 .registerStompEndpoints(registry);
