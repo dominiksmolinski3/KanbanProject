@@ -7,8 +7,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('TaskDeadline', () => {
+  afterEach(() => jest.restoreAllMocks());
+
   it('seeds the editor with the stored wall-clock time, not its UTC reading', () => {
     const stored = '2030-10-20T10:00:00';
+    jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('2030-10-20T08:00:00.000Z');
     render(<TaskDeadline deadline={stored} readOnly={false} onSave={jest.fn()} />);
 
     fireEvent.click(screen.getByLabelText('taskActions.editDeadline'));
