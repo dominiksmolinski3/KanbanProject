@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import Devices from '../../components/Devices';
@@ -23,6 +23,7 @@ jest.mock('../../services/authService', () => ({
 
 let mockSessionId = '12';
 jest.mock('../../services/session', () => ({
+  ...jest.requireActual('../../services/session'),
   getSessionId: () => mockSessionId
 }));
 

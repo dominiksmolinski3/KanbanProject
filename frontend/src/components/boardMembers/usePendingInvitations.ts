@@ -1,26 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchBoardInvitations } from '../../services/boardApi';
+import { logged } from '../../services/logged';
 import type { BoardInvitation, Id } from '../../types/api';
 
+const NONE: BoardInvitation[] = [];
+
 export function usePendingInvitations(boardId: Id | undefined, owned: boolean) {
-  const [invitations, setInvitations] = useState<BoardInvitation[]>([]);
+  const queryClient = useQueryClient();
+  const key = ['boardInvitations', boardId ?? null] as const;
+  const enabled = Boolean(boardId) && owned;
 
-  const reload = useCallback(async () => {
-    if (!boardId || !owned) {
-      setInvitations([]);
-      return;
-    }
-    try {
-      setInvitations(await fetchBoardInvitations(boardId));
-    } catch (err) {
-      console.error('Error fetching board invitations:', err);
-      setInvitations([]);
-    }
-  }, [boardId, owned]);
+  const query = useQuery({
+    queryKey: key,
+    enabled,
+    queryFn: () => logged('Error fetching board invitations:', () => fetchBoardInvitations(boardId as Id)),
+  });
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { invitations, reload };
+  return {
+    invitations: enabled ? query.data ?? NONE : NONE,
+    reload: () => queryClient.invalidateQueries({ queryKey: key }),
+  };
 }
