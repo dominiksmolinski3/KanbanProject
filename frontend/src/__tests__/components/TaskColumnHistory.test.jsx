@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import TaskColumnHistory from '../../components/taskDetails/TaskColumnHistory';
 import * as api from '../../services/api';

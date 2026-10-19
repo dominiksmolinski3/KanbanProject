@@ -286,7 +286,8 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   input of the request in the key. Do not import `queryClient` from `services/session` or `App`: the
   provider is in `ProtectedLayout` to keep the sign-in screen under its bundle budget, and the cache
   empties through `onSessionCleared`. A test that renders such a screen wraps it in
-  `QueryClientProvider` with `createQueryClient()`; one that needs the board uses `KanbanProvider` from
+  `QueryClientProvider` with `createQueryClient()` (`render` from `test-utils/rtl` does, and hands back
+  the client); one that needs the board uses `KanbanProvider` from
   `test-utils/KanbanTestProvider`. Board data is only written through `useBoardData`'s setters.
 - A server path stays `/api/...` in the client: the fetch wrapper adds `VITE_API_ORIGIN` for the
   Android app. A socket URL is built from `socketOrigin()`, never from `window.location.origin`.

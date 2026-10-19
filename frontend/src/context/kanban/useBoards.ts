@@ -16,7 +16,8 @@ import {
   removeBoardMember,
 } from '../../services/boardApi';
 import type { Board, BoardInvitation, BoardRole, Id } from '../../types/api';
-import { boardsKeys, logged } from './boardQueries';
+import { logged } from '../../services/logged';
+import { boardsKeys } from './boardQueries';
 import { messageOf, reportError } from './reportError';
 import type { Translate } from './types';
 

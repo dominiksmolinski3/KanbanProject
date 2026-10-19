@@ -1,35 +1,30 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { addSubTask, deleteSubTask, fetchSubTasksByTaskId, toggleSubTaskCompletion, updateSubTask } from '../../../services/api';
+import { logged } from '../../../services/logged';
+import { taskKeys } from '../../../services/taskQueries';
 import type { Id, SubTask } from '../../../types/api';
+
+const NONE: SubTask[] = [];
 
 export function useSubtasks(taskId: Id, onSubtaskUpdate: (() => void) | undefined, onSaved: () => void) {
   const { t } = useTranslation();
-  const [subtasks, setSubtasks] = useState<SubTask[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const queryClient = useQueryClient();
+  const key = taskKeys.subtasks(taskId);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await fetchSubTasksByTaskId(taskId);
-      setSubtasks(data || []);
-    } catch (error) {
-      console.error('Error refreshing subtasks:', error);
-    } finally {
-      setLoaded(true);
-    }
-  }, [taskId]);
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async () => (await logged('Error refreshing subtasks:', () => fetchSubTasksByTaskId(taskId))) || [],
+  });
 
-  useEffect(() => {
-    load();
-    window.addEventListener('task-subtasks-changed', load);
-    return () => window.removeEventListener('task-subtasks-changed', load);
-  }, [load]);
+  const edit = (change: (subtasks: SubTask[]) => SubTask[]) =>
+    queryClient.setQueryData<SubTask[]>(key, previous => change(previous ?? NONE));
 
   const add = async (title: string): Promise<boolean> => {
     try {
       await addSubTask(taskId, title);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: key });
       onSubtaskUpdate?.();
       onSaved();
       return true;
@@ -43,7 +38,7 @@ export function useSubtasks(taskId: Id, onSubtaskUpdate: (() => void) | undefine
   const toggle = async (subtaskId: Id) => {
     try {
       await toggleSubTaskCompletion(subtaskId);
-      setSubtasks(prev => prev.map(subtask => (
+      edit(subtasks => subtasks.map(subtask => (
         subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
       )));
       onSubtaskUpdate?.();
@@ -56,7 +51,7 @@ export function useSubtasks(taskId: Id, onSubtaskUpdate: (() => void) | undefine
   const remove = async (subtaskId: Id) => {
     try {
       await deleteSubTask(subtaskId);
-      setSubtasks(prev => prev.filter(subtask => subtask.id !== subtaskId));
+      edit(subtasks => subtasks.filter(subtask => subtask.id !== subtaskId));
       onSubtaskUpdate?.();
       onSaved();
     } catch (error) {
@@ -68,7 +63,7 @@ export function useSubtasks(taskId: Id, onSubtaskUpdate: (() => void) | undefine
   const saveDescription = async (subtaskId: Id, description: string): Promise<boolean> => {
     try {
       await updateSubTask(subtaskId, { description });
-      setSubtasks(prev => prev.map(subtask => (
+      edit(subtasks => subtasks.map(subtask => (
         subtask.id === subtaskId ? { ...subtask, description } : subtask
       )));
       onSaved();
@@ -80,5 +75,5 @@ export function useSubtasks(taskId: Id, onSubtaskUpdate: (() => void) | undefine
     }
   };
 
-  return { subtasks, loaded, add, toggle, remove, saveDescription };
+  return { subtasks: query.data ?? NONE, loaded: !query.isPending, add, toggle, remove, saveDescription };
 }
