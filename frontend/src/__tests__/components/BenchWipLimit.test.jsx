@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import { toast } from 'react-toastify';
 import Bench from '../../components/Bench';

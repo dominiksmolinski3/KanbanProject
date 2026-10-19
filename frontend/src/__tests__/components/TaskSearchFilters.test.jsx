@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import KanbanContext from '../../context/KanbanContext';
 import TaskSearch from '../../components/TaskSearch';
