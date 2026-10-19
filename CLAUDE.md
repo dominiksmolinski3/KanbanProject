@@ -104,8 +104,10 @@ A release is one `build(release): bump version to <X.Y.Z>` PR that sets the same
 merges:
 
 - tag the merge commit with an annotated `v<X.Y.Z>` (`git tag -a v1.2.0 -m v1.2.0`);
-- give the three ghcr images that commit's version without the `v` (`kanbanproject-app:1.2.0`, and
-  the same for `-web` and `-grafana`); they always carry the same tag;
+- the tag push gives the three ghcr images that commit's version without the `v`
+  (`kanbanproject-app:1.2.0`, and the same for `-web` and `-grafana`) through `release-images.yml`;
+  it refuses a tag that is not `vX.Y.Z`, whose versions do not match, that is not on `main`, or whose
+  images Kanban CD has not pushed yet (re-run it then); the three always carry the same tag;
 - publish a GitHub release titled `v<X.Y.Z>`, with notes written for a reader new to the repo:
   what changed since the previous tag, grouped by feature, architecture and operations, with one
   bullet per capability and not per PR, a list of breaking changes when there are any, and the
