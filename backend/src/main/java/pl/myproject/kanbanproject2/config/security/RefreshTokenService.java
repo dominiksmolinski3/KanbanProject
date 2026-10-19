@@ -121,7 +121,7 @@ public class RefreshTokenService {
         return new Issued(token, saved.getId());
     }
 
-    @Transactional
+    @Transactional(dontRollbackOn = GlobalException.class)
     public Rotation rotate(String presented, DeviceContext device) {
         Instant now = clock.instant();
         RefreshToken stored = refreshTokens.findByTokenHash(hash(presented))

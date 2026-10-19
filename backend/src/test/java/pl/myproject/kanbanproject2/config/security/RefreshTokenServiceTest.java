@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionAttribute;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
@@ -13,6 +15,7 @@ import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RefreshToken;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -516,6 +519,41 @@ class RefreshTokenServiceTest {
                     .isInstanceOf(GlobalException.class)
                     .extracting("identifier")
                     .isEqualTo(ExceptionIdentifier.SESSION_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("the transaction around a rotation")
+    class RotationTransaction {
+
+        private final TransactionAttribute attribute = rotationAttribute();
+
+        @Test
+        @DisplayName("refusing a reused token commits the revocation that precedes the refusal")
+        void reuseRefusalKeepsTheRevocation() {
+            assertThat(attribute.rollbackOn(new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS)))
+                    .as("rotate withdraws every live session and then throws GlobalException; if that "
+                            + "exception rolls the transaction back, the withdrawal never reaches the "
+                            + "database and a stolen chain lives on")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("an unexpected failure still rolls a half-done rotation back")
+        void otherFailuresStillRollBack() {
+            assertThat(attribute.rollbackOn(new IllegalStateException("the database went away"))).isTrue();
+        }
+
+        private static TransactionAttribute rotationAttribute() {
+            try {
+                Method rotate = RefreshTokenService.class.getMethod("rotate", String.class, DeviceContext.class);
+                TransactionAttribute found = new AnnotationTransactionAttributeSource()
+                        .getTransactionAttribute(rotate, RefreshTokenService.class);
+                assertThat(found).as("rotate is no longer transactional").isNotNull();
+                return found;
+            } catch (NoSuchMethodException e) {
+                throw new AssertionError("RefreshTokenService.rotate has changed its signature", e);
+            }
         }
     }
 }

@@ -953,7 +953,12 @@ to act on, so a verified account was left sitting on the verification form.
 digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads
 it. Login answers with both tokens; `POST /api/auth/refresh` exchanges a refresh token for a new
 pair and **spends the one it was given** — presenting an already-rotated token is read as theft and
-withdraws every live token the account holds. `POST /api/auth/logout` withdraws one; changing or
+withdraws every live token the account holds. That withdrawal and the refusal that follows it share
+one transaction, so `rotate` is `@Transactional(dontRollbackOn = GlobalException.class)`, the way
+`EmailChangeService.confirmChange` keeps its attempt counter. Without it, the refusal rolled the
+withdrawal back: the log reported the sessions withdrawn, but every one of them, the thief's
+included, could still refresh. `RefreshTokenServiceTest` reads the transaction rule Spring
+applies. `POST /api/auth/logout` withdraws one; changing or
 resetting a password withdraws them all. Both new routes are public (the caller reaching for
 `/refresh` is the one whose access token has just lapsed) and both are on the `CREDENTIALS` rate
 limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
