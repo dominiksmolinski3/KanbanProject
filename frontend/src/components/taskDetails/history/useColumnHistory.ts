@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchColumns, getTaskColumnHistory, getTaskColumnTimeSpentSummary } from '../../../services/api';
+import { logged } from '../../../services/logged';
+import { taskKeys } from '../../../services/taskQueries';
 import type { ColumnTimeSpent, Id, TaskColumnHistoryEntry } from '../../../types/api';
+
+const NO_HISTORY: TaskColumnHistoryEntry[] = [];
+const NO_TIME: ColumnTimeSpent[] = [];
 
 async function loadHistory(taskId: Id): Promise<TaskColumnHistoryEntry[]> {
   const history = await getTaskColumnHistory(taskId);
@@ -25,35 +30,19 @@ async function loadHistory(taskId: Id): Promise<TaskColumnHistoryEntry[]> {
 }
 
 export function useColumnHistory(taskId: Id) {
-  const [history, setHistory] = useState<TaskColumnHistoryEntry[]>([]);
-  const [timeSpent, setTimeSpent] = useState<ColumnTimeSpent[]>([]);
-  const [loadingTimeSpent, setLoadingTimeSpent] = useState(true);
+  const history = useQuery({
+    queryKey: taskKeys.history(taskId),
+    queryFn: () => logged('Error fetching column history:', () => loadHistory(taskId)),
+  });
+  const timeSpent = useQuery({
+    queryKey: taskKeys.timeSpent(taskId),
+    queryFn: async () =>
+      (await logged('Error loading column time spent:', () => getTaskColumnTimeSpentSummary(taskId))) || NO_TIME,
+  });
 
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        const data = await loadHistory(taskId);
-        if (live) setHistory(data);
-      } catch (error) {
-        console.error('Error fetching column history:', error);
-        if (live) setHistory([]);
-      }
-    })();
-    (async () => {
-      try {
-        const data = await getTaskColumnTimeSpentSummary(taskId);
-        if (live) setTimeSpent(data || []);
-      } catch (error) {
-        console.error('Error loading column time spent:', error);
-      } finally {
-        if (live) setLoadingTimeSpent(false);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [taskId]);
-
-  return { history, timeSpent, loadingTimeSpent };
+  return {
+    history: history.data ?? NO_HISTORY,
+    timeSpent: timeSpent.data ?? NO_TIME,
+    loadingTimeSpent: timeSpent.isPending,
+  };
 }

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import BoardEvents from '../../services/boardEvents';
+import { taskKeys } from '../../services/taskQueries';
 import type { Id } from '../../types/api';
 
 const LIVE_REFRESH_WINDOW_MS = 250;
@@ -10,6 +12,7 @@ interface LiveRefreshers {
 }
 
 export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefreshers) {
+  const queryClient = useQueryClient();
   const latest = useRef(refreshers);
   latest.current = refreshers;
 
@@ -24,15 +27,15 @@ export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefre
 
     events.watch(activeBoardId, ({ type }) => {
       if (type === 'COMMENTS') {
-        window.dispatchEvent(new CustomEvent('task-comments-changed'));
+        queryClient.invalidateQueries({ queryKey: taskKeys.anyComments });
         return;
       }
       if (type === 'ATTACHMENTS') {
-        window.dispatchEvent(new CustomEvent('task-attachments-changed'));
+        queryClient.invalidateQueries({ queryKey: taskKeys.anyAttachments });
         return;
       }
       if (type === 'SUBTASKS') {
-        window.dispatchEvent(new CustomEvent('task-subtasks-changed'));
+        queryClient.invalidateQueries({ queryKey: taskKeys.anySubtasks });
       }
       wanted = wanted === 'board' || (type !== 'TASKS' && type !== 'SUBTASKS') ? 'board' : 'tasks';
       if (pending) {
@@ -56,5 +59,5 @@ export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefre
       }
       events.stop();
     };
-  }, [activeBoardId]);
+  }, [activeBoardId, queryClient]);
 }

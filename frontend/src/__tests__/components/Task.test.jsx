@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '../../test-utils/rtl';
 import KanbanContext from '../../context/KanbanContext';
 import Task from '../../components/Task';
 import { getUserAvatar, assignUserToTask, fetchSubTasksByTaskId } from '../../services/api';

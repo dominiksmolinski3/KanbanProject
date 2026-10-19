@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import {
@@ -9,6 +10,8 @@ import {
   MAX_COMMENT_LENGTH,
   COMMENT_PAGE_SIZE
 } from '../../services/api';
+import { logged } from '../../services/logged';
+import { taskKeys } from '../../services/taskQueries';
 import type { Id, TaskComment } from '../../types/api';
 
 const MAX_PAGE_SIZE = 100;
@@ -18,49 +21,44 @@ const pageSize = COMMENT_PAGE_SIZE || 25;
 
 const usable = (body: string) => body.length > 0 && body.length <= maxCommentLength;
 
+interface Thread {
+  comments: TaskComment[];
+  total: number;
+}
+
+const NONE: TaskComment[] = [];
+
 export function useTaskComments(taskId: Id) {
   const { t } = useTranslation();
-  const [comments, setComments] = useState<TaskComment[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const queryClient = useQueryClient();
+  const key = taskKeys.comments(taskId);
   const [posting, setPosting] = useState(false);
 
-  const loadedCount = useRef(0);
-  loadedCount.current = comments.length;
+  // A read after a write asks for as many comments as are on screen, so the thread does not shrink.
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async (): Promise<Thread> => {
+      const shown = queryClient.getQueryData<Thread>(key)?.comments.length ?? 0;
+      const size = Math.min(MAX_PAGE_SIZE, Math.max(pageSize, shown));
+      const results = await logged('Error loading comments:', () => fetchTaskComments(taskId, { page: 0, size }));
+      return { comments: results?.comments ?? [], total: results?.totalEntries ?? 0 };
+    },
+  });
 
-  const reload = useCallback(async () => {
-    try {
-      const size = Math.min(MAX_PAGE_SIZE, Math.max(pageSize, loadedCount.current));
-      const results = await fetchTaskComments(taskId, { page: 0, size });
-      setComments(results?.comments ?? []);
-      setTotal(results?.totalEntries ?? 0);
-      setFailed(false);
-    } catch (error) {
-      console.error('Error loading comments:', error);
-      setFailed(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [taskId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  useEffect(() => {
-    const onChanged = () => reload();
-    window.addEventListener('task-comments-changed', onChanged);
-    return () => window.removeEventListener('task-comments-changed', onChanged);
-  }, [reload]);
+  const reload = () => queryClient.invalidateQueries({ queryKey: key });
 
   const loadOlder = async () => {
     try {
-      const page = Math.floor(comments.length / pageSize);
-      const results = await fetchTaskComments(taskId, { page, size: pageSize });
-      const seen = new Set(comments.map(comment => comment.id));
-      setComments([...comments, ...(results?.comments ?? []).filter(comment => !seen.has(comment.id))]);
-      setTotal(results?.totalEntries ?? total);
+      const shown = queryClient.getQueryData<Thread>(key)?.comments.length ?? 0;
+      const results = await fetchTaskComments(taskId, { page: Math.floor(shown / pageSize), size: pageSize });
+      queryClient.setQueryData<Thread>(key, previous => {
+        const current = previous ?? { comments: NONE, total: 0 };
+        const seen = new Set(current.comments.map(comment => comment.id));
+        return {
+          comments: [...current.comments, ...(results?.comments ?? []).filter(comment => !seen.has(comment.id))],
+          total: results?.totalEntries ?? current.total,
+        };
+      });
     } catch (error) {
       console.error('Error loading older comments:', error);
       toast.error(t('taskComments.loadError'));
@@ -114,5 +112,15 @@ export function useTaskComments(taskId: Id) {
     }
   };
 
-  return { comments, total, loading, failed, posting, loadOlder, post, edit, remove };
+  return {
+    comments: query.data?.comments ?? NONE,
+    total: query.data?.total ?? 0,
+    loading: query.isPending,
+    failed: query.isError,
+    posting,
+    loadOlder,
+    post,
+    edit,
+    remove,
+  };
 }

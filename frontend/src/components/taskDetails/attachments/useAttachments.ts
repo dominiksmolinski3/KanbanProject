@@ -1,36 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import {
   AttachmentUploadError, MAX_ATTACHMENT_SIZE, deleteTaskAttachment, downloadTaskAttachment,
   fetchTaskAttachments, uploadTaskAttachment
 } from '../../../services/api';
+import { logged } from '../../../services/logged';
+import { taskKeys } from '../../../services/taskQueries';
 import type { Id, TaskAttachment } from '../../../types/api';
 import { formatFileSize } from './fileSize';
 
+const NONE: TaskAttachment[] = [];
+
 export function useAttachments(taskId: Id) {
   const { t } = useTranslation();
-  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const queryClient = useQueryClient();
+  const key = taskKeys.attachments(taskId);
   const [uploading, setUploading] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const files = await fetchTaskAttachments(taskId);
-      setAttachments(Array.isArray(files) ? files : []);
-    } catch (error) {
-      console.error('Error fetching task attachments:', error);
-      setAttachments([]);
-    } finally {
-      setLoaded(true);
-    }
-  }, [taskId]);
-
-  useEffect(() => {
-    load();
-    window.addEventListener('task-attachments-changed', load);
-    return () => window.removeEventListener('task-attachments-changed', load);
-  }, [load]);
+  const query = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const files = await logged('Error fetching task attachments:', () => fetchTaskAttachments(taskId));
+      return Array.isArray(files) ? files : NONE;
+    },
+  });
 
   const reportUploadError = (error: unknown, fileName: string) => {
     if (error instanceof AttachmentUploadError && error.reason === 'tooLarge') {
@@ -63,7 +58,7 @@ export function useAttachments(taskId: Id) {
           reportUploadError(error, file.name);
         }
       }
-      await load();
+      await queryClient.invalidateQueries({ queryKey: key });
     } finally {
       setUploading(false);
     }
@@ -81,7 +76,8 @@ export function useAttachments(taskId: Id) {
   const remove = async (attachment: TaskAttachment) => {
     try {
       await deleteTaskAttachment(taskId, attachment.id);
-      setAttachments(current => current.filter(item => item.id !== attachment.id));
+      queryClient.setQueryData<TaskAttachment[]>(key, current =>
+        (current ?? NONE).filter(item => item.id !== attachment.id));
       toast.success(t('taskActions.attachmentDeleted'));
     } catch (error) {
       console.error('Error deleting attachment:', error);
@@ -89,5 +85,5 @@ export function useAttachments(taskId: Id) {
     }
   };
 
-  return { attachments, loaded, uploading, upload, download, remove };
+  return { attachments: query.data ?? NONE, loaded: !query.isPending, uploading, upload, download, remove };
 }

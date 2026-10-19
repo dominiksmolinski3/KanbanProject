@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '../../test-utils/rtl';
 import KanbanContext from '../../context/KanbanContext';
 import Task from '../../components/Task';
 import { fetchTask, getChildTasks, getUserAvatar } from '../../services/api';

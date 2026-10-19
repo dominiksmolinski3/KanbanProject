@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import TaskComments from '../../components/TaskComments';
 import * as api from '../../services/api';
@@ -262,12 +262,12 @@ describe('TaskComments', () => {
   test('a comment elsewhere on the board makes the open thread re-read', async () => {
     api.fetchTaskComments.mockResolvedValue(page([]));
 
-    render(<TaskComments taskId={7} />);
+    const { client } = render(<TaskComments taskId={7} />);
     await screen.findByText('taskComments.empty');
 
     api.fetchTaskComments.mockResolvedValue(page([comment(9, 2, 'live')]));
-    act(() => {
-      window.dispatchEvent(new CustomEvent('task-comments-changed'));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['comments'] });
     });
 
     expect(await screen.findByText('live')).toBeInTheDocument();
