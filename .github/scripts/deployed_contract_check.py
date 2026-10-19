@@ -4,7 +4,7 @@
 Every claim below is already asserted somewhere in the build - ``SecurityHeadersMatchTheEdgeTest``
 reads the page's headers out of the nginx snippet, ``SecurityHeadersTest`` the API's own policy,
 ``OpenApiContractTest`` reads the published contract, ``SpaRoutesMatchTheClientTest`` reads the
-client routes against ``App.jsx``. All of those read *source*. Nothing reads the deployment, and the two can diverge for exactly one reason:
+client routes against ``App.tsx``. All of those read *source*. Nothing reads the deployment, and the two can diverge for exactly one reason:
 a deploy that did not happen. That is not hypothetical here - an environment pinned to ``latest``
 ran eight-day-old code for eight days while reporting itself converged, because the only signal
 anybody had was a ``terraform plan`` that correctly said nothing had changed.

@@ -9,7 +9,7 @@ const SIGN_IN_COMPONENTS = [
   'components/HomePage.tsx',
   ...AUTH_COMPONENTS,
   'components/LanguageSwitcher.tsx',
-  'components/DemoBanner.jsx',
+  'components/DemoBanner.tsx',
 ];
 
 function eagerStylesheets() {
@@ -32,7 +32,7 @@ function eagerStylesheets() {
       if (resolved) walk(resolved);
     }
   };
-  walk(path.join(SRC, 'main.jsx'));
+  walk(path.join(SRC, 'main.tsx'));
   return css;
 }
 

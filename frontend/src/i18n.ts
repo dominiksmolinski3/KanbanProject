@@ -24,7 +24,7 @@ i18n
 
 const RTL_LANGUAGES = ['ar', 'fa', 'he', 'ur'];
 
-function applyDocumentDirection(language) {
+function applyDocumentDirection(language: string | undefined) {
   if (typeof document === 'undefined') return;
   const base = (language || 'en').split('-')[0];
   document.documentElement.lang = base;

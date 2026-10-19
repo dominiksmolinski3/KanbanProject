@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import '../styles/DemoBanner.css';
@@ -14,7 +14,7 @@ const TEST_ACCOUNTS = [
 const DemoBanner = () => {
   const [dismissed, setDismissed] = useState(false);
   const { t } = useTranslation();
-  const bannerRef = useRef(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   const isDemoHost = typeof window !== 'undefined'
     && window.location.hostname.includes(DEMO_HOSTNAME_MARKER);
@@ -44,10 +44,10 @@ const DemoBanner = () => {
       <span className="demo-banner-text">
         {t('demo.notice')}{' '}
         {TEST_ACCOUNTS.map(({ email, password }, index) => (
-          <React.Fragment key={email}>
+          <Fragment key={email}>
             {index > 0 && <> {t('demo.or')} </>}
             <strong dir="ltr">{email}</strong> / <strong dir="ltr">{password}</strong>
-          </React.Fragment>
+          </Fragment>
         ))}
       </span>
       <button
