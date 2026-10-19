@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import { useKanban } from '../context/KanbanContext';
@@ -17,9 +16,7 @@ function Invitations() {
       <header className="board-panel-header">
         <h2 className="page-panel-title" id="invitations-heading">{t('boards.invitations.heading')}</h2>
       </header>
-
       <p className="board-panel-explainer">{t('boards.invitations.explainer')}</p>
-
       <ul className="board-invitation-list">
         {myInvitations.map(invitation => (
           <li key={invitation.id} className="board-invitation incoming">

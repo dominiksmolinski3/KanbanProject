@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { THEME_PREFERENCES, readThemePreference, writeThemePreference } from '../theme/themePreference';
+import { THEME_PREFERENCES, readThemePreference, writeThemePreference, type ThemePreference } from '../theme/themePreference';
 import '../styles/components/ThemeSwitcher.css';
 
-const LABEL_KEYS = {
+const LABEL_KEYS: Record<ThemePreference, string> = {
   system: 'header.themeSystem',
   light: 'header.themeLight',
   dark: 'header.themeDark'
@@ -13,7 +13,7 @@ function ThemeSwitcher() {
   const { t } = useTranslation();
   const [preference, setPreference] = useState(readThemePreference);
 
-  const choose = (next) => {
+  const choose = (next: ThemePreference) => {
     setPreference(next);
     writeThemePreference(next);
   };

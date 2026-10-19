@@ -1,20 +1,36 @@
-import React, { useMemo } from 'react';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { hueOf, readStoredLabelColors, splitPriority } from '../board/cardModel';
+import { hueOf, readStoredLabelColors, splitPriority, type DeadlineState } from '../board/cardModel';
+import type { Task } from '../types/api';
 import Icon from './Icon';
 
 const MAX_LABELS = 3;
 
-function formatDue(deadline, language) {
+const DUE_KEYS: Record<DeadlineState, string> = {
+  overdue: 'taskActions.dueOverdue',
+  soon: 'taskActions.dueSoon',
+  later: 'taskActions.dueLater',
+};
+
+const labelStyle = (label: string, color: string | undefined) =>
+  (color ? { '--label-color': color } : { '--label-hue': hueOf(label) }) as unknown as CSSProperties;
+
+function formatDue(deadline: string | null, language: string | undefined): string {
   try {
     return new Intl.DateTimeFormat(language || undefined, { day: 'numeric', month: 'short' })
-      .format(new Date(deadline));
+      .format(new Date(deadline ?? ''));
   } catch {
     return String(deadline);
   }
 }
 
-function TaskCardMeta({ task, dueState, children }) {
+interface TaskCardMetaProps {
+  task: Task;
+  dueState: DeadlineState | null | undefined;
+  children?: ReactNode;
+}
+
+function TaskCardMeta({ task, dueState, children }: TaskCardMetaProps) {
   const { t, i18n } = useTranslation();
   const { priority, priorityLabel, labels } = useMemo(() => splitPriority(task.labels || []), [task.labels]);
   const storedColors = labels.length > 0 ? readStoredLabelColors() : {};
@@ -33,7 +49,7 @@ function TaskCardMeta({ task, dueState, children }) {
   }
 
   const due = dueState ? formatDue(task.deadline, i18n?.language) : null;
-  const dueKey = { overdue: 'taskActions.dueOverdue', soon: 'taskActions.dueSoon', later: 'taskActions.dueLater' }[dueState];
+  const dueKey = dueState ? DUE_KEYS[dueState] : '';
 
   return (
     <div className="task-meta">
@@ -54,9 +70,7 @@ function TaskCardMeta({ task, dueState, children }) {
               key={label}
               className="task-label-pill"
               title={label}
-              style={storedColors[label]
-                ? { '--label-color': storedColors[label] }
-                : { '--label-hue': hueOf(label) }}
+              style={labelStyle(label, storedColors[label])}
             >
               <span className="label-dot" aria-hidden="true" />
               <span className="task-label-text">{label}</span>

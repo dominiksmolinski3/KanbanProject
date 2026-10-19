@@ -1,24 +1,39 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { WipLimitExceededError, assignUserToTask } from '../../services/api';
 import useUserAvatar from '../../board/useUserAvatar';
 import { hueOf, initialsOf } from '../../board/cardModel';
+import type { Id, User } from '../../types/api';
 import Icon from '../Icon';
+import type { CSSProperties } from 'react';
 
-function AssigneeAvatar({ user }) {
+function AssigneeAvatar({ user }: { user: User }) {
   const url = useUserAvatar(user.id);
   if (url) {
     return <img src={url} alt="" className="assignee-avatar" />;
   }
   return (
-    <span className="assignee-avatar assignee-initials" aria-hidden="true" style={{ '--avatar-hue': hueOf(user.id) }}>
+    <span
+      className="assignee-avatar assignee-initials"
+      aria-hidden="true"
+      style={{ '--avatar-hue': hueOf(user.id) } as CSSProperties}
+    >
       {initialsOf(user.name)}
     </span>
   );
 }
 
-function TaskAssignees({ taskId, users, assignedUsers, readOnly, onRequestRemove, onChanged }) {
+interface TaskAssigneesProps {
+  taskId: Id;
+  users: User[];
+  assignedUsers: User[];
+  readOnly: boolean;
+  onRequestRemove: (user: User) => void;
+  onChanged: () => void | Promise<void>;
+}
+
+function TaskAssignees({ taskId, users, assignedUsers, readOnly, onRequestRemove, onChanged }: TaskAssigneesProps) {
   const { t } = useTranslation();
   const [selectedUserId, setSelectedUserId] = useState('');
 

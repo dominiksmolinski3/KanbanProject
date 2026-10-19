@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import { useKanban } from '../context/KanbanContext';
+import { useOutsideClick } from '../hooks/useOutsideClick';
 import '../styles/components/BoardSwitcher.css';
 
 function BoardSwitcher() {
@@ -10,24 +11,15 @@ function BoardSwitcher() {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
-  useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    const closeOnOutsideClick = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setOpen(false);
-        setCreating(false);
-      }
-    };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
-  }, [open]);
+  useOutsideClick(containerRef, open, () => {
+    setOpen(false);
+    setCreating(false);
+  });
 
-  const handleCreate = async (event) => {
+  const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
