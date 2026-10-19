@@ -17,6 +17,7 @@ import pl.myproject.kanbanproject2.config.AllowedOriginsProperties;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final StompDestinationPolicy stompDestinationPolicy;
     private final BoardSubscriptionInterceptor boardSubscriptionInterceptor;
     private final AllowedOriginsProperties allowedOrigins;
     private final StompRelayProperties stompRelay;
@@ -45,6 +46,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         // Order matters: authentication puts the principal on the session that the subscription check reads.
-        registration.interceptors(webSocketAuthInterceptor, boardSubscriptionInterceptor);
+        registration.interceptors(webSocketAuthInterceptor, stompDestinationPolicy, boardSubscriptionInterceptor);
     }
 }

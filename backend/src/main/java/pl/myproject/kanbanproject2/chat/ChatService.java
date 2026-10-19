@@ -16,6 +16,8 @@ public class ChatService {
 
     public static final String ERROR_QUEUE = "/queue/errors";
 
+    public static final String DIRECT_QUEUE = "/queue/messages";
+
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRepository chatRepository;
 
@@ -30,8 +32,8 @@ public class ChatService {
     }
 
     public void sendPrivateMessage(String recipientUsername, String senderUsername, ChatMessage message) {
-        messagingTemplate.convertAndSendToUser(recipientUsername, "/queue/messages", message);
-        messagingTemplate.convertAndSendToUser(senderUsername, "/queue/messages", message);
+        messagingTemplate.convertAndSendToUser(recipientUsername, DIRECT_QUEUE, message);
+        messagingTemplate.convertAndSendToUser(senderUsername, DIRECT_QUEUE, message);
         save(message, null);
     }
 
