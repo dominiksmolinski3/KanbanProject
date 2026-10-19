@@ -280,6 +280,11 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   fixture URL in a test is a host too: use `data:` or a relative path there.
   `SecurityHeaders` is the API's own policy, which allows nothing.
 - `react` and `react-dom` move together (`dependencyPairs.test.js`).
+- A server read that a screen shows is a `useQuery`, with the feature name first in its key and every
+  input of the request in the key. Do not import `queryClient` from `services/session` or `App`: the
+  provider is in `ProtectedLayout` to keep the sign-in screen under its bundle budget, and the cache
+  empties through `onSessionCleared`. A test that renders such a screen wraps it in
+  `QueryClientProvider` with `createQueryClient()`.
 - A server path stays `/api/...` in the client: the fetch wrapper adds `VITE_API_ORIGIN` for the
   Android app. A socket URL is built from `socketOrigin()`, never from `window.location.origin`.
 

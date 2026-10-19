@@ -801,6 +801,22 @@ to `body` outside a dialog. The layers are `position: fixed` and placed from the
 rectangle, with no scroll offset. `TaskDetailsLabels.test.jsx` is the guard: it fails if the layer
 goes back to `body`.
 
+**Server reads are moving to TanStack Query, one screen at a time.** The flow metrics screen is the
+first: [useFlowMetrics.ts](../frontend/src/components/flow/useFlowMetrics.ts) used to carry a
+load/failed pair, a revision counter and a latest-request ref to stop an older answer overwriting a
+newer one, and a `useQuery` keyed on everything the request depends on does all three. Four choices
+are not the library's defaults. `retry` is off, because a failed read is shown as a failure, not
+retried behind the screen. `refetchOnWindowFocus` is off, so a screen does not change under the
+reader. The previous answer is kept while the next loads (`keepPreviousData`), because the filters
+are drawn from it and would otherwise empty for a moment; and an error clears the data, because the
+old hook did and a screen should not show a failure over charts. **The cache is per session:**
+[queryClient.ts](../frontend/src/services/queryClient.ts) registers with `onSessionCleared`, which
+`clearSession` runs, so nothing read for one account is shown to the next. `session.ts` does not
+import the client, and the provider sits in `ProtectedLayout` rather than `App`: the client is about
+7 kB gzipped, and the sign-in screen's download is held to a budget it would otherwise break. Writes
+stay where they are; a write that changes a read calls `invalidateQueries` (here with
+`refetchType: 'none'`, then sets the state that changes the key, so one request goes out, not two).
+
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,
 the confirmation, the verification code and the three reset fields) and shares it through a

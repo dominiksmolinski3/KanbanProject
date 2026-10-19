@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { useKanban } from '../../context/KanbanContext';
 import { defineFlow, fetchFlowMetrics } from '../../services/flowApi';
-import type { FlowMetrics, Id } from '../../types/api';
+import type { Id } from '../../types/api';
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -14,44 +15,29 @@ export function useFlowMetrics() {
   const [days, setDays] = useState(30);
   const [start, setStart] = useState('');
   const [done, setDone] = useState('');
-  const [data, setData] = useState<FlowMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [revision, setRevision] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const latest = useRef(0);
-
-  const load = useCallback(async () => {
-    const request = ++latest.current;
-    setLoading(true);
-    setFailed(false);
-    try {
-      const to = new Date();
-      const from = new Date(to);
-      from.setDate(from.getDate() - (days - 1));
-      const result = await fetchFlowMetrics({
-        boardId: activeBoardId, from: isoDate(from), to: isoDate(to), start, done
-      });
-      if (request === latest.current) {
-        setData(result);
-      }
-    } catch (error) {
-      if (request === latest.current) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['flow', activeBoardId ?? null, days, start, done],
+    queryFn: async () => {
+      try {
+        const to = new Date();
+        const from = new Date(to);
+        from.setDate(from.getDate() - (days - 1));
+        return await fetchFlowMetrics({
+          boardId: activeBoardId, from: isoDate(from), to: isoDate(to), start, done
+        });
+      } catch (error) {
         console.error('Error fetching the flow metrics:', error);
-        setFailed(true);
-        setData(null);
+        throw error;
       }
-    } finally {
-      if (request === latest.current) {
-        setLoading(false);
-      }
-    }
-  }, [activeBoardId, days, start, done]);
-
-  useEffect(() => {
-    load();
-  }, [load, revision]);
+    },
+    placeholderData: keepPreviousData,
+  });
+  const data = query.isError ? null : query.data ?? null;
+  const loading = query.isFetching;
+  const failed = query.isError;
 
   const shownBoard = useRef(activeBoardId);
   useEffect(() => {
@@ -74,9 +60,13 @@ export function useFlowMetrics() {
     try {
       await defineFlow({ boardId: activeBoardId, ...definition });
       toast.success(t('flow.definitionSaved'));
-      setStart('');
-      setDone('');
-      setRevision(value => value + 1);
+      await queryClient.invalidateQueries({ queryKey: ['flow'], refetchType: 'none' });
+      if (start === '' && done === '') {
+        await query.refetch();
+      } else {
+        setStart('');
+        setDone('');
+      }
     } catch (error) {
       console.error('Error saving the flow definition:', error);
       toast.error(t('flow.definitionFailed'));

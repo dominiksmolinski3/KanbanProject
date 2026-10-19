@@ -22,11 +22,19 @@ export function storeSession({ token, expiresIn, refreshToken, sessionId }: Stor
   }
 }
 
+const clearListeners = new Set<() => void>();
+
+export const onSessionCleared = (listener: () => void) => {
+  clearListeners.add(listener);
+  return () => clearListeners.delete(listener);
+};
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(SESSION_ID_KEY);
+  clearListeners.forEach(listener => listener());
 }
 
 export function redirectToSignIn() {
