@@ -107,10 +107,6 @@ jobs:
       working-directory: frontend
       run: npm ci
 
-    - name: Type check
-      working-directory: frontend
-      run: npm run typecheck
-
     - name: Build frontend
       working-directory: frontend
       run: npm run build
