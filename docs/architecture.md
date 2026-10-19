@@ -840,6 +840,13 @@ comments as are on screen, so a post does not shrink a thread the reader had pag
 older" is a write to the cache rather than a second query. `useTaskDetails` is not a query: it is an
 edit form seeded from a read, and a refetch landing in a half-typed field is the wrong behaviour.
 
+The list of boards, the current board and the reader's invitations are queries too (`['boards',
+'list']`, `['boards', 'current']`, `['invitations']`); which board is open stays state, chosen once
+when the first two have answered (the one the reader had open if it is still theirs, else the
+current one) and moved by `selectBoard`, so a later read of the list never moves the reader.
+`loading` and `error` are no longer state that two hooks write: the context derives them from the
+queries, so an error goes away when a later read succeeds, where it used to stay until a reload.
+
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,
 the confirmation, the verification code and the three reset fields) and shares it through a

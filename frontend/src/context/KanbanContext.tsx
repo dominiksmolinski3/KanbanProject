@@ -11,13 +11,13 @@ import { useDragAndDrop } from './kanban/useDragAndDrop';
 import type { LooseId } from './kanban/types';
 
 function useKanbanValue() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
   const { t } = useTranslation();
 
-  const boards = useBoards({ t, setError, setLoading });
-  const data = useBoardData({ activeBoardId: boards.activeBoardId, setLoading, setError });
+  const boards = useBoards({ t });
+  const data = useBoardData({ activeBoardId: boards.activeBoardId });
+  const error = boards.error ?? data.error;
+  const loading = error === null && (boards.activeBoardId === null || data.loading);
   const guard = readOnlyGuard(boards.isViewer, t);
   const shared = { t, ...guard, ...data };
   const layout = useLayoutActions(shared);

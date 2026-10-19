@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { getActiveBoardId, setActiveBoardId as persistActiveBoardId } from '../../services/api';
 import {
@@ -15,51 +16,47 @@ import {
   removeBoardMember,
 } from '../../services/boardApi';
 import type { Board, BoardInvitation, BoardRole, Id } from '../../types/api';
+import { logged } from '../../services/logged';
+import { boardsKeys } from './boardQueries';
 import { messageOf, reportError } from './reportError';
-import type { SetState, Translate } from './types';
+import type { Translate } from './types';
 
-interface BoardsDeps {
-  t: Translate;
-  setError: SetState<string | null>;
-  setLoading: SetState<boolean>;
-}
+const NO_BOARDS: Board[] = [];
+const NO_INVITATIONS: BoardInvitation[] = [];
 
-export function useBoards({ t, setError, setLoading }: BoardsDeps) {
-  const [boards, setBoards] = useState<Board[]>([]);
+export function useBoards({ t }: { t: Translate }) {
+  const queryClient = useQueryClient();
   const [activeBoardId, setActiveBoardId] = useState<Id | null>(null);
-  const [myInvitations, setMyInvitations] = useState<BoardInvitation[]>([]);
 
-  const refreshMyInvitations = async () => {
-    try {
-      const mine = await fetchMyInvitations();
-      setMyInvitations(mine);
-      return mine;
-    } catch (err) {
-      console.error('Error fetching invitations:', err);
-      return [];
-    }
-  };
+  const boardsQuery = useQuery({
+    queryKey: boardsKeys.list,
+    queryFn: () => logged('Error resolving the board:', fetchBoards),
+  });
+  const currentQuery = useQuery({
+    queryKey: boardsKeys.current,
+    queryFn: () => logged('Error resolving the board:', fetchCurrentBoard),
+  });
+  const invitationsQuery = useQuery({
+    queryKey: boardsKeys.invitations,
+    queryFn: () => logged('Error fetching invitations:', fetchMyInvitations),
+  });
 
+  const boards = boardsQuery.data ?? NO_BOARDS;
+  const myInvitations = invitationsQuery.data ?? NO_INVITATIONS;
+  const failure = boardsQuery.error ?? currentQuery.error;
+  const error = failure ? messageOf(failure) : null;
+
+  const available = boardsQuery.data;
+  const current = currentQuery.data;
   useEffect(() => {
-    const resolveBoard = async () => {
-      try {
-        const [available, current] = await Promise.all([fetchBoards(), fetchCurrentBoard()]);
-        setBoards(available);
-
-        const remembered = getActiveBoardId();
-        const chosen = available.some(board => board.id === remembered) ? remembered : current.id;
-        persistActiveBoardId(chosen);
-        setActiveBoardId(chosen);
-      } catch (err) {
-        console.error('Error resolving the board:', err);
-        setError(messageOf(err));
-        setLoading(false);
-      }
-    };
-
-    resolveBoard();
-    refreshMyInvitations();
-  }, [setError, setLoading]);
+    if (activeBoardId !== null || !available || !current) {
+      return;
+    }
+    const remembered = getActiveBoardId();
+    const chosen = available.some(board => board.id === remembered) ? remembered : current.id;
+    persistActiveBoardId(chosen);
+    setActiveBoardId(chosen);
+  }, [activeBoardId, available, current]);
 
   const activeBoard = boards.find(board => board.id === activeBoardId) || null;
   const isViewer = activeBoard?.role === 'VIEWER';
@@ -72,10 +69,18 @@ export function useBoards({ t, setError, setLoading }: BoardsDeps) {
     setActiveBoardId(boardId);
   };
 
-  const refreshBoards = async () => {
-    const available = await fetchBoards();
-    setBoards(available);
-    return available;
+  const refreshBoards = () =>
+    queryClient.fetchQuery({ queryKey: boardsKeys.list, queryFn: fetchBoards, staleTime: 0 });
+
+  const refreshMyInvitations = async () => {
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: boardsKeys.invitations, queryFn: fetchMyInvitations, staleTime: 0,
+      });
+    } catch (err) {
+      console.error('Error fetching invitations:', err);
+      return [];
+    }
   };
 
   const handleCreateBoard = async (name: string) => {
@@ -113,10 +118,10 @@ export function useBoards({ t, setError, setLoading }: BoardsDeps) {
       persistActiveBoardId(next ? next.id : null);
       setActiveBoardId(next ? next.id : null);
       if (!next) {
-        const current = await fetchCurrentBoard();
+        const replacement = await fetchCurrentBoard();
         await refreshBoards();
-        persistActiveBoardId(current.id);
-        setActiveBoardId(current.id);
+        persistActiveBoardId(replacement.id);
+        setActiveBoardId(replacement.id);
       }
       toast.success(t('notifications.boardDeleted'));
       return true;
@@ -198,6 +203,7 @@ export function useBoards({ t, setError, setLoading }: BoardsDeps) {
     activeBoardId,
     isViewer,
     myInvitations,
+    error,
     selectBoard,
     refreshBoards,
     refreshMyInvitations,
