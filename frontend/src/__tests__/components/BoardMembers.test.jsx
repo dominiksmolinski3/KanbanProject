@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import BoardMembers from '../../components/BoardMembers';
 import { fetchBoardInvitations } from '../../services/boardApi';

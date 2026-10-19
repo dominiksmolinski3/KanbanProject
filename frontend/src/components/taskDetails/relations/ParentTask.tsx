@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { assignParentTask, fetchTask, fetchTasks, getChildTasks, removeParentTask } from '../../../services/api';
+import { logged } from '../../../services/logged';
+import { taskKeys } from '../../../services/taskQueries';
 import type { Id, Task } from '../../../types/api';
 import Icon from '../../Icon';
 import ParentSelector from './ParentSelector';
@@ -15,29 +18,15 @@ interface ParentTaskProps {
 
 export default function ParentTask({ taskId, parentTaskId, readOnly, onChanged }: ParentTaskProps) {
   const { t } = useTranslation();
-  const [parent, setParent] = useState<Task | null>(null);
   const [candidates, setCandidates] = useState<Task[]>([]);
   const [selecting, setSelecting] = useState(false);
 
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      if (!parentTaskId) {
-        setParent(null);
-        return;
-      }
-      try {
-        const data = await fetchTask(parentTaskId);
-        if (live) setParent(data);
-      } catch (error) {
-        console.error('Error fetching parent task:', error);
-        if (live) setParent(null);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [parentTaskId]);
+  const parentQuery = useQuery({
+    queryKey: taskKeys.task(parentTaskId ?? 0),
+    enabled: Boolean(parentTaskId),
+    queryFn: () => logged('Error fetching parent task:', () => fetchTask(parentTaskId as Id)),
+  });
+  const parent: Task | null = parentTaskId ? parentQuery.data ?? null : null;
 
   const showSelector = async () => {
     try {

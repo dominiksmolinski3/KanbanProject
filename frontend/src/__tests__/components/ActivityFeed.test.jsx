@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import ActivityFeed from '../../components/ActivityFeed';
 import { fetchActivity } from '../../services/activityApi';
