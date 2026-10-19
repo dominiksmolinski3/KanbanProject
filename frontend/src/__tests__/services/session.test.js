@@ -12,6 +12,7 @@ import {
   storeSession
 } from '../../services/session';
 import { authService } from '../../services/authService';
+import { ApiError } from '../../services/apiError';
 
 jest.mock('../../services/authService', () => ({
   authService: {
@@ -134,7 +135,7 @@ describe('session', () => {
   test('a rejected renewal clears the session and rejects every waiting caller', async () => {
     localStorage.setItem(TOKEN_KEY, 'stale');
     localStorage.setItem(REFRESH_TOKEN_KEY, 'withdrawn');
-    authService.refresh.mockRejectedValue(new Error('Invalid email or password'));
+    authService.refresh.mockRejectedValue(new ApiError('Invalid refresh token', { status: 401 }));
 
     const [first, second] = await Promise.allSettled([refreshSession(), refreshSession()]);
 
@@ -142,6 +143,20 @@ describe('session', () => {
     expect(second.status).toBe('rejected');
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
+  });
+
+  test.each([
+    ['a network failure', new TypeError('Failed to fetch')],
+    ['a server error', new ApiError('Unavailable', { status: 503 })],
+  ])('%s keeps the session so the next call can renew', async (_, failure) => {
+    localStorage.setItem(TOKEN_KEY, 'stale');
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'still-valid');
+    authService.refresh.mockRejectedValue(failure);
+
+    await expect(refreshSession()).rejects.toBe(failure);
+
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('stale');
+    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('still-valid');
   });
 
   test('with no refresh token there is nothing to renew and no call is made', async () => {

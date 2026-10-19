@@ -1,4 +1,5 @@
 import { authService } from './authService';
+import { ApiError } from './apiError';
 import type { LoginResponse } from '../types/api';
 
 export const TOKEN_KEY = 'token';
@@ -50,6 +51,9 @@ export function isAccessTokenExpired() {
   return Boolean(expiration) && Date.now() > expiration - EXPIRY_SKEW_MS;
 }
 
+export const isRefreshRejected = (error: unknown) =>
+  error instanceof ApiError && (error.status === 400 || error.status === 401);
+
 // One refresh at a time: rotation reads the same refresh token presented twice as theft.
 let inFlight: Promise<string> | null = null;
 
@@ -66,7 +70,9 @@ export function refreshSession(): Promise<string | null> {
         return session.token;
       })
       .catch((error) => {
-        clearSession();
+        if (isRefreshRejected(error)) {
+          clearSession();
+        }
         throw error;
       })
       .finally(() => {

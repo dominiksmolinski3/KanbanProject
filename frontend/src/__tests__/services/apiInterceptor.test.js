@@ -1,6 +1,7 @@
 import { setupApiInterceptors, SessionExpiredError } from '../../services/apiInterceptor';
 import { REFRESH_TOKEN_KEY, redirectToSignIn, resetRefreshState } from '../../services/session';
 import { authService } from '../../services/authService';
+import { ApiError } from '../../services/apiError';
 
 jest.mock('../../services/authService', () => ({
   authService: { refresh: jest.fn(), logout: jest.fn() }
@@ -139,13 +140,26 @@ describe('apiInterceptor', () => {
     localStorage.setItem('token', 'stale-jwt');
     localStorage.setItem('tokenExpiration', pastExpiry());
     localStorage.setItem(REFRESH_TOKEN_KEY, 'withdrawn');
-    authService.refresh.mockRejectedValue(new Error('Invalid email or password'));
+    authService.refresh.mockRejectedValue(new ApiError('Invalid refresh token', { status: 401 }));
 
     await expect(window.fetch('/api/tasks')).rejects.toBeInstanceOf(SessionExpiredError);
 
     expect(originalFetch).not.toHaveBeenCalled();
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
     expect(redirectToSignIn).toHaveBeenCalled();
+  });
+
+  test('keeps the session when the refresh fails for a reason other than a refusal', async () => {
+    localStorage.setItem('token', 'stale-jwt');
+    localStorage.setItem('tokenExpiration', pastExpiry());
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'still-valid');
+    authService.refresh.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(window.fetch('/api/tasks')).rejects.toBeInstanceOf(TypeError);
+
+    expect(originalFetch).not.toHaveBeenCalled();
+    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('still-valid');
+    expect(redirectToSignIn).not.toHaveBeenCalled();
   });
 
   test('retries once behind a 401 the client did not see coming', async () => {

@@ -51,12 +51,15 @@ export function useWipLimitForm(onClose: () => void = noop) {
       return;
     }
 
-    const updated = await run(
-      () => (target === 'column' ? updateWipLimit(item.id, parsedLimit) : updateRowWipLimit(item.id, parsedLimit)),
+    let outcome: unknown;
+    const ran = await run(
+      async () => {
+        outcome = await (target === 'column' ? updateWipLimit(item.id, parsedLimit) : updateRowWipLimit(item.id, parsedLimit));
+      },
       t('notifications.errorOccurred', { message: '' })
     );
 
-    if (updated) {
+    if (ran && outcome !== false) {
       setSelectedItem('');
       setWipLimit('');
       onClose();
