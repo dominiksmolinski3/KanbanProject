@@ -1273,6 +1273,21 @@ Six decisions carry it, and none of them is visible from the destination name:
   could sit on any board's topic. It asks `BoardService.requireVisible`, so "may this caller see
   this board" is answered in the one place the REST routes answer it. **Order is load-bearing**: the
   authentication interceptor runs first, because it is what puts the principal on the session.
+- **Which destinations a client may name at all is an allowlist, `StompDestinationPolicy`.** The
+  board check above only reads destinations that start with `/topic/boards.`, and two holes sat
+  beside it. A `SUBSCRIBE` to `/topic/#` or `/topic/*.*.chat` is a RabbitMQ wildcard binding across
+  every board's routing key, and it passed untouched because it does not start with the board
+  prefix: on the compose stack one account read another board's chat through it. A `SEND` to a
+  broker destination (`/topic/boards.{id}.chat`, `/user/{email}/queue/messages`) is relayed
+  straight to RabbitMQ and never reaches a controller, so any signed-in account could post into any
+  board's chat or anyone's inbox under any sender name, skipping the membership, write-access and
+  length checks in `ChatController`. Now a `SEND` must name `/app/**`, and a `SUBSCRIBE` must be one
+  of the four shapes the client uses: `/topic/boards.{id}`, `/topic/boards.{id}.chat`,
+  `/user/queue/messages` and `/user/queue/errors`. Anything else is dropped the way a refused
+  subscription is, and it is counted on the same meter under the reasons `unlisted-send` and
+  `unlisted-subscribe`. `StompDestinationsMatchTheClientTest` reads the client's `subscribe(...)`
+  and `destination:` literals, so a client destination the server would drop fails the build
+  instead of becoming a screen that never updates.
 - **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
   the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
   exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed

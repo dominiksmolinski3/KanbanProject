@@ -230,6 +230,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   (`WriteAccessCoverageTest`) and saves through its `saveAndAnnounce` (`BoardEventCoverageTest`).
 - Live-sync frames carry only `{type, boardId}`. STOMP destinations use a dot
   (`/topic/boards.{id}`), because RabbitMQ refuses a destination with a further `/`.
+- A client may `SEND` only to `/app/**` and `SUBSCRIBE` only to the destinations
+  `StompDestinationPolicy` lists. A new client destination goes into that list, with its own
+  check (`StompDestinationsMatchTheClientTest`).
 - A schema change is the entity **and** a new `V<n>__*.sql` (`FlywayMigrationsMatchEntitiesTest`),
   numbered above main's highest (`migration-order.yml`, `MigrationOrderTest`). Index every foreign
   key (`ForeignKeysAreIndexedTest`). Backfill before `NOT NULL`, as `V5` does.
