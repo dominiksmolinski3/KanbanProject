@@ -446,7 +446,7 @@ Four details carry it:
 - **The recorder never throws.** A feed entry is a side effect of somebody else's operation, and a
   task with no board records nothing rather than failing the edit that produced it.
 - **Nothing stored is a sentence.** The row holds a type name and a detail (the column, or the
-  person); `ActivityFeed.jsx` turns it into wording through `t()`. A feed composed in Java would be
+  person); `ActivityFeed.tsx` turns it into wording through `t()`. A feed composed in Java would be
   a screen the other eight languages cannot translate.
 - **It is paged, and the board listing still is not.** Same numbers and the same refusal as the
   search route — 25 default, 100 maximum, `400 INVALID_ACTIVITY_REQUEST` rather than a silent clamp.
