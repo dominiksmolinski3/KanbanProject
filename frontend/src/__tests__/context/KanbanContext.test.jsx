@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import KanbanContext, { useKanban } from '../../context/KanbanContext';
 import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
+import { toast } from 'react-toastify';
 import * as api from '../../services/api';
 import * as boardApi from '../../services/boardApi';
 
@@ -355,6 +356,7 @@ describe('KanbanContext Provider', () => {
 
   test('deletes a row successfully', async () => {
     api.deleteRow.mockResolvedValueOnce({ success: true });
+    const warning = jest.spyOn(toast, 'warning').mockImplementation(() => {});
     
     await act(async () => {
       render(
@@ -374,6 +376,8 @@ describe('KanbanContext Provider', () => {
     
     expect(api.deleteRow).toHaveBeenCalledWith('row1');
     expect(api.fetchRows).toHaveBeenCalled();
+    expect(warning).not.toHaveBeenCalled();
+    warning.mockRestore();
   });
 
   test('deletes the row even when a card in it was changed by someone else a moment ago', async () => {
@@ -382,6 +386,7 @@ describe('KanbanContext Provider', () => {
       .mockResolvedValueOnce({ success: true });
     api.deleteRow.mockResolvedValueOnce({ success: true });
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warning = jest.spyOn(toast, 'warning').mockImplementation(() => {});
 
     await act(async () => {
       render(
@@ -400,7 +405,9 @@ describe('KanbanContext Provider', () => {
 
     expect(api.updateTaskRow).toHaveBeenCalledTimes(2);
     expect(api.deleteRow).toHaveBeenCalledWith('row1');
+    expect(warning).toHaveBeenCalledWith('notifications.rowDeletedCardsNotMoved');
     console.error.mockRestore();
+    warning.mockRestore();
   });
 
   test('moves a task successfully', async () => {

@@ -156,6 +156,7 @@
       "taskUpdated": "تم تحديث المهمة",
       "noColumnError": "لا توجد أعمدة. الرجاء إضافة عمود أولاً.",
       "lastRowDeleted": "تم حذف الصف الأخير \"{{name}}\"",
+      "rowDeletedCardsNotMoved": "تم حذف الصف \"{{name}}\"، ولكن تعذر نقل بعض البطاقات قبل ذلك",
       "lastColumnDeleted": "تم حذف العمود الأخير \"{{name}}\"",
       "userWipLimitUpdated": "تم تحديث حد العمل قيد التنفيذ للمستخدم إلى {{limit}}",
       "rowWipLimitUpdated": "تم تحديث حد العمل قيد التنفيذ للصف {{name}} إلى {{limit}}",
