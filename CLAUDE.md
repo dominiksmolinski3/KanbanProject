@@ -149,7 +149,7 @@ a script is renamed.
 Bytecode targets Java 21; CI, CodeQL and `backend/Dockerfile` all build and run on JDK 25.
 
 ```bash
-./mvnw clean package                    # build the jar (target/KanbanProject2-1.0.0.jar)
+./mvnw clean package                    # build the jar (target/KanbanProject2-1.1.0.jar)
 ./mvnw spring-boot:run                  # run on :8080
 ./mvnw test                             # unit tests
 ./mvnw clean test jacoco:report         # tests + coverage -> target/site/jacoco/index.html
