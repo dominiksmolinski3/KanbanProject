@@ -63,7 +63,6 @@ function useKanbanValue() {
     rows: data.rows,
     loading,
     error,
-    columnMap: data.columnMap,
     addTask: taskActions.addTask,
     addColumn: layout.addColumn,
     addRow: layout.addRow,

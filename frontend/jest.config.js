@@ -15,6 +15,7 @@ export default {
       'src/**/*.{js,jsx,ts,tsx}',
       '!src/**/*.test.{js,jsx,ts,tsx}',
       '!src/**/*.d.ts',
+      '!src/test-utils/**',
       '!src/__mocks__/**',
       '!src/main.tsx',
       '!src/i18n.ts',

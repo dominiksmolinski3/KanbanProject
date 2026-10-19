@@ -23,8 +23,6 @@ export interface BoardData {
   setTasks: SetState<Task[]>;
   rows: RowSummary[];
   setRows: SetState<RowSummary[]>;
-  columnMap: Record<string, Id>;
-  setColumnMap: SetState<Record<string, Id>>;
   refreshTasks: () => Promise<void>;
   refreshBoard: () => Promise<void>;
 }
