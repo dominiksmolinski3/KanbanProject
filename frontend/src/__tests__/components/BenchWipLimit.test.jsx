@@ -68,9 +68,9 @@ describe('Bench', () => {
   });
 
   test('a link that is not a blob is not revoked', async () => {
-    getUserAvatar.mockResolvedValue('https://cdn.example/a.png');
+    getUserAvatar.mockResolvedValue('data:image/png;base64,iVBORw0KGgo=');
     const { unmount } = await renderBench();
-    await waitFor(() => expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'https://cdn.example/a.png'));
+    await waitFor(() => expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'data:image/png;base64,iVBORw0KGgo='));
 
     unmount();
 

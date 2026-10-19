@@ -266,7 +266,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   call. Run such a test against a mutant once.
 - A new client route goes into `SpaRoutes.ALL` (`SpaRoutesMatchTheClientTest`).
 - A new external `https://` host needs a CSP entry in `frontend/nginx/security-headers.conf`
-  (`CspMatchesTheClientTest`). `SecurityHeaders` is the API's own policy, which allows nothing.
+  (`CspMatchesTheClientTest`). The test reads every file under `frontend/src`, tests included, so a
+  fixture URL in a test is a host too: use `data:` or a relative path there.
+  `SecurityHeaders` is the API's own policy, which allows nothing.
 - `react` and `react-dom` move together (`dependencyPairs.test.js`).
 
 **Edge and infrastructure**
