@@ -58,6 +58,7 @@ class AuthenticationServiceEnumerationTest {
                 new DemoAccounts(List.of()));
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
+        when(passwordEncoder.matches("correct-horse", "hashed")).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
         when(refreshTokenService.issue(any(), any()))
                 .thenReturn(new RefreshTokenService.Issued("a-refresh-token", 12L));
@@ -78,9 +79,14 @@ class AuthenticationServiceEnumerationTest {
     }
 
     private static VerifyUserDto verification(String email, String code) {
+        return verification(email, code, "correct-horse");
+    }
+
+    private static VerifyUserDto verification(String email, String code, String password) {
         var dto = new VerifyUserDto();
         dto.setEmail(email);
         dto.setVerificationCode(code);
+        dto.setPassword(password);
         return dto;
     }
 
@@ -121,7 +127,7 @@ class AuthenticationServiceEnumerationTest {
         }
 
         @Test
-        @DisplayName("the existing account is left alone - no password rewrite, no new code")
+        @DisplayName("a verified account is left alone - no password rewrite, no new code")
         void collisionDoesNotTouchTheExistingAccount() {
             var existing = user(KNOWN, true);
             existing.setVerificationCode(null);
@@ -132,6 +138,27 @@ class AuthenticationServiceEnumerationTest {
             assertThat(existing.getPassword()).isEqualTo("hashed");
             assertThat(existing.getVerificationCode()).isNull();
             assertThat(existing.isEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("an address still awaiting verification takes the newer signup's password and name, and a fresh code")
+        void pendingRegistrationIsReplaced() throws Exception {
+            var pending = new User("first-registrant", KNOWN, "first-registrants-hash");
+            pending.setVerificationCode("111111");
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            service.signup(registration(KNOWN));
+
+            assertThat(pending.getPassword())
+                    .as("the first registrant's password survived, so whoever typed it signs in once the "
+                            + "mailbox owner verifies the address")
+                    .isEqualTo("hashed");
+            assertThat(pending.getName()).isEqualTo("someone");
+            assertThat(pending.getVerificationCode()).isNotEqualTo("111111");
+            assertThat(pending.isEnabled()).isFalse();
+            verify(passwordEncoder).encode("correct-horse");
+            verify(emailService).sendVerificationCode(eq(KNOWN), eq(pending.getVerificationCode()), anyLong(), any());
         }
     }
 
@@ -251,6 +278,26 @@ class AuthenticationServiceEnumerationTest {
 
             assertThat(session.token()).isEqualTo("signed-access-token");
             assertThat(session.refreshToken()).isEqualTo("a-refresh-token");
+        }
+
+        @Test
+        @DisplayName("the right code with another password is refused like a wrong code, and enables nothing")
+        void rightCodeWithAnotherPasswordIsRefused() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode("111111");
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            assertThatThrownBy(() -> service.verifyUser(
+                    verification(KNOWN, "111111", "not-what-was-signed-up-with"), DeviceContext.unknown()))
+                    .as("the mailbox owner would verify an account whose password someone else chose")
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
+
+            assertThat(pending.isEnabled()).isFalse();
+            assertThat(pending.getVerificationCode()).isEqualTo("111111");
+            verifyNoInteractions(refreshTokenService);
         }
 
         @Test

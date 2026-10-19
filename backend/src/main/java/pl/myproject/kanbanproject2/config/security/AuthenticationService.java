@@ -44,12 +44,19 @@ public class AuthenticationService {
 
     @Transactional
     public void signup(RegisterUserDto input) {
-        if (userRepository.findByEmail(input.getEmail()).isPresent()) {
+        User user = userRepository.findByEmail(input.getEmail()).orElse(null);
+        if (user != null && user.isEnabled()) {
             log.info("Signup for an address that already has an account; answering as if it were new");
             return;
         }
 
-        User user = new User(input.getUsername(), input.getEmail(), passwordEncoder.encode(input.getPassword()));
+        if (user == null) {
+            user = new User(input.getUsername(), input.getEmail(), passwordEncoder.encode(input.getPassword()));
+        } else {
+            log.info("Signup for an address still awaiting verification; replacing the pending registration");
+            user.setName(input.getUsername());
+            user.setPassword(passwordEncoder.encode(input.getPassword()));
+        }
         user.setLocale(SupportedLocales.normalise(input.getLocale()));
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
@@ -66,7 +73,8 @@ public class AuthenticationService {
                 || user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
             throw new GlobalException(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
         }
-        if (!user.getVerificationCode().equals(input.getVerificationCode())) {
+        if (!user.getVerificationCode().equals(input.getVerificationCode())
+                || !passwordEncoder.matches(input.getPassword(), user.getPassword())) {
             throw new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
         }
 
