@@ -147,6 +147,61 @@ describe('ChatApi', () => {
     });
   });
 
+  describe('reconnecting', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('joins the board it was on again once the socket is back', async () => {
+      const { api, client } = await connect();
+      api.joinBoard(7);
+      client.subscriptions.length = 0;
+      client.published.length = 0;
+
+      client.onConnect();
+
+      expect(client.subscriptions).toContain('/topic/boards.7.chat');
+      expect(client.published).toContainEqual({
+        destination: '/app/chat.join',
+        body: JSON.stringify({ boardId: 7 }),
+      });
+    });
+
+    it('joins no board when none was joined before the drop', async () => {
+      const { client } = await connect();
+      client.subscriptions.length = 0;
+
+      client.onConnect();
+
+      expect(client.subscriptions.filter((d) => d.startsWith('/topic/'))).toEqual([]);
+    });
+
+    it('presents the token the session holds now, not the one it first connected with', async () => {
+      const { client } = await connect('old-jwt');
+      localStorage.setItem('token', 'renewed-jwt');
+
+      client.beforeConnect();
+
+      expect(client.connectHeaders).toEqual({ Authorization: 'Bearer renewed-jwt' });
+    });
+
+    it('falls back to the token it was given when the session holds none', async () => {
+      const { client } = await connect('old-jwt');
+
+      client.beforeConnect();
+
+      expect(client.connectHeaders).toEqual({ Authorization: 'Bearer old-jwt' });
+    });
+
+    it('tells the caller on every connect, so a reconnect can clear the failure it reported', async () => {
+      const onConnected = jest.fn();
+      const api = new ChatApi(onMessage, onError, onRefusal, onConnected);
+      await api.connect('jwt-123');
+
+      clientInstances[0].onConnect();
+
+      expect(onConnected).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('sending', () => {
     it('sends a board message naming the board and nothing else', async () => {
       const { api, client } = await connect();

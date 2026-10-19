@@ -161,7 +161,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const onError = (error: unknown) => {
     console.error('WebSocket error:', error);
     dispatch({ type: 'SET_CONNECTED', payload: false });
-    toast.error(t('chat.connectionError'));
+    toast.error(t('chat.connectionError'), { toastId: 'chat-connection-error' });
   };
 
   const onRefusal = (refusal: ChatRefusal | null | undefined) => {
@@ -194,7 +194,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      chatApiRef.current = new ChatApi(onMessageReceived, onError, onRefusal);
+      chatApiRef.current = new ChatApi(
+        onMessageReceived,
+        onError,
+        onRefusal,
+        () => dispatch({ type: 'SET_CONNECTED', payload: true })
+      );
       await chatApiRef.current.connect(token);
       chatApiRef.current.joinBoard(activeBoardId);
       dispatch({ type: 'SET_CONNECTED', payload: true });

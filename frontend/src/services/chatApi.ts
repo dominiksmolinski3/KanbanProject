@@ -15,6 +15,7 @@ export default class ChatApi {
   onMessageReceived: MessageHandler;
   onError: (error: unknown) => void;
   onRefusal: (refusal: ChatRefusal | null | undefined) => void;
+  onConnected?: () => void;
   boardSubscription: StompSubscription | null = null;
   boardId: Id | null = null;
   serverUrl = socketOrigin();
@@ -22,11 +23,13 @@ export default class ChatApi {
   constructor(
     onMessageReceived: MessageHandler,
     onError: (error: unknown) => void,
-    onRefusal: (refusal: ChatRefusal | null | undefined) => void
+    onRefusal: (refusal: ChatRefusal | null | undefined) => void,
+    onConnected?: () => void
   ) {
     this.onMessageReceived = onMessageReceived;
     this.onError = onError;
     this.onRefusal = onRefusal;
+    this.onConnected = onConnected;
   }
 
   connect(token?: string | null): Promise<void> {
@@ -55,6 +58,7 @@ export default class ChatApi {
             if (this.boardId !== null) {
               this.joinBoard(this.boardId);
             }
+            this.onConnected?.();
             resolve();
           },
           onStompError: (frame) => {
