@@ -10,7 +10,7 @@ import TaskColumnHistory from './taskDetails/TaskColumnHistory';
 import TaskDetailsDescription from './taskDetails/TaskDetailsDescription';
 import TaskDetailsProps from './taskDetails/TaskDetailsProps';
 import TaskDetailsTitle from './taskDetails/TaskDetailsTitle';
-import TaskRelations from './taskDetails/TaskRelations';
+import ChildTasks from './taskDetails/relations/ChildTasks';
 import TaskSubtasks from './taskDetails/TaskSubtasks';
 import { useTaskDetails } from './taskDetails/useTaskDetails';
 import Modal from './ui/Modal';
@@ -57,13 +57,7 @@ function TaskDetails({ task, onClose, onSubtaskUpdate }: TaskDetailsProps_) {
           onSaved={state.flashSaved}
         />
         <TaskAttachments taskId={task.id} readOnly={readOnly} />
-        <TaskRelations
-          part="children"
-          taskId={task.id}
-          parentTaskId={state.parentTaskId}
-          readOnly={readOnly}
-          onChanged={state.reloadAfterChange}
-        />
+        <ChildTasks taskId={task.id} />
       </>
     );
   };

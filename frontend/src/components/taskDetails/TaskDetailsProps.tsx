@@ -6,7 +6,7 @@ import Icon from '../Icon';
 import TaskLabels from '../TaskLabels';
 import TaskAssignees from './TaskAssignees';
 import TaskDeadline from './TaskDeadline';
-import TaskRelations from './TaskRelations';
+import ParentTask from './relations/ParentTask';
 import type { TaskDetailsState } from './useTaskDetails';
 
 export default function TaskDetailsProps({ task, state }: { task: Task; state: TaskDetailsState }) {
@@ -62,8 +62,7 @@ export default function TaskDetailsProps({ task, state }: { task: Task; state: T
       <div className="sheet-prop">
         <dt><Icon name="link" size="sm" />{t('taskDetails.parentTask')}</dt>
         <dd>
-          <TaskRelations
-            part="parent"
+          <ParentTask
             taskId={task.id}
             parentTaskId={state.parentTaskId}
             readOnly={readOnly}
