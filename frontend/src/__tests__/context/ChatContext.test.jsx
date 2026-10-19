@@ -127,6 +127,33 @@ describe('ChatContext', () => {
     await waitFor(() => expect(screen.getByText('Unread: 0')).toBeInTheDocument());
   });
 
+  test('a dropped connection reads as disconnected until the socket comes back', async () => {
+    renderChat();
+    fireEvent.click(screen.getByText('Toggle'));
+    await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
+    const [, onError, , onConnected] = ChatApi.mock.calls[0];
+
+    act(() => { onError(new Error('socket closed')); });
+    await waitFor(() => expect(screen.getByText('Connected: false')).toBeInTheDocument());
+
+    act(() => { onConnected(); });
+    await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
+  });
+
+  test('repeated connection failures share one toast', async () => {
+    renderChat();
+    fireEvent.click(screen.getByText('Toggle'));
+    await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
+    const onError = ChatApi.mock.calls[0][1];
+
+    act(() => { onError(new Error('one')); onError(new Error('two')); });
+
+    expect(toast.error).toHaveBeenCalledTimes(2);
+    for (const call of toast.error.mock.calls) {
+      expect(call).toEqual(['chat.connectionError', { toastId: 'chat-connection-error' }]);
+    }
+  });
+
   test('a refusal from the server surfaces the key it sent, translated by the client', async () => {
     renderChat();
     fireEvent.click(screen.getByText('Toggle'));
