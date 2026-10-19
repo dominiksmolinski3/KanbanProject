@@ -35,7 +35,7 @@ export const getUserAvatar = async (userId: Id) => {
 
 export const getUserWipStatus = (userId: Id) => getJson<WipStatus>(`${USERS}/${userId}/wip-status`);
 
-export const updateUserWipLimit = (userId: Id, wipLimit: number | string) =>
-  patchJson<User>(`${USERS}/${userId}/wip-limit`, parseInt(String(wipLimit), 10));
+export const updateUserWipLimit = (userId: Id, wipLimit: number | string | null) =>
+  patchJson<User>(`${USERS}/${userId}/wip-limit`, wipLimit === null ? null : parseInt(String(wipLimit), 10));
 
 export const updateUserLocale = (userId: Id, locale: string) => patchJson<User>(`${USERS}/${userId}`, { locale });

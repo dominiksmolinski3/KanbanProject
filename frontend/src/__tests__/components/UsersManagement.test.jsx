@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { toast } from 'react-toastify';
 import UsersManagement from '../../components/UsersManagement';
@@ -172,11 +172,11 @@ describe('UsersManagement', () => {
     await waitFor(() => expect(toast.info).toHaveBeenCalledWith('usersManagement.messages.avatarUpdated'));
   });
 
-  test('avatar upload: a server refusal warns with the reason', async () => {
+  const refuseUpload = async (body) => {
     global.fetch = jest.fn((url, options) => {
       if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
       if (url === '/api/users/1/avatar' && options?.method === 'POST') {
-        return Promise.resolve({ ok: false, text: async () => 'too large for the server' });
+        return Promise.resolve({ ok: false, status: 413, text: async () => body });
       }
       if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
       throw new Error(`unexpected fetch ${url}`);
@@ -187,11 +187,45 @@ describe('UsersManagement', () => {
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
 
     const goodFile = new File(['x'], 'me.png', { type: 'image/png' });
-    const input = document.getElementById('avatar-input-1');
-    fireEvent.change(input, { target: { files: [goodFile] } });
+    fireEvent.change(document.getElementById('avatar-input-1'), { target: { files: [goodFile] } });
+  };
+
+  test('avatar upload: a server refusal warns with the sentence the server sent', async () => {
+    await refuseUpload(JSON.stringify({ code: 'SOMETHING_NEW', message: 'That picture is too large' }));
 
     await waitFor(() =>
-      expect(toast.warning).toHaveBeenCalledWith('usersManagement.messages.avatarError too large for the server')
+      expect(toast.warning).toHaveBeenCalledWith('usersManagement.messages.avatarError That picture is too large')
     );
+  });
+
+  test('avatar upload: a refusal whose body is not JSON is never shown as that body', async () => {
+    await refuseUpload('<html>502 Bad Gateway</html>');
+
+    await waitFor(() => expect(toast.warning).toHaveBeenCalled());
+    expect(toast.warning.mock.calls[0][0]).not.toContain('502');
+    expect(toast.warning.mock.calls[0][0]).not.toContain('<html>');
+  });
+
+  test('avatar upload: a good picture whose fresh copy never turns up still confirms, and keeps the old one', async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn((url, options) => {
+      if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
+      if (url === '/api/users/1/avatar' && options?.method === 'POST') {
+        return Promise.resolve({ ok: true, text: async () => '' });
+      }
+      if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    render(<UsersManagement />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    const avatarGets = () => global.fetch.mock.calls.filter(([url, options]) => String(url).includes('/avatar') && !options?.method).length;
+    const before = avatarGets();
+
+    fireEvent.change(document.getElementById('avatar-input-1'), { target: { files: [new File(['x'], 'me.png', { type: 'image/png' })] } });
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000); });
+
+    expect(avatarGets() - before).toBe(3);
+    expect(toast.info).toHaveBeenCalledWith('usersManagement.messages.avatarUpdated');
+    jest.useRealTimers();
   });
 });
