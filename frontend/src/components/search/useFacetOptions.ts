@@ -1,29 +1,27 @@
-import { useEffect, useState } from 'react';
-import { getAllLabels, fetchUsers } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { useKanban } from '../../context/KanbanContext';
+import { useUsers } from '../../hooks/useUsers';
+import { getAllLabels } from '../../services/api';
 import type { User } from '../../types/api';
 
+const NO_LABELS: string[] = [];
+const NO_USERS: User[] = [];
+
 export function useFacetOptions(isOpen: boolean) {
-  const [labels, setLabels] = useState<string[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const { activeBoardId } = useKanban();
+  const labels = useQuery({
+    queryKey: ['labels', activeBoardId],
+    enabled: isOpen,
+    queryFn: async () => {
+      const boardLabels = await getAllLabels();
+      return Array.isArray(boardLabels) ? boardLabels : NO_LABELS;
+    },
+  });
+  const users = useUsers(isOpen);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    let cancelled = false;
-    Promise.all([getAllLabels(), fetchUsers()])
-      .then(([boardLabels, boardUsers]) => {
-        if (!cancelled) {
-          setLabels(Array.isArray(boardLabels) ? boardLabels : []);
-          setUsers(Array.isArray(boardUsers) ? boardUsers : []);
-        }
-      })
-      .catch(() => {
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen]);
-
-  return { labels, users };
+  // Chips for either are offered only when both could be read.
+  if (labels.isError || users.isError) {
+    return { labels: NO_LABELS, users: NO_USERS };
+  }
+  return { labels: labels.data ?? NO_LABELS, users: users.data ?? NO_USERS };
 }

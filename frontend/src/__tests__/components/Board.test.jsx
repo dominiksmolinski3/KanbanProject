@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '../../test-utils/rtl';
 import KanbanContext from '../../context/KanbanContext';
 import Board from '../../components/Board';
 import { toast } from 'react-toastify';
