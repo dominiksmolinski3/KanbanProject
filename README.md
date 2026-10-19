@@ -375,6 +375,7 @@ Everything lives in [.github/workflows/](.github/workflows/):
 | `kanban-ci.yml` | Backend tests against Postgres and Redis, frontend build, lint, type check and Jest, Cypress against a two-replica Compose stack, and a Trivy scan of every image on every PR |
 | `android-ci.yml` | Builds the debug APK when the Android project, its config or the frontend dependencies change |
 | `kanban-cd.yml` | Builds, scans, pushes and promotes the images |
+| `release-images.yml` | On a `vX.Y.Z` tag, gives the images of that commit the version |
 | `deployed-contract.yml` | Checks every day that the deployed site still matches `main` |
 | `codeql.yml` | CodeQL on the Java backend |
 | `migration-order.yml` | Keeps Flyway migration numbers in order across branches |
