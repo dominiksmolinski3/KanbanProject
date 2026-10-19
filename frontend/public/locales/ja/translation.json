@@ -156,6 +156,7 @@
       "taskUpdated": "タスクが更新されました",
       "noColumnError": "カラムがありません。最初にカラムを追加してください。",
       "lastRowDeleted": "最後の行「{{name}}」が削除されました",
+      "rowDeletedCardsNotMoved": "行「{{name}}」を削除しましたが、一部のカードを事前に移動できませんでした",
       "lastColumnDeleted": "最後のカラム「{{name}}」が削除されました",
       "userWipLimitUpdated": "ユーザーのWIP制限が{{limit}}に更新されました",
       "rowWipLimitUpdated": "行{{name}}のWIP制限が{{limit}}に更新されました",

@@ -156,6 +156,7 @@
     "taskUpdated": "Aufgabe wurde aktualisiert",
     "noColumnError": "Es gibt keine Spalten. Bitte fügen Sie zuerst eine Spalte hinzu.",
     "lastRowDeleted": "Letzte Zeile \"{{name}}\" wurde gelöscht",
+    "rowDeletedCardsNotMoved": "Zeile \"{{name}}\" wurde gelöscht, aber einige Karten konnten vorher nicht verschoben werden",
     "lastColumnDeleted": "Letzte Spalte \"{{name}}\" wurde gelöscht",
     "userWipLimitUpdated": "WIP-Limit des Benutzers wurde auf {{limit}} aktualisiert",
     "rowWipLimitUpdated": "WIP-Limit für Zeile {{name}} wurde auf {{limit}} aktualisiert",

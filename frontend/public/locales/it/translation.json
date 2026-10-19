@@ -156,6 +156,7 @@
       "taskUpdated": "L'attività è stata aggiornata",
       "noColumnError": "Non ci sono colonne. Aggiungi prima una colonna.",
       "lastRowDeleted": "L'ultima riga \"{{name}}\" è stata eliminata",
+      "rowDeletedCardsNotMoved": "La riga \"{{name}}\" è stata eliminata, ma alcune schede non sono state spostate prima",
       "lastColumnDeleted": "L'ultima colonna \"{{name}}\" è stata eliminata",
       "userWipLimitUpdated": "Il limite WIP dell'utente è stato aggiornato a {{limit}}",
       "rowWipLimitUpdated": "Il limite WIP per la riga {{name}} è stato aggiornato a {{limit}}",

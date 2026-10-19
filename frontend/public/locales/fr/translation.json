@@ -156,6 +156,7 @@
       "taskUpdated": "La tâche a été mise à jour",
       "noColumnError": "Il n'y a pas de colonnes. Veuillez d'abord ajouter une colonne.",
       "lastRowDeleted": "Dernière ligne \"{{name}}\" a été supprimée",
+      "rowDeletedCardsNotMoved": "La ligne \"{{name}}\" a été supprimée, mais certaines cartes n'ont pas pu être déplacées auparavant",
       "lastColumnDeleted": "Dernière colonne \"{{name}}\" a été supprimée",
       "userWipLimitUpdated": "La limite WIP de l'utilisateur a été mise à jour à {{limit}}",
       "rowWipLimitUpdated": "La limite WIP pour la ligne {{name}} a été mise à jour à {{limit}}",

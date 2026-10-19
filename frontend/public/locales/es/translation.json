@@ -156,6 +156,7 @@
       "taskUpdated": "La tarea ha sido actualizada",
       "noColumnError": "No hay columnas. Por favor, añada una columna primero.",
       "lastRowDeleted": "Última fila \"{{name}}\" ha sido eliminada",
+      "rowDeletedCardsNotMoved": "La fila \"{{name}}\" se eliminó, pero algunas tarjetas no se pudieron mover antes",
       "lastColumnDeleted": "Última columna \"{{name}}\" ha sido eliminada",
       "userWipLimitUpdated": "El límite WIP del usuario ha sido actualizado a {{limit}}",
       "rowWipLimitUpdated": "El límite WIP para la fila {{name}} ha sido actualizado a {{limit}}",
