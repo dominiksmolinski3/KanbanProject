@@ -801,7 +801,7 @@ to `body` outside a dialog. The layers are `position: fixed` and placed from the
 rectangle, with no scroll offset. `TaskDetailsLabels.test.jsx` is the guard: it fails if the layer
 goes back to `body`.
 
-**Server reads are moving to TanStack Query, one screen at a time.** The flow metrics screen is the
+**Server reads are moving to TanStack Query, one screen at a time.** The flow metrics screen was the
 first: [useFlowMetrics.ts](../frontend/src/components/flow/useFlowMetrics.ts) used to carry a
 load/failed pair, a revision counter and a latest-request ref to stop an older answer overwriting a
 newer one, and a `useQuery` keyed on everything the request depends on does all three. Four choices
@@ -816,6 +816,22 @@ import the client, and the provider sits in `ProtectedLayout` rather than `App`:
 7 kB gzipped, and the sign-in screen's download is held to a budget it would otherwise break. Writes
 stay where they are; a write that changes a read calls `invalidateQueries` (here with
 `refetchType: 'none'`, then sets the state that changes the key, so one request goes out, not two).
+
+**The board itself is in the query cache, behind the same API.** `useBoardData` reads columns, rows
+and tasks as three queries keyed `['board', id, kind]` and still returns `columns`, `setTasks`,
+`refreshTasks` and the rest, so `useTaskActions` and `useLayoutActions` did not change: a `setX` is
+`setQueryData`, a refresh is `invalidateQueries`, and a live-sync frame is one of those after the
+250 ms window. Two things that were state are not any more. The key carries the board, so switching
+boards shows nothing of the old one while the new one loads, and going back is instant. And the
+"a task with no row belongs to the first row" rule is applied on read, so a refresh keeps it; before,
+only the first load did. What had to be rebuilt is the rule that **a read must not undo an edit made
+while it was in flight**: the tasks `queryFn` counts local writes, and if one happened during the
+read it returns the cache instead of the answer. Cancelling the query would not do: that is
+asynchronous, and the edit is written synchronously. `KanbanStaleRefresh.test.jsx` is the guard.
+The rows read may fail without failing the board (an empty lane list is a board), the columns and
+tasks reads may not. Tests of anything under the board wrap it in `KanbanProvider` from
+`test-utils/KanbanTestProvider`, which brings its own client, and `jest.setup.js` gives Query a
+microtask scheduler because its default, `setTimeout(0)`, never fires under fake timers.
 
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,

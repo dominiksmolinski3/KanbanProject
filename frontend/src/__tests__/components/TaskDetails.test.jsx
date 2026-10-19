@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TaskDetails from '../../components/TaskDetails';
-import { KanbanProvider, useKanban } from '../../context/KanbanContext';
+import { useKanban } from '../../context/KanbanContext';
+import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 import * as api from '../../services/api';
 import { toast } from 'react-toastify';
 
