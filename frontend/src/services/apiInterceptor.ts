@@ -1,3 +1,4 @@
+import { apiUrl } from './apiOrigin';
 import {
   clearSession,
   getAccessToken,
@@ -47,7 +48,8 @@ export function setupApiInterceptors() {
     throw new SessionExpiredError();
   };
 
-  window.fetch = async (input: RequestInfo | URL, options: RequestInit = {}) => {
+  window.fetch = async (request: RequestInfo | URL, options: RequestInit = {}) => {
+    const input = typeof request === 'string' ? apiUrl(request) : request;
     if (isPublicAuthPath(urlOf(input))) {
       return originalFetch(input, options);
     }

@@ -1,6 +1,7 @@
 import SockJS from 'sockjs-client';
 import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
+import { socketOrigin } from './apiOrigin';
 
 type MessageHandler = (message: IMessage) => void;
 
@@ -15,7 +16,7 @@ export default class ChatApi {
   onRefusal: (refusal: ChatRefusal | null | undefined) => void;
   boardSubscription: StompSubscription | null = null;
   boardId: Id | null = null;
-  serverUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  serverUrl = socketOrigin();
 
   constructor(
     onMessageReceived: MessageHandler,

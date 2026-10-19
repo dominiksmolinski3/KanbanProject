@@ -5,3 +5,4 @@
 *.hcl text eol=lf
 *.sh text eol=lf
 /ansible/** text eol=lf
+/frontend/android/gradlew text eol=lf
