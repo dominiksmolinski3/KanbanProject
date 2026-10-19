@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 
 export default [
   {
-    ignores: ['dist', 'coverage', 'src/__tests__', 'cypress.config.js', 'cypress/e2e/*', 'cypress/replicas/*', 'cypress/warmup/*', 'cypress/warmup.config.js', 'cypress/support/*', 'cypress/seed-test-account.js'],
+    ignores: ['dist', 'coverage', 'android', 'src/__tests__', 'cypress.config.js', 'cypress/e2e/*', 'cypress/replicas/*', 'cypress/warmup/*', 'cypress/warmup.config.js', 'cypress/support/*', 'cypress/seed-test-account.js'],
   },  
   {
     files: ['**/*.{js,jsx,ts,tsx}'],

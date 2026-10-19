@@ -183,6 +183,14 @@ Cypress needs the Vite dev server **and** the backend running. The headless scri
 `--browser chromium`; a machine without Chromium overrides it with
 `npm run cypress:run -- --browser chrome`.
 
+### Android app
+
+```bash
+npm run build:mobile   # vite build --mode mobile; needs VITE_API_ORIGIN in frontend/.env.mobile.local
+npm run cap:sync       # build:mobile, then copy dist into frontend/android
+npm run cap:open       # Android Studio
+```
+
 ### Full stack via Docker
 
 ```bash
@@ -277,6 +285,8 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   provider is in `ProtectedLayout` to keep the sign-in screen under its bundle budget, and the cache
   empties through `onSessionCleared`. A test that renders such a screen wraps it in
   `QueryClientProvider` with `createQueryClient()`.
+- A server path stays `/api/...` in the client: the fetch wrapper adds `VITE_API_ORIGIN` for the
+  Android app. A socket URL is built from `socketOrigin()`, never from `window.location.origin`.
 
 **Edge and infrastructure**
 
