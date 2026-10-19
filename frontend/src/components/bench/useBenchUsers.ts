@@ -1,51 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../../context/KanbanContext';
 import { messageOf } from '../../context/kanban/reportError';
-import { fetchUsers, getUserAvatar, updateUserWipLimit } from '../../services/api';
+import { USERS_KEY, useUsers } from '../../hooks/useUsers';
+import { getUserAvatar, updateUserWipLimit } from '../../services/api';
 import type { Id, User } from '../../types/api';
 
 export type BenchUser = User & { role?: string; taskCount?: number };
 
+const NONE: BenchUser[] = [];
+
 export function useBenchUsers() {
   const { refreshTasks } = useKanban();
   const { t } = useTranslation();
-  const [users, setUsers] = useState<BenchUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const query = useUsers();
+  const users: BenchUser[] = query.data ?? NONE;
   const [avatars, setAvatars] = useState<Record<Id, string>>({});
   const latestAvatars = useRef(avatars);
   latestAvatars.current = avatars;
 
+  const failure = query.error;
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const allUsers: BenchUser[] = await fetchUsers();
-        setUsers(allUsers);
-
-        await Promise.all(allUsers.map(async (user) => {
-          try {
-            const avatarUrl = await getUserAvatar(user.id);
-            if (avatarUrl) {
-              setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
-            }
-          } catch (avatarError) {
-            console.error(`Error loading avatar for user ${user.id}:`, avatarError);
-          }
-        }));
-        setLoading(false);
-      } catch (loadError) {
-        console.error('Error loading users:', loadError);
-        setError(t('bench.loadError'));
-        toast.error(t('notifications.usersLoadError', { message: messageOf(loadError) }));
-        setLoading(false);
-      }
-    };
-
-    loadUsers();
+    if (failure) {
+      console.error('Error loading users:', failure);
+      toast.error(t('notifications.usersLoadError', { message: messageOf(failure) }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [failure]);
+
+  const people = users.map(user => user.id).join(',');
+  useEffect(() => {
+    users.forEach(async (user) => {
+      try {
+        const avatarUrl = await getUserAvatar(user.id);
+        if (avatarUrl) {
+          setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
+        }
+      } catch (avatarError) {
+        console.error(`Error loading avatar for user ${user.id}:`, avatarError);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people]);
 
   useEffect(() => () => {
     Object.values(latestAvatars.current).forEach(url => {
@@ -59,7 +58,8 @@ export function useBenchUsers() {
     try {
       await updateUserWipLimit(userId, newLimit);
 
-      setUsers(previous => previous.map(user => (user.id === userId ? { ...user, wipLimit: newLimit as number } : user)));
+      queryClient.setQueryData<User[]>(USERS_KEY, previous =>
+        (previous ?? NONE).map(user => (user.id === userId ? { ...user, wipLimit: newLimit as number } : user)));
 
       const userName = users.find(user => user.id === userId)?.name || t('bench.thisUser');
       const limitText = newLimit ? newLimit : t('bench.unlimited');
@@ -73,5 +73,11 @@ export function useBenchUsers() {
     }
   };
 
-  return { users, loading, error, avatars, saveWipLimit };
+  return {
+    users,
+    loading: query.isPending,
+    error: query.isError ? t('bench.loadError') : null,
+    avatars,
+    saveWipLimit,
+  };
 }

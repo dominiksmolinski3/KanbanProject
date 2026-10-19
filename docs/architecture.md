@@ -840,6 +840,16 @@ comments as are on screen, so a post does not shrink a thread the reader had pag
 older" is a write to the cache rather than a second query. `useTaskDetails` is not a query: it is an
 edit form seeded from a read, and a refetch landing in a half-typed field is the wrong behaviour.
 
+The list of users is one query (`['users']`, in `hooks/useUsers.ts`) read by the bench, the people list
+and the search facets, so having two of them on screen is one request, and removing a person or saving
+a limit is a write to that cache that every screen sees. Avatars are not part of it: they are blobs
+with their own lifetime, loaded when the set of people changes (not when a limit does) and given back
+when the screen goes. The bench stops waiting for them to leave its loading state. Search is
+`['search', filters]` on a debounced copy of the filters (`hooks/useDebouncedValue.ts`, which settles on
+contents, not identity), with the last results kept on screen while the next are read. The facet
+chips are offered only when both labels and people could be read, as they were when the two reads were
+one `Promise.all`.
+
 The list of boards, the current board and the reader's invitations are queries too (`['boards',
 'list']`, `['boards', 'current']`, `['invitations']`); which board is open stays state, chosen once
 when the first two have answered (the one the reader had open if it is still theirs, else the

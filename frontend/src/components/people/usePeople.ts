@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { deleteUser, fetchUsers, getUserAvatar, uploadUserAvatar } from '../../services/api';
+import { USERS_KEY, useUsers } from '../../hooks/useUsers';
+import { deleteUser, getUserAvatar, uploadUserAvatar } from '../../services/api';
 import type { Id, User } from '../../types/api';
 
 const AVATAR_MAX_BYTES = 1024 * 1024;
@@ -10,6 +12,8 @@ const AVATAR_FETCH_ATTEMPTS = 3;
 const AVATAR_RETRY_DELAY_MS = 1000;
 
 export const AVATAR_ACCEPT = AVATAR_TYPES.join(',');
+
+const NONE: User[] = [];
 
 async function fetchFreshAvatar(userId: Id): Promise<string | null> {
   for (let attempt = 1; attempt <= AVATAR_FETCH_ATTEMPTS; attempt++) {
@@ -24,37 +28,38 @@ async function fetchFreshAvatar(userId: Id): Promise<string | null> {
 
 export function usePeople() {
   const { t } = useTranslation();
-  const [users, setUsers] = useState<User[]>([]);
+  const queryClient = useQueryClient();
+  const query = useUsers();
+  const users = query.data ?? NONE;
   const [avatars, setAvatars] = useState<Record<Id, string>>({});
   const latestAvatars = useRef(avatars);
   latestAvatars.current = avatars;
 
-  const load = useCallback(async () => {
-    try {
-      const data = await fetchUsers();
-      setUsers(data);
-
-      await Promise.all(data.map(async (user) => {
-        const avatarUrl = await getUserAvatar(user.id);
-        if (avatarUrl) {
-          setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
-        }
-      }));
-    } catch (error) {
-      console.error(t('usersManagement.messages.loadError'), error);
+  const failure = query.error;
+  useEffect(() => {
+    if (failure) {
+      console.error(t('usersManagement.messages.loadError'), failure);
       toast.error(t('usersManagement.messages.loadError'));
     }
-  }, [t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [failure]);
 
+  const people = users.map(user => user.id).join(',');
   useEffect(() => {
-    load();
+    users.forEach(async (user) => {
+      const avatarUrl = await getUserAvatar(user.id);
+      if (avatarUrl) {
+        setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people]);
 
-    return () => {
-      Object.values(latestAvatars.current).forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, [load]);
+  useEffect(() => () => {
+    Object.values(latestAvatars.current).forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+  }, []);
 
   const uploadAvatar = async (userId: Id, file: File) => {
     try {
@@ -92,7 +97,7 @@ export function usePeople() {
     }
     try {
       await deleteUser(userId);
-      setUsers(current => current.filter(user => user.id !== userId));
+      queryClient.setQueryData<User[]>(USERS_KEY, current => (current ?? NONE).filter(user => user.id !== userId));
     } catch (error) {
       console.error('Error:', error);
       toast.error(t('usersManagement.messages.deleteError'));
