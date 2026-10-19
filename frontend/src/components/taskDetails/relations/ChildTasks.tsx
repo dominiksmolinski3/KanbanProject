@@ -1,27 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getChildTasks } from '../../../services/api';
+import { logged } from '../../../services/logged';
+import { taskKeys } from '../../../services/taskQueries';
 import type { Id, Task } from '../../../types/api';
+
+const NONE: Task[] = [];
 
 export default function ChildTasks({ taskId }: { taskId: Id }) {
   const { t } = useTranslation();
-  const [children, setChildren] = useState<Task[]>([]);
-
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        const data = await getChildTasks(taskId);
-        if (live) setChildren(data || []);
-      } catch (error) {
-        console.error('Error fetching child tasks:', error);
-        if (live) setChildren([]);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [taskId]);
+  const { data } = useQuery({
+    queryKey: taskKeys.children(taskId),
+    queryFn: async () => (await logged('Error fetching child tasks:', () => getChildTasks(taskId))) || NONE,
+  });
+  const children = data ?? NONE;
 
   return (
     <section className="child-tasks-section">

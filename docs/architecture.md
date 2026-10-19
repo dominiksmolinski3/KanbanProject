@@ -847,6 +847,13 @@ current one) and moved by `selectBoard`, so a later read of the list never moves
 `loading` and `error` are no longer state that two hooks write: the context derives them from the
 queries, so an error goes away when a later read succeeds, where it used to stay until a reload.
 
+The reads that are one resource on one screen follow the same shape and need no more explanation than
+their key: the activity feed (`['activity', board, page]`, where the page belongs to a board, so a board
+switch starts on the first page without reading a page the new board may not have), the session list
+(`['devices']`), a board's pending invitations (`['boardInvitations', board]`, read only for the
+owner), and a task's children and parent (`['children', id]`, `['task', id]`). Revisiting a page or a
+panel shows what was cached at once and reads again behind it.
+
 **The sign-in screen is one form with several faces.** [HomePage.tsx](../frontend/src/components/HomePage.tsx)
 owns a single React Hook Form instance holding every field the screen has (email, password, username,
 the confirmation, the verification code and the three reset fields) and shares it through a
