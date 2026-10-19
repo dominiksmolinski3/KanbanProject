@@ -73,7 +73,7 @@ services:
 
   # image scan and hadolint to cover. Published on loopback only, for `curl :8099/summary` and for
   appinsights-sink:
-    image: node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+    image: node:26-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
     restart: unless-stopped
     command: node /sink/server.mjs
     volumes:
@@ -144,7 +144,7 @@ services:
           memory: 128M
 
   rabbitmq:
-    image: rabbitmq:4-alpine@sha256:2cb43283d8bbd3caa6c0f0dc00e96c8de772df33df7fd8af6aee4d605aeb8ada
+    image: rabbitmq:4-alpine@sha256:6931816af1a943f471c038b278835d36692d55dec769232739296bb91b7de0f5
     restart: unless-stopped
     command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp rabbitmq_prometheus && exec docker-entrypoint.sh rabbitmq-server"
     environment:
@@ -236,7 +236,7 @@ services:
           memory: 64M
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.93.0@sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820
+    image: oliver006/redis_exporter:v1.94.0@sha256:0842ef7110e62b40bbde2d5c11f38c6fbd99f7100c75e3866637c1b335a1eff7
     profiles: ["monitoring"]
     restart: unless-stopped
     depends_on:
