@@ -2,6 +2,7 @@ import SockJS from 'sockjs-client';
 import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
 import { socketOrigin } from './apiOrigin';
+import { getAccessToken } from './session';
 
 type MessageHandler = (message: IMessage) => void;
 
@@ -34,6 +35,10 @@ export default class ChatApi {
         const client = new Client({
           webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
           connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+          beforeConnect: () => {
+            const current = getAccessToken() ?? token;
+            client.connectHeaders = current ? { Authorization: `Bearer ${current}` } : {};
+          },
           debug: () => {},
           reconnectDelay: 5000,
           heartbeatIncoming: 4000,
@@ -47,6 +52,9 @@ export default class ChatApi {
                 // A refusal that will not parse is one there is nothing useful to say about.
               }
             });
+            if (this.boardId !== null) {
+              this.joinBoard(this.boardId);
+            }
             resolve();
           },
           onStompError: (frame) => {

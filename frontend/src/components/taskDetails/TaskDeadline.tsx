@@ -5,6 +5,13 @@ import EditIcon from './EditIcon';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const toLocalInputValue = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 interface TaskDeadlineProps {
   deadline: string | null | undefined;
   readOnly: boolean;
@@ -21,7 +28,7 @@ function TaskDeadline({ deadline, readOnly, onSave }: TaskDeadlineProps) {
   const isUpcoming = expiry !== null && !isExpired && expiry - Date.now() < DAY_MS;
 
   const startEditing = () => {
-    setValue(deadline ? new Date(deadline).toISOString().slice(0, 16) : '');
+    setValue(deadline ? toLocalInputValue(deadline) : '');
     setEditing(true);
   };
 

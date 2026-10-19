@@ -96,7 +96,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         historyPage: action.payload.page,
         hasMoreHistory: action.payload.page + 1 < action.payload.totalPages,
         messages: chronological([
-          ...action.payload.messages.map((entry) => ({ ...entry, read: true })),
+          ...action.payload.messages
+            .filter((entry) => !state.messages.some((known) => String(known.id) === String(entry.id)))
+            .map((entry) => ({ ...entry, read: true })),
           ...state.messages,
         ]),
       };
@@ -128,6 +130,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const isBoardReadOnly = activeBoard?.role === 'VIEWER';
   const { t } = useTranslation();
   const chatApiRef = useRef<ChatApi | null>(null);
+  const conversationKey = state.messageType === 'private'
+    ? `private:${state.recipient}`
+    : `board:${activeBoardId}`;
+  const conversationKeyRef = useRef(conversationKey);
+  conversationKeyRef.current = conversationKey;
 
   useEffect(() => {
     if (state.isOpen) {
@@ -165,18 +172,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     if (state.messageType === 'private' && !state.recipient.trim()) return;
 
+    const requestedKey = conversationKey;
     dispatch({ type: 'HISTORY_LOADING' });
     try {
       const results = state.messageType === 'private'
         ? await fetchDirectChatHistory({ peer: state.recipient, page, size: DEFAULT_PAGE_SIZE })
         : await fetchBoardChatHistory({ boardId: activeBoardId, page, size: DEFAULT_PAGE_SIZE });
 
+      if (conversationKeyRef.current !== requestedKey) {
+        dispatch({ type: 'HISTORY_FAILED' });
+        return;
+      }
       dispatch({ type: 'HISTORY_LOADED', payload: results });
     } catch {
       dispatch({ type: 'HISTORY_FAILED' });
       toast.error(t('chat.historyError'));
     }
-  }, [user, activeBoardId, state.messageType, state.recipient, t]);
+  }, [user, activeBoardId, conversationKey, state.messageType, state.recipient, t]);
 
   const connect = useCallback(async () => {
     if (!user) return;

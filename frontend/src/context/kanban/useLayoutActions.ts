@@ -100,7 +100,7 @@ export function useLayoutActions({
   };
 
   const handleUpdateWipLimit = async (columnId: Id, newLimit: number | string) => {
-    if (blockIfReadOnly()) return;
+    if (blockIfReadOnly()) return false;
     try {
       const columnToUpdate = columns.find(col => String(col.id) === String(columnId));
       const columnName = columnToUpdate ? columnToUpdate.name : t('taskDetails.unknownColumn');
@@ -111,14 +111,16 @@ export function useLayoutActions({
 
       setColumns(sortedUpdatedColumns);
       toast.success(t('notifications.wipLimitUpdated', { name: columnName, limit: newLimit }));
+      return true;
     } catch (err) {
       console.error('Failed to update WIP limit:', err);
       reportError(t, err);
+      return false;
     }
   };
 
   const handleUpdateRowWipLimit = async (rowId: Id, newLimit: number | string) => {
-    if (blockIfReadOnly()) return;
+    if (blockIfReadOnly()) return false;
     try {
       const rowToUpdate = rows.find(r => String(r.id) === String(rowId));
       const rowName = rowToUpdate ? rowToUpdate.name : t('taskDetails.unknownRow');
@@ -129,9 +131,11 @@ export function useLayoutActions({
 
       setRows(sortedRows);
       toast.success(t('notifications.rowWipLimitUpdated', { name: rowName, limit: newLimit }));
+      return true;
     } catch (err) {
       console.error('Failed to update row WIP limit:', err);
       reportError(t, err);
+      return false;
     }
   };
 
@@ -152,11 +156,7 @@ export function useLayoutActions({
 
       const tasksToMove = tasks.filter(task => task.columnId === columnId);
       for (const task of tasksToMove) {
-        try {
-          await updateTaskColumn(task.id, alternativeColumn.id);
-        } catch (updateErr) {
-          console.error(`Error updating task ${task.id} column:`, updateErr);
-        }
+        await updateTaskColumn(task.id, alternativeColumn.id);
       }
 
       await deleteColumn(columnId);
@@ -184,7 +184,7 @@ export function useLayoutActions({
     refuseIfReadOnly();
     try {
       const rowToDelete = rows.find(row => row.id === rowId);
-      const rowName = rowToDelete ? rowToDelete.name : 'wiersz';
+      const rowName = rowToDelete ? rowToDelete.name : t('taskDetails.unknownRow');
 
       const isLastRow = rows.length === 1;
       const tasksToUpdate = tasks.filter(task => task.rowId === rowId);

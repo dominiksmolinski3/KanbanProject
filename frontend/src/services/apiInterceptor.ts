@@ -4,6 +4,7 @@ import {
   getAccessToken,
   getRefreshToken,
   isAccessTokenExpired,
+  isRefreshRejected,
   redirectToSignIn,
   refreshSession
 } from './session';
@@ -40,8 +41,8 @@ export function setupApiInterceptors() {
     try {
       const renewed = await refreshSession();
       if (renewed) return renewed;
-    } catch {
-      // refreshSession has already cleared what it stored; fall through to the same ending.
+    } catch (error) {
+      if (!isRefreshRejected(error)) throw error;
     }
     clearSession();
     redirectToSignIn();

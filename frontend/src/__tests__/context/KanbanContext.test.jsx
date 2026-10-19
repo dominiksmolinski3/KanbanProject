@@ -328,6 +328,31 @@ describe('KanbanContext Provider', () => {
     expect(api.fetchColumns).toHaveBeenCalled();
   });
 
+  test('keeps the column when a task could not be moved out of it', async () => {
+    api.updateTaskColumn.mockRejectedValueOnce(new Error('conflict'));
+    console.error = jest.fn();
+    const Probe = () => {
+      const context = useKanban();
+      return <button onClick={() => context.deleteColumn('col1').catch(() => {})}>Delete Column</button>;
+    };
+
+    await act(async () => {
+      render(
+        <KanbanProvider>
+          <Probe />
+        </KanbanProvider>
+      );
+    });
+    await waitFor(() => expect(api.fetchTasks).toHaveBeenCalled());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Delete Column'));
+    });
+
+    expect(api.updateTaskColumn).toHaveBeenCalled();
+    expect(api.deleteColumn).not.toHaveBeenCalled();
+  });
+
   test('deletes a row successfully', async () => {
     api.deleteRow.mockResolvedValueOnce({ success: true });
     

@@ -102,8 +102,15 @@ function Task({ task, columnId, rowId }: TaskProps) {
       taskElement.style.opacity = '0';
       taskElement.style.transform = 'translateX(10px)';
     }
-    setTimeout(() => {
-      deleteTask(task.id);
+    setTimeout(async () => {
+      try {
+        await deleteTask(task.id);
+      } catch {
+        if (taskElement) {
+          taskElement.style.opacity = '';
+          taskElement.style.transform = '';
+        }
+      }
     }, DELETE_FADE_MS);
   };
 
