@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailDeliveryException;
@@ -37,6 +38,7 @@ public class EmailChangeService {
     private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationService authenticationService;
+    private final ChatRepository chatRepository;
 
     @Transactional
     public void requestChange(User caller, EmailChangeRequest request) {
@@ -100,8 +102,11 @@ public class EmailChangeService {
             userRepository.save(user);
             throw new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
         }
+        String previous = user.getEmail();
         user.setEmail(address);
         User saved = userRepository.save(user);
+        chatRepository.renameSender(previous, user.getEmail());
+        chatRepository.renameRecipient(previous, user.getEmail());
         refreshTokenService.revokeAllFor(saved);
         return authenticationService.startSession(saved, device);
     }
