@@ -54,32 +54,45 @@ export function isAccessTokenExpired() {
 export const isRefreshRejected = (error: unknown) =>
   error instanceof ApiError && (error.status === 400 || error.status === 401);
 
-// One refresh at a time: rotation reads the same refresh token presented twice as theft.
-let inFlight: Promise<string> | null = null;
+export const REFRESH_LOCK = 'kanban-session-refresh';
+
+// One refresh at a time in every tab: rotation reads the same refresh token presented twice as theft
+// and withdraws every session the account holds.
+let inFlight: Promise<string | null> | null = null;
 
 export function refreshSession(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
+  const presented = getRefreshToken();
+  if (!presented) {
     return Promise.resolve(null);
   }
   if (!inFlight) {
-    inFlight = authService
-      .refresh(refreshToken)
-      .then((session) => {
-        storeSession(session);
-        return session.token;
-      })
-      .catch((error) => {
-        if (isRefreshRejected(error)) {
-          clearSession();
-        }
-        throw error;
-      })
-      .finally(() => {
-        inFlight = null;
-      });
+    inFlight = acrossTabs(() => renew(presented)).finally(() => {
+      inFlight = null;
+    });
   }
   return inFlight;
+}
+
+function acrossTabs(task: () => Promise<string | null>): Promise<string | null> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
+  return locks ? locks.request(REFRESH_LOCK, task) : task();
+}
+
+async function renew(presented: string): Promise<string | null> {
+  const current = getRefreshToken();
+  if (current !== presented) {
+    return current ? getAccessToken() : null;
+  }
+  try {
+    const session = await authService.refresh(current);
+    storeSession(session);
+    return session.token;
+  } catch (error) {
+    if (isRefreshRejected(error)) {
+      clearSession();
+    }
+    throw error;
+  }
 }
 
 export function resetRefreshState() {

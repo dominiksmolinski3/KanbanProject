@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AuthProvider, useAuth } from '../../context/AuthContext';
 import * as session from '../../services/session';
 
 jest.mock('../../services/session', () => ({
+  TOKEN_KEY: 'token',
   getAccessToken: jest.fn(),
   storeSession: jest.fn(),
   clearSession: jest.fn(),
@@ -106,5 +107,53 @@ describe('AuthContext', () => {
 
     expect(session.endSession).toHaveBeenCalled();
     await waitFor(() => expect(screen.getByText('Authenticated: false')).toBeInTheDocument());
+  });
+
+  describe('another tab', () => {
+    const signedIn = async () => {
+      session.getAccessToken.mockReturnValue('existing-token');
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ email: 'ada@example.com' }),
+      });
+      render(<AuthProvider><TestComponent /></AuthProvider>);
+      await waitFor(() => expect(screen.getByText('User: ada@example.com')).toBeInTheDocument());
+    };
+
+    const storageChanges = (key, newValue) =>
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+      });
+
+    test('signing out there signs this tab out too, and drops its cached data', async () => {
+      await signedIn();
+
+      session.getAccessToken.mockReturnValue(null);
+      storageChanges('token', null);
+
+      expect(screen.getByText('Authenticated: false')).toBeInTheDocument();
+      expect(screen.getByText('User: none')).toBeInTheDocument();
+      expect(session.clearSession).toHaveBeenCalled();
+    });
+
+    test('clearing all of storage there counts as signing out', async () => {
+      await signedIn();
+
+      session.getAccessToken.mockReturnValue(null);
+      storageChanges(null, null);
+
+      expect(screen.getByText('Authenticated: false')).toBeInTheDocument();
+    });
+
+    test('renewing the session there leaves this tab signed in', async () => {
+      await signedIn();
+
+      session.getAccessToken.mockReturnValue('renewed-token');
+      storageChanges('token', 'renewed-token');
+
+      expect(screen.getByText('Authenticated: true')).toBeInTheDocument();
+      expect(screen.getByText('User: ada@example.com')).toBeInTheDocument();
+      expect(session.clearSession).not.toHaveBeenCalled();
+    });
   });
 });

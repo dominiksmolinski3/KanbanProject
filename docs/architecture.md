@@ -1093,6 +1093,27 @@ and **serialises renewal through one in-flight promise** — rotation means two 
 would present the same token twice, which the server reads as a stolen chain, so a normal board load
 firing a dozen requests at once must make exactly one refresh call.
 
+**That rule holds across tabs, not just within one.** Every tab reads the same `localStorage`, so
+two tabs see the token lapse at the same moment, and a board event makes all of them re-read at once.
+The promise is per tab, so each tab presented the one refresh token, and the second presentation
+read as theft. Once reuse detection actually withdrew sessions, that signed the person out on every
+device. `refreshSession` now runs under a Web Lock (`REFRESH_LOCK`) shared by every tab of the
+origin. Holding it, the tab re-reads the stored refresh token: if another tab rotated it while this
+one waited, it uses that tab's access token and makes no call. If the other tab's renewal was refused
+and the session is gone, it ends signed out too, without presenting the spent token. A browser with
+no `navigator.locks` falls back to the per-tab promise.
+
+The server guards the same race from its side. `findByTokenHash` takes a `PESSIMISTIC_WRITE` lock on
+the token row, so two refreshes that arrive together queue on it. The second finds the token spent
+and is treated as reuse. Without the lock, both read it as live and both rotated it. Measured on the
+compose stack: ten pairs of simultaneous refreshes all answered 200/200 and left two live sessions
+each, a forked chain that reuse detection never sees. A thief who races the real client gets exactly
+that fork.
+
+`AuthProvider` listens for `storage` events: when another tab clears the access token, this tab
+clears its own state and cached data, and `ProtectedLayout` sends it to `/`. Before, a tab stayed on
+the board with no token until its next request failed.
+
 The renewal has to happen **before** the token reaches the server, which is what makes an idle tab
 survive: `storeSession` reads `LoginResponse.expiresIn` as the milliseconds it is (it is
 `jwtService.getExpirationTime()` unchanged), so `isAccessTokenExpired` trips ~10s early and the
