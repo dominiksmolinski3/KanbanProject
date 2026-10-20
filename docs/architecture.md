@@ -336,6 +336,25 @@ fix. **A new table with a `task_id` needs a listener, and it must not be a
 `@TransactionalEventListener`**: after-commit is after the foreign key has already refused. Each
 listener's own test asserts the annotation.
 
+**Closing an account settles every board it touched first (`BoardService.forgetAccount`).** Every
+account owns at least the board `defaultFor` provisions, and `boards.owner_id`,
+`board_members.user_id`, `board_invitations.invited_by_id` and `task_activity.actor_id` all
+reference `users` with no `ON DELETE`. So `DELETE /api/users/{id}` answered `409 DATA_CONFLICT`
+for every account that had ever opened a board, and the people page only said it failed. Now:
+
+- **A board nobody else uses is deleted** through `deleteBoard`, which takes its tasks, files,
+  comments, chat and invitations along.
+- **A shared board passes to another member.** A member who can write comes before a viewer, and
+  the oldest account comes first after that. `board_members` keeps no join date, so "longest
+  there" cannot be read. A viewer who inherits a board becomes its owner and can write to it.
+- **The account leaves every other board** and stops being named as an inviter or as the actor of
+  past activity. Activity keeps the name it recorded, and comments and attachments were already
+  `ON DELETE SET NULL`.
+
+Tasks are unassigned before any of this, because a task `deleteBoard` removes cannot be saved
+afterwards. The client signs out once the delete succeeds, and the confirmation says what
+happens to the boards.
+
 Anything that is not a pending invitation the caller may act on — a wrong id, another board's row
 under an owner's path, somebody else's row under `/invitations`, one already answered — is one
 `404 INVITATION_NOT_FOUND`. `400 ALREADY_BOARD_MEMBER` is the exception and discloses nothing:

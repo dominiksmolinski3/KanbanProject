@@ -447,7 +447,7 @@
       "back": "Powrót do Tablicy Kanban"
     },
     "messages": {
-      "deleteConfirm": "Czy na pewno chcesz usunąć tego użytkownika?",
+      "deleteConfirm": "Usunąć Twoje konto? Tablice, z których korzystasz tylko Ty, zostaną usunięte wraz z całą zawartością, a każda współdzielona tablica przejdzie na innego członka. Tej operacji nie można cofnąć.",
       "deleteError": "Wystąpił błąd podczas usuwania użytkownika",
       "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 1 MB.",
       "fileTypeError": "Dozwolone są tylko pliki JPG, PNG, WebP i GIF.",

@@ -447,7 +447,7 @@
         "back": "Volver al tablero Kanban"
       },
       "messages": {
-        "deleteConfirm": "¿Está seguro de que desea eliminar este usuario?",
+        "deleteConfirm": "¿Desea eliminar su cuenta? Los tableros que solo usa usted se eliminarán con todo su contenido, y cada tablero compartido pasará a otro miembro. Esta acción no se puede deshacer.",
         "deleteError": "Ocurrió un error al eliminar el usuario",
         "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es 1 MB.",
         "fileTypeError": "Solo se permiten archivos JPG, PNG, WebP y GIF.",

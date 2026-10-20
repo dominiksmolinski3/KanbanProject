@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
 import { USERS_KEY, useUsers } from '../../hooks/useUsers';
 import { deleteUser, getUserAvatar, uploadUserAvatar } from '../../services/api';
 import type { Id, User } from '../../types/api';
@@ -28,6 +29,7 @@ async function fetchFreshAvatar(userId: Id): Promise<string | null> {
 
 export function usePeople() {
   const { t } = useTranslation();
+  const { logout } = useAuth();
   const queryClient = useQueryClient();
   const query = useUsers();
   const users = query.data ?? NONE;
@@ -98,6 +100,7 @@ export function usePeople() {
     try {
       await deleteUser(userId);
       queryClient.setQueryData<User[]>(USERS_KEY, current => (current ?? NONE).filter(user => user.id !== userId));
+      await logout();
     } catch (error) {
       console.error('Error:', error);
       toast.error(t('usersManagement.messages.deleteError'));
