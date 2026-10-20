@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
-import { clearSession, endSession, getAccessToken, storeSession, type StoredSession } from '../services/session';
+import { TOKEN_KEY, clearSession, endSession, getAccessToken, storeSession, type StoredSession } from '../services/session';
 import type { User } from '../types/api';
 
 interface AuthValue {
@@ -17,6 +17,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState(getAccessToken());
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const signedOutInAnotherTab = (event: StorageEvent) => {
+      if ((event.key === TOKEN_KEY || event.key === null) && !getAccessToken()) {
+        clearSession();
+        setToken(null);
+        setUser(null);
+      }
+    };
+    window.addEventListener('storage', signedOutInAnotherTab);
+    return () => window.removeEventListener('storage', signedOutInAnotherTab);
+  }, []);
 
   useEffect(() => {
     const verifyToken = async () => {
