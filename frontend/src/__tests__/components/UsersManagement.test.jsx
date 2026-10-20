@@ -10,8 +10,9 @@ jest.mock('react-i18next', () => ({
 jest.mock('react-toastify', () => ({
   toast: { error: jest.fn(), info: jest.fn(), warning: jest.fn() },
 }));
+const mockLogout = jest.fn(() => Promise.resolve());
 jest.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 1 } }),
+  useAuth: () => ({ user: { id: 1 }, logout: mockLogout }),
 }));
 jest.mock('../../components/BoardMembers', () => () => <div>BoardMembers</div>);
 jest.mock('../../components/Invitations', () => () => <div>Invitations</div>);
@@ -93,6 +94,7 @@ describe('UsersManagement', () => {
 
     await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
     expect(screen.getByText('Bob Marsh')).toBeInTheDocument();
+    await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
   });
 
   test('deleting a user: a server refusal reports the error and keeps them listed', async () => {
@@ -111,6 +113,7 @@ describe('UsersManagement', () => {
     fireEvent.click(screen.getAllByTitle('usersManagement.buttons.delete')[0]);
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('usersManagement.messages.deleteError'));
+    expect(mockLogout).not.toHaveBeenCalled();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 

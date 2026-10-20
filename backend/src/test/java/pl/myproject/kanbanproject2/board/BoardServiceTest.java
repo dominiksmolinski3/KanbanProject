@@ -477,4 +477,69 @@ class BoardServiceTest {
             boardService.requireSameBoard(board, board);
         }
     }
+
+    @Nested
+    @DisplayName("closing an account")
+    class ClosingAnAccount {
+
+        private final User viewer = TenancyFixtures.user(4);
+
+        @Test
+        @DisplayName("a board only its owner uses goes with the account")
+        void deletesASoloBoard() {
+            var solo = boardOf(owner);
+            when(boardRepository.findByOwnerOrderByIdAsc(owner)).thenReturn(List.of(solo));
+
+            boardService.forgetAccount(owner);
+
+            verify(boardRepository).delete(solo);
+        }
+
+        @Test
+        @DisplayName("a shared board passes to a member who can write, ahead of a viewer with an older account")
+        void handsASharedBoardToAWriter() {
+            var shared = boardOf(owner, member, viewer);
+            when(boardRepository.findByOwnerOrderByIdAsc(owner)).thenReturn(List.of(shared));
+            var olderViewer = TenancyFixtures.user(0);
+            shared.addMember(olderViewer);
+            when(boardRepository.findMemberRoles(10)).thenReturn(List.of(
+                    new Object[] {0, BoardRole.VIEWER.name()},
+                    new Object[] {2, BoardRole.MEMBER.name()},
+                    new Object[] {4, BoardRole.VIEWER.name()}));
+
+            boardService.forgetAccount(owner);
+
+            assertThat(shared.getOwner().getId()).isEqualTo(member.getId());
+            assertThat(shared.isVisibleTo(owner)).isFalse();
+            verify(boardRepository, never()).delete(shared);
+        }
+
+        @Test
+        @DisplayName("with only viewers left, the oldest account takes the board rather than it being deleted")
+        void handsABoardToAViewerWhenNobodyElseIsLeft() {
+            var shared = boardOf(owner, viewer);
+            when(boardRepository.findByOwnerOrderByIdAsc(owner)).thenReturn(List.of(shared));
+            when(boardRepository.findMemberRoles(10)).thenReturn(List.<Object[]>of(new Object[] {4, BoardRole.VIEWER.name()}));
+
+            boardService.forgetAccount(owner);
+
+            assertThat(shared.getOwner().getId()).isEqualTo(viewer.getId());
+            assertThat(shared.isWritableBy(viewer, BoardRole.VIEWER)).isTrue();
+        }
+
+        @Test
+        @DisplayName("the account leaves boards it was a member of, and stops being named as inviter or actor")
+        void leavesOtherBoardsAndForgetsReferences() {
+            var theirs = TenancyFixtures.board(11, stranger);
+            theirs.addMember(member);
+            when(boardRepository.findVisibleTo(member)).thenReturn(List.of(theirs));
+
+            boardService.forgetAccount(member);
+
+            assertThat(theirs.isVisibleTo(member)).isFalse();
+            assertThat(theirs.getOwner()).isSameAs(stranger);
+            verify(invitationRepository).forgetInviter(member);
+            verify(activityRepository).forgetActor(member);
+        }
+    }
 }

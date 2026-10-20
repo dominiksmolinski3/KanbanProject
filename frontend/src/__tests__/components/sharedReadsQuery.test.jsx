@@ -17,6 +17,11 @@ jest.mock('react-toastify', () => ({
   toast: { success: jest.fn(), error: jest.fn(), info: jest.fn(), warning: jest.fn() },
 }));
 
+const mockLogout = jest.fn(() => Promise.resolve());
+jest.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ logout: mockLogout }),
+}));
+
 jest.mock('../../services/api', () => ({
   fetchUsers: jest.fn(),
   getUserAvatar: jest.fn(),
@@ -145,6 +150,7 @@ describe('the users read by the bench and the people list', () => {
 
     expect(people.result.current.users.map((u) => u.id)).toEqual([2]);
     expect(bench.result.current.users.map((u) => u.id)).toEqual([2]);
+    expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
   it('keeps a person whose removal was not confirmed or was refused', async () => {
@@ -164,6 +170,7 @@ describe('the users read by the bench and the people list', () => {
     });
     expect(result.current.users).toHaveLength(2);
     expect(toast.error).toHaveBeenCalledWith('usersManagement.messages.deleteError');
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 
   it('says so when the people cannot be read', async () => {

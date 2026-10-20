@@ -1,7 +1,11 @@
 package pl.myproject.kanbanproject2.board.invitation;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import pl.myproject.kanbanproject2.board.Board;
+import pl.myproject.kanbanproject2.user.User;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +20,8 @@ public interface BoardInvitationRepository extends JpaRepository<BoardInvitation
     List<BoardInvitation> findByEmailAndStatusOrderByIdAsc(String email, InvitationStatus status);
 
     List<BoardInvitation> findByBoard(Board board);
+
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE BoardInvitation invitation SET invitation.invitedBy = null WHERE invitation.invitedBy = :user")
+    int forgetInviter(@Param("user") User user);
 }
