@@ -103,7 +103,7 @@ public class UserService {
     private WipStatusDto wipStatusOf(Integer userId) {
         var user = userRepository.findById(userId).orElseThrow(() -> userNotFound(userId));
         Integer wipLimit = user.getWipLimit();
-        int assignedCount = user.getTasks().size();
+        int assignedCount = (int) user.getTasks().stream().filter(task -> !task.isCompleted()).count();
         boolean withinLimit = wipLimit == null || assignedCount < wipLimit;
 
         return new WipStatusDto(user.getId(), wipLimit, assignedCount, withinLimit);
