@@ -447,7 +447,7 @@
         "back": "Torna alla bacheca Kanban"
       },
       "messages": {
-        "deleteConfirm": "Sei sicuro di voler eliminare questo utente?",
+        "deleteConfirm": "Eliminare il tuo account? Le bacheche che usi solo tu verranno eliminate con tutto il loro contenuto, e ogni bacheca condivisa passerà a un altro membro. L'operazione non può essere annullata.",
         "deleteError": "Si è verificato un errore durante l'eliminazione dell'utente",
         "fileTooLarge": "Il file è troppo grande. La dimensione massima è 1 MB.",
         "fileTypeError": "Sono consentiti solo file JPG, PNG, WebP e GIF.",

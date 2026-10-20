@@ -447,7 +447,7 @@
         "back": "Retour au tableau Kanban"
       },
       "messages": {
-        "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cet utilisateur ?",
+        "deleteConfirm": "Supprimer votre compte ? Les tableaux que vous êtes seul à utiliser seront supprimés avec tout leur contenu, et chaque tableau partagé passera à un autre membre. Cette action est irréversible.",
         "deleteError": "Une erreur s'est produite lors de la suppression de l'utilisateur",
         "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 1 Mo.",
         "fileTypeError": "Seuls les fichiers JPG, PNG, WebP et GIF sont autorisés.",

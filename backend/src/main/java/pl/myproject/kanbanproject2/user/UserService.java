@@ -65,6 +65,7 @@ public class UserService {
         }
         user.getTasks().clear();
 
+        boardService.forgetAccount(user);
         userRepository.delete(user);
     }
 

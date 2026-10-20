@@ -19,6 +19,8 @@ import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -258,6 +260,37 @@ public class BoardService {
             task.getUsers().removeIf(user -> user.getId().equals(member.getId()));
         }
         taskRepository.saveAll(assigned);
+    }
+
+    public void forgetAccount(User user) {
+        for (Board board : boardRepository.findByOwnerOrderByIdAsc(user)) {
+            var heir = successorOf(board, user);
+            if (heir == null) {
+                deleteBoard(user, board.getId());
+            } else {
+                board.setOwner(heir);
+                board.removeMember(user);
+                boardRepository.save(board);
+            }
+        }
+        for (Board board : boardRepository.findVisibleTo(user)) {
+            board.removeMember(user);
+            boardRepository.save(board);
+        }
+        invitationRepository.forgetInviter(user);
+        activityRepository.forgetActor(user);
+    }
+
+    private User successorOf(Board board, User leaving) {
+        var roles = new HashMap<Integer, String>();
+        for (Object[] row : boardRepository.findMemberRoles(board.getId())) {
+            roles.put(((Number) row[0]).intValue(), (String) row[1]);
+        }
+        return board.everyone().stream()
+                .filter(candidate -> !candidate.getId().equals(leaving.getId()))
+                .min(Comparator.comparing((User candidate) -> BoardRole.VIEWER.name().equals(roles.get(candidate.getId())))
+                        .thenComparing(User::getId))
+                .orElse(null);
     }
 
     public Collection<User> peersOf(User caller) {
