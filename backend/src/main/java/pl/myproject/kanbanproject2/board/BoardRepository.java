@@ -32,6 +32,13 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     @EntityGraph(attributePaths = {"owner", "members"})
     Optional<Board> findWithMembersById(Integer id);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(board) > 0 THEN TRUE ELSE FALSE END FROM Board board
+            LEFT JOIN board.members member
+            WHERE board.id = :boardId AND (board.owner.id = :userId OR member.id = :userId)
+            """)
+    boolean isVisibleTo(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
+
     @Query(value = "SELECT role FROM board_members WHERE board_id = :boardId AND user_id = :userId",
             nativeQuery = true)
     Optional<String> findMemberRole(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
