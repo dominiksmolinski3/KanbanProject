@@ -36,17 +36,18 @@ function sleep(ms) {
 async function waitForVerificationCode(client, email) {
   const deadline = Date.now() + MAX_WAIT_MS;
   while (Date.now() < deadline) {
+    // The users table holds only a hash of the code, so read it from the mail the outbox queued.
     const { rows } = await client.query(
-      'select verification_code from users where email = $1',
+      "select substring(text_body from '\\d{6}') as code from email_outbox where recipient = $1 and text_body ~ '\\d{6}' order by id desc limit 1",
       [email]
     );
-    if (rows.length > 0 && rows[0].verification_code) {
-      return rows[0].verification_code;
+    if (rows.length > 0 && rows[0].code) {
+      return rows[0].code;
     }
     await sleep(POLL_INTERVAL_MS);
   }
   throw new Error(
-    `Timed out waiting for a verification_code for ${email}. ` +
+    `Timed out waiting for a verification mail for ${email}. ` +
       'Is the backend actually reachable and pointed at this Postgres?'
   );
 }
