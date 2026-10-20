@@ -1256,6 +1256,13 @@ exists to enforce. Neither is addressable now, and six things carry the replacem
 - **A direct message reaches a peer and nobody else**, checked against `BoardService.peersOf` —
   the same collection `GET /api/users` is built from, so the two cannot disagree about who is
   reachable.
+- **A message names its people by email address, so an email change renames them.**
+  `chat_messages.sender` and `recipient_id` are the account's username (its email) as text, not
+  foreign keys. When `EmailChangeService.confirmChange` moves an address, it rewrites both
+  columns in the same transaction. Before, a changed address left its direct-message history under
+  the old string, where `findDirectThread` no longer looked, so the thread was empty for both
+  people. The old address could also be registered again by someone else, and if that account
+  shared a board with the other party, the old thread would have appeared there.
 - **Nothing in `ChatController` throws.** An exception on the inbound channel becomes a STOMP ERROR
   frame and a *closed session*, so a paste over the 2 000-character limit did not bounce the
   message — it dropped the connection, and the client reconnected into a room it had to rejoin.

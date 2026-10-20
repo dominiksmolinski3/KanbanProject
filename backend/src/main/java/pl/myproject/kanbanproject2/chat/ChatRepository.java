@@ -28,6 +28,14 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
 
     List<Chat> findByBoard(Board board);
 
+    @Modifying(flushAutomatically = true)
+    @Query("update Chat c set c.sender = :to where lower(c.sender) = :from")
+    int renameSender(@Param("from") String from, @Param("to") String to);
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Chat c set c.recipientId = :to where lower(c.recipientId) = :from")
+    int renameRecipient(@Param("from") String from, @Param("to") String to);
+
     @Modifying
     @Query("delete from Chat c where c.timestamp < :cutoff")
     int deleteOlderThan(@Param("cutoff") LocalDateTime cutoff);
