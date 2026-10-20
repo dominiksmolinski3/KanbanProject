@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { toInstant } from '../../board/deadlines';
 import { searchTasks } from '../../services/api';
 import { getActiveBoardId } from '../../services/activeBoard';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -20,8 +21,8 @@ export function useTaskSearch(isOpen: boolean, filters: SearchFilters) {
       labels: wanted.labels,
       assignees: wanted.assignees,
       completed: wanted.completed === '' ? null : wanted.completed === 'true',
-      deadlineFrom: wanted.deadlineFrom || null,
-      deadlineTo: wanted.deadlineTo || null,
+      deadlineFrom: toInstant(wanted.deadlineFrom),
+      deadlineTo: toInstant(wanted.deadlineTo),
       page: wanted.page
     }),
   });

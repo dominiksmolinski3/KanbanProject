@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 class EmailServiceTest {
-    private static final LocalDateTime DEADLINE = LocalDateTime.of(2026, 1, 1, 9, 0);
+    private static final Instant DEADLINE = Instant.parse("2026-01-01T08:00:00Z");
 
     private final EmailSender sender = mock(EmailSender.class);
     private final EmailService service = new EmailService(sender);

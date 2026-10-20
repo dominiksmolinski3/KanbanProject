@@ -3,7 +3,7 @@ package pl.myproject.kanbanproject2.mail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Locale;
 
 @Service
@@ -25,7 +25,7 @@ public class EmailService {
     }
 
     public void sendTaskOverdue(String to, String taskTitle, String boardName,
-                                LocalDateTime deadline, Locale locale) {
+                                Instant deadline, Locale locale) {
         emailSender.send(MailTemplates.taskOverdue(to, taskTitle, boardName, deadline, locale));
     }
 
