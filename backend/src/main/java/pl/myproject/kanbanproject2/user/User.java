@@ -65,6 +65,8 @@ public class User implements UserDetails {
     private LocalDateTime emailChangeExpiresAt;
     @Column(name = "email_change_attempts", nullable = false)
     private int emailChangeAttempts;
+    @Column(name = "sessions_revoked_at")
+    private Instant sessionsRevokedAt;
 
 
     public User(String name, String email, String password) {

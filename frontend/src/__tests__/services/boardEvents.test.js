@@ -24,6 +24,11 @@ jest.mock('@stomp/stompjs', () => ({
   }),
 }));
 
+const mockRenewOrSignOut = jest.fn(() => Promise.resolve(null));
+jest.mock('../../services/apiInterceptor', () => ({
+  renewOrSignOut: () => mockRenewOrSignOut(),
+}));
+
 const session = { expired: false, token: 'jwt-fresh', refreshes: 0 };
 jest.mock('../../services/session', () => ({
   getAccessToken: () => session.token,
@@ -52,6 +57,14 @@ describe('BoardEvents', () => {
     await client.completeConnect();
     return { events, client, onEvent };
   };
+
+  it('renews or signs out when the server closes the connection with an ERROR', async () => {
+    const { client } = await watch(7);
+
+    client.onStompError({ headers: { message: 'This connection was signed out' } });
+
+    expect(mockRenewOrSignOut).toHaveBeenCalledTimes(1);
+  });
 
   it('subscribes to the board it was asked to watch', async () => {
     const { client } = await watch(7);

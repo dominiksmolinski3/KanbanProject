@@ -3,6 +3,7 @@ import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
 import { socketOrigin } from './apiOrigin';
 import { getAccessToken } from './session';
+import { renewOrSignOut } from './apiInterceptor';
 
 type MessageHandler = (message: IMessage) => void;
 
@@ -64,6 +65,7 @@ export default class ChatApi {
           onStompError: (frame) => {
             this.onError(new Error('STOMP protocol error'));
             reject(frame);
+            renewOrSignOut().catch(() => {});
           },
           onWebSocketError: (error) => {
             this.onError(error);

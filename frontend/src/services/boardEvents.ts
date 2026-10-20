@@ -1,6 +1,7 @@
 import SockJS from 'sockjs-client';
 import { Client, type StompSubscription } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
+import { renewOrSignOut } from './apiInterceptor';
 import type { Id } from '../types/api';
 import { socketOrigin } from './apiOrigin';
 
@@ -48,7 +49,9 @@ export default class BoardEvents {
 
       onConnect: () => this.resubscribe(),
 
-      onStompError: () => {},
+      onStompError: () => {
+        renewOrSignOut().catch(() => {});
+      },
       onWebSocketError: () => {},
     });
 

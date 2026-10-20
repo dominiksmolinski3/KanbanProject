@@ -218,6 +218,9 @@ class RefreshTokenServiceTest {
 
             verify(repository).revokeAllForUser(user, NOW);
             verify(repository, never()).save(any());
+            assertThat(user.getSessionsRevokedAt())
+                    .as("the access tokens already issued to the thief would keep working for up to fifteen minutes")
+                    .isEqualTo(NOW);
         }
     }
 
@@ -316,6 +319,7 @@ class RefreshTokenServiceTest {
             when(repository.revokeAllForUser(user, NOW)).thenReturn(2);
 
             assertThat(service.revokeAllFor(user)).isEqualTo(2);
+            assertThat(user.getSessionsRevokedAt()).isEqualTo(NOW);
 
             verify(repository).revokeAllForUser(user, NOW);
             verifyNoMoreInteractions(repository);

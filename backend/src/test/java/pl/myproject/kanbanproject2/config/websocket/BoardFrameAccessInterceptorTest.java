@@ -11,6 +11,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -54,9 +55,9 @@ class BoardFrameAccessInterceptorTest {
                 return now.get();
             }
         };
-        sessionUsers = new StompSessionUsers(clock);
+        sessionUsers = new StompSessionUsers(mock(UserRepository.class), clock);
         interceptor = new BoardFrameAccessInterceptor(sessionUsers, boardService);
-        sessionUsers.register("s1", 4);
+        sessionUsers.register("s1", 4, START);
     }
 
     @Test

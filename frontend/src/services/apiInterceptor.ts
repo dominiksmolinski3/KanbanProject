@@ -24,6 +24,18 @@ function urlOf(input: RequestInfo | URL): string {
   return input?.url ?? '';
 }
 
+export async function renewOrSignOut(): Promise<string | null> {
+  try {
+    const renewed = await refreshSession();
+    if (renewed) return renewed;
+  } catch (error) {
+    if (!isRefreshRejected(error)) throw error;
+  }
+  clearSession();
+  redirectToSignIn();
+  return null;
+}
+
 export function setupApiInterceptors() {
   const originalFetch = window.fetch;
 
@@ -38,14 +50,8 @@ export function setupApiInterceptors() {
     });
 
   const renewOrEnd = async () => {
-    try {
-      const renewed = await refreshSession();
-      if (renewed) return renewed;
-    } catch (error) {
-      if (!isRefreshRejected(error)) throw error;
-    }
-    clearSession();
-    redirectToSignIn();
+    const renewed = await renewOrSignOut();
+    if (renewed) return renewed;
     throw new SessionExpiredError();
   };
 

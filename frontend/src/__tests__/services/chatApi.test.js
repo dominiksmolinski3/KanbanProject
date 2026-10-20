@@ -25,6 +25,11 @@ jest.mock('@stomp/stompjs', () => ({
 
 import SockJS from 'sockjs-client';
 
+const mockRenewOrSignOut = jest.fn(() => Promise.resolve(null));
+jest.mock('../../services/apiInterceptor', () => ({
+  renewOrSignOut: () => mockRenewOrSignOut(),
+}));
+
 describe('ChatApi', () => {
   let onMessage;
   let onError;
@@ -43,6 +48,14 @@ describe('ChatApi', () => {
     await api.connect(token.length ? token[0] : 'jwt-123');
     return { api, client: clientInstances[0] };
   };
+
+  it('renews or signs out when the server closes the connection with an ERROR', async () => {
+    const { client } = await connect();
+
+    client.onStompError({ headers: { message: 'This connection was signed out' } });
+
+    expect(mockRenewOrSignOut).toHaveBeenCalledTimes(1);
+  });
 
   it('sends the JWT on the CONNECT frame, which the interceptor requires', async () => {
     const { client } = await connect();
