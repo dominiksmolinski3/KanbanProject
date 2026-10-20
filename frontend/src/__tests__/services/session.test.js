@@ -185,4 +185,89 @@ describe('session', () => {
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
   });
+
+  describe('across tabs', () => {
+    let otherTab;
+
+    const queuedLocks = () => {
+      let tail = Promise.resolve();
+      return {
+        request: jest.fn((name, callback) => {
+          const granted = tail.then(() => callback({ name }));
+          tail = granted.catch(() => {});
+          return granted;
+        }),
+      };
+    };
+
+    const deferred = () => {
+      let resolve;
+      const promise = new Promise((res) => {
+        resolve = res;
+      });
+      return { promise, resolve };
+    };
+
+    beforeEach(() => {
+      Object.defineProperty(navigator, 'locks', { value: queuedLocks(), configurable: true });
+      jest.isolateModules(() => {
+        otherTab = require('../../services/session');
+      });
+    });
+
+    afterEach(() => {
+      delete navigator.locks;
+    });
+
+    test('a renewal holds the lock every tab of this origin shares', async () => {
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+      authService.refresh.mockResolvedValue(session);
+
+      await refreshSession();
+
+      expect(navigator.locks.request).toHaveBeenCalledWith(otherTab.REFRESH_LOCK, expect.any(Function));
+    });
+
+    test('two tabs renewing together make one call, and the second uses what the first stored', async () => {
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+      const firstCall = deferred();
+      authService.refresh
+        .mockReturnValueOnce(firstCall.promise)
+        .mockResolvedValue({ token: 'forked', expiresIn: 900_000, refreshToken: 'forked' });
+
+      const thisTab = refreshSession();
+      const thatTab = otherTab.refreshSession();
+      firstCall.resolve(session);
+
+      await expect(thisTab).resolves.toBe('access');
+      await expect(thatTab).resolves.toBe('access');
+      expect(authService.refresh).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('rotated');
+    });
+
+    test('a tab waiting behind a refused renewal ends signed out, without presenting the spent token', async () => {
+      localStorage.setItem(TOKEN_KEY, 'stale');
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'withdrawn');
+      authService.refresh.mockRejectedValue(new ApiError('Invalid refresh token', { status: 401 }));
+
+      const thisTab = refreshSession();
+      const thatTab = otherTab.refreshSession();
+
+      await expect(thisTab).rejects.toBeInstanceOf(ApiError);
+      await expect(thatTab).resolves.toBeNull();
+      expect(authService.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    test('a tab that renews after the other has finished presents the rotated token', async () => {
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+      authService.refresh
+        .mockResolvedValueOnce(session)
+        .mockResolvedValueOnce({ token: 'later', expiresIn: 900_000, refreshToken: 'later' });
+
+      await refreshSession();
+      await expect(otherTab.refreshSession()).resolves.toBe('later');
+
+      expect(authService.refresh).toHaveBeenLastCalledWith('rotated');
+    });
+  });
 });
