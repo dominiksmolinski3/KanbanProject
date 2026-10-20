@@ -27,8 +27,35 @@ floor is one line away from a tripwire.
 
 Test sources sit beside the code they cover, one package per feature. Everything below `layout`,
 `file` and `task/history` has a service-level suite; `config`, `config/websocket` and `service` are
-what a next round would raise. The suites are all unit tests over mocked collaborators — what that
-cannot see is covered instead by the database-free build guards listed under **Architecture**.
+what a next round would raise. Most suites are unit tests over mocked collaborators, backed by
+the database-free build guards listed under **Architecture**.
+
+**A few tests run against a real Postgres, because a mock cannot answer for the database**
+(`src/test/java/.../database`). `DatabaseTestConfiguration` builds a small Spring context by hand:
+
+- a Hikari pool;
+- Flyway migrating every migration into a schema of the run's own (`it_<random>`), dropped when
+  the context closes;
+- Hibernate at `ddl-auto=validate`;
+- every repository, plus only the services a test imports.
+
+Boot's test slices are not used, because in Boot 4 they live in modules this build does not
+carry. Each test exists because the database answered something a mocked repository could not
+see:
+
+- **`MigrationsBuildTheMappedSchemaTest`:** the migrated schema is the one the entities map.
+  `FlywayMigrationsMatchEntitiesTest` only compares names it parses out of the SQL.
+- **`RefreshTokenRotationDatabaseTest`:** a refused reuse commits its withdrawal, which a mocked
+  test passed while the refusal rolled the withdrawal back. Two simultaneous rotations of one token
+  queue on the row lock instead of forking the chain.
+- **`AccountDeletionDatabaseTest`:** an account that owns, shares and invites can be deleted under
+  the real foreign keys. It answered 409 while every mocked test was green.
+
+The connection comes from `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME` and
+`TEST_DATABASE_PASSWORD`, then from `SPRING_DATASOURCE_*`, then from `backend/.env`, which CI's
+backend job already writes for the Postgres container it starts. Without one, the tests fail and
+say how to start one, the way the Redis tests do. The schema of its own is what makes it safe to
+point them at a developer's working database.
 
 ### Frontend (React 19 / Vite 8 / Jest / Cypress)
 

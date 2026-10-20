@@ -413,6 +413,18 @@ For a coverage report:
 It ends up in `backend/target/site/jacoco/index.html`. CI runs `./mvnw verify`, which also enforces
 a coverage floor for each package.
 
+A few tests run against a real Postgres: they migrate a throwaway schema and drop it afterwards.
+They read `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME` and `TEST_DATABASE_PASSWORD`, falling back
+to the `SPRING_DATASOURCE_*` values in `backend/.env`. To run them without touching your own
+database:
+
+```bash
+docker run -d --name kanban-verify-postgres -p 15433:5432 -e POSTGRES_DB=kanban_ci \
+  -e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:17
+TEST_DATABASE_URL=jdbc:postgresql://localhost:15433/kanban_ci TEST_DATABASE_USERNAME=kanban_ci \
+  TEST_DATABASE_PASSWORD=kanban_ci ./mvnw verify
+```
+
 ### Frontend
 
 From the repository root:
