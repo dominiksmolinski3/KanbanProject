@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
@@ -38,6 +39,7 @@ class EmailChangeServiceTest {
     private EmailService emailService;
     private RefreshTokenService refreshTokenService;
     private AuthenticationService authenticationService;
+    private ChatRepository chatRepository;
     private EmailChangeService service;
     private User account;
 
@@ -47,8 +49,9 @@ class EmailChangeServiceTest {
         emailService = mock(EmailService.class);
         refreshTokenService = mock(RefreshTokenService.class);
         authenticationService = mock(AuthenticationService.class);
+        chatRepository = mock(ChatRepository.class);
         service = new EmailChangeService(userRepository, ENCODER, emailService, refreshTokenService,
-                authenticationService);
+                authenticationService, chatRepository);
 
         account = new User("Owner", "owner@example.test", ENCODER.encode("the-password"));
         account.setId(1);
@@ -126,6 +129,28 @@ class EmailChangeServiceTest {
         assertThat(account.getPendingEmail()).isNull();
         assertThat(account.getEmailChangeCode()).isNull();
         verify(refreshTokenService).revokeAllFor(account);
+    }
+
+    @Test
+    @DisplayName("the account's chat moves with the address, or its direct messages vanish from both sides")
+    void theChatFollowsTheAddress() {
+        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+
+        service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE);
+
+        verify(chatRepository).renameSender("owner@example.test", "new@example.test");
+        verify(chatRepository).renameRecipient("owner@example.test", "new@example.test");
+    }
+
+    @Test
+    @DisplayName("a refused confirmation leaves the chat where it is")
+    void aRefusedConfirmationRenamesNothing() {
+        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+
+        assertThatThrownBy(() ->
+                service.confirmChange(account, new ConfirmEmailChangeRequest("000000"), DEVICE));
+
+        verifyNoInteractions(chatRepository);
     }
 
     @Test
