@@ -1,6 +1,10 @@
 import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
 import { TOKEN_KEY, clearSession, endSession, getAccessToken, storeSession, type StoredSession } from '../services/session';
+import { SessionExpiredError } from '../services/apiInterceptor';
 import type { User } from '../types/api';
+
+export const VERIFY_ATTEMPTS = 3;
+export const VERIFY_RETRY_MS = 5_000;
 
 interface AuthValue {
   token: string | null;
@@ -31,7 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const verifyToken = async () => {
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const retryLater = (attempt: number) => {
+      if (attempt < VERIFY_ATTEMPTS) {
+        retry = setTimeout(() => verifyToken(attempt + 1), VERIFY_RETRY_MS);
+      }
+    };
+
+    // Only a refusal of the session ends it: a network failure or a page unloading mid-request is not one.
+    const verifyToken = async (attempt: number) => {
       if (!token) {
         setIsLoading(false);
         return;
@@ -43,27 +56,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'Authorization': `Bearer ${token}`
           }
         });
+        if (cancelled) return;
 
         if (response.ok) {
           const text = await response.text();
-          if (text) {
-            const userData = JSON.parse(text);
-            setUser(userData);
-          } else {
-            setUser(null);
-          }
-        } else {
+          setUser(text ? JSON.parse(text) : null);
+        } else if (response.status === 401 || response.status === 403) {
           forget();
+        } else {
+          retryLater(attempt);
         }
       } catch (error) {
-        console.error('Error verifying token:', error);
-        forget();
+        if (cancelled) return;
+        if (error instanceof SessionExpiredError) {
+          forget();
+        } else {
+          console.error('Error verifying token:', error);
+          retryLater(attempt);
+        }
       }
 
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     };
 
-    verifyToken();
+    verifyToken(1);
+    return () => {
+      cancelled = true;
+      clearTimeout(retry);
+    };
   }, [token]);
 
   const login = (session: StoredSession) => {

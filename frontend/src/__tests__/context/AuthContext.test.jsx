@@ -1,7 +1,8 @@
 import React from 'react';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { AuthProvider, useAuth } from '../../context/AuthContext';
+import { AuthProvider, VERIFY_RETRY_MS, useAuth } from '../../context/AuthContext';
+import { SessionExpiredError } from '../../services/apiInterceptor';
 import * as session from '../../services/session';
 
 jest.mock('../../services/session', () => ({
@@ -62,7 +63,7 @@ describe('AuthContext', () => {
 
   test('a stored token the server rejects is forgotten', async () => {
     session.getAccessToken.mockReturnValue('stale-token');
-    global.fetch.mockResolvedValueOnce({ ok: false });
+    global.fetch.mockResolvedValueOnce({ ok: false, status: 401 });
 
     render(<AuthProvider><TestComponent /></AuthProvider>);
 
@@ -70,16 +71,52 @@ describe('AuthContext', () => {
     expect(session.clearSession).toHaveBeenCalled();
   });
 
-  test('a network failure verifying the token also forgets it', async () => {
-    session.getAccessToken.mockReturnValue('some-token');
-    global.fetch.mockRejectedValueOnce(new Error('network down'));
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  test('a session the interceptor could not renew is forgotten', async () => {
+    session.getAccessToken.mockReturnValue('stale-token');
+    global.fetch.mockRejectedValueOnce(new SessionExpiredError());
 
     render(<AuthProvider><TestComponent /></AuthProvider>);
 
     await waitFor(() => expect(screen.getByText('Authenticated: false')).toBeInTheDocument());
     expect(session.clearSession).toHaveBeenCalled();
-    errorSpy.mockRestore();
+  });
+
+  test('a network failure keeps the session and checks again, rather than signing out every tab', async () => {
+    jest.useFakeTimers();
+    try {
+      session.getAccessToken.mockReturnValue('some-token');
+      global.fetch
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ email: 'ada@example.com' }) });
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<AuthProvider><TestComponent /></AuthProvider>);
+
+      await waitFor(() => expect(screen.getByText('Authenticated: true')).toBeInTheDocument());
+      expect(screen.getByText('User: none')).toBeInTheDocument();
+      expect(session.clearSession).not.toHaveBeenCalled();
+
+      await act(async () => {
+        jest.advanceTimersByTime(VERIFY_RETRY_MS);
+      });
+
+      await waitFor(() => expect(screen.getByText('User: ada@example.com')).toBeInTheDocument());
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(session.clearSession).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('a server error keeps the session too', async () => {
+    session.getAccessToken.mockReturnValue('some-token');
+    global.fetch.mockResolvedValue({ ok: false, status: 503 });
+
+    render(<AuthProvider><TestComponent /></AuthProvider>);
+
+    await waitFor(() => expect(screen.getByText('Authenticated: true')).toBeInTheDocument());
+    expect(session.clearSession).not.toHaveBeenCalled();
   });
 
   test('login stores the whole session and signs in', async () => {
