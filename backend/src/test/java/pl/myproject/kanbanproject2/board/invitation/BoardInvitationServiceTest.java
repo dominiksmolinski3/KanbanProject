@@ -17,6 +17,9 @@ import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -38,6 +41,9 @@ class BoardInvitationServiceTest {
     private BoardService boardService;
     private UserRepository userRepository;
     private EmailService emailService;
+    private static final Duration EXPIRY = Duration.ofDays(14);
+    private static final int DAILY_LIMIT = 20;
+
     private BoardInvitationService service;
 
     private User owner;
@@ -52,7 +58,8 @@ class BoardInvitationServiceTest {
         emailService = mock(EmailService.class);
 
         service = new BoardInvitationService(invitationRepository, new BoardInvitationMapper(),
-                boardService, new BoardMapper(mock(BoardRepository.class)), userRepository, emailService);
+                boardService, new BoardMapper(mock(BoardRepository.class)), userRepository, emailService,
+                EXPIRY, DAILY_LIMIT, Clock.systemDefaultZone());
 
         owner = TenancyFixtures.user(1);
         owner.setName("Ada");
@@ -185,6 +192,85 @@ class BoardInvitationServiceTest {
 
             verify(emailService).sendBoardInvitation("nobody@example.test", board.getName(),
                     "Ada", false, Locale.forLanguageTag("de"));
+        }
+    }
+
+    @Nested
+    @DisplayName("limits")
+    class Limits {
+
+        private BoardInvitation expired(String email) {
+            var invitation = pending(email);
+            invitation.setCreatedAt(LocalDateTime.now().minus(EXPIRY).minusMinutes(1));
+            return invitation;
+        }
+
+        @Test
+        @DisplayName("an invitation older than the expiry is not shown to its owner or its invitee")
+        void anExpiredInvitationIsHidden() {
+            when(invitationRepository.findByBoardAndStatusOrderByIdAsc(board, InvitationStatus.PENDING))
+                    .thenReturn(List.of(expired("invitee@example.test"), pending("other@example.test")));
+            when(invitationRepository.findByEmailAndStatusOrderByIdAsc("invitee@example.test", InvitationStatus.PENDING))
+                    .thenReturn(List.of(expired("invitee@example.test")));
+
+            assertThat(service.pendingFor(owner, 10)).extracting(BoardInvitationDto::email)
+                    .containsExactly("other@example.test");
+            assertThat(service.myInvitations(invitee)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("an expired invitation cannot be accepted")
+        void anExpiredInvitationCannotBeAccepted() {
+            when(invitationRepository.findById(500)).thenReturn(Optional.of(expired("invitee@example.test")));
+
+            assertThatThrownBy(() -> service.accept(invitee, 500))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVITATION_NOT_FOUND);
+            verify(boardService, never()).addAcceptedMember(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("inviting an address whose invitation expired retires it and sends a fresh one")
+        void reinvitingAfterExpirySendsAgain() {
+            var stale = expired("someone@example.test");
+            when(invitationRepository.findByBoardAndEmailAndStatus(
+                    board, "someone@example.test", InvitationStatus.PENDING))
+                    .thenReturn(Optional.of(stale));
+
+            service.invite(owner, 10, new InviteRequest("someone@example.test"));
+
+            assertThat(stale.getStatus()).isEqualTo(InvitationStatus.EXPIRED);
+            verify(invitationRepository).saveAndFlush(stale);
+            verify(invitationRepository).save(any(BoardInvitation.class));
+            verify(emailService).sendBoardInvitation(any(), any(), any(), anyBoolean(), any());
+        }
+
+        @Test
+        @DisplayName("an account that sent the day's limit is refused before any mail goes out")
+        void theDailyLimitStopsTheMail() {
+            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(LocalDateTime.class)))
+                    .thenReturn((long) DAILY_LIMIT);
+
+            assertThatThrownBy(() -> service.invite(owner, 10, new InviteRequest("one-more@example.test")))
+                    .as("the inviter chooses the board name, so each mail is text they wrote, sent from our domain")
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.TOO_MANY_REQUESTS);
+            verify(invitationRepository, never()).save(any());
+            verifyNoInteractions(emailService);
+        }
+
+        @Test
+        @DisplayName("answering with a live pending invitation sends nothing, so it does not count against the limit")
+        void aRepeatOfALiveInvitationIsNotCounted() {
+            when(invitationRepository.findByBoardAndEmailAndStatus(
+                    board, "someone@example.test", InvitationStatus.PENDING))
+                    .thenReturn(Optional.of(pending("someone@example.test")));
+            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(LocalDateTime.class)))
+                    .thenReturn((long) DAILY_LIMIT);
+
+            assertThat(service.invite(owner, 10, new InviteRequest("someone@example.test")).id()).isEqualTo(500);
         }
     }
 
