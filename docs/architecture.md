@@ -983,6 +983,14 @@ Two rules close it:
   the owner, who never typed that password, cannot complete. They sign up once more and win. The
   client sends the password still in the signup form, so nobody types it twice.
 
+**The verification code is stored hashed, like the reset code.** `users.verification_code` holds a
+BCrypt hash of the six digits it mailed, and `verify` checks with `passwordEncoder.matches`. Before,
+it held the digits themselves, so anyone who could read that table, from a backup, a dump or a
+slow-query log, could verify any pending account. Nothing reads the plain code back from the
+database any more. The Cypress seed and `loadtest/seed.mjs` take it from the newest mail the outbox
+queued for the address. The outbox keeps every composed mail even with ACS blank, which is how CI
+and the compose stack run.
+
 **A session is a row, not the JWT.** `RefreshToken` (`refresh_tokens`, `V7`) stores a SHA-256
 digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads
 it. Login answers with both tokens; `POST /api/auth/refresh` exchanges a refresh token for a new

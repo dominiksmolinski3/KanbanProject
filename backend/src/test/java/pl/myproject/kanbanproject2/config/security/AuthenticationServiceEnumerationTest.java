@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 class AuthenticationServiceEnumerationTest {
     private static final String KNOWN = "known@example.test";
     private static final String UNKNOWN = "unknown@example.test";
+    private static final String STORED_CODE = "hash-of-111111";
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
@@ -59,6 +60,7 @@ class AuthenticationServiceEnumerationTest {
 
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(passwordEncoder.matches("correct-horse", "hashed")).thenReturn(true);
+        when(passwordEncoder.matches("111111", STORED_CODE)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
         when(refreshTokenService.issue(any(), any()))
                 .thenReturn(new RefreshTokenService.Issued("a-refresh-token", 12L));
@@ -144,7 +146,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("an address still awaiting verification takes the newer signup's password and name, and a fresh code")
         void pendingRegistrationIsReplaced() throws Exception {
             var pending = new User("first-registrant", KNOWN, "first-registrants-hash");
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
@@ -155,10 +157,50 @@ class AuthenticationServiceEnumerationTest {
                             + "mailbox owner verifies the address")
                     .isEqualTo("hashed");
             assertThat(pending.getName()).isEqualTo("someone");
-            assertThat(pending.getVerificationCode()).isNotEqualTo("111111");
+            assertThat(pending.getVerificationCode()).isNotEqualTo(STORED_CODE);
             assertThat(pending.isEnabled()).isFalse();
             verify(passwordEncoder).encode("correct-horse");
-            verify(emailService).sendVerificationCode(eq(KNOWN), eq(pending.getVerificationCode()), anyLong(), any());
+            verify(emailService).sendVerificationCode(eq(KNOWN), anyString(), anyLong(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("the code at rest")
+    class CodeAtRest {
+
+        @Test
+        @DisplayName("the account keeps a hash of the code it mails, never the code itself")
+        void storesAHash() throws Exception {
+            when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
+            when(passwordEncoder.encode(org.mockito.ArgumentMatchers.matches("\\d{6}"))).thenReturn("bcrypt-of-the-code");
+            var saved = org.mockito.ArgumentCaptor.forClass(User.class);
+
+            service.signup(registration(UNKNOWN));
+
+            var mailed = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(emailService).sendVerificationCode(eq(UNKNOWN), mailed.capture(), anyLong(), any());
+            verify(userRepository).save(saved.capture());
+            assertThat(mailed.getValue()).matches("\\d{6}");
+            assertThat(saved.getValue().getVerificationCode())
+                    .as("a read of the users table hands out every pending account")
+                    .isEqualTo("bcrypt-of-the-code")
+                    .isNotEqualTo(mailed.getValue());
+        }
+
+        @Test
+        @DisplayName("a resent code is stored hashed too")
+        void resendStoresAHash() throws Exception {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode(STORED_CODE);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+            when(passwordEncoder.encode(org.mockito.ArgumentMatchers.matches("\\d{6}"))).thenReturn("bcrypt-of-the-new-code");
+
+            service.resendVerificationCode(KNOWN);
+
+            var mailed = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(emailService).sendVerificationCode(eq(KNOWN), mailed.capture(), anyLong(), any());
+            assertThat(pending.getVerificationCode()).isEqualTo("bcrypt-of-the-new-code");
+            assertThat(mailed.getValue()).matches("\\d{6}");
         }
     }
 
@@ -170,12 +212,12 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("an account still awaiting verification gets a fresh code")
         void pendingAccountGetsACode() throws Exception {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             service.resendVerificationCode(KNOWN);
 
-            assertThat(pending.getVerificationCode()).isNotEqualTo("111111");
+            assertThat(pending.getVerificationCode()).isNotEqualTo(STORED_CODE);
             assertThat(pending.getVerificationCodeExpiresAt()).isAfter(LocalDateTime.now());
             verify(emailService).sendVerificationCode(any(), any(), anyLong(), any());
         }
@@ -206,7 +248,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("all three states answer the same, so resend confirms nothing about an address")
         void allThreeStatesLookIdentical() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
 
             when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
             when(userRepository.findByEmail("verified@example.test"))
@@ -238,7 +280,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("a wrong code on a real account reports exactly the same thing")
         void wrongCodeReportsTheSameThing() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
@@ -252,7 +294,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("the right code still verifies the account and clears the code")
         void rightCodeVerifies() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
@@ -267,7 +309,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("the right code signs the account in, rather than sending it back to the login form")
         void rightCodeReturnsASession() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
             when(jwtService.generateToken(pending)).thenReturn("signed-access-token");
@@ -284,7 +326,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("the right code with another password is refused like a wrong code, and enables nothing")
         void rightCodeWithAnotherPasswordIsRefused() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
@@ -296,7 +338,7 @@ class AuthenticationServiceEnumerationTest {
                     .isEqualTo(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
 
             assertThat(pending.isEnabled()).isFalse();
-            assertThat(pending.getVerificationCode()).isEqualTo("111111");
+            assertThat(pending.getVerificationCode()).isEqualTo(STORED_CODE);
             verifyNoInteractions(refreshTokenService);
         }
 
@@ -304,7 +346,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("a code that does not check out issues no session")
         void aFailedVerificationIssuesNothing() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
@@ -319,7 +361,7 @@ class AuthenticationServiceEnumerationTest {
         @DisplayName("an expired code is still reported as expired - the account is already known to the caller")
         void expiredCodeIsStillDistinct() {
             var pending = user(KNOWN, false);
-            pending.setVerificationCode("111111");
+            pending.setVerificationCode(STORED_CODE);
             pending.setVerificationCodeExpiresAt(LocalDateTime.now().minusMinutes(1));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 

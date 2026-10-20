@@ -40,8 +40,9 @@ async function call(base, method, pathname, { token, body, address } = {}) {
 
 async function codeFor(db, email) {
   for (let attempt = 0; attempt < 60; attempt++) {
-    const { rows } = await db.query('select verification_code from users where email = $1', [email]);
-    if (rows[0]?.verification_code) return rows[0].verification_code;
+    // The users table holds only a hash of the code, so read it from the mail the outbox queued.
+    const { rows } = await db.query("select substring(text_body from '\\d{6}') as code from email_outbox where recipient = $1 and text_body ~ '\\d{6}' order by id desc limit 1", [email]);
+    if (rows[0]?.code) return rows[0].code;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`no verification code for ${email}; is the API pointed at this Postgres?`);
