@@ -976,8 +976,29 @@ included, could still refresh. `RefreshTokenServiceTest` reads the transaction r
 applies. `POST /api/auth/logout` withdraws one; changing or
 resetting a password withdraws them all. Both new routes are public (the caller reaching for
 `/refresh` is the one whose access token has just lapsed) and both are on the `CREDENTIALS` rate
-limit — `SessionRoutesTest` fails the build if either stops being either. Nothing can retract an
-access token already issued, which is why fifteen minutes rather than an hour.
+limit — `SessionRoutesTest` fails the build if either stops being either. Access tokens stay at
+fifteen minutes, but one is no longer good for all of them.
+
+**Signing out everywhere ends what was already issued (`V26`).** Withdrawing every session (a
+password change or reset, an email change, a detected token reuse) used to leave the access tokens
+working until they expired. Worse, it left an open socket receiving board chat and direct messages
+until it closed, which could be days. `RefreshTokenService` now stamps `users.sessions_revoked_at`
+whenever it withdraws them all:
+
+- **REST.** `JwtService.isTokenValid` refuses a token issued before the stamp, so the next request
+  is a 401. The filter already loads the account on every request, so this costs nothing extra.
+- **Sockets.** `StompSessionUsers` records each socket's token issue time at `CONNECT` and compares
+  it with the stamp, cached for five seconds like board visibility. A signed-out session's next
+  outbound frame becomes an `ERROR` (`SignedOutSessionInterceptor`), and Spring closes the socket
+  after sending one. Its next `SEND` or `SUBSCRIBE` is refused the same way. The client answers a
+  STOMP error with `renewOrSignOut`: a session that still renews reconnects with its new token, and
+  one that was signed out everywhere ends.
+- **Same-second issue.** `iat` has whole-second precision, so the comparison truncates the stamp
+  to its second. Otherwise the session an email change issues, in the same request as its
+  revocation, would be refused at once.
+
+Ending a single device from the device list withdraws its refresh token only; its access token and
+socket still last until the token expires.
 
 **A session is also something its owner can see and end (`V9`).** `GET /api/devices` lists
 every live token the caller holds and `DELETE /api/devices/{id}` withdraws one — the case

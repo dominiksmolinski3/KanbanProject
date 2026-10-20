@@ -35,6 +35,11 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             return message;
         }
 
+        if ((StompCommand.SEND.equals(accessor.getCommand()) || StompCommand.SUBSCRIBE.equals(accessor.getCommand()))
+                && sessionUsers.isSignedOut(accessor.getSessionId())) {
+            throw new AccessDeniedException(SignedOutSessionInterceptor.SIGNED_OUT);
+        }
+
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
 
@@ -63,7 +68,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 accessor.setUser(authToken);
                 accessor.getSessionAttributes().put("username", username);
                 if (userDetails instanceof User user) {
-                    sessionUsers.register(accessor.getSessionId(), user.getId());
+                    sessionUsers.register(accessor.getSessionId(), user.getId(), jwtService.issuedAt(token));
                 }
                 log.info("User authenticated via WebSocket: {}", username);
             } catch (AccessDeniedException exception) {

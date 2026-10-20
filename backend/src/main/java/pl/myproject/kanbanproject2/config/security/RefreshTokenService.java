@@ -128,6 +128,7 @@ public class RefreshTokenService {
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_CREDENTIALS));
 
         if (stored.isRevoked()) {
+            stored.getUser().setSessionsRevokedAt(now);
             int withdrawn = refreshTokens.revokeAllForUser(stored.getUser(), now);
             log.warn("Refresh token reuse detected for user {}; withdrew {} live session(s)",
                     stored.getUser().getId(), withdrawn);
@@ -158,7 +159,9 @@ public class RefreshTokenService {
 
     @Transactional
     public int revokeAllFor(User user) {
-        int withdrawn = refreshTokens.revokeAllForUser(user, clock.instant());
+        Instant now = clock.instant();
+        user.setSessionsRevokedAt(now);
+        int withdrawn = refreshTokens.revokeAllForUser(user, now);
         if (withdrawn > 0) {
             log.info("Withdrew {} refresh token(s) for user {}", withdrawn, user.getId());
         }

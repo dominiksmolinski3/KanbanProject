@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,6 +18,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -164,6 +167,27 @@ class JwtAuthenticationFilterSkipTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(jwtService, never()).extractUsername(anyString());
         verify(chain).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("a well-formed token the account no longer honours is a 401, so the client renews")
+    void aRevokedTokenIsRefusedOutLoud() throws Exception {
+        var resolver = mock(HandlerExceptionResolver.class);
+        filter = new JwtAuthenticationFilter(jwtService, userDetailsService, resolver);
+        var principal = mock(UserDetails.class);
+        when(jwtService.extractUsername("token")).thenReturn("user@example.com");
+        when(userDetailsService.loadUserByUsername("user@example.com")).thenReturn(principal);
+        when(jwtService.isTokenValid("token", principal)).thenReturn(false);
+        var request = new MockHttpServletRequest("GET", "/api/tasks");
+        request.addHeader("Authorization", "Bearer token");
+        var response = new MockHttpServletResponse();
+        var chain = mock(FilterChain.class);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain, never()).doFilter(any(), any());
+        verify(resolver).resolveException(eq(request), eq(response), isNull(),
+                any(BadCredentialsException.class));
     }
 
     private FilterChain authenticatedRequestTo(String path) throws Exception {

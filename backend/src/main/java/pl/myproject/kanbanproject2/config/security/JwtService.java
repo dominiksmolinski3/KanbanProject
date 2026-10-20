@@ -7,8 +7,11 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import pl.myproject.kanbanproject2.user.User;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,7 +63,21 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token)
+                && !isRevoked(issuedAt(token), userDetails);
+    }
+
+    public Instant issuedAt(String token) {
+        return extractClaim(token, Claims::getIssuedAt).toInstant();
+    }
+
+    // iat has whole-second precision: compare against the revocation's second, or a token issued just after it is refused.
+    public static boolean isRevoked(Instant issuedAt, UserDetails userDetails) {
+        return userDetails instanceof User user && isRevoked(issuedAt, user.getSessionsRevokedAt());
+    }
+
+    public static boolean isRevoked(Instant issuedAt, Instant sessionsRevokedAt) {
+        return sessionsRevokedAt != null && issuedAt.isBefore(sessionsRevokedAt.truncatedTo(ChronoUnit.SECONDS));
     }
 
     private boolean isTokenExpired(String token) {
