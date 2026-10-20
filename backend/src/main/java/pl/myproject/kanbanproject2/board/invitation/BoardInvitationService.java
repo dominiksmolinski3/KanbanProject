@@ -9,6 +9,7 @@ import pl.myproject.kanbanproject2.board.BoardDto;
 import pl.myproject.kanbanproject2.board.BoardMapper;
 import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
@@ -32,6 +33,7 @@ public class BoardInvitationService {
     private final BoardMapper boardMapper;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final BoardEventPublisher boardEvents;
     private final Duration expiry;
     private final int dailyLimit;
     private final Clock clock;
@@ -43,10 +45,11 @@ public class BoardInvitationService {
                                   BoardMapper boardMapper,
                                   UserRepository userRepository,
                                   EmailService emailService,
+                                  BoardEventPublisher boardEvents,
                                   @Value("${app.invitations.expiry-days:14}") long expiryDays,
                                   @Value("${app.invitations.daily-limit:20}") int dailyLimit) {
         this(invitationRepository, invitationMapper, boardService, boardMapper, userRepository, emailService,
-                Duration.ofDays(expiryDays), dailyLimit, Clock.systemDefaultZone());
+                boardEvents, Duration.ofDays(expiryDays), dailyLimit, Clock.systemDefaultZone());
     }
 
     BoardInvitationService(BoardInvitationRepository invitationRepository,
@@ -55,6 +58,7 @@ public class BoardInvitationService {
                            BoardMapper boardMapper,
                            UserRepository userRepository,
                            EmailService emailService,
+                           BoardEventPublisher boardEvents,
                            Duration expiry,
                            int dailyLimit,
                            Clock clock) {
@@ -64,6 +68,7 @@ public class BoardInvitationService {
         this.boardMapper = boardMapper;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.boardEvents = boardEvents;
         this.expiry = expiry;
         this.dailyLimit = dailyLimit;
         this.clock = clock;
@@ -171,6 +176,7 @@ public class BoardInvitationService {
 
     private void announce(BoardInvitation invitation, User inviter) {
         var account = userRepository.findByEmail(invitation.getEmail());
+        account.ifPresent(invitee -> boardEvents.boardsChangedFor(List.of(invitee)));
         Locale locale = SupportedLocales.toLocale(
                 account.map(User::getLocale).orElseGet(inviter::getLocale));
 

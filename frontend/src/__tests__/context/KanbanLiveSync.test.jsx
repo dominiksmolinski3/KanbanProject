@@ -5,12 +5,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useKanban } from '../../context/KanbanContext';
 import { KanbanProvider } from '../../test-utils/KanbanTestProvider';
 import * as api from '../../services/api';
+import * as boardApi from '../../services/boardApi';
+import { toast } from 'react-toastify';
+
+jest.mock('react-toastify', () => ({
+  toast: { success: jest.fn(), error: jest.fn(), info: jest.fn(), warning: jest.fn() },
+}));
 
 const watchers = [];
 jest.mock('../../services/boardEvents', () => jest.fn().mockImplementation(function BoardEvents() {
-  this.watch = jest.fn((boardId, onEvent) => {
+  this.watch = jest.fn((boardId, onEvent, onBoardsChanged) => {
     this.boardId = boardId;
     this.onEvent = onEvent;
+    this.onBoardsChanged = onBoardsChanged;
   });
   this.stop = jest.fn();
   watchers.push(this);
@@ -77,6 +84,31 @@ describe('KanbanContext live board sync', () => {
       await Promise.resolve();
     });
   };
+
+  it('a boards notice re-reads the boards and the open board', async () => {
+    await act(async () => {
+      watchers[0].onBoardsChanged();
+      await Promise.resolve();
+    });
+    await settle();
+
+    expect(boardApi.fetchBoards).toHaveBeenCalled();
+    expect(api.fetchTasks).toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('a boards notice that takes the open board away moves to another and says why', async () => {
+    boardApi.fetchBoards.mockResolvedValue([{ id: 2, name: 'Other', ownerId: 1, owned: true, members: [] }]);
+
+    await act(async () => {
+      watchers[0].onBoardsChanged();
+      await Promise.resolve();
+    });
+    await settle();
+
+    await waitFor(() => expect(api.setActiveBoardId).toHaveBeenCalledWith(2));
+    expect(toast.info).toHaveBeenCalledWith('notifications.boardNoLongerAvailable');
+  });
 
   it('watches the board it resolved on load', () => {
     expect(watchers[0].boardId).toBe(1);

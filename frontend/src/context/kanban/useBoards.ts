@@ -122,6 +122,19 @@ export function useBoards({ t }: { t: Translate }) {
     }
   };
 
+  const handleBoardsChanged = async () => {
+    try {
+      const remaining = await refreshBoards();
+      queryClient.invalidateQueries({ queryKey: boardsKeys.invitations });
+      if (activeBoardId !== null && !remaining.some(board => board.id === activeBoardId)) {
+        await moveOffBoard(remaining, activeBoardId);
+        toast.info(t('notifications.boardNoLongerAvailable'));
+      }
+    } catch (err) {
+      console.error('Error refreshing the boards:', err);
+    }
+  };
+
   const handleDeleteBoard = async (boardId: Id) => {
     try {
       await deleteBoard(boardId);
@@ -213,6 +226,7 @@ export function useBoards({ t }: { t: Translate }) {
     selectBoard,
     refreshBoards,
     refreshMyInvitations,
+    handleBoardsChanged,
     createBoard: handleCreateBoard,
     renameBoard: handleRenameBoard,
     deleteBoard: handleDeleteBoard,

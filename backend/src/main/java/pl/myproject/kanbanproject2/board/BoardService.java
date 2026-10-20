@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import pl.myproject.kanbanproject2.board.event.BoardsChanged;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -192,11 +193,13 @@ public class BoardService {
     public BoardDto renameBoard(User caller, Integer id, PatchBoardRequest request) {
         var board = requireOwned(caller, id);
         board.setName(request.name());
+        events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
         return boardMapper.apply(boardRepository.save(board), caller);
     }
 
     public void deleteBoard(User caller, Integer id) {
         var board = requireOwned(caller, id);
+        events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
 
         var tasks = taskRepository.findByBoardOrderByIdAsc(board);
         if (!tasks.isEmpty()) {
@@ -230,6 +233,7 @@ public class BoardService {
         board.addMember(user);
         var saved = boardRepository.saveAndFlush(board);
         boardRepository.updateMemberRole(saved.getId(), user.getId(), role.name());
+        events.publishEvent(BoardsChanged.forEveryoneIn(saved.everyone()));
         return saved;
     }
 
@@ -246,6 +250,7 @@ public class BoardService {
         var member = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
                         "User not found with id: " + userId));
+        events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
         unassignFromBoardTasks(board, member);
         board.removeMember(member);
         return boardMapper.apply(boardRepository.save(board), caller);
@@ -271,11 +276,13 @@ public class BoardService {
                 board.setOwner(heir);
                 board.removeMember(user);
                 boardRepository.save(board);
+                events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
             }
         }
         for (Board board : boardRepository.findVisibleTo(user)) {
             board.removeMember(user);
             boardRepository.save(board);
+            events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
         }
         invitationRepository.forgetInviter(user);
         activityRepository.forgetActor(user);

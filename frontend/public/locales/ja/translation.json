@@ -188,6 +188,7 @@
       "boardCreated": "ボードを作成しました",
       "boardRenamed": "ボード名を変更しました",
       "boardDeleted": "ボードを削除しました",
+      "boardNoLongerAvailable": "このボードは利用できなくなりました。",
       "boardMemberRemoved": "メンバーをボードから削除しました",
       "boardInvitationSent": "招待を送信しました",
       "boardInvitationRevoked": "招待を取り消しました",

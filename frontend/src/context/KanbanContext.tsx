@@ -15,7 +15,7 @@ function useKanbanValue() {
   const { t } = useTranslation();
 
   const boards = useBoards({ t });
-  const data = useBoardData({ activeBoardId: boards.activeBoardId });
+  const data = useBoardData({ activeBoardId: boards.activeBoardId, onBoardsChanged: boards.handleBoardsChanged });
   const error = boards.error ?? data.error;
   const loading = error === null && (boards.activeBoardId === null || data.loading);
   const guard = readOnlyGuard(boards.isViewer, t);

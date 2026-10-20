@@ -12,11 +12,12 @@ const NONE: never[] = [];
 
 interface BoardDataDeps {
   activeBoardId: Id | null;
+  onBoardsChanged?: () => void;
 }
 
 export type BoardRead = BoardData & { loading: boolean; error: string | null };
 
-export function useBoardData({ activeBoardId }: BoardDataDeps): BoardRead {
+export function useBoardData({ activeBoardId, onBoardsChanged }: BoardDataDeps): BoardRead {
   const queryClient = useQueryClient();
   const enabled = activeBoardId !== null;
   const localChanges = useRef(0);
@@ -80,7 +81,7 @@ export function useBoardData({ activeBoardId }: BoardDataDeps): BoardRead {
     ]);
   };
 
-  useLiveBoardSync(activeBoardId, { refreshTasks, refreshBoard });
+  useLiveBoardSync(activeBoardId, { refreshTasks, refreshBoard, onBoardsChanged });
 
   return {
     columns, setColumns: writer<ColumnSummary>(keys.columns),

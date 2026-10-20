@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class BoardEventPublisherTest {
@@ -153,6 +154,73 @@ class BoardEventPublisherTest {
 
         verify(messagingTemplate, never())
                 .convertAndSend("/topic/boards.7", new BoardEvent(BoardEventType.TASKS, 7));
+    }
+
+    @Test
+    @DisplayName("a boards notice goes to each person's own queue once, after the commit")
+    void notifiesEachPersonAfterTheCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        var ada = person(1, "ada@example.test");
+        var bob = person(2, "bob@example.test");
+
+        publisher.onBoardsChanged(new BoardsChanged(List.of(ada, bob)));
+        publisher.boardsChangedFor(List.of(ada));
+        verifyNoInteractions(messagingTemplate);
+
+        commit();
+        var notice = new BoardEvent(BoardEventType.BOARDS, null);
+        verify(messagingTemplate).convertAndSendToUser("ada@example.test", BoardEventPublisher.BOARDS_QUEUE, notice);
+        verify(messagingTemplate).convertAndSendToUser("bob@example.test", BoardEventPublisher.BOARDS_QUEUE, notice);
+    }
+
+    @Test
+    @DisplayName("a rolled back change tells nobody their boards changed")
+    void aRollbackNotifiesNobody() {
+        TransactionSynchronizationManager.initSynchronization();
+
+        publisher.boardsChangedFor(List.of(person(1, "ada@example.test")));
+        synchronizations().forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    @DisplayName("outside a transaction a boards notice goes straight out, and nobody without a name is sent one")
+    void notifiesImmediatelyWithNoTransaction() {
+        publisher.boardsChangedFor(java.util.Arrays.asList(person(1, "ada@example.test"), null, person(3, null)));
+
+        verify(messagingTemplate).convertAndSendToUser("ada@example.test", BoardEventPublisher.BOARDS_QUEUE,
+                new BoardEvent(BoardEventType.BOARDS, null));
+        verifyNoMoreInteractions(messagingTemplate);
+    }
+
+    @Test
+    @DisplayName("a broker that refuses a notice is logged, and the change it describes still stands")
+    void aRefusedNoticeDoesNotThrow() {
+        doThrow(new org.springframework.messaging.MessageDeliveryException("broker down"))
+                .when(messagingTemplate).convertAndSendToUser(any(), any(), any());
+
+        org.assertj.core.api.Assertions.assertThatCode(() ->
+                publisher.boardsChangedFor(List.of(person(1, "ada@example.test")))).doesNotThrowAnyException();
+        org.assertj.core.api.Assertions.assertThatCode(() -> publisher.boardsChangedFor(null))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("the event copies the people it is given, so a later change to the board does not change who is told")
+    void theEventTakesACopy() {
+        var people = new java.util.ArrayList<>(List.of(person(1, "ada@example.test")));
+        var event = BoardsChanged.forEveryoneIn(people);
+        people.clear();
+
+        assertThat(event.people()).hasSize(1);
+    }
+
+    private static pl.myproject.kanbanproject2.user.User person(int id, String email) {
+        var user = new pl.myproject.kanbanproject2.user.User();
+        user.setId(id);
+        user.setEmail(email);
+        return user;
     }
 
     private static void commit() {

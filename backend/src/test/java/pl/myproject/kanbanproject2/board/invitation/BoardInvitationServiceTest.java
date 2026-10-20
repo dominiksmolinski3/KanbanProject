@@ -11,6 +11,7 @@ import pl.myproject.kanbanproject2.board.BoardRepository;
 import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
@@ -41,6 +42,7 @@ class BoardInvitationServiceTest {
     private BoardService boardService;
     private UserRepository userRepository;
     private EmailService emailService;
+    private BoardEventPublisher boardEvents;
     private static final Duration EXPIRY = Duration.ofDays(14);
     private static final int DAILY_LIMIT = 20;
 
@@ -56,10 +58,11 @@ class BoardInvitationServiceTest {
         boardService = mock(BoardService.class);
         userRepository = mock(UserRepository.class);
         emailService = mock(EmailService.class);
+        boardEvents = mock(BoardEventPublisher.class);
 
         service = new BoardInvitationService(invitationRepository, new BoardInvitationMapper(),
                 boardService, new BoardMapper(mock(BoardRepository.class)), userRepository, emailService,
-                EXPIRY, DAILY_LIMIT, Clock.systemDefaultZone());
+                boardEvents, EXPIRY, DAILY_LIMIT, Clock.systemDefaultZone());
 
         owner = TenancyFixtures.user(1);
         owner.setName("Ada");
@@ -112,6 +115,16 @@ class BoardInvitationServiceTest {
             var saved = ArgumentCaptor.forClass(BoardInvitation.class);
             verify(invitationRepository).save(saved.capture());
             assertThat(saved.getValue().getEmail()).isEqualTo("ada.lovelace@example.test");
+        }
+
+        @Test
+        @DisplayName("an invitee with an account is told at once, so the invitation shows without a reload")
+        void anInviteeWithAnAccountIsNotified() {
+            when(userRepository.findByEmail("invitee@example.test")).thenReturn(Optional.of(invitee));
+
+            service.invite(owner, 10, new InviteRequest("invitee@example.test"));
+
+            verify(boardEvents).boardsChangedFor(List.of(invitee));
         }
 
         @Test

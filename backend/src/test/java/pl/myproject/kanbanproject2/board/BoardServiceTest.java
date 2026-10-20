@@ -436,7 +436,7 @@ class BoardServiceTest {
 
             boardService.deleteBoard(owner, 10);
 
-            verify(events, never()).publishEvent(any(Object.class));
+            verify(events, never()).publishEvent(any(BoardTasksDeleting.class));
             verify(boardRepository).delete(board);
         }
 
@@ -475,6 +475,56 @@ class BoardServiceTest {
         void allowsTheSameBoard() {
             var board = TenancyFixtures.board(10, owner);
             boardService.requireSameBoard(board, board);
+        }
+    }
+
+    @Nested
+    @DisplayName("telling people their boards changed")
+    class Notices {
+
+        private java.util.List<Integer> notified() {
+            var captured = ArgumentCaptor.forClass(Object.class);
+            verify(events, org.mockito.Mockito.atLeastOnce()).publishEvent(captured.capture());
+            return captured.getAllValues().stream()
+                    .filter(pl.myproject.kanbanproject2.board.event.BoardsChanged.class::isInstance)
+                    .map(pl.myproject.kanbanproject2.board.event.BoardsChanged.class::cast)
+                    .flatMap(event -> event.people().stream())
+                    .map(User::getId)
+                    .distinct()
+                    .sorted()
+                    .toList();
+        }
+
+        @Test
+        @DisplayName("removing a member tells the member removed, who can no longer hear the board itself")
+        void removalTellsTheRemovedMember() {
+            boardOf(owner, member);
+            when(userRepository.findById(2)).thenReturn(Optional.of(member));
+
+            boardService.removeMember(owner, 10, 2);
+
+            assertThat(notified()).containsExactly(1, 2);
+        }
+
+        @Test
+        @DisplayName("deleting a board tells everyone who was on it")
+        void deletionTellsEveryone() {
+            boardOf(owner, member);
+
+            boardService.deleteBoard(owner, 10);
+
+            assertThat(notified()).containsExactly(1, 2);
+        }
+
+        @Test
+        @DisplayName("a rename and a new member are news to everyone on the board")
+        void renameAndJoinTellEveryone() {
+            var board = boardOf(owner, member);
+
+            boardService.renameBoard(owner, 10, new PatchBoardRequest("Renamed"));
+            boardService.addAcceptedMember(board, stranger);
+
+            assertThat(notified()).containsExactly(1, 2, 3);
         }
     }
 

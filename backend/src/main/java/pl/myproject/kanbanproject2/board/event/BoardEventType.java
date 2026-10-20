@@ -11,5 +11,7 @@ public enum BoardEventType {
 
     SUBTASKS,
 
-    ATTACHMENTS
+    ATTACHMENTS,
+
+    BOARDS
 }

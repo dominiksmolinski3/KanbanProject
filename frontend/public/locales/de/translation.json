@@ -188,6 +188,7 @@
     "boardCreated": "Board erstellt",
     "boardRenamed": "Board umbenannt",
     "boardDeleted": "Board gelöscht",
+    "boardNoLongerAvailable": "Dieses Board ist für Sie nicht mehr verfügbar.",
     "boardMemberRemoved": "Mitglied vom Board entfernt",
     "boardInvitationSent": "Einladung gesendet",
     "boardInvitationRevoked": "Einladung zurückgenommen",

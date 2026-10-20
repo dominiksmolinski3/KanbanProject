@@ -188,6 +188,7 @@
     "boardCreated": "Tablica utworzona",
     "boardRenamed": "Nazwa tablicy zmieniona",
     "boardDeleted": "Tablica usunięta",
+    "boardNoLongerAvailable": "Ta tablica nie jest już dla Ciebie dostępna.",
     "boardMemberRemoved": "Usunięto uczestnika z tablicy",
     "boardInvitationSent": "Zaproszenie wysłane",
     "boardInvitationRevoked": "Zaproszenie anulowane",
