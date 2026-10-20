@@ -62,7 +62,7 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
         return message;
     }
 
-    private static Integer boardIdIn(String destination) {
+    static Integer boardIdIn(String destination) {
         if (destination == null || !destination.startsWith(BoardEventPublisher.DESTINATION_PREFIX)) {
             return null;
         }

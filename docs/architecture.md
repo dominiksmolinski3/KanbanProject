@@ -1329,6 +1329,17 @@ Six decisions carry it, and none of them is visible from the destination name:
   `unlisted-subscribe`. `StompDestinationsMatchTheClientTest` reads the client's `subscribe(...)`
   and `destination:` literals, so a client destination the server would drop fails the build
   instead of becoming a screen that never updates.
+- **A subscription is checked again on the way out, because access can end while it is open.**
+  The board check runs once, at `SUBSCRIBE`, and RabbitMQ keeps relaying to the subscription after
+  that. A member removed from a board, or everyone on a board that was deleted, went on receiving
+  its chat and its live-sync frames until the socket closed. `BoardFrameAccessInterceptor` sits on
+  the client *outbound* channel and asks `BoardService.isVisibleTo` before a board frame is
+  written to a session. It is dropped, not refused, for the reason a refused subscription is.
+  `StompSessionUsers` records each session's user at `CONNECT` and caches the answer per session
+  and board for five seconds (`VISIBILITY_TTL`), so a busy board costs one query per subscriber
+  every five seconds rather than one per frame, and access ends at most five seconds after the
+  removal. Each replica holds only its own sessions, which is all it needs: a socket's frames
+  leave through the replica that holds it.
 - **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
   the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
   exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed
