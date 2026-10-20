@@ -9,6 +9,7 @@ const LIVE_REFRESH_WINDOW_MS = 250;
 interface LiveRefreshers {
   refreshTasks: () => Promise<void>;
   refreshBoard: () => Promise<void>;
+  onBoardsChanged?: () => void;
 }
 
 export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefreshers) {
@@ -51,6 +52,9 @@ export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefre
           latest.current.refreshTasks();
         }
       }, LIVE_REFRESH_WINDOW_MS);
+    }, () => {
+      latest.current.onBoardsChanged?.();
+      latest.current.refreshBoard();
     });
 
     return () => {

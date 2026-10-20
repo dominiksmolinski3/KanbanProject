@@ -188,6 +188,7 @@
       "boardCreated": "Tableau créé",
       "boardRenamed": "Tableau renommé",
       "boardDeleted": "Tableau supprimé",
+      "boardNoLongerAvailable": "Ce tableau n'est plus disponible pour vous.",
       "boardMemberRemoved": "Membre retiré du tableau",
       "boardInvitationSent": "Invitation envoyée",
       "boardInvitationRevoked": "Invitation annulée",

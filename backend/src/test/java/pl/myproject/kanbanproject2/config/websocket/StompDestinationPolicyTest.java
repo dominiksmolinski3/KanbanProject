@@ -65,8 +65,9 @@ class StompDestinationPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/topic/boards.7", "/topic/boards.7.chat", "/user/queue/messages", "/user/queue/errors"})
-    @DisplayName("the four destinations the client subscribes to pass on to the board check")
+    @ValueSource(strings = {"/topic/boards.7", "/topic/boards.7.chat", "/user/queue/messages", "/user/queue/errors",
+            "/user/queue/boards"})
+    @DisplayName("the destinations the client subscribes to pass on to the board check")
     void letsTheClientsSubscriptionsThrough(String destination) {
         var message = frame(StompCommand.SUBSCRIBE, destination);
 

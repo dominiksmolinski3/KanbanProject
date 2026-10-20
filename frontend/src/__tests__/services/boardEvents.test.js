@@ -50,6 +50,8 @@ describe('BoardEvents', () => {
     jest.clearAllMocks();
   });
 
+  const boardTopic = (client) => client.subscriptions.find((s) => s.destination.startsWith('/topic/'));
+
   const watch = async (boardId = 7, onEvent = jest.fn()) => {
     const events = new BoardEvents();
     events.watch(boardId, onEvent);
@@ -66,16 +68,28 @@ describe('BoardEvents', () => {
     expect(mockRenewOrSignOut).toHaveBeenCalledTimes(1);
   });
 
-  it('subscribes to the board it was asked to watch', async () => {
+  it('subscribes to the board it was asked to watch, and to its own boards notices', async () => {
     const { client } = await watch(7);
 
-    expect(client.subscriptions.map((s) => s.destination)).toEqual(['/topic/boards.7']);
+    expect(client.subscriptions.map((s) => s.destination)).toEqual(['/user/queue/boards', '/topic/boards.7']);
+  });
+
+  it('hands a boards notice to the caller', async () => {
+    const events = new BoardEvents();
+    const onBoardsChanged = jest.fn();
+    events.watch(7, jest.fn(), onBoardsChanged);
+    const client = clientInstances[0];
+    await client.completeConnect();
+
+    client.subscriptions.find((s) => s.destination === '/user/queue/boards').handler({ body: '{"type":"BOARDS"}' });
+
+    expect(onBoardsChanged).toHaveBeenCalledTimes(1);
   });
 
   it('hands the parsed event to the caller', async () => {
     const { client, onEvent } = await watch();
 
-    client.subscriptions[0].handler({ body: JSON.stringify({ type: 'TASKS', boardId: 7 }) });
+    boardTopic(client).handler({ body: JSON.stringify({ type: 'TASKS', boardId: 7 }) });
 
     expect(onEvent).toHaveBeenCalledWith({ type: 'TASKS', boardId: 7 });
   });
@@ -83,7 +97,7 @@ describe('BoardEvents', () => {
   it('survives a frame it cannot parse rather than throwing into the broker callback', async () => {
     const { client, onEvent } = await watch();
 
-    expect(() => client.subscriptions[0].handler({ body: 'not json' })).not.toThrow();
+    expect(() => boardTopic(client).handler({ body: 'not json' })).not.toThrow();
     expect(onEvent).not.toHaveBeenCalled();
   });
 
@@ -105,7 +119,7 @@ describe('BoardEvents', () => {
 
     await client.completeConnect();
 
-    expect(client.subscriptions.map((s) => s.destination)).toEqual([
+    expect(client.subscriptions.map((s) => s.destination).filter((d) => d.startsWith('/topic/'))).toEqual([
       '/topic/boards.7',
       '/topic/boards.7',
     ]);
@@ -113,7 +127,7 @@ describe('BoardEvents', () => {
 
   it('moves the subscription on a board switch and keeps the one connection', async () => {
     const { events, client } = await watch(7);
-    const first = client.subscriptions[0];
+    const first = boardTopic(client);
 
     events.watch(9, jest.fn());
 
@@ -136,11 +150,13 @@ describe('BoardEvents', () => {
 
   it('stops cleanly and lets go of the connection', async () => {
     const { events, client } = await watch();
-    const subscription = client.subscriptions[0];
+    const subscription = boardTopic(client);
+    const notices = client.subscriptions.find((s) => s.destination === '/user/queue/boards');
 
     events.stop();
 
     expect(subscription.unsubscribe).toHaveBeenCalled();
+    expect(notices.unsubscribe).toHaveBeenCalled();
     expect(client.deactivate).toHaveBeenCalled();
     expect(events.client).toBeNull();
   });

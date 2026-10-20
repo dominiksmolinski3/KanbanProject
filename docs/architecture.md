@@ -1404,6 +1404,18 @@ Six decisions carry it, and none of them is visible from the destination name:
   every five seconds rather than one per frame, and access ends at most five seconds after the
   removal. Each replica holds only its own sessions, which is all it needs: a socket's frames
   leave through the replica that holds it.
+- **A change to the boards themselves goes to each person, not to the board.** A rename, a deletion,
+  a member joining or leaving, or an ownership handoff changes what people see in their board list,
+  and the board's topic is the wrong place to say so. The check above withholds its frames from the
+  person who was just removed, and from everyone once the board is deleted. So `BoardService`
+  publishes `BoardsChanged` with everyone the change touches, the removed member included, and
+  `BoardEventPublisher` sends each of them a `{type: "BOARDS"}` notice on `/user/queue/boards`
+  after the commit. It is an application event rather than a call, because `BoardService` cannot
+  depend on the publisher: the socket configuration already depends on `BoardService` through the
+  subscription check, and the direct call is a cycle Spring refuses at startup. An invitation
+  notifies the invitee too, if the address has an account. The client re-reads its boards,
+  invitations and open board. If the open board is gone, it moves to another and says so
+  (`notifications.boardNoLongerAvailable`).
 - **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
   the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
   exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed

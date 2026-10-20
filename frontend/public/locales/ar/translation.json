@@ -188,6 +188,7 @@
       "boardCreated": "تم إنشاء اللوحة",
       "boardRenamed": "تمت إعادة تسمية اللوحة",
       "boardDeleted": "تم حذف اللوحة",
+      "boardNoLongerAvailable": "لم تعد هذه اللوحة متاحة لك.",
       "boardMemberRemoved": "تمت إزالة العضو من اللوحة",
       "boardInvitationSent": "تم إرسال الدعوة",
       "boardInvitationRevoked": "تم إلغاء الدعوة",
