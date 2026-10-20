@@ -319,8 +319,17 @@ route is written to avoid. Four things about the row are load-bearing:
   the recipient's when there is an account to read one from and the *inviter's* when there is not.
 - **Re-inviting an address that already has a pending invitation sends no second mail.** It answers
   the row that exists. A route that mails on every click is a way to have this application post
-  somebody else's mailbox on request; that is not a complete bound (one board per invitation still
-  is one mail each) and the honest fix for the rest is a limit on boards, which does not exist.
+  somebody else's mailbox on request. That is not a complete bound on its own, because a new board
+  per invitation is still one mail each.
+- **An account may send twenty invitations a day, and an invitation lasts fourteen days.** The
+  inviter chooses the board name, and the board name is in the mail, so an invitation is text a
+  stranger wrote, sent from this domain to any address. `app.invitations.daily-limit` (default 20)
+  counts the account's invitations created in the last 24 hours, across all its boards, and the
+  next one answers `429 TOO_MANY_REQUESTS` before anything is mailed. Repeating a live invitation
+  sends nothing, so it costs nothing. `app.invitations.expiry-days` (default 14) hides an older
+  pending invitation from its owner and its invitee and makes it impossible to accept. Inviting the
+  address again retires it as `EXPIRED`, flushed before the new row is inserted, because the
+  partial unique index allows one `PENDING` row per board and address.
 - **`BoardService.deleteBoard` clears the invitations by hand**, for the same reason it clears the
   history rows: nothing cascades to them, and an invitation whose board is gone renders as a board
   with no name on the invitee's own screen.

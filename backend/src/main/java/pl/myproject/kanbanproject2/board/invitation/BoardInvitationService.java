@@ -1,7 +1,8 @@
 package pl.myproject.kanbanproject2.board.invitation;
 
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardDto;
@@ -15,10 +16,12 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 
-@RequiredArgsConstructor
 @Transactional
 @Service
 public class BoardInvitationService {
@@ -29,6 +32,42 @@ public class BoardInvitationService {
     private final BoardMapper boardMapper;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final Duration expiry;
+    private final int dailyLimit;
+    private final Clock clock;
+
+    @Autowired
+    public BoardInvitationService(BoardInvitationRepository invitationRepository,
+                                  BoardInvitationMapper invitationMapper,
+                                  BoardService boardService,
+                                  BoardMapper boardMapper,
+                                  UserRepository userRepository,
+                                  EmailService emailService,
+                                  @Value("${app.invitations.expiry-days:14}") long expiryDays,
+                                  @Value("${app.invitations.daily-limit:20}") int dailyLimit) {
+        this(invitationRepository, invitationMapper, boardService, boardMapper, userRepository, emailService,
+                Duration.ofDays(expiryDays), dailyLimit, Clock.systemDefaultZone());
+    }
+
+    BoardInvitationService(BoardInvitationRepository invitationRepository,
+                           BoardInvitationMapper invitationMapper,
+                           BoardService boardService,
+                           BoardMapper boardMapper,
+                           UserRepository userRepository,
+                           EmailService emailService,
+                           Duration expiry,
+                           int dailyLimit,
+                           Clock clock) {
+        this.invitationRepository = invitationRepository;
+        this.invitationMapper = invitationMapper;
+        this.boardService = boardService;
+        this.boardMapper = boardMapper;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+        this.expiry = expiry;
+        this.dailyLimit = dailyLimit;
+        this.clock = clock;
+    }
 
     public BoardInvitationDto invite(User caller, Integer boardId, InviteRequest request) {
         Board board = boardService.requireOwned(caller, boardId);
@@ -41,8 +80,14 @@ public class BoardInvitationService {
         var existing = invitationRepository
                 .findByBoardAndEmailAndStatus(board, email, InvitationStatus.PENDING);
         if (existing.isPresent()) {
-            return invitationMapper.apply(existing.get());
+            if (isLive(existing.get())) {
+                return invitationMapper.apply(existing.get());
+            }
+            // The pending row has to stop being PENDING before the new one, or the partial unique index refuses it.
+            existing.get().resolveAs(InvitationStatus.EXPIRED);
+            invitationRepository.saveAndFlush(existing.get());
         }
+        requireUnderDailyLimit(caller);
 
         var role = request.role() == null ? BoardRole.MEMBER : request.role();
         var invitation = invitationRepository.save(new BoardInvitation(board, email, caller, role));
@@ -55,6 +100,7 @@ public class BoardInvitationService {
         return invitationRepository
                 .findByBoardAndStatusOrderByIdAsc(board, InvitationStatus.PENDING)
                 .stream()
+                .filter(this::isLive)
                 .map(invitationMapper)
                 .toList();
     }
@@ -95,15 +141,32 @@ public class BoardInvitationService {
         if (email == null || email.isBlank()) {
             return List.of();
         }
-        return invitationRepository.findByEmailAndStatusOrderByIdAsc(email, InvitationStatus.PENDING);
+        return invitationRepository.findByEmailAndStatusOrderByIdAsc(email, InvitationStatus.PENDING).stream()
+                .filter(this::isLive)
+                .toList();
     }
 
     private BoardInvitation mineOrNotFound(User caller, Integer invitationId) {
         String email = BoardInvitation.normaliseEmail(caller == null ? null : caller.getEmail());
         return invitationRepository.findById(invitationId)
                 .filter(row -> row.getStatus() == InvitationStatus.PENDING)
+                .filter(this::isLive)
                 .filter(row -> row.getEmail() != null && row.getEmail().equals(email))
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVITATION_NOT_FOUND));
+    }
+
+    private boolean isLive(BoardInvitation invitation) {
+        return invitation.getCreatedAt() != null
+                && invitation.getCreatedAt().isAfter(LocalDateTime.now(clock).minus(expiry));
+    }
+
+    private void requireUnderDailyLimit(User inviter) {
+        long sent = invitationRepository.countByInvitedByAndCreatedAtAfter(
+                inviter, LocalDateTime.now(clock).minusHours(24));
+        if (sent >= dailyLimit) {
+            throw new GlobalException(ExceptionIdentifier.TOO_MANY_REQUESTS,
+                    "Wysłano już " + dailyLimit + " zaproszeń w ciągu ostatniej doby");
+        }
     }
 
     private void announce(BoardInvitation invitation, User inviter) {
