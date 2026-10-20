@@ -1,4 +1,4 @@
-import { setupApiInterceptors, SessionExpiredError } from '../../services/apiInterceptor';
+import { renewOrSignOut, setupApiInterceptors, SessionExpiredError } from '../../services/apiInterceptor';
 import { REFRESH_TOKEN_KEY, redirectToSignIn, resetRefreshState } from '../../services/session';
 import { authService } from '../../services/authService';
 import { ApiError } from '../../services/apiError';
@@ -217,5 +217,38 @@ describe('apiInterceptor', () => {
 
     expect(clone).not.toHaveBeenCalled();
     expect(response.ok).toBe(true);
+  });
+
+  describe('renewOrSignOut, for a socket the server closed', () => {
+    test('a session that renews hands back the new token and stays signed in', async () => {
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+      authService.refresh.mockResolvedValue({ token: 'fresh-jwt', expiresIn: 900_000, refreshToken: 'rotated' });
+
+      await expect(renewOrSignOut()).resolves.toBe('fresh-jwt');
+
+      expect(redirectToSignIn).not.toHaveBeenCalled();
+    });
+
+    test('a session signed out everywhere ends here too, instead of reconnecting with a dead token', async () => {
+      localStorage.setItem('token', 'revoked-jwt');
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'withdrawn');
+      authService.refresh.mockRejectedValue(new ApiError('Invalid refresh token', { status: 401 }));
+
+      await expect(renewOrSignOut()).resolves.toBeNull();
+
+      expect(localStorage.getItem('token')).toBeNull();
+      expect(redirectToSignIn).toHaveBeenCalled();
+    });
+
+    test('a server that cannot be reached is not a sign-out', async () => {
+      localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+      const failure = new TypeError('Failed to fetch');
+      authService.refresh.mockRejectedValue(failure);
+
+      await expect(renewOrSignOut()).rejects.toBe(failure);
+
+      expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('held');
+      expect(redirectToSignIn).not.toHaveBeenCalled();
+    });
   });
 });

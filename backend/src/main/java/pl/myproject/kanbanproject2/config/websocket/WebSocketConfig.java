@@ -20,6 +20,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final StompDestinationPolicy stompDestinationPolicy;
     private final BoardSubscriptionInterceptor boardSubscriptionInterceptor;
     private final BoardFrameAccessInterceptor boardFrameAccessInterceptor;
+    private final SignedOutSessionInterceptor signedOutSessionInterceptor;
     private final AllowedOriginsProperties allowedOrigins;
     private final StompRelayProperties stompRelay;
 
@@ -52,6 +53,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientOutboundChannel(ChannelRegistration registration) {
-        registration.interceptors(boardFrameAccessInterceptor);
+        registration.interceptors(signedOutSessionInterceptor, boardFrameAccessInterceptor);
     }
 }
