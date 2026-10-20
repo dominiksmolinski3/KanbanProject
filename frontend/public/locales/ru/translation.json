@@ -188,6 +188,7 @@
       "boardCreated": "Доска создана",
       "boardRenamed": "Доска переименована",
       "boardDeleted": "Доска удалена",
+      "boardNoLongerAvailable": "Эта доска вам больше недоступна.",
       "boardMemberRemoved": "Участник удалён с доски",
       "boardInvitationSent": "Приглашение отправлено",
       "boardInvitationRevoked": "Приглашение отменено",

@@ -188,6 +188,7 @@
       "boardCreated": "Bacheca creata",
       "boardRenamed": "Bacheca rinominata",
       "boardDeleted": "Bacheca eliminata",
+      "boardNoLongerAvailable": "Questa bacheca non è più disponibile per te.",
       "boardMemberRemoved": "Membro rimosso dalla bacheca",
       "boardInvitationSent": "Invito inviato",
       "boardInvitationRevoked": "Invito annullato",

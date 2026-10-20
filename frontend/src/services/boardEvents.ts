@@ -15,12 +15,15 @@ type BoardEventHandler = (event: BoardEvent) => void;
 export default class BoardEvents {
   client: Client | null = null;
   subscription: StompSubscription | null = null;
+  boardsSubscription: StompSubscription | null = null;
+  onBoardsChanged: (() => void) | null = null;
   boardId: Id | null = null;
   onEvent: BoardEventHandler | null = null;
   serverUrl = socketOrigin();
 
-  watch(boardId: Id, onEvent: BoardEventHandler) {
+  watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void) {
     this.onEvent = onEvent;
+    this.onBoardsChanged = onBoardsChanged ?? null;
     this.boardId = boardId;
 
     if (this.client) {
@@ -63,9 +66,16 @@ export default class BoardEvents {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
+    if (this.boardsSubscription) {
+      this.boardsSubscription.unsubscribe();
+      this.boardsSubscription = null;
+    }
     if (!this.client || !this.client.connected || this.boardId == null) {
       return;
     }
+    this.boardsSubscription = this.client.subscribe('/user/queue/boards', () => {
+      this.onBoardsChanged?.();
+    });
     this.subscription = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
       if (!this.onEvent) {
         return;
@@ -83,6 +93,11 @@ export default class BoardEvents {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
+    if (this.boardsSubscription) {
+      this.boardsSubscription.unsubscribe();
+      this.boardsSubscription = null;
+    }
+    this.onBoardsChanged = null;
     if (this.client) {
       this.client.deactivate();
       this.client = null;
