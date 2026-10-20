@@ -58,11 +58,12 @@ public class AuthenticationService {
             user.setPassword(passwordEncoder.encode(input.getPassword()));
         }
         user.setLocale(SupportedLocales.normalise(input.getLocale()));
-        user.setVerificationCode(generateVerificationCode());
+        String code = generateVerificationCode();
+        user.setVerificationCode(passwordEncoder.encode(code));
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
         user.setEnabled(false);
         userRepository.save(user);
-        sendVerificationEmail(user);
+        sendVerificationEmail(user, code);
     }
 
     public LoginResponse verifyUser(VerifyUserDto input, DeviceContext device) {
@@ -73,7 +74,7 @@ public class AuthenticationService {
                 || user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
             throw new GlobalException(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
         }
-        if (!user.getVerificationCode().equals(input.getVerificationCode())
+        if (!passwordEncoder.matches(input.getVerificationCode(), user.getVerificationCode())
                 || !passwordEncoder.matches(input.getPassword(), user.getPassword())) {
             throw new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
         }
@@ -148,16 +149,17 @@ public class AuthenticationService {
             return;
         }
 
-        user.setVerificationCode(generateVerificationCode());
+        String code = generateVerificationCode();
+        user.setVerificationCode(passwordEncoder.encode(code));
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
         userRepository.save(user);
-        sendVerificationEmail(user);
+        sendVerificationEmail(user, code);
     }
 
-    private void sendVerificationEmail(User user) {
+    private void sendVerificationEmail(User user, String code) {
         try {
             emailService.sendVerificationCode(
-                    user.getEmail(), user.getVerificationCode(), VERIFICATION_CODE_TTL_MINUTES,
+                    user.getEmail(), code, VERIFICATION_CODE_TTL_MINUTES,
                     SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
             log.error("Failed to send verification email to {}", user.getEmail(), e);
