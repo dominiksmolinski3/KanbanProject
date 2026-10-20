@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -20,7 +19,7 @@ import '../styles/HomePage.css';
 
 const HomePage = () => {
   const { t } = useTranslation();
-  const { token, isLoading, logout } = useAuth();
+  const { token, isLoading } = useAuth();
   const navigate = useNavigate();
   const form = useForm<AuthFields>({ defaultValues: AUTH_DEFAULTS });
   const captcha = useCaptcha();
@@ -28,16 +27,9 @@ const HomePage = () => {
 
   useEffect(() => {
     if (token && !isLoading) {
-      const expiration = localStorage.getItem('tokenExpiration');
-      if (expiration && new Date().getTime() > parseInt(expiration)) {
-        logout();
-        toast.info(t('auth.sessionExpired', 'Your session has expired. Please sign in again.'));
-        return;
-      }
-
       navigate('/board');
     }
-  }, [token, isLoading, navigate, logout, t]);
+  }, [token, isLoading, navigate]);
 
   const away = Boolean(flow.resetStage || flow.showVerification);
   const { setReady } = captcha;

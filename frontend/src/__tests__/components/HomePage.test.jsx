@@ -59,12 +59,12 @@ describe('HomePage', () => {
     expect(navigate).toHaveBeenCalledWith('/board');
   });
 
-  test('with an expired token, signs out instead of redirecting', () => {
+  test('with an expired access token, still goes to the board, whose first request renews it', () => {
     useAuth.mockReturnValue({ token: 'jwt', isLoading: false, login, logout });
     localStorage.setItem('tokenExpiration', String(Date.now() - 1000));
     render(<HomePage />);
-    expect(logout).toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalledWith('/board');
+    expect(navigate).toHaveBeenCalledWith('/board');
+    expect(logout).not.toHaveBeenCalled();
   });
 
   test('switching to the register tab shows the registration fields', () => {
