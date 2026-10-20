@@ -380,7 +380,7 @@ nullable — a task can be taken off the board — and a task with no column wou
 with no owner. `TaskService` refuses any move that would put a task in a column or swimlane on a
 different board (`BOARD_MISMATCH`).
 
-**WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.tsx](../frontend/src/components/Board.tsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API.
+**WIP limits are enforced asymmetrically.** Column and row limits are advisory: the backend stores them, and [Board.tsx](../frontend/src/components/Board.tsx) only highlights over-limit cells. Per-user limits are the only ones with a server-side check, via `UserService.checkWipStatus`. Don't assume a column limit will be rejected by the API. A per-user limit counts the user's *open* assignments: a completed task is not work in progress, and counting it meant that someone whose last task was done could never be assigned another.
 
 `TaskService.reorderTasks` requires every id to name a task in the **same cell** — the same column
 *and* the same swimlane, comparing ids so that "no column" is a cell of its own rather than a
