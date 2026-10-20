@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.config.security.JwtService;
+import pl.myproject.kanbanproject2.user.User;
 
 @Component
 @Slf4j
@@ -24,6 +25,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final StompSessionUsers sessionUsers;
 
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
@@ -60,6 +62,9 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
                 accessor.setUser(authToken);
                 accessor.getSessionAttributes().put("username", username);
+                if (userDetails instanceof User user) {
+                    sessionUsers.register(accessor.getSessionId(), user.getId());
+                }
                 log.info("User authenticated via WebSocket: {}", username);
             } catch (AccessDeniedException exception) {
                 throw exception;

@@ -71,6 +71,10 @@ public class BoardService {
         return board;
     }
 
+    public boolean isVisibleTo(Integer userId, Integer boardId) {
+        return userId != null && boardId != null && boardRepository.isVisibleTo(boardId, userId);
+    }
+
     public Board requireOwned(User caller, Integer boardId) {
         var board = requireVisible(caller, boardId);
         if (!board.isOwnedBy(caller)) {
