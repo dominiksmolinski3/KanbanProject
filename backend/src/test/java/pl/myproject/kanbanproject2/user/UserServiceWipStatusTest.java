@@ -91,6 +91,22 @@ class UserServiceWipStatusTest {
     }
 
     @Test
+    @DisplayName("finished work is not work in progress: completed assignments leave room under the limit")
+    void completedTasksDoNotCount() {
+        givenUser(1, 1, 3);
+
+        var status = userService.getWipStatus(caller, USER_ID);
+
+        assertThat(status.assignedCount())
+                .as("a user whose only open task is done could never be assigned another one")
+                .isEqualTo(1);
+        assertThat(status.withinLimit()).isFalse();
+
+        givenUser(1, 0, 3);
+        assertThat(userService.checkWipStatus(USER_ID)).isTrue();
+    }
+
+    @Test
     @DisplayName("an unknown id is a 404, not a false")
     void unknownUser() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
@@ -102,6 +118,10 @@ class UserServiceWipStatusTest {
     }
 
     private void givenUser(Integer wipLimit, int assignedTasks) {
+        givenUser(wipLimit, assignedTasks, 0);
+    }
+
+    private void givenUser(Integer wipLimit, int openTasks, int completedTasks) {
         var user = new User();
         user.setId(USER_ID);
         user.setEmail("user@example.com");
@@ -109,9 +129,10 @@ class UserServiceWipStatusTest {
         user.setWipLimit(wipLimit);
 
         Set<Task> tasks = new HashSet<>();
-        IntStream.range(0, assignedTasks).forEach(i -> {
+        IntStream.range(0, openTasks + completedTasks).forEach(i -> {
             var task = new Task();
             task.setId(i + 1);
+            task.setCompleted(i >= openTasks);
             tasks.add(task);
         });
         user.setTasks(tasks);
