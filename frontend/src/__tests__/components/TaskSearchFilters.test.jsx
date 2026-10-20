@@ -76,7 +76,7 @@ describe('TaskSearch filters', () => {
     expect(await screen.findByRole('button', { name: 'grace@example.com' })).toBeInTheDocument();
   });
 
-  test('the deadline fields are sent as given, and as null when empty', async () => {
+  test('the deadline fields are sent as the instants the local times name, and as null when empty', async () => {
     await open();
     expect(lastRequest()).toMatchObject({ deadlineFrom: null, deadlineTo: null });
 
@@ -84,7 +84,10 @@ describe('TaskSearch filters', () => {
     fireEvent.change(from, { target: { value: '2026-10-01T09:00' } });
     fireEvent.change(to, { target: { value: '2026-10-31T17:30' } });
 
-    await settled({ deadlineFrom: '2026-10-01T09:00', deadlineTo: '2026-10-31T17:30' });
+    await settled({
+      deadlineFrom: new Date('2026-10-01T09:00').toISOString(),
+      deadlineTo: new Date('2026-10-31T17:30').toISOString(),
+    });
   });
 
   test('there is nothing to clear until a filter is set, and clearing puts every filter back', async () => {

@@ -26,7 +26,7 @@ import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -240,9 +240,9 @@ public class TaskService {
         }
     }
 
-    private void applyDeadline(Task task, LocalDateTime deadline) {
+    private void applyDeadline(Task task, Instant deadline) {
         task.setDeadline(deadline);
-        task.setExpired(deadline != null && deadline.isBefore(LocalDateTime.now()));
+        task.setExpired(deadline != null && deadline.isBefore(Instant.now()));
     }
 
     private void saveTaskColumnHistory(Task task, BoardColumn column) {
@@ -481,7 +481,7 @@ public class TaskService {
 
     @Scheduled(fixedRate = 1800000)
     public void checkAllTasksDeadlines() {
-        var now = LocalDateTime.now();
+        var now = Instant.now();
         var claimed = taskRepository.claimTasksCrossingDeadline(now);
         if (claimed.isEmpty()) {
             return;

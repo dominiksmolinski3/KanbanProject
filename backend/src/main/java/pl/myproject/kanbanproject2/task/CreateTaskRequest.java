@@ -4,14 +4,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 public record CreateTaskRequest(
         @NotBlank @Size(max = 255) String title,
         @Size(max = CreateTaskRequest.DESCRIPTION_MAX_LENGTH) String description,
         Integer position,
-        LocalDateTime deadline,
+        Instant deadline,
         Set<@Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String> labels,
         @Valid IdRef column,
         @Valid IdRef row) {

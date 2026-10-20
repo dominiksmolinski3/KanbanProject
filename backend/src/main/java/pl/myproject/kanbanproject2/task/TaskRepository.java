@@ -12,7 +12,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.row.Row;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +38,7 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
             ORDER BY id
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
-    List<Integer> claimTasksCrossingDeadline(@Param("now") LocalDateTime now);
+    List<Integer> claimTasksCrossingDeadline(@Param("now") Instant now);
 
     @EntityGraph(attributePaths = {"board", "column", "row", "parentTask"})
     List<Task> findByBoardAndColumnAndRow(Board board, BoardColumn column, Row row);
@@ -80,9 +80,9 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
                                   @Param("ignoreCompleted") boolean ignoreCompleted,
                                   @Param("completed") boolean completed,
                                   @Param("ignoreDeadlineFrom") boolean ignoreDeadlineFrom,
-                                  @Param("deadlineFrom") LocalDateTime deadlineFrom,
+                                  @Param("deadlineFrom") Instant deadlineFrom,
                                   @Param("ignoreDeadlineTo") boolean ignoreDeadlineTo,
-                                  @Param("deadlineTo") LocalDateTime deadlineTo,
+                                  @Param("deadlineTo") Instant deadlineTo,
                                   @Param("ignoreLabels") boolean ignoreLabels,
                                   @Param("labels") Collection<String> labels,
                                   @Param("ignoreAssignees") boolean ignoreAssignees,

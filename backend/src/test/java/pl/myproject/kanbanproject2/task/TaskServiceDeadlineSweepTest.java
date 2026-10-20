@@ -15,7 +15,8 @@ import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,7 @@ class TaskServiceDeadlineSweepTest {
                 mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
     }
 
-    private static Task task(LocalDateTime deadline, boolean expired) {
+    private static Task task(Instant deadline, boolean expired) {
         var task = new Task();
         task.setId(1);
         task.setDeadline(deadline);
@@ -68,7 +69,7 @@ class TaskServiceDeadlineSweepTest {
     @Test
     @DisplayName("a task that just passed its deadline is flagged and its assignees notified")
     void notifiesOnCrossingIntoExpired() {
-        Task task = task(LocalDateTime.now().minusMinutes(5), false);
+        Task task = task(Instant.now().minusSeconds(300), false);
         claimed(task);
 
         taskService.checkAllTasksDeadlines();
@@ -81,7 +82,7 @@ class TaskServiceDeadlineSweepTest {
     @Test
     @DisplayName("a task whose deadline was pushed back is un-flagged without a second mail")
     void doesNotNotifyOnCrossingOutOfExpired() {
-        Task task = task(LocalDateTime.now().plusDays(1), true);
+        Task task = task(Instant.now().plus(Duration.ofDays(1)), true);
         claimed(task);
 
         taskService.checkAllTasksDeadlines();
@@ -106,7 +107,7 @@ class TaskServiceDeadlineSweepTest {
     @Test
     @DisplayName("the sweep asks for the rows the claim took, and for nothing else")
     void onlyClaimedRowsAreTouched() {
-        Task mine = task(LocalDateTime.now().minusMinutes(5), false);
+        Task mine = task(Instant.now().minusSeconds(300), false);
         claimed(mine);
 
         taskService.checkAllTasksDeadlines();

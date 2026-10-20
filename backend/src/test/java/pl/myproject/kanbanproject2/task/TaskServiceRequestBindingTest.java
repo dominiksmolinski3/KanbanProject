@@ -23,7 +23,8 @@ import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -99,7 +100,7 @@ class TaskServiceRequestBindingTest {
     @DisplayName("clearing the deadline clears the expired flag the scheduler can no longer reach")
     void clearingTheDeadlineClearsExpired() {
         Task task = existingTask(1);
-        task.setDeadline(LocalDateTime.now().minusDays(2));
+        task.setDeadline(Instant.now().minus(Duration.ofDays(2)));
         task.setExpired(true);
 
         TaskDto patched = taskService.patchTask(caller, 1, patch(b -> b.deadline = JsonNullable.of(null)));
@@ -257,7 +258,7 @@ class TaskServiceRequestBindingTest {
         JsonNullable<String> title = JsonNullable.undefined();
         JsonNullable<String> description = JsonNullable.undefined();
         JsonNullable<Integer> position = JsonNullable.undefined();
-        JsonNullable<LocalDateTime> deadline = JsonNullable.undefined();
+        JsonNullable<Instant> deadline = JsonNullable.undefined();
         JsonNullable<Set<String>> labels = JsonNullable.undefined();
         JsonNullable<IdRef> column = JsonNullable.undefined();
         JsonNullable<IdRef> row = JsonNullable.undefined();

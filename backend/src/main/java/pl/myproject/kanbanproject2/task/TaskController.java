@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -47,9 +47,9 @@ public class TaskController {
             @RequestParam(name = "assignee", required = false) Set<Integer> assignees,
             @RequestParam(required = false) Boolean completed,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime deadlineFrom,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant deadlineFrom,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime deadlineTo,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant deadlineTo,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @AuthenticationPrincipal User currentUser) {

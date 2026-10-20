@@ -3,7 +3,7 @@ package pl.myproject.kanbanproject2.task;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
 
@@ -11,8 +11,8 @@ public record TaskSearchCriteria(String text,
                                  Set<String> labels,
                                  Set<Integer> assignees,
                                  Boolean completed,
-                                 LocalDateTime deadlineFrom,
-                                 LocalDateTime deadlineTo,
+                                 Instant deadlineFrom,
+                                 Instant deadlineTo,
                                  int page,
                                  int size) {
 
@@ -26,8 +26,8 @@ public record TaskSearchCriteria(String text,
                                         Set<String> labels,
                                         Set<Integer> assignees,
                                         Boolean completed,
-                                        LocalDateTime deadlineFrom,
-                                        LocalDateTime deadlineTo,
+                                        Instant deadlineFrom,
+                                        Instant deadlineTo,
                                         Integer page,
                                         Integer size) {
         int resolvedPage = page == null ? 0 : page;
@@ -74,7 +74,7 @@ public record TaskSearchCriteria(String text,
         return "%" + escaped + "%";
     }
 
-    private static final LocalDateTime UNFILTERED_INSTANT = LocalDateTime.of(1970, 1, 1, 0, 0);
+    private static final Instant UNFILTERED_INSTANT = Instant.EPOCH;
 
     String textOrPlaceholder() {
         String pattern = likePattern();
@@ -85,11 +85,11 @@ public record TaskSearchCriteria(String text,
         return completed != null && completed;
     }
 
-    LocalDateTime deadlineFromOrPlaceholder() {
+    Instant deadlineFromOrPlaceholder() {
         return deadlineFrom == null ? UNFILTERED_INSTANT : deadlineFrom;
     }
 
-    LocalDateTime deadlineToOrPlaceholder() {
+    Instant deadlineToOrPlaceholder() {
         return deadlineTo == null ? UNFILTERED_INSTANT : deadlineTo;
     }
 

@@ -3,12 +3,17 @@ package pl.myproject.kanbanproject2.mail;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
 
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Locale;
 
 final class MailTemplates {
+
+    // Accounts keep no time zone; the app's home zone, which V27 also read the old deadlines in.
+    static final ZoneId DEADLINE_ZONE = ZoneId.of("Europe/Warsaw");
+
     private static final MessageSource MESSAGES = messageSource();
 
     private MailTemplates() {
@@ -41,7 +46,7 @@ final class MailTemplates {
     }
 
     static EmailMessage taskOverdue(String to, String taskTitle, String boardName,
-                                    LocalDateTime deadline, Locale locale) {
+                                    Instant deadline, Locale locale) {
         String title = blank(taskTitle) ? say(locale, "mail.overdue.untitled") : taskTitle;
         String board = blank(boardName) ? say(locale, "mail.overdue.defaultBoard") : boardName;
         String heading = say(locale, "mail.overdue.heading");
@@ -104,11 +109,10 @@ final class MailTemplates {
         return body.append("\n").toString();
     }
 
-    private static String on(LocalDateTime deadline, Locale locale) {
-        return DateTimeFormatter
-                .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-                .withLocale(locale)
-                .format(deadline);
+    private static String on(Instant deadline, Locale locale) {
+        return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                .withLocale(locale).withZone(DEADLINE_ZONE).format(deadline)
+                + " " + DateTimeFormatter.ofPattern("zzz", locale).withZone(DEADLINE_ZONE).format(deadline);
     }
 
     private static String say(Locale locale, String key, Object... arguments) {

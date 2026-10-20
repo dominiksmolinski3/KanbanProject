@@ -7,7 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import pl.myproject.kanbanproject2.user.SupportedLocales;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MailTemplatesTest {
     private static final Locale EN = Locale.ENGLISH;
-    private static final LocalDateTime DEADLINE = LocalDateTime.of(2026, 1, 1, 9, 0);
+    private static final Instant DEADLINE = Instant.parse("2026-01-01T08:00:00Z");
 
     @Nested
     @DisplayName("in English, which is the base bundle")
@@ -52,6 +52,17 @@ class MailTemplatesTest {
             assertThat(message.subject()).isEqualTo("Task overdue: Ship the release");
             assertThat(message.htmlBody()).contains("Ship the release").contains("Delivery").contains("2026");
             assertThat(message.textBody()).contains("Ship the release").contains("Delivery").doesNotContain("<");
+        }
+
+        @Test
+        @DisplayName("the deadline is shown in the app's home zone and says which zone, since the reader may be elsewhere")
+        void theDeadlineNamesItsZone() {
+            EmailMessage winter = MailTemplates.taskOverdue("someone@example.test", "T", "B", DEADLINE, EN);
+            EmailMessage summer = MailTemplates.taskOverdue("someone@example.test", "T", "B",
+                    java.time.Instant.parse("2026-07-01T15:00:00Z"), EN);
+
+            assertThat(winter.textBody()).contains("9:00").contains("CET");
+            assertThat(summer.textBody()).contains("5:00").contains("CEST");
         }
 
         @Test
