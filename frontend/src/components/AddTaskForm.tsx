@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { toInstant } from '../board/deadlines';
 import LengthHint from './LengthHint';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useKanban } from '../context/KanbanContext';
@@ -35,7 +36,7 @@ function AddTaskForm({ onClose, defaultColumnId = '', defaultRowId = '' }: AddTa
 
     const added = await run(async () => {
       // The selects hand back strings, and the board has always sent them on as they are.
-      await addTask(title, (selectedColumnId || null) as Id | null, deadline || null, (selectedRowId || null) as Id | null);
+      await addTask(title, (selectedColumnId || null) as Id | null, toInstant(deadline), (selectedRowId || null) as Id | null);
       await refreshTasks();
     }, t('forms.addTaskForm.addError'));
 

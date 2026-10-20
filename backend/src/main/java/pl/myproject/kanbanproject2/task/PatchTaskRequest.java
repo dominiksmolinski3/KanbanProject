@@ -4,14 +4,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.openapitools.jackson.nullable.JsonNullable;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 public record PatchTaskRequest(
         JsonNullable<@Size(max = 255) String> title,
         JsonNullable<@Size(max = CreateTaskRequest.DESCRIPTION_MAX_LENGTH) String> description,
         JsonNullable<Integer> position,
-        JsonNullable<LocalDateTime> deadline,
+        JsonNullable<Instant> deadline,
         JsonNullable<Set<@Size(max = CreateTaskRequest.LABEL_MAX_LENGTH) String>> labels,
         JsonNullable<@Valid IdRef> column,
         JsonNullable<@Valid IdRef> row,

@@ -7,7 +7,7 @@ import pl.myproject.kanbanproject2.mail.EmailDeliveryException;
 import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -33,7 +33,7 @@ class DeadlineNotifierTest {
         task.setId(7);
         task.setTitle("Ship the release");
         task.setBoard(board);
-        task.setDeadline(LocalDateTime.of(2026, 8, 1, 17, 0));
+        task.setDeadline(Instant.parse("2026-08-01T15:00:00Z"));
         task.setUsers(new HashSet<>(Set.of(assignees)));
         return task;
     }

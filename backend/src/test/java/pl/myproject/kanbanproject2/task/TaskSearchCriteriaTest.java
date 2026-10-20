@@ -7,7 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -127,8 +127,8 @@ class TaskSearchCriteriaTest {
     @Test
     @DisplayName("a deadline window that ends before it starts is refused rather than answered empty")
     void refusesABackwardsDeadlineWindow() {
-        var later = LocalDateTime.of(2026, 6, 1, 12, 0);
-        var earlier = LocalDateTime.of(2026, 5, 1, 12, 0);
+        var later = Instant.parse("2026-06-01T12:00:00Z");
+        var earlier = Instant.parse("2026-05-01T12:00:00Z");
 
         assertThatThrownBy(() -> TaskSearchCriteria.of(null, null, null, null, later, earlier, null, null))
                 .as("an empty result is indistinguishable from a board with no matches")
@@ -140,7 +140,7 @@ class TaskSearchCriteriaTest {
     @Test
     @DisplayName("a window that starts and ends at the same instant is a window, not a mistake")
     void allowsAnInstantWindow() {
-        var moment = LocalDateTime.of(2026, 6, 1, 12, 0);
+        var moment = Instant.parse("2026-06-01T12:00:00Z");
 
         assertThat(TaskSearchCriteria.of(null, null, null, null, moment, moment, null, null))
                 .isNotNull();

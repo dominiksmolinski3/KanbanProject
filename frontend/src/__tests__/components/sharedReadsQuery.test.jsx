@@ -221,7 +221,7 @@ describe('the task search read', () => {
     await settle();
 
     expect(api.searchTasks).toHaveBeenCalledWith({
-      q: 'fix', labels: ['bug'], assignees: [3], completed: true, deadlineFrom: '2026-01-01', deadlineTo: null, page: 2,
+      q: 'fix', labels: ['bug'], assignees: [3], completed: true, deadlineFrom: new Date('2026-01-01').toISOString(), deadlineTo: null, page: 2,
     });
   });
 

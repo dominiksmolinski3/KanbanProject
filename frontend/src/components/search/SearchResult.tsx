@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { toLocalInput } from '../../board/deadlines';
 import type { Id, Task } from '../../types/api';
 
 interface SearchResultProps {
@@ -33,7 +34,7 @@ export default function SearchResult({ task, cell, userName, missing, onShow }: 
         ))}
         {task.deadline && (
           <span className={`task-search-result-deadline ${task.expired ? 'expired' : ''}`}>
-            {task.deadline.replace('T', ' ').slice(0, 16)}
+            {toLocalInput(task.deadline).replace('T', ' ')}
           </span>
         )}
       </div>

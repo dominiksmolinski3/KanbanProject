@@ -541,6 +541,17 @@ The same branch fixed `TaskColumnHistoryMapper`. It dereferenced `history.getCol
 `V17` made nullable, so any task that had left a column that was later deleted answered `500` on
 its whole history panel.
 
+**A deadline is an instant (`V27`).** `task.deadline` is `timestamptz` and `Task.deadline` an
+`Instant`. The API takes and returns ISO-8601 with an offset (`2026-12-01T16:00:00Z`) and refuses
+a time without one. It used to be a wall-clock time with no zone: the browser read it as local
+time, while the server compared it with `LocalDateTime.now()` in a container that runs in UTC. So
+the card turned red at 17:00 in Warsaw, but the server flagged the task, and sent the overdue
+mail, at 19:00 in summer. And a board shared across time zones had no single due moment at all.
+`V27` read the old values as Europe/Warsaw, the app's home zone. The client converts a
+`datetime-local` value to an instant on the way out and back to local time on the way in
+(`board/deadlines.ts`), so each person sees the deadline in their own time. Accounts keep no time
+zone, so the overdue mail prints it in Europe/Warsaw and names the zone (CET or CEST).
+
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 
 **The sweep claims the rows it is about to change**, `FOR UPDATE SKIP LOCKED`, for the same reason

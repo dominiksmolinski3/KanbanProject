@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TaskPatch } from '../../types/api';
+import { toInstant, toLocalInput } from '../../board/deadlines';
 import EditIcon from './EditIcon';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-const toLocalInputValue = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
 
 interface TaskDeadlineProps {
   deadline: string | null | undefined;
@@ -28,12 +22,12 @@ function TaskDeadline({ deadline, readOnly, onSave }: TaskDeadlineProps) {
   const isUpcoming = expiry !== null && !isExpired && expiry - Date.now() < DAY_MS;
 
   const startEditing = () => {
-    setValue(deadline ? toLocalInputValue(deadline) : '');
+    setValue(toLocalInput(deadline));
     setEditing(true);
   };
 
   const save = async () => {
-    if (await onSave({ deadline: value || null })) {
+    if (await onSave({ deadline: toInstant(value) })) {
       setEditing(false);
     }
   };

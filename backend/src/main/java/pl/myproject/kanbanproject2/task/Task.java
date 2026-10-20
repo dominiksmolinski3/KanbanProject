@@ -13,7 +13,7 @@ import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.subtask.SubTask;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +36,7 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String description;
     @Column(name = "deadline")
-    private LocalDateTime deadline;
+    private Instant deadline;
     @Column(name = "expired")
     private boolean expired = false;
     @Column(name = "daily_focus")
