@@ -24,6 +24,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final AllowedOriginsProperties allowedOrigins;
     private final StompRelayProperties stompRelay;
 
+    static final String UNRESOLVED_USER_DESTINATION = "/topic/unresolved-user-destination";
+    static final String USER_REGISTRY_BROADCAST = "/topic/simp-user-registry";
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
@@ -40,7 +43,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setClientLogin(stompRelay.username())
                 .setClientPasscode(stompRelay.password())
                 .setSystemLogin(stompRelay.username())
-                .setSystemPasscode(stompRelay.password());
+                .setSystemPasscode(stompRelay.password())
+                .setUserDestinationBroadcast(UNRESOLVED_USER_DESTINATION)
+                .setUserRegistryBroadcast(USER_REGISTRY_BROADCAST);
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }
