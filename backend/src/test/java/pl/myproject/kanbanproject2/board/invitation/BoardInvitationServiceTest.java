@@ -397,6 +397,17 @@ class BoardInvitationServiceTest {
         }
 
         @Test
+        @DisplayName("an invitee with an account is told at once, so the revoked invitation leaves their list")
+        void anInviteeWithAnAccountIsNotified() {
+            when(invitationRepository.findById(500)).thenReturn(Optional.of(pending("invitee@example.test")));
+            when(userRepository.findByEmail("invitee@example.test")).thenReturn(Optional.of(invitee));
+
+            service.revoke(owner, 10, 500);
+
+            verify(boardEvents).boardsChangedFor(List.of(invitee));
+        }
+
+        @Test
         @DisplayName("an invitation belonging to another board is a 404 under this board's path")
         void anotherBoardsInvitationIsNotFound() {
             var elsewhere = TenancyFixtures.board(20, owner);

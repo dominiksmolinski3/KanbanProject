@@ -12,7 +12,7 @@ const NONE: never[] = [];
 
 interface BoardDataDeps {
   activeBoardId: Id | null;
-  onBoardsChanged?: () => void;
+  onBoardsChanged?: () => Promise<boolean>;
 }
 
 export type BoardRead = BoardData & { loading: boolean; error: string | null };

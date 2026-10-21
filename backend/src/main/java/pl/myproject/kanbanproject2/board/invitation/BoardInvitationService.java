@@ -120,6 +120,8 @@ public class BoardInvitationService {
 
         invitation.resolveAs(InvitationStatus.REVOKED);
         invitationRepository.save(invitation);
+        userRepository.findByEmail(invitation.getEmail())
+                .ifPresent(invitee -> boardEvents.boardsChangedFor(List.of(invitee)));
     }
 
     public List<BoardInvitationDto> myInvitations(User caller) {
