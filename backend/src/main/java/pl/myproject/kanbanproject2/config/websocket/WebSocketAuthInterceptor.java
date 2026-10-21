@@ -6,13 +6,11 @@ import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -42,7 +40,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             throw new AccessDeniedException(SignedOutSessionInterceptor.SIGNED_OUT);
         }
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (SimpMessageType.CONNECT.equals(type)) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -66,7 +64,6 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
                 accessor.setUser(authToken);
                 accessor.getSessionAttributes().put("username", username);
                 if (userDetails instanceof User user) {
