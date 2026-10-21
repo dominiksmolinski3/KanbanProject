@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.chat.ChatService;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
@@ -30,6 +32,9 @@ public class StompDestinationPolicy implements ChannelInterceptor {
                     + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.DIRECT_QUEUE)
                     + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.ERROR_QUEUE)
                     + "|" + Pattern.quote(OWN_USER_PREFIX + BoardEventPublisher.BOARDS_QUEUE));
+
+    private static final Set<StompCommand> SERVER_COMMANDS = EnumSet.of(
+            StompCommand.CONNECTED, StompCommand.MESSAGE, StompCommand.RECEIPT, StompCommand.ERROR);
 
     private final MeterRegistry meterRegistry;
 
@@ -51,6 +56,9 @@ public class StompDestinationPolicy implements ChannelInterceptor {
 
         StompCommand command = accessor.getCommand();
         String destination = accessor.getDestination();
+        if (command != null && SERVER_COMMANDS.contains(command)) {
+            return drop(accessor, destination, "server-command");
+        }
         if (StompCommand.SEND.equals(command) && !allowsSend(destination)) {
             return drop(accessor, destination, "unlisted-send");
         }

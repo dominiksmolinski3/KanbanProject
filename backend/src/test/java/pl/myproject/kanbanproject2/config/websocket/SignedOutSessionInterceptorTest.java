@@ -117,11 +117,11 @@ class SignedOutSessionInterceptorTest {
     }
 
     @Test
-    @DisplayName("a signed-out session cannot send or subscribe, and the refusal closes it")
+    @DisplayName("a signed-out session cannot send, by SEND or MESSAGE, or subscribe, and the refusal closes it")
     void refusesFramesFromASignedOutSession() {
         when(users.findSessionsRevokedAt(4)).thenReturn(Optional.of(CONNECTED_AT.plusSeconds(30)));
 
-        for (StompCommand command : new StompCommand[] {StompCommand.SEND, StompCommand.SUBSCRIBE}) {
+        for (StompCommand command : new StompCommand[] {StompCommand.SEND, StompCommand.MESSAGE, StompCommand.SUBSCRIBE}) {
             assertThatThrownBy(() -> inbound.preSend(inboundFrame(command), CHANNEL))
                     .as("%s from a revoked session reached the broker", command)
                     .isInstanceOf(AccessDeniedException.class);

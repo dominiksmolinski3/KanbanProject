@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.messaging.Message;
@@ -94,6 +95,18 @@ class StompDestinationPolicyTest {
                         destination)
                 .isNull();
         assertThat(dropped("unlisted-subscribe")).isEqualTo(1.0);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StompCommand.class, names = {"CONNECTED", "MESSAGE", "RECEIPT", "ERROR"})
+    @DisplayName("a command only a server sends is dropped: Spring routes a client MESSAGE to the controllers like a SEND")
+    void dropsServerCommandsFromAClient(StompCommand command) {
+        for (String destination : new String[] {"/app/chat.sendPrivateMessage", "/user/someone@example.test/queue/messages"}) {
+            assertThat(policy.preSend(frame(command, destination), CHANNEL))
+                    .as("a client %s to %s passed the policy, skipping every check keyed on SEND", command, destination)
+                    .isNull();
+        }
+        assertThat(dropped("server-command")).isEqualTo(2.0);
     }
 
     @Test
