@@ -68,8 +68,9 @@ public class AuthenticationService {
         sendVerificationEmail(user, code);
     }
 
+    @Transactional(dontRollbackOn = GlobalException.class)
     public LoginResponse verifyUser(VerifyUserDto input, DeviceContext device) {
-        User user = userRepository.findByEmail(input.getEmail())
+        User user = userRepository.findByEmailForUpdate(input.getEmail())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
 
         if (user.getVerificationCodeExpiresAt() == null
