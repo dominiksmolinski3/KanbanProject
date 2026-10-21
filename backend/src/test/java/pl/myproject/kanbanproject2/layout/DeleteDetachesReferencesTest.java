@@ -8,6 +8,7 @@ import org.mockito.Mockito;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
@@ -245,7 +246,8 @@ class DeleteDetachesReferencesTest {
         private final UserRepository userRepository = Mockito.mock(UserRepository.class);
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final UserService userService =
-                new UserService(userRepository, new UserMapper(), taskRepository, TENANT.boardService());
+                new UserService(userRepository, new UserMapper(), taskRepository, TENANT.boardService(),
+                        mock(ChatRepository.class));
 
         @Test
         @DisplayName("clears the user_task join rows from the owning side before removing the account")

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openapitools.jackson.nullable.JsonNullable;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
@@ -98,7 +99,8 @@ class TenantIsolationTest {
                 mock(org.springframework.context.ApplicationEventPublisher.class));
 
         var taskMapper = new TaskMapper();
-        userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService);
+        userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService,
+                mock(ChatRepository.class));
         taskService = new TaskService(taskRepository, userRepository, taskMapper, userService,
                 historyRepository, mock(TaskColumnHistoryMapper.class), columnRepository,
                 rowRepository, boardService, mock(pl.myproject.kanbanproject2.task.DeadlineNotifier.class),
