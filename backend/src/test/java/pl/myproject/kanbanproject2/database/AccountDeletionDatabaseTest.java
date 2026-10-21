@@ -15,6 +15,9 @@ import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.board.CreateBoardRequest;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitation;
 import pl.myproject.kanbanproject2.board.invitation.BoardInvitationRepository;
+import pl.myproject.kanbanproject2.chat.Chat;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
+import pl.myproject.kanbanproject2.chat.MessageType;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.user.User;
@@ -22,6 +25,7 @@ import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +52,9 @@ class AccountDeletionDatabaseTest {
 
     @Autowired
     private BoardInvitationRepository invitations;
+
+    @Autowired
+    private ChatRepository chats;
 
     @Autowired
     private TransactionTemplate transactions;
@@ -103,5 +110,39 @@ class AccountDeletionDatabaseTest {
         assertThat(count("select count(*) from board_invitations where board_id = ? and invited_by_id is null", shared))
                 .isEqualTo(1);
         assertThat(count("select count(*) from user_task where user_id = ?", owner.getId())).isZero();
+    }
+
+    @Test
+    @DisplayName("closing an account deletes its direct messages, so a later owner of the address cannot read them")
+    void closingAnAccountDeletesItsDirectMessages() {
+        var alice = account("alice");
+        var bob = account("bob");
+        var carol = account("carol");
+        transactions.executeWithoutResult(status -> {
+            chats.save(direct(alice.getEmail(), bob.getEmail()));
+            chats.save(direct(bob.getEmail(), alice.getEmail().toUpperCase()));
+            chats.save(direct(bob.getEmail(), carol.getEmail()));
+        });
+
+        userService.deleteUser(alice.getId());
+
+        assertThat(count("select count(*) from chat_messages where lower(sender) = ? or lower(recipient_id) = ?",
+                alice.getEmail(), alice.getEmail()))
+                .as("a new account under the same address would inherit the thread")
+                .isZero();
+        assertThat(count("select count(*) from chat_messages where sender = ? and recipient_id = ?",
+                bob.getEmail(), carol.getEmail()))
+                .as("other people's conversations stay")
+                .isEqualTo(1);
+    }
+
+    private static Chat direct(String sender, String recipient) {
+        return Chat.builder()
+                .type(MessageType.PRIVATE)
+                .content("hello")
+                .sender(sender)
+                .recipientId(recipient)
+                .timestamp(LocalDateTime.now())
+                .build();
     }
 }

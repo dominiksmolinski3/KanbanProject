@@ -1344,7 +1344,11 @@ exists to enforce. Neither is addressable now, and six things carry the replacem
   columns in the same transaction. Before, a changed address left its direct-message history under
   the old string, where `findDirectThread` no longer looked, so the thread was empty for both
   people. The old address could also be registered again by someone else, and if that account
-  shared a board with the other party, the old thread would have appeared there.
+  shared a board with the other party, the old thread would have appeared there. Closing an
+  account deletes its direct messages for the same reason. A message is stored under the peer's
+  own username, not the string the client typed: the peer check ignores case, but the user
+  registry and `findDirectThread` do not, so `Bob@X.com` was delivered to nobody and missing
+  from both histories.
 - **Nothing in `ChatController` throws.** An exception on the inbound channel becomes a STOMP ERROR
   frame and a *closed session*, so a paste over the 2 000-character limit did not bounce the
   message — it dropped the connection, and the client reconnected into a room it had to rejoin.

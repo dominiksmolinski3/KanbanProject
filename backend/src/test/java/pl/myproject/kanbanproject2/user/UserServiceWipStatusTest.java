@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -33,7 +34,7 @@ class UserServiceWipStatusTest {
         caller = tenant.caller();
         caller.setId(USER_ID);
         userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class),
-                tenant.boardService());
+                tenant.boardService(), mock(ChatRepository.class));
     }
 
     @Test

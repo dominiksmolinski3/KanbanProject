@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.TaskRepository;
@@ -33,7 +34,7 @@ class UserServiceLocaleTest {
         account.setId(USER_ID);
         account.setLocale("en");
         userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class),
-                tenant.boardService());
+                tenant.boardService(), mock(ChatRepository.class));
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(account));
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
