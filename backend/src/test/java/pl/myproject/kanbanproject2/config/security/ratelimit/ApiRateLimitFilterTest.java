@@ -101,6 +101,16 @@ class ApiRateLimitFilterTest {
     }
 
     @Test
+    @DisplayName("a percent-encoded /api path is counted like the path Spring decodes it to")
+    void countsAnEncodedPath() throws Exception {
+        signedInAs(7);
+        when(limiter.attempt(7)).thenReturn(AuthRateLimitDecision.refuse(Duration.ofSeconds(1)));
+
+        assertThat(run("/%61pi/tasks", new MockFilterChain()).getStatus()).isEqualTo(429);
+        assertThat(run("/a%70i/tasks", new MockFilterChain()).getStatus()).isEqualTo(429);
+    }
+
+    @Test
     @DisplayName("with Redis unreachable the call is allowed, since the limit fails open")
     @SuppressWarnings("unchecked")
     void failsOpen() {
