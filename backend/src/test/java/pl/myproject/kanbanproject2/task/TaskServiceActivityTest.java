@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
@@ -116,6 +117,26 @@ class TaskServiceActivityTest {
         var order = inOrder(activityRecorder);
         order.verify(activityRecorder).assigned(caller, task, assignee);
         order.verify(activityRecorder).unassigned(caller, task, assignee);
+    }
+
+    @Test
+    @DisplayName("assigning someone already on the task changes nothing, records nothing and skips the WIP check")
+    void reassigningAnAssigneeIsANoOp() {
+        var task = existingTask(5);
+        var assignee = TenancyFixtures.user(2);
+        board.addMember(assignee);
+        task.getUsers().add(assignee);
+        assignee.getTasks().add(task);
+        when(userRepository.findById(2)).thenReturn(Optional.of(assignee));
+        when(userService.checkWipStatus(2)).thenReturn(false);
+
+        assertThatCode(() -> taskService.assignUserToTask(caller, 5, 2))
+                .as("the WIP count already includes this task, so a repeat would be refused for a no-op")
+                .doesNotThrowAnyException();
+
+        assertThat(task.getUsers()).containsExactly(assignee);
+        verify(activityRecorder, never()).assigned(any(), any(), any());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
