@@ -9,9 +9,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 import pl.myproject.kanbanproject2.exception.ErrorResponse;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 
@@ -25,7 +28,9 @@ import java.util.Optional;
 @Slf4j
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    static final int MAX_BUFFERED_BODY_BYTES = 4096;
+    static final int MAX_BUFFERED_BODY_BYTES = 16 * 1024;
+
+    static final String UNREADABLE_CODE = "MALFORMED_REQUEST";
 
     private static final String EMAIL_FIELD = "email";
 
@@ -80,6 +85,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         }
 
         String accountKey = normaliseAccount(account);
+        if (accountKey == null && AuthRateLimitRule.namesAnAccount(path)) {
+            refuseUnreadable(request, path, response);
+            return;
+        }
         if (accountKey != null) {
             AuthRateLimitDecision byAccount = rateLimiter.tryConsume(
                     rule, AuthRateLimitDimension.ACCOUNT, accountKey);
@@ -113,19 +122,35 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
                 ExceptionIdentifier.TOO_MANY_REQUESTS.getDefaultMessage()));
     }
 
+    private void refuseUnreadable(HttpServletRequest request, String path, HttpServletResponse response)
+            throws IOException {
+
+        log.warn("Refused {} {}: no account could be read from the request", request.getMethod(), path);
+
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        objectMapper.writeValue(response.getOutputStream(),
+                ErrorResponse.of(UNREADABLE_CODE, "The request body could not be read"));
+    }
+
+    // Match the decoded path Spring routes on: on the raw URI, /api/auth/%6Cogin would skip every limit.
     private static String path(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        if (uri != null && contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)) {
-            return uri.substring(contextPath.length());
-        }
-        return uri;
+        return UrlPathHelper.defaultInstance.getPathWithinApplication(request);
     }
 
     private static boolean isJson(HttpServletRequest request) {
         String contentType = request.getContentType();
-        return contentType != null
-                && contentType.toLowerCase(Locale.ROOT).startsWith(MediaType.APPLICATION_JSON_VALUE);
+        if (contentType == null) {
+            return false;
+        }
+        try {
+            MediaType type = MediaType.parseMediaType(contentType);
+            return "application".equals(type.getType())
+                    && ("json".equals(type.getSubtype()) || "json".equals(type.getSubtypeSuffix()));
+        } catch (InvalidMediaTypeException e) {
+            return false;
+        }
     }
 
     private static byte[] readPrefix(InputStream body) throws IOException {

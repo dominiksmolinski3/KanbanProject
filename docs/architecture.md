@@ -1038,6 +1038,30 @@ database any more. The Cypress seed and `loadtest/seed.mjs` take it from the new
 queued for the address. The outbox keeps every composed mail even with ACS blank, which is how CI
 and the compose stack run.
 
+**A code survives five wrong guesses, then it is gone (`V28`).** Six digits are 900,000 values, and
+a reset or verification code is reissued on demand, so the rate limiter alone does not protect it:
+the per-account bucket is the only thing that does, and anything that skips it leaves only the
+per-address bucket, which a pool of a thousand addresses walks through in hours.
+`users.password_reset_attempts` and `users.verification_attempts` count wrong guesses, the way
+`email_change_attempts` already did; the fifth clears the code, and a new code starts the count at
+zero. `resetPassword` is `@Transactional(dontRollbackOn = GlobalException.class)` for the reason
+`rotate` is: the count is saved and then the refusal is thrown. A wrong password on `verify` counts
+too, since an attacker who signed up for the address knows it.
+
+**The rate-limit filter refuses what it cannot read rather than letting it past.** The per-account
+bucket keys on the `email` in the body, so the filter has to read the body the way Spring will:
+- **Every JSON media type.** Spring's Jackson converter binds `application/*+json` as well as
+  `application/json`, so `application/x+json` reached the controller while the filter, which only
+  read `application/json`, saw no account. It now parses the type and reads any `+json` subtype.
+- **No account, no request.** On a route that names one (login, verify, signup, resend, forgot and
+  reset), a body the filter cannot read an address from is a `400 MALFORMED_REQUEST` instead of a
+  pass with only the address limit applied. That closes padding: 4 KiB of leading whitespace, or a
+  field after `email` that runs past the buffer, used to make the filter's parse fail while Spring
+  still bound the full body. The buffer is 16 KiB, well above any real auth body. `refresh` and
+  `logout` name no account and pass as before.
+- **The decoded path.** The rules are matched on `UrlPathHelper`'s decoded path, because Spring
+  routes `/api/auth/%6Cogin` to the login handler; on the raw URI it matched no rule at all.
+
 **A session is a row, not the JWT.** `RefreshToken` (`refresh_tokens`, `V7`) stores a SHA-256
 digest of a 256-bit token, never the token, and `RefreshTokenService` is the only thing that reads
 it. Login answers with both tokens; `POST /api/auth/refresh` exchanges a refresh token for a new

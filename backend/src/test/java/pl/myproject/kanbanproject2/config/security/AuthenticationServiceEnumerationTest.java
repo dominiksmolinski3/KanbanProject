@@ -343,6 +343,59 @@ class AuthenticationServiceEnumerationTest {
         }
 
         @Test
+        @DisplayName("five wrong attempts retire the code, so even the right one is refused after them")
+        void wrongAttemptsRetireTheCode() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode(STORED_CODE);
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            for (int attempt = 0; attempt < AuthenticationService.MAX_VERIFICATION_ATTEMPTS; attempt++) {
+                assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222"), DeviceContext.unknown()))
+                        .isInstanceOf(GlobalException.class)
+                        .extracting(e -> ((GlobalException) e).getIdentifier())
+                        .isEqualTo(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
+            }
+
+            assertThat(pending.getVerificationCode())
+                    .as("six digits with no attempt limit fall to a distributed guess within the code's lifetime")
+                    .isNull();
+            assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown()))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
+            assertThat(pending.isEnabled()).isFalse();
+        }
+
+        @Test
+        @DisplayName("a wrong password counts as a wrong attempt too")
+        void aWrongPasswordIsCounted() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationCode(STORED_CODE);
+            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            assertThatThrownBy(() -> service.verifyUser(
+                    verification(KNOWN, "111111", "not-what-was-signed-up-with"), DeviceContext.unknown()))
+                    .isInstanceOf(GlobalException.class);
+
+            assertThat(pending.getVerificationAttempts()).isEqualTo(1);
+            verify(userRepository).save(pending);
+        }
+
+        @Test
+        @DisplayName("a resent code starts the count again")
+        void aResentCodeStartsTheCountAgain() {
+            var pending = user(KNOWN, false);
+            pending.setVerificationAttempts(AuthenticationService.MAX_VERIFICATION_ATTEMPTS - 1);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
+
+            service.resendVerificationCode(KNOWN);
+
+            assertThat(pending.getVerificationAttempts()).isZero();
+        }
+
+        @Test
         @DisplayName("a code that does not check out issues no session")
         void aFailedVerificationIssuesNothing() {
             var pending = user(KNOWN, false);
