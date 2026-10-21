@@ -288,9 +288,10 @@ public class TaskService {
     public TaskDto removeUserFromTask(User caller, Integer taskId, Integer userId) {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
-                        "User not found with id: " + userId));
+        var user = task.getUsers().stream()
+                .filter(assignee -> assignee.getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> userNotFound(userId));
 
         task.getUsers().remove(user);
         user.getTasks().remove(task);

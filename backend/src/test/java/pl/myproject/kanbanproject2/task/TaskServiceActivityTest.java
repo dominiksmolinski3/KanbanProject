@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.TenancyFixtures;
+import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
+import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.layout.column.ColumnRepository;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
@@ -23,6 +25,8 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -112,6 +116,26 @@ class TaskServiceActivityTest {
         var order = inOrder(activityRecorder);
         order.verify(activityRecorder).assigned(caller, task, assignee);
         order.verify(activityRecorder).unassigned(caller, task, assignee);
+    }
+
+    @Test
+    @DisplayName("unassigning someone who is not on the task is a 404 that records nothing, even for a member")
+    void unassigningANonAssigneeRecordsNothing() {
+        existingTask(5);
+        var stranger = TenancyFixtures.user(3);
+        var member = TenancyFixtures.user(4);
+        board.addMember(member);
+        when(userRepository.findById(3)).thenReturn(Optional.of(stranger));
+        when(userRepository.findById(4)).thenReturn(Optional.of(member));
+
+        for (var userId : List.of(3, 4, 99)) {
+            assertThatThrownBy(() -> taskService.removeUserFromTask(caller, 5, userId))
+                    .isInstanceOfSatisfying(GlobalException.class, e ->
+                            assertThat(e.getIdentifier()).isEqualTo(ExceptionIdentifier.USER_NOT_FOUND));
+        }
+
+        verify(activityRecorder, never()).unassigned(any(), any(), any());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
