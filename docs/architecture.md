@@ -1362,7 +1362,12 @@ exists to enforce. Neither is addressable now, and six things carry the replacem
   honest since the tenancy model landed and nothing scanned STOMP, which is the gap chat grew in —
   a guard that covers one transport and not the other is a guard that says where the next hole
   will be. There is no `PublicPaths` to be excused by here: the channel is authenticated at
-  CONNECT, so the rule has no exceptions.
+  CONNECT, so the rule has no exceptions. "CONNECT" means the message type, not the command:
+  STOMP 1.2 lets a client open with a `STOMP` frame, which Spring and the broker relay accept as a
+  connect, and `WebSocketAuthInterceptor` once checked only the `CONNECT` command, so a `STOMP`
+  frame with no token opened a session. The interceptor stamps the account on the message only; it
+  never sets `SecurityContextHolder`, whose thread-local would outlive the frame on a pooled
+  transport thread.
 - **A user destination is subscribed to without a name, and that was a live bug.**
   `/user/queue/messages` is the whole destination: Spring reads the account off the session it
   authenticated at CONNECT and rewrites the subscription to a queue of the session's own.
