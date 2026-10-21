@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 import pl.myproject.kanbanproject2.exception.ErrorResponse;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.user.User;
@@ -58,8 +59,7 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static Integer accountId(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        if (uri == null || !uri.startsWith(request.getContextPath() + API_PREFIX)) {
+        if (!UrlPathHelper.defaultInstance.getPathWithinApplication(request).startsWith(API_PREFIX)) {
             return null;
         }
         var authentication = SecurityContextHolder.getContext().getAuthentication();
