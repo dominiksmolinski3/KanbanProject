@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionAttribute;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
@@ -15,6 +17,7 @@ import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -174,6 +177,74 @@ class PasswordResetServiceTest {
                     .isEqualTo(ExceptionIdentifier.INVALID_RESET_CODE);
 
             assertThat(existing.getPassword()).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("five wrong guesses retire the code, so even the right one is refused after them")
+        void wrongGuessesRetireTheCode() {
+            var existing = prepared(true);
+            String code = mailedCode();
+            String before = existing.getPassword();
+
+            for (int guess = 0; guess < PasswordResetService.MAX_ATTEMPTS; guess++) {
+                assertThatThrownBy(() -> service.resetPassword(
+                        new ResetPasswordRequest(KNOWN, "000000", "attacker-password")))
+                        .isInstanceOf(GlobalException.class)
+                        .extracting(e -> ((GlobalException) e).getIdentifier())
+                        .isEqualTo(ExceptionIdentifier.INVALID_RESET_CODE);
+            }
+
+            assertThat(existing.getPasswordResetCode())
+                    .as("six digits with no attempt limit fall to a distributed guess within the code's lifetime")
+                    .isNull();
+            assertThatThrownBy(() -> service.resetPassword(
+                    new ResetPasswordRequest(KNOWN, code, "brand-new-password")))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.INVALID_RESET_CODE);
+            assertThat(existing.getPassword()).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("fewer wrong guesses than the limit leave the right code working")
+        void guessesUnderTheLimitLeaveTheCodeAlone() {
+            var existing = prepared(true);
+            String code = mailedCode();
+
+            for (int guess = 0; guess < PasswordResetService.MAX_ATTEMPTS - 1; guess++) {
+                assertThatThrownBy(() -> service.resetPassword(
+                        new ResetPasswordRequest(KNOWN, "000000", "attacker-password")))
+                        .isInstanceOf(GlobalException.class);
+            }
+            service.resetPassword(new ResetPasswordRequest(KNOWN, code, "brand-new-password"));
+
+            assertThat(passwordEncoder.matches("brand-new-password", existing.getPassword())).isTrue();
+            assertThat(existing.getPasswordResetAttempts()).isZero();
+        }
+
+        @Test
+        @DisplayName("a new code starts the count again")
+        void aNewCodeStartsTheCountAgain() {
+            var existing = prepared(true);
+            existing.setPasswordResetAttempts(PasswordResetService.MAX_ATTEMPTS - 1);
+
+            service.requestReset(KNOWN);
+
+            assertThat(existing.getPasswordResetAttempts()).isZero();
+        }
+
+        @Test
+        @DisplayName("a wrong guess is counted even though the refusal throws out of the transaction")
+        void aWrongGuessCommitsItsCount() throws NoSuchMethodException {
+            Method reset = PasswordResetService.class.getMethod("resetPassword", ResetPasswordRequest.class);
+            TransactionAttribute attribute = new AnnotationTransactionAttributeSource()
+                    .getTransactionAttribute(reset, PasswordResetService.class);
+
+            assertThat(attribute).as("resetPassword is no longer transactional").isNotNull();
+            assertThat(attribute.rollbackOn(new GlobalException(ExceptionIdentifier.INVALID_RESET_CODE)))
+                    .as("the count is saved and then the refusal is thrown; a rollback would undo the count")
+                    .isFalse();
+            assertThat(attribute.rollbackOn(new IllegalStateException("the database went away"))).isTrue();
         }
 
         @Test
