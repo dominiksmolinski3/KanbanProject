@@ -54,7 +54,7 @@ public class PasswordResetService {
 
     @Transactional(dontRollbackOn = GlobalException.class)
     public void resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_RESET_CODE));
 
         if (user.getPasswordResetCode() == null || user.getPasswordResetExpiresAt() == null) {

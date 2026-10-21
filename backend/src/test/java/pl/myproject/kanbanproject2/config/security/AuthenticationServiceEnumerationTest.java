@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionAttribute;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
@@ -16,6 +18,7 @@ import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +65,8 @@ class AuthenticationServiceEnumerationTest {
         when(passwordEncoder.matches("correct-horse", "hashed")).thenReturn(true);
         when(passwordEncoder.matches("111111", STORED_CODE)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(userRepository.findByEmailForUpdate(anyString()))
+                .thenAnswer(i -> userRepository.findByEmail(i.getArgument(0)));
         when(refreshTokenService.issue(any(), any()))
                 .thenReturn(new RefreshTokenService.Issued("a-refresh-token", 12L));
     }
@@ -381,6 +386,19 @@ class AuthenticationServiceEnumerationTest {
 
             assertThat(pending.getVerificationAttempts()).isEqualTo(1);
             verify(userRepository).save(pending);
+        }
+
+        @Test
+        @DisplayName("a wrong guess is counted even though the refusal throws out of the transaction")
+        void aWrongGuessCommitsItsCount() throws NoSuchMethodException {
+            Method verifyUser = AuthenticationService.class.getMethod("verifyUser", VerifyUserDto.class, DeviceContext.class);
+            TransactionAttribute attribute = new AnnotationTransactionAttributeSource()
+                    .getTransactionAttribute(verifyUser, AuthenticationService.class);
+
+            assertThat(attribute).as("without a transaction the account row is not locked").isNotNull();
+            assertThat(attribute.rollbackOn(new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE)))
+                    .as("the count is saved and then the refusal is thrown; a rollback would undo the count")
+                    .isFalse();
         }
 
         @Test

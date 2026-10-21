@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -53,6 +54,8 @@ class PasswordResetServiceTest {
         service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService);
 
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userRepository.findByEmailForUpdate(anyString()))
+                .thenAnswer(call -> userRepository.findByEmail(call.getArgument(0)));
     }
 
     private User user(String email, boolean enabled) {
