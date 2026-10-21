@@ -1064,7 +1064,10 @@ whenever it withdraws them all:
 - **Sockets.** `StompSessionUsers` records each socket's token issue time at `CONNECT` and compares
   it with the stamp, cached for five seconds like board visibility. A signed-out session's next
   outbound frame becomes an `ERROR` (`SignedOutSessionInterceptor`), and Spring closes the socket
-  after sending one. Its next `SEND` or `SUBSCRIBE` is refused the same way. The client answers a
+  after sending one. Its next `SEND` or `SUBSCRIBE` is refused the same way. The check reads the
+  message type, not the command: a client may send a `MESSAGE` frame, and Spring routes it to the
+  controllers exactly like a `SEND`, so a socket that stayed unsubscribed (and so never got an
+  outbound frame to close it) kept posting chat as the account. The client answers a
   STOMP error with `renewOrSignOut`: a session that still renews reconnects with its new token, and
   one that was signed out everywhere ends.
 - **Same-second issue.** `iat` has whole-second precision, so the comparison truncates the stamp
@@ -1428,7 +1431,10 @@ Six decisions carry it, and none of them is visible from the destination name:
   of the four shapes the client uses: `/topic/boards.{id}`, `/topic/boards.{id}.chat`,
   `/user/queue/messages` and `/user/queue/errors`. Anything else is dropped the way a refused
   subscription is, and it is counted on the same meter under the reasons `unlisted-send` and
-  `unlisted-subscribe`. `StompDestinationsMatchTheClientTest` reads the client's `subscribe(...)`
+  `unlisted-subscribe`. A command only a server sends (`CONNECTED`, `MESSAGE`, `RECEIPT`, `ERROR`)
+  is dropped under `server-command`: Spring decodes a client's `MESSAGE` frame and hands it to the
+  `@MessageMapping` handlers as if it were a `SEND`, so a check keyed on `SEND` alone could be
+  walked around by changing one word. `StompDestinationsMatchTheClientTest` reads the client's `subscribe(...)`
   and `destination:` literals, so a client destination the server would drop fails the build
   instead of becoming a screen that never updates.
 - **A subscription is checked again on the way out, because access can end while it is open.**
