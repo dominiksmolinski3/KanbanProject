@@ -1481,9 +1481,13 @@ Six decisions carry it, and none of them is visible from the destination name:
   after the commit. It is an application event rather than a call, because `BoardService` cannot
   depend on the publisher: the socket configuration already depends on `BoardService` through the
   subscription check, and the direct call is a cycle Spring refuses at startup. An invitation
-  notifies the invitee too, if the address has an account. The client re-reads its boards,
-  invitations and open board. If the open board is gone, it moves to another and says so
-  (`notifications.boardNoLongerAvailable`).
+  notifies the invitee too, if the address has an account, and so does revoking one. The notice
+  names no board, so the client re-reads its boards and invitations and then decides about the
+  open board. If it is gone, the client moves to another and says so
+  (`notifications.boardNoLongerAvailable`) without re-reading the old one, which would answer 404
+  and flash the error screen. If its entry in the list changed, the client re-reads it, because
+  removing a member unassigns their cards with no event on the board's topic. Otherwise it leaves
+  it alone.
 - **A refused subscription is dropped, not refused out loud**, which is the 404-not-403 rule kept in
   the one form STOMP allows. Throwing is the obvious thing and is worse twice over: Spring turns an
   exception on the inbound channel into an ERROR frame and *closes the session*, so a member removed

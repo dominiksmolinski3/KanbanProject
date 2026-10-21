@@ -85,26 +85,51 @@ describe('KanbanContext live board sync', () => {
     });
   };
 
-  it('a boards notice re-reads the boards and the open board', async () => {
+  const BOARD = { id: 1, name: 'Kanban', ownerId: 1, owned: true, members: [] };
+
+  const notifyBoardsChanged = async () => {
     await act(async () => {
       watchers[0].onBoardsChanged();
       await Promise.resolve();
     });
     await settle();
+  };
+
+  it('a boards notice about another board re-reads the boards but not the open one', async () => {
+    boardApi.fetchBoards.mockResolvedValueOnce([BOARD, { id: 2, name: 'Renamed', ownerId: 3, owned: false, members: [] }]);
+
+    await notifyBoardsChanged();
 
     expect(boardApi.fetchBoards).toHaveBeenCalled();
-    expect(api.fetchTasks).toHaveBeenCalled();
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+    expect(api.fetchColumns).not.toHaveBeenCalled();
     expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('a boards notice that changes the open board re-reads it, since a removed member leaves their cards', async () => {
+    boardApi.fetchBoards.mockResolvedValueOnce([{ ...BOARD, members: [{ id: 2, name: 'Bob', role: 'MEMBER' }] }]);
+
+    await notifyBoardsChanged();
+
+    await waitFor(() => expect(api.fetchTasks).toHaveBeenCalled());
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('a boards notice reads nothing of the open board until the list says whether it is still there', async () => {
+    let answer;
+    boardApi.fetchBoards.mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
+
+    await notifyBoardsChanged();
+
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+    await act(async () => answer([BOARD]));
   });
 
   it('a boards notice that takes the open board away moves to another and says why', async () => {
     boardApi.fetchBoards.mockResolvedValue([{ id: 2, name: 'Other', ownerId: 1, owned: true, members: [] }]);
 
-    await act(async () => {
-      watchers[0].onBoardsChanged();
-      await Promise.resolve();
-    });
-    await settle();
+    await notifyBoardsChanged();
 
     await waitFor(() => expect(api.setActiveBoardId).toHaveBeenCalledWith(2));
     expect(toast.info).toHaveBeenCalledWith('notifications.boardNoLongerAvailable');
