@@ -124,14 +124,23 @@ export function useBoards({ t }: { t: Translate }) {
 
   const handleBoardsChanged = async () => {
     try {
+      const before = boards.find(board => board.id === activeBoardId);
       const remaining = await refreshBoards();
       queryClient.invalidateQueries({ queryKey: boardsKeys.invitations });
-      if (activeBoardId !== null && !remaining.some(board => board.id === activeBoardId)) {
+      if (activeBoardId === null) {
+        return false;
+      }
+      const after = remaining.find(board => board.id === activeBoardId);
+      if (!after) {
         await moveOffBoard(remaining, activeBoardId);
         toast.info(t('notifications.boardNoLongerAvailable'));
+        return false;
       }
+      // Removing a member unassigns their cards with no board event, so a changed entry can mean changed cards.
+      return JSON.stringify(before) !== JSON.stringify(after);
     } catch (err) {
       console.error('Error refreshing the boards:', err);
+      return false;
     }
   };
 
