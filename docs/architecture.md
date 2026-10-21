@@ -1046,7 +1046,14 @@ per-address bucket, which a pool of a thousand addresses walks through in hours.
 `email_change_attempts` already did; the fifth clears the code, and a new code starts the count at
 zero. `resetPassword` is `@Transactional(dontRollbackOn = GlobalException.class)` for the reason
 `rotate` is: the count is saved and then the refusal is thrown. A wrong password on `verify` counts
-too, since an attacker who signed up for the address knows it.
+too, since an attacker who signed up for the address knows it. Both read the account through
+`findByEmailForUpdate`, a row lock, and `verifyUser` is transactional for it: without the lock,
+guesses sent at the same moment each read a count of zero and wrote one, so any number of them
+could be tried while the counter said one (`CodeGuessesDatabaseTest`).
+
+A stranger who knows an address can spend its five guesses and void the code. That is accepted:
+asking for a new code, or signing up again for an address still awaiting verification, already
+replaces it with no guessing at all, and each is limited by the same per-account bucket.
 
 **The rate-limit filter refuses what it cannot read rather than letting it past.** The per-account
 bucket keys on the `email` in the body, so the filter has to read the body the way Spring will:
