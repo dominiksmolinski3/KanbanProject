@@ -39,10 +39,14 @@ public class User implements UserDetails {
     private String verificationCode;
     @Column(name = "verification_expiration")
     private LocalDateTime verificationCodeExpiresAt;
+    @Column(name = "verification_attempts", nullable = false)
+    private int verificationAttempts;
     @Column(name = "password_reset_code")
     private String passwordResetCode;
     @Column(name = "password_reset_expiration")
     private LocalDateTime passwordResetExpiresAt;
+    @Column(name = "password_reset_attempts", nullable = false)
+    private int passwordResetAttempts;
     private Integer wipLimit;
     @Column(name = "locale", nullable = false, length = 8)
     private String locale = SupportedLocales.DEFAULT;

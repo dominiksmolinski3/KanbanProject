@@ -32,6 +32,7 @@ import java.util.List;
 public class AuthenticationService {
 
     private static final int VERIFICATION_CODE_TTL_MINUTES = 15;
+    static final int MAX_VERIFICATION_ATTEMPTS = 5;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
@@ -61,6 +62,7 @@ public class AuthenticationService {
         String code = generateVerificationCode();
         user.setVerificationCode(passwordEncoder.encode(code));
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+        user.setVerificationAttempts(0);
         user.setEnabled(false);
         userRepository.save(user);
         sendVerificationEmail(user, code);
@@ -76,13 +78,23 @@ public class AuthenticationService {
         }
         if (!passwordEncoder.matches(input.getVerificationCode(), user.getVerificationCode())
                 || !passwordEncoder.matches(input.getPassword(), user.getPassword())) {
+            user.setVerificationAttempts(user.getVerificationAttempts() + 1);
+            if (user.getVerificationAttempts() >= MAX_VERIFICATION_ATTEMPTS) {
+                clearVerificationCode(user);
+            }
+            userRepository.save(user);
             throw new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
         }
 
         user.setEnabled(true);
+        clearVerificationCode(user);
+        return issueSession(userRepository.save(user), device);
+    }
+
+    private static void clearVerificationCode(User user) {
         user.setVerificationCode(null);
         user.setVerificationCodeExpiresAt(null);
-        return issueSession(userRepository.save(user), device);
+        user.setVerificationAttempts(0);
     }
 
     public LoginResponse login(LoginUserDto input, DeviceContext device) {
@@ -152,6 +164,7 @@ public class AuthenticationService {
         String code = generateVerificationCode();
         user.setVerificationCode(passwordEncoder.encode(code));
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+        user.setVerificationAttempts(0);
         userRepository.save(user);
         sendVerificationEmail(user, code);
     }

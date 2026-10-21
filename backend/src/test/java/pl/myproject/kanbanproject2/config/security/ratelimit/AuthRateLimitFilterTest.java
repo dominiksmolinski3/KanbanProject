@@ -9,6 +9,8 @@ import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -167,46 +169,108 @@ class AuthRateLimitFilterTest {
                 .isEqualTo(ExceptionIdentifier.TOO_MANY_REQUESTS.getDefaultMessage());
     }
 
-    @Test
-    @DisplayName("a body the filter cannot parse still costs its address, and still reaches the controller")
-    void fallsBackToTheAddressLimitOnAnUnparseableBody() throws Exception {
-        String body = "not json at all";
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "not json at all",
+            "",
+            "[\"a@example.com\"]",
+            "{\"email\":{\"nested\":true}}",
+            "{\"email\":\"   \"}"})
+    @DisplayName("a request that names an account but whose account cannot be read is refused, not let past the account limit")
+    void refusesARequestWhoseAccountCannotBeRead(String body) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
         RecordingFilterChain chain = new RecordingFilterChain();
 
-        filter.doFilter(login(body), new MockHttpServletResponse(), chain);
+        filter.doFilter(login(body), response, chain);
 
-        assertThat(chain.invocations).isEqualTo(1);
-        assertThat(chain.body).isEqualTo(body);
+        assertRefusedAsUnreadable(response, chain);
         verify(limiter).tryConsume(any(), eq(AuthRateLimitDimension.IP), any());
         verify(limiter, never()).tryConsume(any(), eq(AuthRateLimitDimension.ACCOUNT), any());
     }
 
     @Test
-    @DisplayName("a form-encoded body is left alone rather than parsed as JSON")
-    void ignoresANonJsonBody() throws Exception {
+    @DisplayName("a form-encoded body to a route that names an account is refused rather than skipping the account limit")
+    void refusesANonJsonBody() throws Exception {
         MockHttpServletRequest request = login("email=a@example.com");
         request.setContentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+        MockHttpServletResponse response = new MockHttpServletResponse();
         RecordingFilterChain chain = new RecordingFilterChain();
 
-        filter.doFilter(request, new MockHttpServletResponse(), chain);
+        filter.doFilter(request, response, chain);
 
-        assertThat(chain.request).isSameAs(request);
+        assertRefusedAsUnreadable(response, chain);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"leading-whitespace", "padding-field"})
+    @DisplayName("padding the account past the buffer is refused: Spring would still read the address the filter cannot")
+    void refusesAnAccountPaddedPastTheBuffer(String shape) throws Exception {
+        String padding = " ".repeat(AuthRateLimitFilter.MAX_BUFFERED_BODY_BYTES);
+        String body = shape.equals("leading-whitespace")
+                ? padding + "{\"email\":\"a@example.com\"}"
+                : "{\"email\":\"a@example.com\",\"pad\":\"" + padding + "\"}";
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        RecordingFilterChain chain = new RecordingFilterChain();
+
+        filter.doFilter(login(body), response, chain);
+
+        assertRefusedAsUnreadable(response, chain);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "application/json;charset=UTF-8",
+            "APPLICATION/JSON",
+            "application/x+json",
+            "application/merge-patch+json; charset=utf-8"})
+    @DisplayName("every media type Spring binds as JSON is read for the account, so none of them buys a fresh bucket")
+    void readsTheAccountUnderEveryJsonMediaType(String contentType) throws Exception {
+        String body = "{\"email\":\"a@example.com\"}";
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            MockHttpServletRequest request = login(body);
+            request.setContentType(contentType);
+            assertThat(statusOf(request)).isEqualTo(HttpStatus.OK.value());
+        }
+        MockHttpServletRequest third = login(body);
+        third.setContentType(contentType);
+
+        assertThat(statusOf(third)).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    }
+
+    @Test
+    @DisplayName("a percent-encoded route is limited like the route Spring decodes it to")
+    void limitsAnEncodedPathLikeTheDecodedOne() throws Exception {
+        String body = "{\"email\":\"a@example.com\"}";
+
+        assertThat(statusOf(login(body))).isEqualTo(HttpStatus.OK.value());
+        assertThat(statusOf(jsonPost("/api/auth/%6Cogin", body))).isEqualTo(HttpStatus.OK.value());
+        assertThat(statusOf(jsonPost("/api/auth/l%6Fgin", body))).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    }
+
+    @Test
+    @DisplayName("a route that names no account passes without one")
+    void passesARefreshWithNoAccount() throws Exception {
+        RecordingFilterChain chain = new RecordingFilterChain();
+
+        filter.doFilter(refresh("{\"refreshToken\":\"abc\"}"), new MockHttpServletResponse(), chain);
+
+        assertThat(chain.invocations).isEqualTo(1);
+        verify(limiter).tryConsume(any(), eq(AuthRateLimitDimension.IP), any());
         verify(limiter, never()).tryConsume(any(), eq(AuthRateLimitDimension.ACCOUNT), any());
     }
 
     @Test
-    @DisplayName("a body larger than the buffer is replayed in full, address-limited but not account-limited")
+    @DisplayName("a body larger than the buffer is replayed in full")
     void streamsPastTheBufferWithoutLosingBytes() throws Exception {
         String padding = "x".repeat(AuthRateLimitFilter.MAX_BUFFERED_BODY_BYTES * 2);
-        String body = "{\"padding\":\"" + padding + "\",\"email\":\"a@example.com\"}";
+        String body = "{\"padding\":\"" + padding + "\",\"refreshToken\":\"abc\"}";
         RecordingFilterChain chain = new RecordingFilterChain();
 
-        filter.doFilter(login(body), new MockHttpServletResponse(), chain);
+        filter.doFilter(refresh(body), new MockHttpServletResponse(), chain);
 
         assertThat(chain.invocations).isEqualTo(1);
         assertThat(chain.body).isEqualTo(body);
-        verify(limiter).tryConsume(any(), eq(AuthRateLimitDimension.IP), any());
-        verify(limiter, never()).tryConsume(any(), eq(AuthRateLimitDimension.ACCOUNT), any());
     }
 
     @Test
@@ -221,31 +285,17 @@ class AuthRateLimitFilterTest {
             }
         };
 
-        filter.doFilter(login(body), new MockHttpServletResponse(), chain);
+        filter.doFilter(refresh(body), new MockHttpServletResponse(), chain);
 
         assertThat(seen.toString()).isEqualTo(body);
     }
 
-    @Test
-    @DisplayName("an empty body is charged to its address and nothing else")
-    void handlesAnEmptyBody() throws Exception {
-        RecordingFilterChain chain = new RecordingFilterChain();
-
-        filter.doFilter(login(""), new MockHttpServletResponse(), chain);
-
-        assertThat(chain.invocations).isEqualTo(1);
-        verify(limiter, never()).tryConsume(any(), eq(AuthRateLimitDimension.ACCOUNT), any());
-    }
-
-    @Test
-    @DisplayName("an email field that is not a string is ignored rather than keyed on")
-    void ignoresANonTextualEmail() throws Exception {
-        RecordingFilterChain chain = new RecordingFilterChain();
-
-        filter.doFilter(login("{\"email\":{\"nested\":true}}"), new MockHttpServletResponse(), chain);
-
-        assertThat(chain.invocations).isEqualTo(1);
-        verify(limiter, never()).tryConsume(any(), eq(AuthRateLimitDimension.ACCOUNT), any());
+    private static void assertRefusedAsUnreadable(MockHttpServletResponse response, RecordingFilterChain chain)
+            throws IOException {
+        assertThat(chain.invocations).isZero();
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(OBJECT_MAPPER.readTree(response.getContentAsString()).get("code").asText())
+                .isEqualTo(AuthRateLimitFilter.UNREADABLE_CODE);
     }
 
     private int statusOf(MockHttpServletRequest request) throws Exception {
@@ -262,6 +312,10 @@ class AuthRateLimitFilterTest {
 
     private static MockHttpServletRequest login(String body) {
         return jsonPost(AuthRateLimitRule.LOGIN_PATH, body);
+    }
+
+    private static MockHttpServletRequest refresh(String body) {
+        return jsonPost(AuthRateLimitRule.REFRESH_PATH, body);
     }
 
     private static MockHttpServletRequest signup(String body) {

@@ -26,6 +26,8 @@ public class PasswordResetService {
 
     private static final int RESET_CODE_TTL_MINUTES = 10;
 
+    static final int MAX_ATTEMPTS = 5;
+
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
@@ -44,11 +46,13 @@ public class PasswordResetService {
         String code = generateCode();
         user.setPasswordResetCode(passwordEncoder.encode(code));
         user.setPasswordResetExpiresAt(LocalDateTime.now().plusMinutes(RESET_CODE_TTL_MINUTES));
+        user.setPasswordResetAttempts(0);
         userRepository.save(user);
 
         sendResetEmail(user, code);
     }
 
+    @Transactional(dontRollbackOn = GlobalException.class)
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_RESET_CODE));
@@ -62,6 +66,11 @@ public class PasswordResetService {
             throw new GlobalException(ExceptionIdentifier.RESET_CODE_EXPIRED);
         }
         if (!passwordEncoder.matches(request.resetCode(), user.getPasswordResetCode())) {
+            user.setPasswordResetAttempts(user.getPasswordResetAttempts() + 1);
+            if (user.getPasswordResetAttempts() >= MAX_ATTEMPTS) {
+                clearResetCode(user);
+            }
+            userRepository.save(user);
             throw new GlobalException(ExceptionIdentifier.INVALID_RESET_CODE);
         }
 
@@ -74,6 +83,7 @@ public class PasswordResetService {
             user.setEnabled(true);
             user.setVerificationCode(null);
             user.setVerificationCodeExpiresAt(null);
+            user.setVerificationAttempts(0);
         }
 
         userRepository.save(user);
@@ -96,6 +106,7 @@ public class PasswordResetService {
     private static void clearResetCode(User user) {
         user.setPasswordResetCode(null);
         user.setPasswordResetExpiresAt(null);
+        user.setPasswordResetAttempts(0);
     }
 
     private void sendResetEmail(User user, String code) {

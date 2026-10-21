@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.config.security.ratelimit;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public enum AuthRateLimitRule {
     CREDENTIALS,
@@ -28,7 +29,14 @@ public enum AuthRateLimitRule {
             LOGOUT_PATH, CREDENTIALS
     );
 
+    private static final Set<String> NAMES_AN_ACCOUNT = Set.of(
+            LOGIN_PATH, VERIFY_PATH, SIGNUP_PATH, RESEND_PATH, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH);
+
     public static Optional<AuthRateLimitRule> forPath(String path) {
         return Optional.ofNullable(path).map(BY_PATH::get);
+    }
+
+    static boolean namesAnAccount(String path) {
+        return path != null && NAMES_AN_ACCOUNT.contains(path);
     }
 }
