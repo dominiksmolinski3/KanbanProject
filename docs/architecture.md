@@ -706,7 +706,12 @@ reports `attachments` as `OUT_OF_SERVICE` on `/actuator/health`, and an upload i
 `503 ATTACHMENT_STORAGE_UNAVAILABLE`. That is the opposite of what `DisabledEmailSender` does, on
 purpose — a dropped mail has nobody standing in front of it and there is nothing useful to say,
 while an upload has somebody watching a progress bar. `docker-compose` runs an **Azurite** service so
-the local stack has working attachments without an Azure subscription.
+the local stack has working attachments without an Azure subscription. It runs with
+`--skipApiVersionCheck`, because the Azure SDK sends a newer storage API version than Azurite has
+caught up with: azure-sdk-bom 1.3.9 sends `2026-10-06`, while Azurite 3.37.0 knows `2026-06-06`.
+Azurite refuses an unknown version with a 400, so the container was never created and every local
+upload was a 500. The API keeps running when that happens and only logs a warning, and no e2e spec
+uploads a file, so CI stayed green.
 
 **Nothing joins the two stores but a string.** `task_attachments.blob_name` is written by the
 application; there is no foreign key, no shared transaction, and no network path between Postgres
