@@ -272,6 +272,9 @@ public class TaskService {
         var task = findTask(caller, taskId);
         boardService.requireWritable(caller, task.getBoard());
         var user = findBoardMember(task.getBoard(), userId);
+        if (task.getUsers().stream().anyMatch(assignee -> assignee.getId().equals(userId))) {
+            return taskMapper.apply(task);
+        }
 
         if (!userService.checkWipStatus(userId)) {
             throw new GlobalException(ExceptionIdentifier.USER_WIP_LIMIT_EXCEEDED);
