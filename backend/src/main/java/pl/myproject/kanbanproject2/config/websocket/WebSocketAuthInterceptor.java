@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -35,7 +36,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             return message;
         }
 
-        if ((StompCommand.SEND.equals(accessor.getCommand()) || StompCommand.SUBSCRIBE.equals(accessor.getCommand()))
+        SimpMessageType type = accessor.getMessageType();
+        if ((SimpMessageType.MESSAGE.equals(type) || SimpMessageType.SUBSCRIBE.equals(type))
                 && sessionUsers.isSignedOut(accessor.getSessionId())) {
             throw new AccessDeniedException(SignedOutSessionInterceptor.SIGNED_OUT);
         }
