@@ -36,6 +36,10 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     @Query("update Chat c set c.recipientId = :to where lower(c.recipientId) = :from")
     int renameRecipient(@Param("from") String from, @Param("to") String to);
 
+    @Modifying(flushAutomatically = true)
+    @Query("delete from Chat c where c.board is null and (lower(c.sender) = :email or lower(c.recipientId) = :email)")
+    int deleteDirectMessagesOf(@Param("email") String email);
+
     @Modifying
     @Query("delete from Chat c where c.timestamp < :cutoff")
     int deleteOlderThan(@Param("cutoff") LocalDateTime cutoff);

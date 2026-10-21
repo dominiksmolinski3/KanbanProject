@@ -57,8 +57,8 @@ public class ChatController {
         if (sender == null) {
             return;
         }
-        String recipient = chatMessage == null ? null : chatMessage.getRecipientId();
-        if (recipient == null || recipient.isBlank() || !isPeer(sender, recipient)) {
+        String recipient = chatMessage == null ? null : peerNamed(sender, chatMessage.getRecipientId());
+        if (recipient == null) {
             log.warn("Dropped a direct message from {} to an account that is not a peer", sender.getUsername());
             return;
         }
@@ -66,6 +66,7 @@ public class ChatController {
             return;
         }
         chatMessage.setBoardId(null);
+        chatMessage.setRecipientId(recipient);
 
         chatService.sendPrivateMessage(recipient, sender.getUsername(), chatMessage);
     }
@@ -158,8 +159,14 @@ public class ChatController {
         }
     }
 
-    private boolean isPeer(User sender, String recipient) {
+    private String peerNamed(User sender, String recipient) {
+        if (recipient == null || recipient.isBlank()) {
+            return null;
+        }
         return boardService.peersOf(sender).stream()
-                .anyMatch(peer -> recipient.equalsIgnoreCase(peer.getUsername()));
+                .map(User::getUsername)
+                .filter(recipient::equalsIgnoreCase)
+                .findFirst()
+                .orElse(null);
     }
 }

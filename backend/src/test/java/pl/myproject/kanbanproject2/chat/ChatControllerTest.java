@@ -250,7 +250,7 @@ class ChatControllerTest {
         }
 
         @Test
-        @DisplayName("the peer check ignores the case the address was typed in")
+        @DisplayName("an address typed in another case is delivered and stored under the peer's own name")
         void peerMatchIsCaseInsensitive() {
             when(boardService.peersOf(anna)).thenReturn(List.of(bob));
             var chatMessage = message("psst");
@@ -258,7 +258,11 @@ class ChatControllerTest {
 
             controller.sendPrivateMessage(chatMessage, principal(anna));
 
-            verify(chatService).sendPrivateMessage(eq("BOB"), eq("anna"), any());
+            var sent = forClass(ChatMessage.class);
+            verify(chatService).sendPrivateMessage(eq("bob"), eq("anna"), sent.capture());
+            assertThat(sent.getValue().getRecipientId())
+                    .as("the thread query matches the stored name exactly, so the message would vanish from history")
+                    .isEqualTo("bob");
         }
 
         @Test

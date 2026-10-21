@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.BoardService;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.task.Task;
@@ -22,6 +23,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final TaskRepository taskRepository;
     private final BoardService boardService;
+    private final ChatRepository chatRepository;
 
     public List<UserDto> getVisibleUsers(User caller) {
         var visible = new LinkedHashMap<Integer, User>();
@@ -66,6 +68,7 @@ public class UserService {
         user.getTasks().clear();
 
         boardService.forgetAccount(user);
+        chatRepository.deleteDirectMessagesOf(EmailAddresses.normalise(user.getEmail()));
         userRepository.delete(user);
     }
 
