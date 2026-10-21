@@ -1194,6 +1194,8 @@ Postgres sat at 16% while the JVM was at 400%, so caching would only have made t
   account rather than address, so an office behind one NAT does not share one person's allowance. It
   fails open on Redis, like the auth limiter, and counts refusals in `kanban.api.ratelimit.refused`.
   A refused call takes no token, so hammering keeps being refused without lengthening the wait.
+  It recognises `/api/` on the decoded path, for the auth limiter's reason: on the raw URI,
+  `/%61pi/tasks` reached the tasks handler with no limit at all.
 
 `EdgeRateLimitTest` pins the edge's side: every proxying location is limited, the key is the last
 hop, the 429 carries the headers, and the edge's API rate stays above the per-account one - so a
