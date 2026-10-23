@@ -1,4 +1,4 @@
-FROM dhi.io/node:26-dev@sha256:fc6f45d959484ab74d35d91b41873fbd44ec670550c3ac53fd03b5aaf3d4391c AS build
+FROM dhi.io/node:26-dev@sha256:5dcc4a0985fabe4d3c0bdf3a5821157a662960670b9a2b1376434f31b7fff6da AS build
 WORKDIR /frontend
 COPY package*.json ./
 RUN npm ci
@@ -7,7 +7,7 @@ ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
 
 # Numeric UID/GID on both lines: hadolint's DL3066 flags a name a host system may not resolve.
 USER 0
