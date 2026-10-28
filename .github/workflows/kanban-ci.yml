@@ -426,7 +426,7 @@ jobs:
         category: trivy-image-${{ matrix.image }}
 
   trunk-alarm:
-    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    if: always() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     needs: [ backend, frontend, e2e, image-scan ]
     permissions:
       contents: read
