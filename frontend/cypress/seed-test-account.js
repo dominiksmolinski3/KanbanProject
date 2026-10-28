@@ -79,7 +79,7 @@ async function ensureVerified(client, account) {
 
   if (existing.rows.length > 0) {
     console.log(`[seed] ${account.email} exists but is unverified - requesting a fresh code`);
-    await fetchJson(`/auth/resend?email=${encodeURIComponent(account.email)}`, { method: 'POST' });
+    await fetchJson('/auth/resend', { method: 'POST', body: { email: account.email } });
   } else {
     console.log(`[seed] signing up ${account.email} via POST /api/auth/signup`);
     await fetchJson('/auth/signup', {

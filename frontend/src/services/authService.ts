@@ -79,8 +79,10 @@ export const authService = {
   },
 
   resendVerificationCode: async (email: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/resend?email=${encodeURIComponent(email)}`, {
+    const response = await fetch(`${API_BASE_URL}/auth/resend`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
 
     if (!response.ok) {
