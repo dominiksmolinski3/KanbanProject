@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'frontend/android/**'
+      - 'frontend/src/**'
       - 'frontend/capacitor.config.ts'
       - 'frontend/vite.config.js'
       - 'frontend/package.json'
@@ -12,13 +13,6 @@ on:
       - '.github/workflows/android-ci.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'frontend/android/**'
-      - 'frontend/capacitor.config.ts'
-      - 'frontend/vite.config.js'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - '.github/workflows/android-ci.yml'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +23,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/pr-changes.yml
+    with:
+      paths: '^(frontend/android/|frontend/src/|frontend/(capacitor\.config\.ts|vite\.config\.js|package\.json|package-lock\.json)$|\.github/workflows/(android-ci|pr-changes)\.yml$)'
+
   debug-apk:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -71,3 +75,19 @@ jobs:
       run: |
         unzip -l app-debug.apk | grep -q 'assets/public/index.html'
         unzip -p app-debug.apk 'assets/public/assets/*.js' | grep -q 'kanban.invalid'
+
+  android-gate:
+    if: always()
+    needs: [ changes, debug-apk ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Every job passed, or had nothing to check
+      env:
+        CHANGES: ${{ needs.changes.result }}
+        RESULTS: ${{ needs.debug-apk.result }}
+      run: |
+        [ "$CHANGES" = success ] || { echo "::error::deciding what changed ended $CHANGES"; exit 1; }
+        for result in $RESULTS; do
+          case "$result" in success|skipped) ;; *) echo "::error::a job ended $result"; exit 1 ;; esac
+        done
