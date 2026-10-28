@@ -41,4 +41,8 @@ jobs:
     - name: Check the repository's shell scripts
       run: |
         shellcheck --version | head -2
-        git ls-files -z '*.sh' | xargs -0 shellcheck --external-sources
+        git ls-files -z '*.sh' ':!terraform/modules/**' ':!terraform/scripts/run-container-app-job.sh' \
+          | xargs -0 shellcheck --severity=warning --external-sources
+        # Terraform runs these through `sh -c` and `bash -c`, so they carry no shebang to read the shell from.
+        git ls-files -z 'terraform/modules/**/*.sh' | xargs -0 shellcheck --severity=warning --shell=sh
+        shellcheck --severity=warning --shell=bash terraform/scripts/run-container-app-job.sh
