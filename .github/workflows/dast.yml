@@ -45,6 +45,17 @@ jobs:
           VITE_RECAPTCHA_SITE_KEY=
           EOF
 
+      # A scan sends far more than any one client, and rate limit answers hide whatever it was probing.
+      - name: Lift the API's rate limits for the scan
+        run: |
+          cat > docker-compose.override.yml <<'EOF'
+          services:
+            app:
+              environment:
+                SECURITY_RATELIMIT_ENABLED: "false"
+                SECURITY_APIRATELIMIT_ENABLED: "false"
+          EOF
+
       - name: Start the stack
         run: docker compose up -d --build
 
@@ -146,8 +157,6 @@ jobs:
           target: 'http://localhost:8080/v3/api-docs'
           format: openapi
           rules_file_name: '.zap/rules.tsv'
-          # The document names the API's compose hostname as its server; send every operation through the edge.
-          cmd_options: '-O http://localhost:8080'
           issue_title: 'ZAP API Scan Report'
           artifact_name: 'zap_api_scan'
           fail_action: false
