@@ -4,16 +4,24 @@ name: Migration order
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - 'backend/src/main/resources/db/migration/**'
-      - '.github/workflows/migration-order.yml'
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/pr-changes.yml
+    with:
+      paths: '^(backend/src/main/resources/db/migration/|\.github/workflows/(migration-order|pr-changes)\.yml$)'
+
   added-migrations-are-newest:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,3 +70,19 @@ jobs:
           done < <(git diff --diff-filter=MDRT --name-status "origin/${BASE_REF}...HEAD" -- "$dir")
 
           exit "$bad"
+
+  migration-gate:
+    if: always()
+    needs: [ changes, added-migrations-are-newest ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Every job passed, or had nothing to check
+      env:
+        CHANGES: ${{ needs.changes.result }}
+        RESULTS: ${{ needs.added-migrations-are-newest.result }}
+      run: |
+        [ "$CHANGES" = success ] || { echo "::error::deciding what changed ended $CHANGES"; exit 1; }
+        for result in $RESULTS; do
+          case "$result" in success|skipped) ;; *) echo "::error::a job ended $result"; exit 1 ;; esac
+        done
