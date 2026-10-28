@@ -28,6 +28,8 @@ jobs:
             build-mode: none
           - language: actions
             build-mode: none
+          - language: python
+            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -72,6 +74,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
 
       - name: Build backend (Maven)
         if: matrix.language == 'java-kotlin' && matrix.build-mode == 'manual'
