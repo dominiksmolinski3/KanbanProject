@@ -57,7 +57,7 @@ jobs:
           | jq -r --arg title "$title" 'map(select(.title == $title)) | .[0].number // empty')
 
         if [ "$red" = true ]; then
-          body=$(printf 'The `%s` run of `%s` against `%s` failed.\n\njob results: `%s`\n\n%s\n' \
+          body=$(printf "The \`%s\` run of \`%s\` against \`%s\` failed.\n\njob results: \`%s\`\n\n%s\n" \
             "$TRIGGER" "$WORKFLOW" "$REF_NAME" "$RESULTS" "$RUN_URL")
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "Still red. $RUN_URL"
