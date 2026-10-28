@@ -10,18 +10,24 @@ on:
       - '.github/workflows/observability-ci.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'observability/**'
-      - 'ansible/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/observability-ci.yml'
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/pr-changes.yml
+    with:
+      paths: '^(observability/|ansible/|docker-compose\.yml$|\.github/workflows/(observability-ci|pr-changes)\.yml$)'
+
   prometheus-and-grafana:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -74,7 +80,10 @@ jobs:
           PY
 
   ansible:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ansible
@@ -96,3 +105,19 @@ jobs:
 
       - name: Converge twice in a container and verify who may reach what
         run: molecule test
+
+  observability-gate:
+    if: always()
+    needs: [ changes, prometheus-and-grafana, ansible ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Every job passed, or had nothing to check
+      env:
+        CHANGES: ${{ needs.changes.result }}
+        RESULTS: ${{ needs.prometheus-and-grafana.result }} ${{ needs.ansible.result }}
+      run: |
+        [ "$CHANGES" = success ] || { echo "::error::deciding what changed ended $CHANGES"; exit 1; }
+        for result in $RESULTS; do
+          case "$result" in success|skipped) ;; *) echo "::error::a job ended $result"; exit 1 ;; esac
+        done
