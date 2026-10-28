@@ -209,7 +209,7 @@ jobs:
 
     - name: Wait for the backend to become healthy
       run: |
-        for i in $(seq 1 60); do
+        for _ in $(seq 1 60); do
           if curl -fs http://localhost:8081/actuator/health/readiness | grep -q '"status":"UP"'; then
             echo "backend is up"
             exit 0
@@ -222,7 +222,7 @@ jobs:
 
     - name: Wait for the second replica, and confirm it is a second one
       run: |
-        for i in $(seq 1 60); do
+        for _ in $(seq 1 60); do
           if curl -fs http://localhost:8082/actuator/health/readiness | grep -q '"status":"UP"'; then
             break
           fi
@@ -242,7 +242,7 @@ jobs:
 
     - name: Check that the edge is serving the bundle and proxying the API
       run: |
-        for i in $(seq 1 30); do
+        for _ in $(seq 1 30); do
           if curl -fs http://localhost:8080/healthz >/dev/null; then break; fi
           sleep 2
         done
@@ -272,7 +272,7 @@ jobs:
     # Two Cypress runs at once share one browser profile, so the warm-up must be over first.
     - name: Wait for the Chromium warm-up
       run: |
-        for i in $(seq 1 120); do pgrep -f warmup.config.js >/dev/null || break; sleep 1; done
+        for _ in $(seq 1 120); do pgrep -f warmup.config.js >/dev/null || break; sleep 1; done
         pkill -f warmup.config.js && echo "::warning::the Chromium warm-up was still running after 120 s"
         tail -n 15 "$RUNNER_TEMP/cypress-warmup.log"
 

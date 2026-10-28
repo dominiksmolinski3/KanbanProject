@@ -1,0 +1,48 @@
+name: Workflow lint
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/**'
+      - '**/*.sh'
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Pull Docker Hub images through a mirror
+      uses: ./.github/actions/docker-hub-mirror
+
+    - name: Lint the workflows, and their run steps with shellcheck
+      run: |
+        docker run --rm -v "$PWD:/repo" --workdir /repo \
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+          -color
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Check the repository's shell scripts
+      run: |
+        shellcheck --version | head -2
+        git ls-files -z '*.sh' ':!terraform/modules/**' ':!terraform/scripts/run-container-app-job.sh' \
+          | xargs -0 shellcheck --severity=warning --external-sources
+        # Terraform runs these through `sh -c` and `bash -c`, so they carry no shebang to read the shell from.
+        git ls-files -z 'terraform/modules/**/*.sh' | xargs -0 shellcheck --severity=warning --shell=sh
+        shellcheck --severity=warning --shell=bash terraform/scripts/run-container-app-job.sh

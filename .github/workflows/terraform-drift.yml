@@ -94,7 +94,7 @@ jobs:
           {
             echo "### Terraform drift: ${TF_ENV}"
             if [ "$code" -eq 0 ]; then
-              echo 'No changes: the environment matches `main`.'
+              echo "No changes: the environment matches \`main\`."
             else
               echo '```'
               terraform show -json "$PLAN" | jq -r '
