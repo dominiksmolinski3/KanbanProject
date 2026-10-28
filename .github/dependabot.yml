@@ -12,6 +12,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: ops
       include: scope
@@ -29,6 +31,8 @@ updates:
       - dhi
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
@@ -41,6 +45,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
@@ -54,8 +60,14 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
+    ignore:
+      # @typescript-eslint does not accept TypeScript 7 yet; npm ci fails on the peer range.
+      - dependency-name: typescript
+        versions: [ ">= 7" ]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
@@ -76,6 +88,8 @@ updates:
     directory: /frontend/android
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
@@ -91,6 +105,8 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
@@ -101,6 +117,8 @@ updates:
       - /terraform/bootstrap
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: ops
       include: scope
