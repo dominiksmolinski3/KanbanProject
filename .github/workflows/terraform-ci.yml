@@ -14,23 +14,25 @@ on:
       - 'ansible/**'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - 'backend/Dockerfile'
-      - 'frontend/Dockerfile'
-      - 'observability/grafana/Dockerfile'
-      - '.github/workflows/**'
-      - '.checkov.yaml'
-      - '.checkov/**'
-      - 'ansible/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/pr-changes.yml
+    with:
+      paths: '^(terraform/|ansible/|\.checkov/|\.checkov\.yaml$|\.github/workflows/|(backend|frontend|observability/grafana)/Dockerfile$)'
+
   validate:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: terraform
@@ -64,9 +66,25 @@ jobs:
         python-version: '3.13'
 
     # Checkov covers terraform/, both Dockerfiles and the workflows; its scope is
-    # .checkov.yaml, so the triggers above have to stay as wide as that file.
+    # .checkov.yaml, so the push paths and the changes regex have to stay as wide as that file.
     - name: Scan with Checkov
       working-directory: .
       run: |
         pip install checkov==3.3.16
         checkov --config-file .checkov.yaml
+
+  infrastructure-gate:
+    if: always()
+    needs: [ changes, validate ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Every job passed, or had nothing to check
+      env:
+        CHANGES: ${{ needs.changes.result }}
+        RESULTS: ${{ needs.validate.result }}
+      run: |
+        [ "$CHANGES" = success ] || { echo "::error::deciding what changed ended $CHANGES"; exit 1; }
+        for result in $RESULTS; do
+          case "$result" in success|skipped) ;; *) echo "::error::a job ended $result"; exit 1 ;; esac
+        done
