@@ -21,3 +21,5 @@ jobs:
           # dependency. CLAUDE.md described this as comment-only; neither was true of
           # the other. It gates, and it gates on what is worth stopping work for.
           fail-on-severity: high
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 420
