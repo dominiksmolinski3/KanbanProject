@@ -59,6 +59,18 @@ jobs:
         terraform init -backend=false -input=false -no-color
         terraform validate -no-color
 
+    - name: Set up TFLint
+      uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+      with:
+        tflint_version: v0.64.0
+
+    - name: Lint with TFLint and the azurerm ruleset
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        tflint --init --config "$PWD/.tflint.hcl"
+        tflint --recursive --config "$PWD/.tflint.hcl" --format compact
+
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: '3.13'
