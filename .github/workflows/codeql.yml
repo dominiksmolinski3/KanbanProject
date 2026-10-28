@@ -12,6 +12,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: 30
     permissions:
       security-events: write
       packages: read
@@ -27,6 +28,8 @@ jobs:
           - language: javascript-typescript
             build-mode: none
           - language: actions
+            build-mode: none
+          - language: python
             build-mode: none
 
     steps:
@@ -72,6 +75,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
 
       - name: Build backend (Maven)
         if: matrix.language == 'java-kotlin' && matrix.build-mode == 'manual'
