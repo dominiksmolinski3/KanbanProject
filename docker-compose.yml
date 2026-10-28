@@ -73,7 +73,7 @@ services:
 
   # image scan and hadolint to cover. Published on loopback only, for `curl :8099/summary` and for
   appinsights-sink:
-    image: node:26-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
+    image: node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
     restart: unless-stopped
     command: node /sink/server.mjs
     volumes:
@@ -162,7 +162,7 @@ services:
           memory: 256M
 
   prometheus:
-    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    image: prom/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
     profiles: ["monitoring"]
     restart: unless-stopped
     command:
@@ -236,7 +236,7 @@ services:
           memory: 64M
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.94.0@sha256:0842ef7110e62b40bbde2d5c11f38c6fbd99f7100c75e3866637c1b335a1eff7
+    image: oliver006/redis_exporter:v1.96.0@sha256:3d57b9eb142a62ffc600063606a41cd471cd53d81bed10be5b56b3a8918f2c26
     profiles: ["monitoring"]
     restart: unless-stopped
     depends_on:
@@ -250,7 +250,7 @@ services:
           memory: 64M
 
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.29.0@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea
+    image: prom/blackbox-exporter:v0.29.1@sha256:ea1c7aa3ef3f307cd03e85f34abb604478ccb90b567fc690da0cd9776da76b13
     profiles: ["monitoring"]
     restart: unless-stopped
     deploy:
@@ -259,7 +259,7 @@ services:
           memory: 64M
 
   k6:
-    image: grafana/k6:2.3.0@sha256:9c2dee7f8ed74d317e4027c06a10f169b625638189de8d4555d0b3486a5aeb34
+    image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
     profiles: ["loadtest"]
     command: ["run", "--out", "experimental-prometheus-rw", "/loadtest/kanban.js"]
     volumes:
