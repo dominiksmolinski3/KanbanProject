@@ -1,6 +1,12 @@
 FROM eclipse-temurin:25-jdk-noble@sha256:ba0f0e1a33864105e1d454e88105c617ab40f71062db1f306bf58be32a3f8e5e AS backend-build
 WORKDIR /build
 
+# mvnw checks distributionSha256Sum against the .zip, and without unzip it fetches the .tar.gz instead.
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends unzip \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY pom.xml ./
 COPY mvnw ./
 COPY .mvn ./.mvn/
