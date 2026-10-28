@@ -10,8 +10,9 @@ permissions:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
     - name: Fetch Dependabot metadata
       id: metadata
