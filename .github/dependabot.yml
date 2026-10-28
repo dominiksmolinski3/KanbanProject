@@ -111,6 +111,8 @@ updates:
       - /ansible
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: build
       include: scope
