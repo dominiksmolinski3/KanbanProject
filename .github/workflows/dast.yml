@@ -134,6 +134,10 @@ jobs:
           echo "ZAP_AUTH_HEADER_VALUE=Bearer $token" >> "$GITHUB_ENV"
           rm loadtest/.run/accounts.json
 
+      # The baseline has uploaded these already, and the API scan's container user cannot overwrite them.
+      - name: Clear the baseline's reports
+        run: rm -f report_json.json report_md.md report_html.html
+
       - name: ZAP API scan, signed in, from the OpenAPI document
         uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
         env:
@@ -142,6 +146,8 @@ jobs:
           target: 'http://localhost:8080/v3/api-docs'
           format: openapi
           rules_file_name: '.zap/rules.tsv'
+          # The document names the API's compose hostname as its server; send every operation through the edge.
+          cmd_options: '-O http://localhost:8080'
           issue_title: 'ZAP API Scan Report'
           artifact_name: 'zap_api_scan'
           fail_action: false
