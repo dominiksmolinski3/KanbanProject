@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jdk-noble@sha256:589ff4cc3f71aab462e7048a47a0d10edf57fbccde3fceea2281e610bf5880b4 AS backend-build
+FROM eclipse-temurin:25-jdk-noble@sha256:ba0f0e1a33864105e1d454e88105c617ab40f71062db1f306bf58be32a3f8e5e AS backend-build
 WORKDIR /build
 
 COPY pom.xml ./
@@ -11,7 +11,7 @@ COPY src ./src/
 
 RUN ./mvnw package -Dmaven.test.skip=true
 
-FROM eclipse-temurin:25-jre-noble@sha256:d9a39a23634650173f1e2bbc176227af9728587ecf0f4b62d53e9355cd7a19ab
+FROM eclipse-temurin:25-jre-noble@sha256:3f2223fe04b750aa5a8179e29b5c9a1ddf7665fc9bb08bfe11ad01d143bc13a5
 WORKDIR /app
 
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
