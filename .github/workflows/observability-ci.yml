@@ -10,18 +10,24 @@ on:
       - '.github/workflows/observability-ci.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'observability/**'
-      - 'ansible/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/observability-ci.yml'
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/pr-changes.yml
+    with:
+      paths: '^(observability/|ansible/|docker-compose\.yml$|\.github/workflows/(observability-ci|pr-changes)\.yml$)'
+
   prometheus-and-grafana:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -74,7 +80,10 @@ jobs:
           PY
 
   ansible:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ansible
@@ -84,15 +93,31 @@ jobs:
       - name: Pull Docker Hub images through a mirror
         uses: ./.github/actions/docker-hub-mirror
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
 
       - name: Install the same Ansible the VM gets from apt, and the test tools
-        run: pip install "ansible==9.2.0" "ansible-lint==26.9.0" "molecule==26.9.0" "molecule-plugins[docker]==26.9.28" "docker==7.2.0"
+        run: pip install -r requirements-ci.txt
 
       - name: Lint the playbook
         run: ansible-lint --profile production
 
       - name: Converge twice in a container and verify who may reach what
         run: molecule test
+
+  observability-gate:
+    if: always()
+    needs: [ changes, prometheus-and-grafana, ansible ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Every job passed, or had nothing to check
+      env:
+        CHANGES: ${{ needs.changes.result }}
+        RESULTS: ${{ needs.prometheus-and-grafana.result }} ${{ needs.ansible.result }}
+      run: |
+        [ "$CHANGES" = success ] || { echo "::error::deciding what changed ended $CHANGES"; exit 1; }
+        for result in $RESULTS; do
+          case "$result" in success|skipped) ;; *) echo "::error::a job ended $result"; exit 1 ;; esac
+        done
