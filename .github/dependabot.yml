@@ -122,3 +122,22 @@ updates:
     commit-message:
       prefix: ops
       include: scope
+
+  - package-ecosystem: pip
+    directories:
+      - /.checkov
+      - /ansible
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      ci-tools:
+        patterns:
+          - "*"
+    ignore:
+      # The monitoring VM runs Ubuntu's packaged Ansible; Molecule has to test that one.
+      - dependency-name: ansible

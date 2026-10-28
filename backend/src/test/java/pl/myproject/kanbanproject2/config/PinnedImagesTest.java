@@ -2,12 +2,15 @@ package pl.myproject.kanbanproject2.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +26,7 @@ class PinnedImagesTest {
     private static final Path BACKUP = REPO.resolve(Path.of("terraform", "modules", "backup", "main.tf"));
     private static final Path GRAFANA_DOCKERFILE = REPO.resolve(Path.of("observability", "grafana", "Dockerfile"));
     private static final Pattern DOCKERFILE_FROM = Pattern.compile("(?m)^FROM\\s+(\\S+)");
+    private static final Path MONITORING_VARS = REPO.resolve(Path.of("ansible", "group_vars", "all.yml"));
     private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
 
     @Test
@@ -96,6 +100,35 @@ class PinnedImagesTest {
                 .as("pg_dump refuses a server newer than itself, so a server upgrade without this is a "
                         + "nightly backup that fails from that night on")
                 .containsExactly(dumperMajor);
+    }
+
+    @Test
+    @DisplayName("the monitoring VM installs the Prometheus and blackbox exporter the local stack runs")
+    void theMonitoringVmMatchesCompose() throws IOException {
+        List<String> images = imagesIn(COMPOSE, COMPOSE_IMAGE);
+        Map<String, String> installed = monitoringBinaries();
+
+        assertThat(Map.of(
+                "prometheus", tagOf(images, "prom/prometheus:"),
+                "blackbox_exporter", tagOf(images, "prom/blackbox-exporter:")))
+                .as("Dependabot bumps docker-compose.yml only, and CI checks the VM's rules and probes "
+                        + "with those images; move the version and sha256 in ansible/group_vars/all.yml with it")
+                .allSatisfy((name, version) -> assertThat(installed).containsEntry(name, version));
+    }
+
+    private static String tagOf(List<String> images, String repository) {
+        String image = images.stream().filter(candidate -> candidate.startsWith(repository)).findFirst().orElseThrow();
+        String tag = image.substring(repository.length()).split("@")[0];
+        return tag.startsWith("v") ? tag.substring(1) : tag;
+    }
+
+    private static Map<String, String> monitoringBinaries() throws IOException {
+        Map<String, Object> vars = new Yaml().load(Files.readString(MONITORING_VARS));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> binaries = (List<Map<String, Object>>) vars.get("monitoring_binaries");
+        assertThat(binaries).as("monitoring_binaries has gone from %s", MONITORING_VARS).isNotEmpty();
+        return binaries.stream().collect(Collectors.toMap(
+                binary -> String.valueOf(binary.get("name")), binary -> String.valueOf(binary.get("version"))));
     }
 
     private static List<String> imagesIn(Path file, Pattern pattern) throws IOException {

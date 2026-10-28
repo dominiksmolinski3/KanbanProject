@@ -21,14 +21,14 @@ prometheus_retention: 15d
 
 monitoring_binaries:
   - name: prometheus
-    version: 3.15.0
-    sha256: 2a542df32eac02ee17b9d844fb2aa1de00dafa5476579ba8a3ba862e9d572ea0
+    version: 3.15.1
+    sha256: 6a726885328ad9efebbf36e876ce2fb6225468a71fd1e7ce3ba666d5f4d97a84
     executables: [prometheus, promtool]
   - name: node_exporter
     version: 1.12.1
     sha256: b51d8a76aa2a9156a55d501aca6276fae09e262259a5e4e831d2c2222f084e63
     executables: [node_exporter]
   - name: blackbox_exporter
-    version: 0.29.0
-    sha256: 5512929259bb6164f68ebe20ce433ec43b8609e3a79c95324f5020e931488fb4
+    version: 0.29.1
+    sha256: b82b81839e6317e84fdd367f46d7ddd3b773fa09cbe2e3d5633a59171d741e76
     executables: [blackbox_exporter]
