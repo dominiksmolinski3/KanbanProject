@@ -89,7 +89,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install the same Ansible the VM gets from apt, and the test tools
-        run: pip install "ansible==9.2.0" "ansible-lint==26.9.0" "molecule==26.9.0" "molecule-plugins[docker]==26.9.28" "docker==7.2.0"
+        run: pip install -r requirements-ci.txt
 
       - name: Lint the playbook
         run: ansible-lint --profile production
