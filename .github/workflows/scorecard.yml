@@ -1,0 +1,54 @@
+name: OpenSSF Scorecard
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '11 7 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Score the repository's supply-chain practices
+      uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+      with:
+        results_file: scorecard.sarif
+        results_format: sarif
+        publish_results: true
+
+    - name: Upload the results to the Security tab
+      uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      with:
+        sarif_file: scorecard.sarif
+        category: scorecard
+
+  scorecard-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ analysis ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.analysis.result }}"
+      subject: the Scorecard sweep failed
+      label: scan-red
