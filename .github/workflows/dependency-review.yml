@@ -21,3 +21,5 @@ jobs:
           # Default is 'low', which blocks a PR on any advisory in any transitive
           # dependency. This gates only on what is worth stopping work for.
           fail-on-severity: high
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 420
