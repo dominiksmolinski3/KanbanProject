@@ -5,6 +5,7 @@ on:
     tags: [ 'v*' ]
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
@@ -42,8 +43,23 @@ jobs:
           exit 1
         fi
 
+    - name: Check that Kanban CI passed on this commit
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        commit=$(git rev-parse HEAD)
+        passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow kanban-ci.yml --commit "$commit" \
+          --status success --json databaseId --jq length)
+        if [ "$passed" -eq 0 ]; then
+          echo "::error::Kanban CI has no successful run on $commit; a release is cut only from a commit main has tested"
+          exit 1
+        fi
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
     - name: Log in to GHCR
-      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -63,6 +79,13 @@ jobs:
           source="ghcr.io/$owner/$image:$commit"
           if ! built=$(docker buildx imagetools inspect "$source" --format '{{.Manifest.Digest}}'); then
             echo "::error::$source does not exist; Kanban CD has not pushed this commit yet, or failed. Re-run this job once it has."
+            exit 1
+          fi
+          # CD signs an image only after its Trivy scan passes, so a missing signature is a failed scan.
+          if ! cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/kanban-cd.yml@refs/heads/main" \
+              "ghcr.io/$owner/$image@$built" > /dev/null; then
+            echo "::error::ghcr.io/$owner/$image@$built carries no signature from Kanban CD on main"
             exit 1
           fi
           if existing=$(docker buildx imagetools inspect "ghcr.io/$owner/$image:$version" --format '{{.Manifest.Digest}}' 2>/dev/null) \

@@ -48,3 +48,5 @@ frontend/cypress/screenshots/
 frontend/cypress/videos/
 
 /loadtest/.run/
+
+__pycache__/
