@@ -10,6 +10,7 @@ permissions:
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: 'Checkout repository'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -21,3 +22,5 @@ jobs:
           # dependency. CLAUDE.md described this as comment-only; neither was true of
           # the other. It gates, and it gates on what is worth stopping work for.
           fail-on-severity: high
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 420
