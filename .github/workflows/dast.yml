@@ -11,7 +11,7 @@ permissions:
 jobs:
   zap-baseline:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50
     permissions:
       contents: read
       issues: write
@@ -75,12 +75,81 @@ jobs:
           docker compose logs web
           exit 1
 
+      - name: Only the edge answers on an address other than loopback
+        run: |
+          set -euo pipefail
+          host=$(hostname -I | awk '{print $1}')
+          docker compose ps --format json \
+            | jq -s -r 'flatten | .[] | .Service as $s | (.Publishers // [])[] | select(.PublishedPort > 0) | "\($s) \(.URL) \(.PublishedPort)"' \
+            | sort -u > published.txt
+          cat published.txt
+          grep -q '^web ' published.txt || { echo "::error::no published edge port found, so this checked nothing"; exit 1; }
+          bad=0
+          while read -r service url port; do
+            edge=false
+            [ "$service" = web ] && [ "$port" = 8080 ] && edge=true
+            if [ "$edge" = false ] && [ "$url" != 127.0.0.1 ] && [ "$url" != ::1 ]; then
+              echo "::error::$service publishes $port on $url, not on loopback"
+              bad=1
+            fi
+            if timeout 3 bash -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null; then open=true; else open=false; fi
+            if [ "$open" != "$edge" ]; then
+              echo "::error::$service port $port on $host: open=$open, expected $edge"
+              bad=1
+            fi
+          done < published.txt
+          exit "$bad"
+
       - name: ZAP baseline scan
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
         with:
           target: 'http://localhost:8080'
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-j'
+          fail_action: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Seed tokens live 15 minutes, so the account is made right before the scan that uses it.
+      - name: Sign in a seeded account for the API scan
+        env:
+          LOAD_USERS: 2
+          LOAD_TASKS: 10
+          LOAD_PGHOST: localhost
+          LOAD_PGPORT: 5432
+          LOAD_PGDATABASE: kanban_dast
+          LOAD_PGUSER: kanban_dast
+          LOAD_PGPASSWORD: kanban_dast
+        run: |
+          set -euo pipefail
+          npm ci --prefix frontend --no-audit --no-fund
+          node loadtest/seed.mjs
+          token=$(jq -r '.users[0].token' loadtest/.run/accounts.json)
+          test -n "$token" && test "$token" != null
+          echo "::add-mask::$token"
+          echo "ZAP_AUTH_HEADER_VALUE=Bearer $token" >> "$GITHUB_ENV"
+          rm loadtest/.run/accounts.json
+
+      # The baseline has uploaded these already, and the API scan's container user cannot overwrite them.
+      - name: Clear the baseline's reports
+        run: rm -f report_json.json report_md.md report_html.html
+
+      - name: ZAP API scan, signed in, from the OpenAPI document
+        uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
+        env:
+          ZAP_AUTH_HEADER_SITE: localhost
+        with:
+          target: 'http://localhost:8080/v3/api-docs'
+          format: openapi
+          rules_file_name: '.zap/rules.tsv'
+          # The document names the API's compose hostname as its server; send every operation through the edge.
+          cmd_options: '-O http://localhost:8080'
+          issue_title: 'ZAP API Scan Report'
+          artifact_name: 'zap_api_scan'
           fail_action: false
 
       - name: Make sure somebody is subscribed to the report
@@ -92,13 +161,16 @@ jobs:
           CONTACT: ${{ vars.SECURITY_CONTACT || github.repository_owner }}
         run: |
           set -euo pipefail
-          number=$(gh issue list --state open --limit 100 --json number,title             | jq -r 'map(select(.title == "ZAP Scan Baseline Report")) | .[0].number // empty')
-          if [ -z "$number" ]; then
-            echo "::notice::no open ZAP report issue - the scan found nothing worth filing"
-            exit 0
-          fi
           gh label create dast --color 5319E7 --description "Filed by the scheduled ZAP sweep" --force >/dev/null
-          gh issue edit "$number" --add-label dast --add-assignee "$CONTACT"
+          for title in "ZAP Scan Baseline Report" "ZAP API Scan Report"; do
+            number=$(gh issue list --state open --limit 100 --json number,title \
+              | jq -r --arg title "$title" 'map(select(.title == $title)) | .[0].number // empty')
+            if [ -z "$number" ]; then
+              echo "::notice::no open \"$title\" issue - that scan found nothing worth filing"
+              continue
+            fi
+            gh issue edit "$number" --add-label dast --add-assignee "$CONTACT"
+          done
 
       - name: Stop the stack
         if: always()
