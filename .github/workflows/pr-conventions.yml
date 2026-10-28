@@ -1,0 +1,64 @@
+name: PR conventions
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, edited, reopened, synchronize, labeled, unlabeled, assigned, unassigned ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+    - name: Title, commits, kind label and assignee follow CLAUDE.md
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+        TITLE: ${{ github.event.pull_request.title }}
+        AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        ASSIGNEES: ${{ join(github.event.pull_request.assignees.*.login, ' ') }}
+      run: |
+        set -euo pipefail
+        conventional='^(feat|fix|refactor|perf|style|test|docs|build|ops|chore)(\([a-z0-9][a-z0-9._/-]*\))?!?: [^A-Z].*[^.]$'
+        exempt='^(Revert ".*"|Merge .*)$'
+        bad=0
+
+        if ! grep -qE "$conventional" <<<"$TITLE"; then
+          echo "::error::the title is not <type>(<scope>): <description> in lower case without a full stop: $TITLE"
+          bad=1
+        fi
+
+        while IFS= read -r subject; do
+          if ! grep -qE "$conventional" <<<"$subject" && ! grep -qE "$exempt" <<<"$subject"; then
+            echo "::error::commit subject does not follow the commit format: $subject"
+            bad=1
+          fi
+        done < <(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" --jq '.[].commit.message | split("\n")[0]')
+
+        if [ "$AUTHOR_TYPE" != Bot ]; then
+          kind=false
+          for label in $LABELS; do
+            case "$label" in bug|enhancement|documentation|techdebt) kind=true ;; esac
+          done
+          if [ "$kind" = false ]; then
+            echo "::error::no kind label; add one of bug, enhancement, documentation, techdebt"
+            bad=1
+          fi
+          if [ -z "$ASSIGNEES" ]; then
+            echo "::error::nobody is assigned; assign the author"
+            bad=1
+          fi
+        fi
+
+        exit "$bad"
