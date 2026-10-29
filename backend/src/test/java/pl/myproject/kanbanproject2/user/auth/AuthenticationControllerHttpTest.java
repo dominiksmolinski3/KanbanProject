@@ -150,7 +150,9 @@ class AuthenticationControllerHttpTest {
     @Test
     @DisplayName("resend answers 202 with an empty body as well")
     void resendAnswers202() throws Exception {
-        mvc.perform(post("/auth/resend").param("email", "anyone@example.test"))
+        mvc.perform(post("/auth/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"anyone@example.test\"}"))
                 .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 

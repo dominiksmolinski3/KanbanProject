@@ -75,9 +75,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         HttpServletRequest downstream = request;
         String account = null;
 
-        if (AuthRateLimitRule.RESEND_PATH.equals(path)) {
-            account = request.getParameter(EMAIL_FIELD);
-        } else if (isJson(request)) {
+        if (isJson(request)) {
             ServletInputStream body = request.getInputStream();
             byte[] prefix = readPrefix(body);
             downstream = new BufferedBodyRequestWrapper(request, prefix, body);

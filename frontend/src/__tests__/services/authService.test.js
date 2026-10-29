@@ -53,14 +53,15 @@ describe('authService registration and resend', () => {
     ).rejects.toMatchObject({ status: 429, code: 'TOO_MANY_REQUESTS' });
   });
 
-  test('resend posts the address as a query parameter and resolves on 202', async () => {
+  test('resend posts the address in the body, never the URL, and resolves on 202', async () => {
     window.fetch.mockResolvedValue(accepted());
 
     await expect(authService.resendVerificationCode('a+b@example.test')).resolves.toBe('');
 
     const [url, options] = window.fetch.mock.calls[0];
-    expect(url).toBe('/api/auth/resend?email=a%2Bb%40example.test');
+    expect(url).toBe('/api/auth/resend');
     expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({ email: 'a+b@example.test' });
   });
 
   test('the captcha token is still nested the way the server expects', async () => {
