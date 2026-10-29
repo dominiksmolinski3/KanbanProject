@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/java-21-orange" alt="Java 21"/>
   <img src="https://img.shields.io/badge/react-19-61DAFB" alt="React 19"/>
   <img src="https://img.shields.io/github/actions/workflow/status/dominiksmolinski3/KanbanProject/kanban-ci.yml?branch=main" alt="Build Status"/>
+  <a href="https://www.bestpractices.dev/projects/16051"><img src="https://www.bestpractices.dev/projects/16051/badge" alt="OpenSSF Best Practices"/></a>
 </p>
 
 <p align="center">
