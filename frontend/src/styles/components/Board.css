@@ -216,6 +216,11 @@
   color: var(--kb-danger);
 }
 
+.icon-btn.rename-btn:hover {
+  background: var(--kb-hover);
+  color: var(--kb-ink);
+}
+
 .grid-row-header {
   position: sticky;
   inset-inline-start: 0;

@@ -249,12 +249,16 @@
       "noLimit": "لا حد",
       "taskCount": "المهام",
       "delete": "حذف العمود",
+      "name": "اسم العمود",
+      "rename": "إعادة تسمية العمود {{name}}",
       "add": "إضافة عمود"
     },
     "row": {
       "cannotDeleteLast": "لا يمكن حذف المسار الأخير.",
       "deleteConfirm": "هل أنت متأكد أنك تريد حذف هذا الصف؟",
       "delete": "حذف الصف",
+      "name": "اسم الصف",
+      "rename": "إعادة تسمية الصف {{name}}",
       "wipLimit": "الحد",
       "wipExceeded": "تم تجاوزه!",
       "lastRowWarning": "لا يمكن حذف الصف الأخير.",

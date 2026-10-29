@@ -37,6 +37,7 @@ export default function SearchFacets({ filters, labels, users }: SearchFacetsPro
         <select
           className="task-search-status"
           data-testid="task-search-status"
+          aria-label={t('board.search.status')}
           value={filters.completed}
           onChange={(e) => filters.changeCompleted(e.target.value)}
         >
