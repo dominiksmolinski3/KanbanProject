@@ -33,11 +33,12 @@ to start with that combination rather than failing on the first board update.
 ## Find your way around
 
 - Packages are by feature (`board/`, `task/`, `user/`, `layout/`, `chat/`), each holding its
-  entity, controller, service, repository, mapper and DTO records. Cross-cutting code is in
-  `config/`, `exception/`, `service/` and `storage/`.
+  entity, controller, service, repository, mapper and DTO records. Beside them are `mail/` and the
+  cross-cutting `config/`, `exception/` and `storage/`.
 - Migrations are in `src/main/resources/db/migration`. Never edit one that is on `main`.
 - Many rules are enforced by database-free build guards rather than by review, for example
   `BoardScopedRoutesTest`, `RequestBodyBindingTest` and `WriteAccessCoverageTest`. A failing guard
   explains what it protects in its assertion message.
 
-[CLAUDE.md](../CLAUDE.md) is the detailed architecture reference.
+[docs/architecture.md](../docs/architecture.md) is the detailed architecture reference, and
+[CLAUDE.md](../CLAUDE.md) lists the traps.

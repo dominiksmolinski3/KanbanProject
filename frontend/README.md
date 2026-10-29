@@ -5,26 +5,25 @@ React 19 + Vite 8. Setup, scripts and the E2E prerequisites are in the
 
 ## Dependencies
 
-The board redesign adds **no runtime or dev dependencies**. The design system is plain CSS
-custom properties, the icons are CSS shapes, and the micro-interactions are CSS transitions. The
-drag-and-drop is the HTML5 API the board already used. The bundle budget
-(`npm run check:bundle-size`, 150 kB gzipped for the initial load) is unaffected, because the board
-styles load with the lazily loaded board route, not with the sign-in screen
+The board's design system is plain CSS custom properties, the icons are CSS shapes, and the
+micro-interactions are CSS transitions. The drag-and-drop is the HTML5 API. The bundle budget
+(`npm run check:bundle-size`, 150 kB gzipped for the initial load) is not touched by the board
+styles, because they load with the lazily loaded board route, not with the sign-in screen
 (`signInStylesLoadEagerly.test.js`).
 
 ## Board layout: data and presentation
 
 | Layer | Files | What it does |
 | --- | --- | --- |
-| State | `src/context/KanbanContext.tsx` | Fetching, mutations, drag-and-drop handlers, live sync. Unchanged by the redesign. |
-| Derived model (pure) | `src/board/boardModel.js`, `src/board/cardModel.js` | Per-column/per-lane counts and WIP state, the tasks in each cell, priority read from labels, deadline state, initials and label hues. No React, so each is tested directly in `src/__tests__/board/`. |
-| View hooks | `src/board/useCollapsedLanes.js`, `src/board/useUserAvatar.js` | Which swimlanes are collapsed (per board, in `localStorage`), and a session-wide avatar cache with one request per account. |
-| Presentation | `Board.tsx`, `Task.tsx`, `TaskCardMeta.jsx`, `WipMeter.jsx`, `AvatarStack.tsx` | Rendering only. They read the model and call context actions. |
+| State | `src/context/KanbanContext.tsx` | Fetching, mutations, drag-and-drop handlers, live sync. |
+| Derived model (pure) | `src/board/boardModel.ts`, `src/board/cardModel.ts` | Per-column/per-lane counts and WIP state, the tasks in each cell, priority read from labels, deadline state, initials and label hues. No React, so each is tested directly in `src/__tests__/board/`. |
+| View hooks | `src/board/useCollapsedLanes.ts`, `src/board/useUserAvatar.ts` | Which swimlanes are collapsed (per board, in `localStorage`), and a session-wide avatar cache with one request per account. |
+| Presentation | `Board.tsx`, `Task.tsx`, `TaskCardMeta.tsx`, `WipMeter.tsx`, `AvatarStack.tsx` | Rendering only. They read the model and call context actions. |
 
 The board still renders as a `<table>`: columns are workflow stages and rows are swimlanes, which
 is the data model (`Task` sits at a column and an optional row). The Cypress suite and the keyboard
 move depend on that structure (`th`, `tr`, `.grid-row-header`, `.grid-cell[data-column-id][data-row-id]`),
-so the redesign changes how it looks and leaves the structure alone.
+so its look can change while the structure stays.
 
 ### What the board shows
 
@@ -33,9 +32,8 @@ so the redesign changes how it looks and leaves the structure alone.
 </p>
 
 - **WIP signal per column and swimlane.** `WipMeter` shows `count/limit`. The header turns amber
-  at 80% of the limit (`wip-near`) and red past it (`wip-over`, plus the old `wip-exceeded` class
-  so existing selectors still match). Columns also get a capacity bar driven by `--wip-fill`. As
-  before, limits are advisory: only per-user limits are enforced by the server.
+  at 80% of the limit (`wip-near`) and red past it (`wip-over`, plus the `wip-exceeded` class
+  that existing selectors use). Columns also get a capacity bar driven by `--wip-fill`. Limits are advisory: only per-user limits are enforced by the server.
 - **Collapsible swimlanes.** The chevron in a lane header collapses it to a count of hidden cards
   per cell. A collapsed cell still accepts drops. The state is kept per board under
   `kanban.collapsedLanes.<boardId>`. Unreadable storage means every lane is open.
@@ -88,8 +86,7 @@ components. Headers use a translucent surface with `backdrop-filter`. Motion is 
 
 ### i18n
 
-All new strings are keys in all nine bundles (`board.wip.*`, `board.lane.*`,
+The board's strings are keys in all nine bundles (`board.wip.*`, `board.lane.*`,
 `taskActions.priority.*`, `taskActions.due*`, `taskActions.subtasksOpen`,
 `taskActions.assignees`, `taskActions.moreAssignees`, `taskActions.moreLabels`). `i18n.test.js`
-now also fails when a literal `t('some.key')` names a key the English bundle does not have. That
-check found `row.cannotDeleteLast`, which had never been added to any bundle.
+fails when a literal `t('some.key')` names a key the English bundle does not have.
