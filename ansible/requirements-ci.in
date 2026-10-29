@@ -1,4 +1,4 @@
-ansible==9.2.0
+ansible-core==2.16.19
 ansible-lint==26.10.1
 molecule==26.10.0
 molecule-plugins[docker]==26.10.12
