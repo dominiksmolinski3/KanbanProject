@@ -18,7 +18,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @Setter
@@ -57,7 +57,7 @@ public class TaskActivity {
     private String detail;
 
     @Column(name = "occurred_at", nullable = false)
-    private LocalDateTime occurredAt = LocalDateTime.now();
+    private Instant occurredAt = Instant.now();
 
     public TaskActivity(Board board, Task task, User actor, TaskActivityType type, String detail) {
         this.board = board;

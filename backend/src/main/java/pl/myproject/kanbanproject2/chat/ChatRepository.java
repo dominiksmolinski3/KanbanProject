@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -42,5 +42,5 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
 
     @Modifying
     @Query("delete from Chat c where c.timestamp < :cutoff")
-    int deleteOlderThan(@Param("cutoff") LocalDateTime cutoff);
+    int deleteOlderThan(@Param("cutoff") Instant cutoff);
 }

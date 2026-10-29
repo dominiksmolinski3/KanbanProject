@@ -16,7 +16,8 @@ import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,7 +119,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("the right code moves the address, ends every session and answers a new one")
     void theRightCodeChangesTheAddress() {
-        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+        pending("new@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
         var session = new LoginResponse("jwt", 900_000, "refresh", 1L, 7L);
         when(authenticationService.startSession(account, DEVICE)).thenReturn(session);
 
@@ -134,7 +135,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("the account's chat moves with the address, or its direct messages vanish from both sides")
     void theChatFollowsTheAddress() {
-        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+        pending("new@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
 
         service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE);
 
@@ -145,7 +146,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("a refused confirmation leaves the chat where it is")
     void aRefusedConfirmationRenamesNothing() {
-        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+        pending("new@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
 
         assertThatThrownBy(() ->
                 service.confirmChange(account, new ConfirmEmailChangeRequest("000000"), DEVICE));
@@ -156,7 +157,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("a wrong code counts an attempt, and the fifth wrong one withdraws the pending change")
     void wrongCodesAreCounted() {
-        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+        pending("new@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
 
         for (int attempt = 1; attempt < EmailChangeService.MAX_ATTEMPTS; attempt++) {
             expect(ExceptionIdentifier.INVALID_VERIFICATION_CODE, () ->
@@ -186,7 +187,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("an expired code is VERIFICATION_CODE_EXPIRED and clears the pending change")
     void anExpiredCodeIsRefused() {
-        pending("new@example.test", "123456", LocalDateTime.now().minusMinutes(1));
+        pending("new@example.test", "123456", Instant.now().minus(Duration.ofMinutes(1)));
 
         expect(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED, () ->
                 service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
@@ -198,7 +199,7 @@ class EmailChangeServiceTest {
     @Test
     @DisplayName("an address taken by someone else since the request is refused at confirm time")
     void anAddressTakenMeanwhileIsRefused() {
-        pending("new@example.test", "123456", LocalDateTime.now().plusMinutes(5));
+        pending("new@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
         when(userRepository.findByEmail("new@example.test")).thenReturn(Optional.of(new User()));
 
         expect(ExceptionIdentifier.INVALID_VERIFICATION_CODE, () ->
@@ -215,7 +216,7 @@ class EmailChangeServiceTest {
                 service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
     }
 
-    private void pending(String address, String code, LocalDateTime expiresAt) {
+    private void pending(String address, String code, Instant expiresAt) {
         account.setPendingEmail(address);
         account.setEmailChangeCode(code);
         account.setEmailChangeExpiresAt(expiresAt);
