@@ -25,7 +25,7 @@ export default {
       './src/board/': { statements: 97.5, branches: 87.5, functions: 96, lines: 98.5 },
       './src/components/': { statements: 95, branches: 90, functions: 94, lines: 95.5 },
       './src/hooks/': { statements: 95, branches: 95, functions: 95, lines: 95 },
-      './src/context/': { statements: 78.5, branches: 76, functions: 88, lines: 78 },
+      './src/context/': { statements: 89.5, branches: 81, functions: 95.5, lines: 91 },
       './src/services/': { statements: 95, branches: 88.5, functions: 91, lines: 95.5 },
       './src/theme/': { statements: 95, branches: 99, functions: 99, lines: 94.5 },
     },
