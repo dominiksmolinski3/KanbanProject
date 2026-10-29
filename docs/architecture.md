@@ -23,11 +23,13 @@ every package carries its own LINE floor set just under where it measures, plus 
 fails the build. The way past a floor is a test, never a lower number — when raising one, measure
 first (`./mvnw clean test jacoco:report`, then read `target/site/jacoco/index.html`) and set the
 floor a shade under, leaving small packages more slack than large ones because at 20 lines a 0.95
-floor is one line away from a tripwire.
+floor is one line away from a tripwire. A package gets its own rule as soon as it has code, or it
+sits on the catch-all where losing most of its tests still passes. Jest's `coverageThreshold` in
+[jest.config.js](../frontend/jest.config.js) is the same ratchet for each `src` directory, and
+moves the same way.
 
-Test sources sit beside the code they cover, one package per feature. Everything below `layout`,
-`file` and `task/history` has a service-level suite; `config`, `config/websocket` and `service` are
-what a next round would raise. Most suites are unit tests over mocked collaborators, backed by
+Test sources sit beside the code they cover, one package per feature, and every package has its
+own suite. Most suites are unit tests over mocked collaborators, backed by
 the database-free build guards listed under **Architecture**.
 
 **A few tests run against a real Postgres, because a mock cannot answer for the database**
