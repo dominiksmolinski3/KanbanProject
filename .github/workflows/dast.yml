@@ -46,7 +46,8 @@ jobs:
           EOF
 
       # A scan sends far more than any one client, and rate limit answers hide whatever it was probing.
-      - name: Lift the API's rate limits for the scan
+      # The paced API scan also outlasts the default 15-minute token, after which it would probe signed out.
+      - name: Lift the API's rate limits and token lifetime for the scan
         run: |
           cat > docker-compose.override.yml <<'EOF'
           services:
@@ -54,6 +55,7 @@ jobs:
               environment:
                 SECURITY_RATELIMIT_ENABLED: "false"
                 SECURITY_APIRATELIMIT_ENABLED: "false"
+                JWT_EXPIRATION_TIME: "3600000"
           EOF
 
       - name: Start the stack
