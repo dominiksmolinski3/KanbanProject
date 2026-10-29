@@ -42,6 +42,7 @@ class BoardDataIntegrityTest {
     private ColumnRepository columnRepository;
     private RowRepository rowRepository;
     private TaskColumnHistoryRepository historyRepository;
+    private TaskActivityRecorder activityRecorder;
     private TaskService taskService;
     private User caller;
     private Board board;
@@ -55,6 +56,7 @@ class BoardDataIntegrityTest {
         columnRepository = Mockito.mock(ColumnRepository.class);
         rowRepository = Mockito.mock(RowRepository.class);
         historyRepository = Mockito.mock(TaskColumnHistoryRepository.class);
+        activityRecorder = Mockito.mock(TaskActivityRecorder.class);
 
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
@@ -72,7 +74,7 @@ class BoardDataIntegrityTest {
                 tenant.boardService(),
                 Mockito.mock(DeadlineNotifier.class),
                 Mockito.mock(TaskAttachmentService.class),
-                Mockito.mock(TaskActivityRecorder.class), mock(BoardEventPublisher.class),
+                activityRecorder, mock(BoardEventPublisher.class),
                 mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
     }
 
@@ -228,6 +230,38 @@ class BoardDataIntegrityTest {
 
             assertThat(child.isCompleted()).isFalse();
             assertThat(grandchild.isCompleted()).isFalse();
+        }
+
+        @Test
+        @DisplayName("a done task given an open parent is reopened, with the done tasks below it")
+        void anOpenParentReopensTheChain() {
+            Task parent = existingTask(1);
+            Task child = existingTask(2);
+            Task grandchild = existingTask(3);
+            child.setCompleted(true);
+            grandchild.setCompleted(true);
+            child.getChildTasks().add(grandchild);
+
+            TaskDto patched = taskService.assignParentTask(caller, 2, 1);
+
+            assertThat(patched.completed()).isFalse();
+            assertThat(grandchild.isCompleted()).isFalse();
+            assertThat(parent.isCompleted()).isFalse();
+            verify(activityRecorder).completionChanged(caller, child, false);
+        }
+
+        @Test
+        @DisplayName("a done task given a done parent stays done, and nothing is recorded")
+        void aDoneParentLeavesTheChildDone() {
+            Task parent = existingTask(1);
+            Task child = existingTask(2);
+            parent.setCompleted(true);
+            child.setCompleted(true);
+
+            TaskDto patched = taskService.assignParentTask(caller, 2, 1);
+
+            assertThat(patched.completed()).isTrue();
+            verify(activityRecorder, never()).completionChanged(any(), any(), Mockito.anyBoolean());
         }
     }
 

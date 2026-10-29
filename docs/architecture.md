@@ -477,7 +477,7 @@ to page 0. Results are **a list, not a filtered board**: hiding cards would answ
 match" by destroying the layout that says where they are, so each result names its cell and
 "show on board" scrolls to the real card and flashes it.
 
-Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
+Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents. Linking a done task under an open parent reopens it and its done dependents the same way, and records the reopening in the activity feed. Otherwise the link would leave a done task under an open one, which the rule exists to prevent.
 
 **What happened on a board is a second table, not a query over the first (`V15`).** `task_activity`
 records creation, moves, assignment, completion and deletion with an actor; `GET /api/activity`
