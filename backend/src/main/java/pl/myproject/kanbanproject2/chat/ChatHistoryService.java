@@ -14,7 +14,8 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 @Transactional
 @Service
@@ -83,7 +84,7 @@ public class ChatHistoryService {
         if (retentionDays <= 0) {
             return;
         }
-        int removed = chatRepository.deleteOlderThan(LocalDateTime.now(clock).minusDays(retentionDays));
+        int removed = chatRepository.deleteOlderThan(Instant.now(clock).minus(Duration.ofDays(retentionDays)));
         if (removed > 0) {
             log.info("Pruned {} chat messages older than {} days", removed, retentionDays);
         }

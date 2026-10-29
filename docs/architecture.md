@@ -23,11 +23,13 @@ every package carries its own LINE floor set just under where it measures, plus 
 fails the build. The way past a floor is a test, never a lower number — when raising one, measure
 first (`./mvnw clean test jacoco:report`, then read `target/site/jacoco/index.html`) and set the
 floor a shade under, leaving small packages more slack than large ones because at 20 lines a 0.95
-floor is one line away from a tripwire.
+floor is one line away from a tripwire. A package gets its own rule as soon as it has code, or it
+sits on the catch-all where losing most of its tests still passes. Jest's `coverageThreshold` in
+[jest.config.js](../frontend/jest.config.js) is the same ratchet for each `src` directory, and
+moves the same way.
 
-Test sources sit beside the code they cover, one package per feature. Everything below `layout`,
-`file` and `task/history` has a service-level suite; `config`, `config/websocket` and `service` are
-what a next round would raise. Most suites are unit tests over mocked collaborators, backed by
+Test sources sit beside the code they cover, one package per feature, and every package has its
+own suite. Most suites are unit tests over mocked collaborators, backed by
 the database-free build guards listed under **Architecture**.
 
 **A few tests run against a real Postgres, because a mock cannot answer for the database**
@@ -475,7 +477,7 @@ to page 0. Results are **a list, not a filtered board**: hiding cards would answ
 match" by destroying the layout that says where they are, so each result names its cell and
 "show on board" scrolls to the real card and flashes it.
 
-Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents.
+Task completion has a real server rule: `TaskService.canTaskBeCompleted` refuses to complete a task whose parent is still open, and un-completing a task cascades to dependents. Linking a done task under an open parent reopens it and its done dependents the same way, and records the reopening in the activity feed. Otherwise the link would leave a done task under an open one, which the rule exists to prevent.
 
 **What happened on a board is a second table, not a query over the first (`V15`).** `task_activity`
 records creation, moves, assignment, completion and deletion with an actor; `GET /api/activity`
@@ -529,8 +531,10 @@ numbers:
   card taken off the board has an open last interval with no recorded end, so it is in no column
   from then on. A detached row (a deleted column, `V17`) is still an interval boundary but draws
   no band.
-- **Days are the server's calendar days,** in the same zone `LocalDateTime.now()` writes the rows
-  in. A move at 00:00 belongs to the new day. Percentiles are nearest-rank, so every reported
+- **Days are the server's calendar days,** cut in the zone of the service's `Clock` (UTC in the
+  container) from the instants the history stores. A move at 00:00 belongs to the new day.
+  `doneAt` is an instant, so the scatter places a card at the moment it finished wherever the
+  reader is. Percentiles are nearest-rank, so every reported
   number is one a card actually took.
 
 `/flow` is a client route, so it is in `SpaRoutes.ALL` too. The screen draws the diagram, a
@@ -578,6 +582,19 @@ mail, at 19:00 in summer. And a board shared across time zones had no single due
 `datetime-local` value to an instant on the way out and back to local time on the way in
 (`board/deadlines.ts`), so each person sees the deadline in their own time. Accounts keep no time
 zone, so the overdue mail prints it in Europe/Warsaw and names the zone (CET or CEST).
+
+**Every moment the server writes is an instant too (`V29`).** `V27` fixed the one time people type.
+The times the server stamps itself were still `LocalDateTime.now()` in `timestamp` columns: a
+history move, an activity entry, a chat message, an invitation, a board's creation and the three
+code expiries. The API sent them with no offset, and the browser read them as its own local time,
+so a Warsaw reader saw every one of them one or two hours early. The task panel showed a comment
+(already an `Instant`) at 14:05 and the move made in the same minute at 12:05. They are all
+`Instant` over `timestamptz` now. `V29` reads the old values as UTC, because the container that
+wrote them runs in UTC. That is not `V27`'s Europe/Warsaw, which was right only for a time a person
+typed in Warsaw. Two guards keep it this way. `ServerTimesAreInstantsTest` refuses a
+`LocalDateTime` field on any production class. `MigrationsBuildTheMappedSchemaTest` refuses a
+zone-less `timestamp` column in the migrated schema, and it is the only check that can:
+`ddl-auto=validate` accepts an `Instant` mapped onto a plain `timestamp` column.
 
 A `@Scheduled(fixedRate = 1800000)` job in `TaskService` sweeps deadlines every 30 minutes to flag expired tasks, enabled by `@EnableScheduling` on the application class — the same scheduler `OutboxRelay` runs its minute-by-minute mail pass on.
 

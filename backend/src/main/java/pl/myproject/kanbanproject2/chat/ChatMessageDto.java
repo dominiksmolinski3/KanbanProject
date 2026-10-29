@@ -1,6 +1,6 @@
 package pl.myproject.kanbanproject2.chat;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ChatMessageDto(Integer id,
                              MessageType type,
@@ -8,5 +8,5 @@ public record ChatMessageDto(Integer id,
                              String sender,
                              Integer boardId,
                              String recipientId,
-                             LocalDateTime timestamp) {
+                             Instant timestamp) {
 }
