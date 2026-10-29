@@ -101,13 +101,10 @@ You supply these:
   practice means the git SHA CD pushed. A mutable tag like `latest` breaks deploys, not just
   reproducibility. The tag is the only part of the container template that changes between
   releases. If it never changes, every apply renders the same template, Terraform sees no diff, and
-  no new revision rolls out. Dev once sat on the same revision for eight days that way while every
-  plan said it was up to date.
+  no new revision rolls out while every plan says it is up to date.
 
   So `tf.sh apply` refuses a tag that isn't a commit on `origin/main`, and refuses one that's behind
-  the tip. Getting it right once isn't enough; I once set it correctly and then forgot to move it
-  while about 25 PRs merged, so the apply that was meant to ship the STOMP relay rolled out week-old
-  code. The check runs before `terraform init` and compares against your local `origin/main`
+  the tip. The check runs before `terraform init` and compares against your local `origin/main`
   without fetching.
 
   `./tf.sh <env> apply --allow-stale-image` overrides it. There are two legitimate reasons to use
@@ -156,8 +153,8 @@ Sweden Central because geo-redundant backup needs a paired region, and Poland Ce
 
 After a successful `apply`, `tf.sh` also runs the same check that
 `.github/workflows/deployed-contract.yml` runs daily, against the new `container_app_url`. It asks
-the running site whether it serves what `main` says it should. That's the check that would have
-caught the eight-day stale revision above. Without `python3` or that output it warns and skips
+the running site whether it serves what `main` says it should, which catches a revision that never
+rolled out. Without `python3` or that output it warns and skips
 instead of failing an apply that already succeeded, but a deployment that answers wrong does fail
 the command.
 
@@ -184,15 +181,16 @@ Registry. The apps pull them anonymously, since the packages are public. Each ap
 secrets from Key Vault through its own managed identity (see
 [Key Vault authorization](#key-vault-authorization)).
 
-`.github/workflows/terraform-ci.yml` runs `fmt -check`, `init -backend=false`, `validate` and a
-blocking Checkov scan on every PR that touches `terraform/`. There's no automated apply. Deploying
-stays a deliberate manual step (`./tf.sh <env> apply`).
+`.github/workflows/terraform-ci.yml` runs on every PR that touches `terraform/`, `ansible/`,
+`.checkov/`, the workflows or one of the Dockerfiles. It runs `fmt -check`, then `init -backend=false`
+and `validate` for the root and for `terraform/bootstrap`, then TFLint with the azurerm ruleset, and
+a blocking Checkov scan whose scope is `.checkov.yaml` (Terraform, the Dockerfiles and the
+workflows). A gate job fails unless every job passed or had nothing to check. There's no automated
+apply. Deploying stays a deliberate manual step (`./tf.sh <env> apply`).
 
 ### Why there's no plan on pull requests
 
-The workflow used to have a `plan` job, switched off behind a repository variable until someone
-wired up a federated credential for it. Nobody did, so it never ran. When I finally tried the exact
-command it would have run against real dev state, it would have been useless:
+A CI `plan` job would be useless, because it can't see the local var-file:
 
 ```
 # what the CI job would have run
@@ -204,22 +202,21 @@ Plan: 0 to add, 2 to change, 15 to destroy.
 No changes. Your infrastructure matches the configuration.
 ```
 
-The difference is the gitignored `dev.local.tfvars`. I keep every secret and environment-specific
-value there on purpose, so one environment's values can't leak into another's state. CI doesn't have
+The difference is the gitignored `dev.local.tfvars`. Every secret and environment-specific value
+lives there on purpose, so one environment's values can't leak into another's state. CI doesn't have
 that file, and several of those values decide whether resources exist at all: an empty
 `mail_delivery_report_key` means no Event Grid resources, an empty `alert_email` means no alerts, an
-empty `captcha_secret` means no Key Vault secret. CI would have been planning a different
-configuration and posting "15 to destroy" on every Terraform PR forever. A diff that's always
-alarming just trains reviewers to skim past it.
+empty `captcha_secret` means no Key Vault secret. CI would plan a different configuration and post
+"15 to destroy" on every Terraform PR. A diff that's always alarming just trains reviewers to skim
+past it.
 
 The only fix would be to put dev's captcha secret and delivery-report key into GitHub secrets and
 give CI a login that can read the ACS keys, which means a mail-sending credential in CI just to get
-a review aid. I decided that wasn't worth it, so I removed the job instead of pretending it was
-fixed.
+a review aid. That isn't worth it, so there is no plan job.
 
-What I give up is seeing a destroy-and-replace surprise before merge. What covers that instead:
+What that gives up is seeing a destroy-and-replace surprise before merge. What covers it instead:
 `prevent_destroy` on Postgres and the other data-holding resources, and running `./tf.sh dev plan`
-myself before merging anything structural.
+before merging anything structural.
 
 ### Drift detection
 
@@ -349,13 +346,11 @@ address, your own IP for the Key Vault firewall) goes in `<env>.local.tfvars`, w
 `./tf.sh <env> ...` passes it after the committed `<env>.tfvars`, and a file for another environment
 simply isn't read.
 
-These files used to be called `<env>.local.auto.tfvars`, and that was a real bug. Terraform loads
-every `*.auto.tfvars` in the directory on every run, whatever `-var-file` you pass. It didn't show,
-because the committed var-file wins for everything it sets. But `prod.tfvars` doesn't set the
-secrets, because they have no committed value. So a prod plan on my machine would have taken dev's
-ACS connection string, dev's captcha secret, dev's alert address and my home IP straight into prod.
-
-Dropping `.auto.` fixed it. `tf.sh` now refuses to run while any `*.local.auto.tfvars` exists:
+The name must not contain `.auto.`. Terraform loads every `*.auto.tfvars` in the directory on every
+run, whatever `-var-file` you pass, and `prod.tfvars` doesn't set the secrets because they have no
+committed value. A `<env>.local.auto.tfvars` would carry dev's ACS connection string, captcha secret,
+alert address and your IP straight into a prod plan. `tf.sh` refuses to run while any
+`*.local.auto.tfvars` exists:
 
 ```
 $ ./tf.sh dev plan
@@ -372,8 +367,8 @@ group that `acs` names. Terraform reads the connection string and the `DoNotRepl
 from them, writes the `ACS-EMAIL-CONNECTION-STRING` secret, and passes `ACS_EMAIL_CONNECTION_STRING`
 and `ACS_EMAIL_SENDER_ADDRESS` to the API. Nothing about mail is pasted into tfvars.
 
-I created dev's resources in the portal and adopted them with `import` blocks. All four have
-`prevent_destroy`. The domain is a generated GUID subdomain, so a new one would change every sender
+The Communication Services resource, the email service and the domain have `prevent_destroy`. The
+domain is a generated GUID subdomain, so a new one would change every sender
 address. The diagnostic setting, the bounce alert and the Event Grid subscription for delivery
 reports hang off the same resource, so they follow `acs` too.
 
@@ -490,8 +485,8 @@ keeps a copy that survives everything except losing the subscription.
 - The job's identity has a custom role that can **only add blobs**: no read, no delete, no
   overwrite. The container has a 14-day immutability policy, so even a compromised job can't remove
   a recent dump. The policy is **locked**: not even an Owner can shorten or remove it, and the
-  account can't be deleted while it holds a dump younger than 14 days. I ran into that when tearing
-  dev down, so plan for it.
+  account can't be deleted while it holds a dump younger than 14 days, so plan for that when tearing
+  an environment down.
 - Lifecycle rules keep `daily/` for 14 days, `weekly/` (Sundays) for 8 weeks and `monthly/` (the 1st)
   for a year, moving monthly dumps to Cool after 30 days.
 - The account has no private endpoint. `snet-backend` carries a `Microsoft.Storage.Global` service
@@ -530,22 +525,20 @@ What follows from that split:
   resolves it.
 - **nginx talks TLS to the API.** It isn't optional. An internal ingress still terminates TLS and
   answers plain HTTP with a `301` to the https URL, and nginx would hand that redirect back to the
-  browser, pointing it at a name only the environment can resolve. I could have set
-  `allow_insecure_connections = true` on the API instead, but there's no need: the internal
-  certificate carries `*.internal.<environment-domain>`, is issued by Microsoft's public CA, and
+  browser, pointing it at a name only the environment can resolve. `allow_insecure_connections = true`
+  on the API isn't needed: the internal certificate carries `*.internal.<environment-domain>`, is issued by Microsoft's public CA, and
   verifies against the stock CA bundle. So the hop is authenticated as well as encrypted.
 - **`ingress_trusted_proxy_count` is 3.** Three hops append to `X-Forwarded-For`: the web ingress
   appends the client, nginx appends that ingress's envoy, and the API's internal ingress appends
-  nginx. I had it at 2 until 24 Sep 2026, and nothing complained. Every request was keyed on the web
-  ingress's envoy address, so the rate limiter held one bucket for the whole internet and
-  *Signed-in devices* showed the same IP for everyone. The lesson: count the entries that get
-  appended, not the proxies.
+  nginx. Count the entries that get appended, not the proxies: with too small a count every request
+  is keyed on the web ingress's envoy address, so the rate limiter holds one bucket for the whole
+  internet and *Signed-in devices* shows the same IP for everyone.
 - **`SECURITY_CORS_ALLOWED_ORIGINS` names the web app**, not the API. nginx forwards the browser's
   `Origin` unchanged, so Spring sees the address the user typed. Get it wrong and every call from the
   board fails with a 403 `Invalid CORS request` while the page itself loads fine.
-- **One `app_image_tag` feeds both apps.** The bundle and the API it calls used to be one artifact
-  and couldn't disagree. One tag across both images keeps that guarantee. Please don't split the
-  variable for convenience; that's what makes version skew possible.
+- **One `app_image_tag` feeds both apps.** The bundle and the API it calls have to agree. One tag
+  across both images guarantees that. Please don't split the variable for convenience; that's what
+  makes version skew possible.
 
 The API's name is built twice, once in the API module and once inside the edge's upstream in the web
 module, so neither module depends on the other's resources. A `check` block in the root module
@@ -580,9 +573,9 @@ A private package with neither set fails with `ImagePullBackOff`.
 
 The vault denies public traffic (`key_vault_network_default_action = "Deny"`). It admits the
 private endpoint, trusted Azure services (Key Vault references) and whatever is in
-`key_vault_allowed_ips`. Nothing discovers your address for you. An earlier version looked up the
-caller's public IP on every plan, which quietly turned the allow-list into "whoever ran Terraform
-last" and could never describe a CI runner with changing addresses.
+`key_vault_allowed_ips`. Nothing discovers your address for you: a lookup on every plan would turn
+the allow-list into "whoever ran Terraform last" and could never describe a CI runner with changing
+addresses.
 
 This matters because Terraform writes secrets over the vault's **data plane**. An apply from outside
 the VNet without a matching entry fails on `azurerm_key_vault_secret` with `Forbidden` / `Client
@@ -603,14 +596,14 @@ never ends up in the repo or in another environment's plan.
 ### Custom domain
 
 `custom_domain` binds a hostname to the web app with an Azure-managed certificate validated over
-HTTP. Dev used `kanbanproject.pl`. Its `https://` origin is added to the API's CORS list
+HTTP. Its `https://` origin is added to the API's CORS list
 automatically, so it doesn't also need to be in `extra_cors_origins`. DNS stays at the registrar:
 the apex `A` record points at the environment's static IP, and the `asuid` TXT record carries the
 verification id.
 
 Creating one from scratch takes two applies, because Azure validates the certificate against a
 hostname that's already on the app: first add the domain with binding `Disabled`, then create the
-certificate. I made dev's pair in the portal and adopted them with `import` blocks.
+certificate.
 
 ### Ingress restrictions
 
@@ -678,7 +671,7 @@ traffic at priority 4096 and allows only the flows that should exist:
 | | `snet-backend` | `snet-db` | `snet-pe` | `snet-storage` | `snet-redis` | `snet-monitoring` |
 |---|---|---|---|---|---|---|
 | 100 | 80/443 from `ingress_source_address_prefixes` | 5432 from `snet-backend` | 443 from `snet-backend` | 443 from `snet-backend` | 10000 from `snet-backend` | 443 from `snet-backend` |
-| 110 | anything within the subnet | anything within the subnet | | | | |
+| 110 | anything within the subnet | anything within the subnet | 443 from `snet-monitoring` | | | |
 | 120 | 30000-32767 from `AzureLoadBalancer` | | | | | |
 | 4096 | deny inbound from `VirtualNetwork` | same | same | same | same | same |
 
@@ -714,10 +707,9 @@ backend subnet only. The `privatelink.blob.core.windows.net` zone linked to the 
 API resolve the account to that endpoint. The only thing that ever talks to the account is the API,
 over that endpoint, as its own managed identity.
 
-**That's why downloads go through the API.** My first version signed a five-minute read-only SAS for
-one blob and let the browser fetch it from Azure directly. It was cheaper and kept large transfers off
-small containers, but it needed the account to accept traffic from anywhere a browser might be.
-With the account closed, `GET /api/tasks/{id}/attachments/{aid}/content` streams the file from storage
+**That's why downloads go through the API.** A signed SAS would let the browser fetch a blob from
+Azure directly, which is cheaper and keeps large transfers off small containers, but it needs the
+account to accept traffic from anywhere a browser might be. With the account closed, `GET /api/tasks/{id}/attachments/{aid}/content` streams the file from storage
 to the response. It streams rather than buffering, but it's still the API's CPU and bandwidth. If
 attachment traffic ever outgrows that, the way out is Front Door with a private origin, not
 reopening the account. [front-door-private-origin.md](front-door-private-origin.md) has that design,
@@ -771,10 +763,9 @@ without Azure.
 ### Rate limiter Redis
 
 `modules/redis` provisions the **Azure Managed Redis** instance where `AuthRateLimiter` keeps its
-escalation state, so the login and signup limits hold across API replicas. I started with classic
-Azure Cache for Redis, but the first apply was refused outright (`Azure Cache for Redis is retiring,
-create Azure Managed Redis instance instead`). Managed Redis is Redis Enterprise underneath, still
-under `Microsoft.Cache`, but several things differ from a classic cache: the access-key and TLS
+escalation state, so the login and signup limits hold across API replicas. Classic Azure Cache for
+Redis isn't an option, because Azure refuses to create one. Managed Redis is Redis Enterprise
+underneath, still under `Microsoft.Cache`, but several things differ from a classic cache: the access-key and TLS
 settings live on `default_database`, and the private endpoint's subresource and DNS zone are both
 `redisEnterprise`.
 
@@ -794,9 +785,8 @@ managed identity. `modules/api_app` grants it an `azurerm_managed_redis_access_p
 the default database and passes its client id and object id as
 `SECURITY_RATE_LIMIT_REDIS_ENTRA_CLIENT_ID` and `SECURITY_RATE_LIMIT_REDIS_USERNAME`.
 `RedisRateLimitConfiguration` gives Jedis a token manager that fetches a token for
-`https://redis.azure.com/.default` and renews it before it expires. That got rid of the old
-`REDIS-ACCESS-KEY` secret, along with the trap where a regenerated key reached Key Vault but not the
-running revision. The API depends on the assignment, so a new revision never starts before its
+`https://redis.azure.com/.default` and renews it before it expires, so there's no key secret that a
+regeneration could leave stale in a running revision. The API depends on the assignment, so a new revision never starts before its
 identity is allowed in. With neither variable set (docker-compose, CI), the app connects without
 authentication.
 
@@ -807,9 +797,9 @@ container. The escalation logic behaves the same; only the connection differs, w
 
 ### RabbitMQ broker
 
-`modules/broker` runs the STOMP broker that `WebSocketConfig.configureMessageBroker` relays to. Each
-API replica used to keep its own in-memory broker, so a board event published on one replica never
-reached a browser connected to another. The shared broker fixed that. It's a Container App,
+`modules/broker` runs the STOMP broker that `WebSocketConfig.configureMessageBroker` relays to. Every
+API replica relays to this one broker, so a board event published on one replica reaches a browser
+connected to another. It's a Container App,
 `kanban-broker-<env>`, in the same environment as the web and API apps. An internal TCP ingress
 that only apps in that environment can reach is a tighter boundary than a private endpoint, which
 anything in the VNet can reach, and it needs no subnet of its own.
@@ -826,8 +816,8 @@ The decisions behind it:
   `docker-compose.yml`, and `PinnedImagesTest` fails the build until this module names the same
   digest, so local and deployed stay in step. The container's `command` runs
   `rabbitmq-plugins enable --offline rabbitmq_stomp` and then hands over to the image's entrypoint.
-  I didn't build a custom image for this: one line didn't seem worth a third image in the CD
-  build, scan and promote steps.
+  There is no custom image: one line isn't worth a third image in the CD build, scan and promote
+  steps.
 - **One account, `kanban`, for both the client and system logins.** RabbitMQ can't tell callers
   apart beyond the TCP connection, so separate credentials wouldn't buy anything. The password is
   generated and stored as the `RABBITMQ-PASSWORD` secret, and the broker's identity can read that one
@@ -865,11 +855,10 @@ Two consequences:
   signal that a grant has arrived, so a slower tenant can raise it without editing a module.
 
   **Each wait is keyed on the id of the assignment it waits for.** That matters more than it looks.
-  `depends_on` only orders a create; it doesn't make an existing resource run again. My first
-  version had plain waits, and on dev all of them still had timestamps from the very first apply,
-  months later. The applies that need the wait most are the ones where an assignment gets replaced
-  (vault rebuilt, identity recreated, someone else applying), and there the old wait did nothing.
-  Keying on the assignment id recreates the wait whenever the grant is recreated.
+  `depends_on` only orders a create; it doesn't make an existing resource run again. A plain wait
+  keeps the timestamp of the first apply, and the applies that need the wait most are the ones where
+  an assignment gets replaced (vault rebuilt, identity recreated, someone else applying). Keying on
+  the assignment id recreates the wait whenever the grant is recreated.
 
 ### Monitoring VM
 
@@ -882,9 +871,8 @@ Nobody logs in to it. It's configured with Run Command, which goes through Azure
 is authorized by an Azure role. Resource group Owners already have it, and
 `monitoring_operator_object_ids` grants a narrow *Monitoring VM Operator* role to anyone else. Run
 Command means root on the VM, so that role effectively includes the VM's Key Vault access too,
-including replacing the CA the API trusts. Treat it like an admin role. I checked this on 8 Oct with
-a throwaway service principal holding only that role: Run Command ran as uid 0, and `deallocate`
-was refused.
+including replacing the CA the API trusts. Treat it like an admin role. The role grants Run Command
+and nothing that stops or deallocates the VM.
 
 ```bash
 az vm run-command invoke -g kanban-dev-rg -n vm-monitoring-dev --command-id RunShellScript --scripts "uptime"

@@ -282,7 +282,8 @@ Add it to `SECURITY_CORS_ALLOWED_ORIGINS` on the deployment you point the app at
   - `src/services`: API calls, one module per feature
   - `src/styles`: CSS
 - `terraform/`: the Azure infrastructure ([terraform/README.md](terraform/README.md))
-- `observability/`: Prometheus, Grafana and the monitoring VM's configuration
+- `observability/`: Prometheus and Grafana configuration and dashboards
+- `ansible/`: the monitoring VM's configuration
 - `loadtest/`: k6 scenarios
 - `.github/workflows/`: CI/CD
 - `docs/`: architecture notes and diagrams ([docs/architecture.md](docs/architecture.md) explains
@@ -323,8 +324,7 @@ docker pull ghcr.io/dominiksmolinski3/kanbanproject-grafana:latest
 ```
 
 Images are tagged with the commit SHA, and `:latest` only moves once the scan passes. **All three
-always share a tag.** The frontend and the API used to ship as one artifact and couldn't get out of
-sync; one shared tag keeps it that way.
+always share a tag.** One shared tag keeps the frontend and the API from drifting apart.
 
 In Azure, four Container Apps run in one environment:
 
@@ -378,18 +378,25 @@ Everything lives in [.github/workflows/](.github/workflows/):
 | `kanban-cd.yml` | Builds, scans, pushes and promotes the images |
 | `release-images.yml` | On a `vX.Y.Z` tag, gives the images of that commit the version |
 | `deployed-contract.yml` | Checks every day that the deployed site still matches `main` |
-| `codeql.yml` | CodeQL on the Java backend |
+| `codeql.yml` | CodeQL on the Java, JavaScript/TypeScript, Python and GitHub Actions code |
 | `migration-order.yml` | Keeps Flyway migration numbers in order across branches |
-| `terraform-ci.yml` | `fmt`, `validate` and Checkov |
+| `terraform-ci.yml` | `fmt`, `validate`, TFLint, and Checkov over the Terraform, Dockerfiles and workflows |
 | `terraform-drift.yml` | Plans dev from `main` every night |
 | `observability-ci.yml` | Prometheus config and rule tests, dashboard lint, ansible-lint and Molecule |
 | `monitoring-drift.yml` | A nightly check-mode run of the monitoring VM's configuration |
+| `monitoring-converge.yml` | Applies the monitoring VM's configuration when `ansible/` or `observability/` changes |
 | `hadolint.yml` | Lints every Dockerfile |
 | `sweep-alarm.yml` | The shared alarm every scheduled workflow reports through |
+| `pr-conventions.yml` | Checks a pull request's title, commit subjects, kind label and assignee |
+| `pr-changes.yml` | The shared diff check other workflows call to skip work a pull request doesn't touch |
+| `workflow-lint.yml` | actionlint and ShellCheck |
+| `gradle-wrapper.yml` | Validates the Android project's committed Gradle wrapper |
+| `scorecard.yml` | OpenSSF Scorecard |
+| `dependency-submission.yml` | Submits the Maven and Gradle dependency graphs to GitHub |
 | `dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`, `external-scan.yml`, `dast.yml` | Dependency and attack-surface scanning |
 
-`deployed-contract.yml`, `terraform-drift.yml`, `monitoring-drift.yml` and `external-scan.yml` are
-disabled while nothing is deployed.
+`deployed-contract.yml`, `terraform-drift.yml`, `monitoring-drift.yml`, `monitoring-converge.yml` and
+`external-scan.yml` are disabled while nothing is deployed.
 
 ## Testing
 
