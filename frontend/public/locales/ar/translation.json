@@ -746,6 +746,7 @@
             "PARENT_TASK_NOT_COMPLETED": "أكمل المهمة الرئيسية أولًا.",
             "PARENT_TASK_NOT_FOUND": "المهمة الرئيسية لم تعد موجودة.",
             "PARENT_TASK_NOT_SET": "هذه المهمة ليس لها مهمة رئيسية.",
+            "PAYLOAD_TOO_LARGE": "الملف المرفوع كبير جدًا.",
             "RESET_CODE_EXPIRED": "انتهت صلاحية رمز إعادة التعيين. اطلب رمزًا جديدًا.",
             "ROW_NOT_FOUND": "هذا المسار لم يعد موجودًا.",
             "SESSION_NOT_FOUND": "انتهت هذه الجلسة بالفعل.",

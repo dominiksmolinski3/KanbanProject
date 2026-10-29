@@ -746,6 +746,7 @@
       "PARENT_TASK_NOT_COMPLETED": "Najpierw ukończ zadanie nadrzędne.",
       "PARENT_TASK_NOT_FOUND": "Zadanie nadrzędne już nie istnieje.",
       "PARENT_TASK_NOT_SET": "To zadanie nie ma zadania nadrzędnego.",
+      "PAYLOAD_TOO_LARGE": "Przesyłany plik jest za duży.",
       "RESET_CODE_EXPIRED": "Ten kod resetu wygasł. Poproś o nowy.",
       "ROW_NOT_FOUND": "Ten tor już nie istnieje.",
       "SESSION_NOT_FOUND": "Ta sesja już się zakończyła.",

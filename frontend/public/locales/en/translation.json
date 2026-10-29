@@ -746,6 +746,7 @@
       "PARENT_TASK_NOT_COMPLETED": "Complete the parent task first.",
       "PARENT_TASK_NOT_FOUND": "The parent task no longer exists.",
       "PARENT_TASK_NOT_SET": "This task has no parent task.",
+      "PAYLOAD_TOO_LARGE": "The upload is too large.",
       "RESET_CODE_EXPIRED": "That reset code has expired. Ask for a new one.",
       "ROW_NOT_FOUND": "That swimlane no longer exists.",
       "SESSION_NOT_FOUND": "That session has already ended.",
