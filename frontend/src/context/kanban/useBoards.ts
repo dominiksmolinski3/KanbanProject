@@ -69,14 +69,17 @@ export function useBoards({ t }: { t: Translate }) {
     setActiveBoardId(boardId);
   };
 
-  const refreshBoards = () =>
-    queryClient.fetchQuery({ queryKey: boardsKeys.list, queryFn: fetchBoards, staleTime: 0 });
+  // fetchQuery joins a read already in flight, which can predate the write this follows.
+  const readAfresh = async <T>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => {
+    await queryClient.cancelQueries({ queryKey, exact: true });
+    return queryClient.fetchQuery({ queryKey, queryFn, staleTime: 0 });
+  };
+
+  const refreshBoards = () => readAfresh(boardsKeys.list, fetchBoards);
 
   const refreshMyInvitations = async () => {
     try {
-      return await queryClient.fetchQuery({
-        queryKey: boardsKeys.invitations, queryFn: fetchMyInvitations, staleTime: 0,
-      });
+      return await readAfresh(boardsKeys.invitations, fetchMyInvitations);
     } catch (err) {
       console.error('Error fetching invitations:', err);
       return [];
