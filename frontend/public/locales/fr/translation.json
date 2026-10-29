@@ -746,6 +746,7 @@
             "PARENT_TASK_NOT_COMPLETED": "Terminez d'abord la tâche parente.",
             "PARENT_TASK_NOT_FOUND": "La tâche parente n'existe plus.",
             "PARENT_TASK_NOT_SET": "Cette tâche n'a pas de tâche parente.",
+            "PAYLOAD_TOO_LARGE": "Le fichier envoyé est trop volumineux.",
             "RESET_CODE_EXPIRED": "Ce code a expiré. Demandez-en un nouveau.",
             "ROW_NOT_FOUND": "Ce couloir n'existe plus.",
             "SESSION_NOT_FOUND": "Cette session est déjà terminée.",
