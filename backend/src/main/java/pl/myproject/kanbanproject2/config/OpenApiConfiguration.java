@@ -7,10 +7,13 @@ import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pl.myproject.kanbanproject2.config.security.PublicPaths;
+
+import java.util.List;
 
 @Configuration
 public class OpenApiConfiguration {
@@ -21,7 +24,9 @@ public class OpenApiConfiguration {
 
     @Bean
     public OpenAPI kanbanOpenApi() {
+        // Without a server springdoc writes the host the request reached, which behind the edge is the API's internal name.
         return new OpenAPI()
+                .servers(List.of(new Server().url("/")))
                 .info(new Info()
                         .title("Kanban API")
                         .version(API_VERSION)
