@@ -15,7 +15,7 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -48,7 +48,7 @@ class TaskActivityControllerHttpTest {
     @DisplayName("the feed answers 200 with the envelope and the activity type as its enum name")
     void feedAnswers200() throws Exception {
         var moved = new TaskActivityDto(1, 5, "Fix login", 1, "Ann", TaskActivityType.MOVED,
-                "To do -> Doing", LocalDateTime.of(2026, 10, 1, 12, 0));
+                "To do -> Doing", Instant.parse("2026-10-01T12:00:00Z"));
         when(activityService.feed(caller, 7, 2, 10)).thenReturn(new TaskActivityResults(List.of(moved), 2, 10, 21, 3));
 
         mvc.perform(get("/activity").param("boardId", "7").param("page", "2").param("size", "10"))

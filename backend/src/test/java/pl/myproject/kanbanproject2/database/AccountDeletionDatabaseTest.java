@@ -25,7 +25,7 @@ import pl.myproject.kanbanproject2.user.UserMapper;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.UserService;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -142,7 +142,7 @@ class AccountDeletionDatabaseTest {
                 .content("hello")
                 .sender(sender)
                 .recipientId(recipient)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 }

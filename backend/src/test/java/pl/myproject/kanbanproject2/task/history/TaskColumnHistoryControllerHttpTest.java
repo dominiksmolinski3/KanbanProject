@@ -13,7 +13,7 @@ import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.task.TaskService;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,12 +44,13 @@ class TaskColumnHistoryControllerHttpTest {
     void answersWithTheMoves() throws Exception {
         when(taskService.getTaskColumnHistoryDTOs(CALLER, 4)).thenReturn(List.of(
                 new TaskColumnHistoryDto(1, 4, "Write the migration", 2, "Doing",
-                        LocalDateTime.of(2026, 8, 31, 12, 0))));
+                        Instant.parse("2026-08-31T12:00:00Z"))));
 
         mvc.perform(get("/tasks/4/column-history"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].columnName").value("Doing"))
-                .andExpect(jsonPath("$[0].taskTitle").value("Write the migration"));
+                .andExpect(jsonPath("$[0].taskTitle").value("Write the migration"))
+                .andExpect(jsonPath("$[0].changedAt").value("2026-08-31T12:00:00Z"));
     }
 
     @Test
