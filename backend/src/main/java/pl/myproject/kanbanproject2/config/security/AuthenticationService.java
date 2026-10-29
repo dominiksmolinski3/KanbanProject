@@ -176,7 +176,7 @@ public class AuthenticationService {
                     user.getEmail(), code, VERIFICATION_CODE_TTL_MINUTES,
                     SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
-            log.error("Failed to send verification email to {}", user.getEmail(), e);
+            log.error("Failed to send the verification email to user {}", user.getId(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);
         }
     }
