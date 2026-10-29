@@ -479,7 +479,9 @@ We're happy to take pull requests. A few things make them easier to merge:
    Please don't branch off another open PR; stacked PRs get no CI.
 2. Write commit messages as [Conventional Commits](https://gist.github.com/qoomon/5dfcdf8eec66a051ecd85625518cfd13),
    e.g. `feat(board): add swimlane filter`.
-3. Run the tests for whatever you touched (`./mvnw verify`, `npm test`, `npm run lint`).
+3. Add tests for new functionality and for every bug you fix, in the same pull request, and run the tests
+   for whatever you touched (`./mvnw verify`, `npm test`, `npm run lint`). The backend's coverage gate fails
+   a package that drops below its floor.
 4. Open the pull request against `main`.
 
 [CLAUDE.md](CLAUDE.md) lists the conventions and the easy-to-miss traps, and
