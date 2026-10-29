@@ -28,6 +28,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from html.parser import HTMLParser
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -68,6 +69,32 @@ def get(url, accept="*/*"):
     except urllib.error.URLError as unreachable:
         fail("the origin is unreachable", url + ": " + str(unreachable.reason))
         raise SystemExit(1)
+
+
+class InlineScripts(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.count = 0
+        self._inline = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            self._inline = not any(name == "src" for name, _ in attrs)
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self._inline = False
+
+    def handle_data(self, data):
+        if self._inline and data.strip():
+            self.count += 1
+
+
+def inline_scripts(html):
+    parser = InlineScripts()
+    parser.feed(html)
+    parser.close()
+    return parser.count
 
 
 def java_string(source, constant):
@@ -131,7 +158,7 @@ def main(origin):
     shell = body.decode("utf-8", "replace")
     check("the shell has a mount point", '<div id="root">' in shell, "no #root in the served HTML")
     check("the shell carries no inline script",
-          not re.search(r"<script(?![^>]*\ssrc=)[^>]*>\s*\S", shell),
+          inline_scripts(shell) == 0,
           "an inline script means script-src would need 'unsafe-inline', which is the half worth having")
 
     assets = re.findall(r'(?:src|href)="(/assets/[^"]+)"', shell)

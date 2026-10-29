@@ -78,7 +78,7 @@ describe('BoardMembers', () => {
 
     await waitFor(() =>
       expect(mockKanban.inviteToBoard).toHaveBeenCalledWith(3, 'new@example.com', 'MEMBER'));
-    expect(screen.getAllByText(/example\.com/).map(node => node.textContent))
+    expect(screen.getAllByText(/^[^@\s]+@example\.com$/).map(node => node.textContent))
       .toEqual(['owner@example.com', 'member@example.com']);
   });
 
