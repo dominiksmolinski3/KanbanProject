@@ -173,6 +173,7 @@ function Task({ task, columnId, rowId }: TaskProps) {
               id={task.id}
               text={title}
               onUpdate={updateTaskName}
+              label={t('taskActions.editTitle')}
               className="task-title"
               inputClassName="task-title-input"
               type="task"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import BoardSwitcher from '../../components/BoardSwitcher';
 import { useKanban } from '../../context/KanbanContext';
@@ -10,6 +10,8 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../context/KanbanContext', () => ({
   useKanban: jest.fn(),
 }));
+
+const panel = () => document.querySelector('.board-switcher-menu');
 
 const baseContext = {
   boards: [],
@@ -62,9 +64,30 @@ describe('BoardSwitcher', () => {
 
     fireEvent.click(screen.getByRole('button', { expanded: false }));
 
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(panel()).toBeInTheDocument();
     expect(screen.getByText('Theirs')).toBeInTheDocument();
     expect(screen.getByText('boards.switcher.shared')).toBeInTheDocument();
+  });
+
+  test('the toggle names the panel it opens, and the open board is the current one', () => {
+    useKanban.mockReturnValue({
+      ...baseContext,
+      activeBoard: { id: 1, name: 'Mine' },
+      activeBoardId: 1,
+      boards: [
+        { id: 1, name: 'Mine', owned: true },
+        { id: 2, name: 'Theirs', owned: false },
+      ],
+    });
+    render(<BoardSwitcher />);
+    const toggle = screen.getByRole('button', { expanded: false });
+    expect(toggle).not.toHaveAttribute('aria-haspopup');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-controls', panel().id);
+    expect(within(panel()).getByRole('button', { name: 'Mine' })).toHaveAttribute('aria-current', 'true');
+    expect(within(panel()).getByRole('button', { name: /Theirs/ })).not.toHaveAttribute('aria-current');
   });
 
   test('selecting a board switches to it and closes the menu', () => {
@@ -85,7 +108,7 @@ describe('BoardSwitcher', () => {
     fireEvent.click(screen.getByText('Theirs'));
 
     expect(selectBoard).toHaveBeenCalledWith(2);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(panel()).not.toBeInTheDocument();
   });
 
   test('creating a board with a blank name does nothing', async () => {
@@ -125,7 +148,7 @@ describe('BoardSwitcher', () => {
     fireEvent.submit(screen.getByText('boards.switcher.create'));
 
     expect(createBoard).toHaveBeenCalledWith('New one');
-    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    await waitFor(() => expect(panel()).not.toBeInTheDocument());
   });
 
   test('a click outside the switcher closes the open menu', () => {
@@ -137,10 +160,10 @@ describe('BoardSwitcher', () => {
     });
     render(<div><BoardSwitcher /><button>Outside</button></div>);
     fireEvent.click(screen.getByRole('button', { expanded: false }));
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(panel()).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByText('Outside'));
 
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(panel()).not.toBeInTheDocument();
   });
 });

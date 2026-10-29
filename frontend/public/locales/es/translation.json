@@ -249,12 +249,16 @@
       "noLimit": "Sin límite",
       "taskCount": "Tareas",
       "delete": "Eliminar columna",
+      "name": "Nombre de columna",
+      "rename": "Renombrar columna {{name}}",
       "add": "Añadir columna"
     },
     "row": {
       "cannotDeleteLast": "No se puede eliminar el último carril.",
       "deleteConfirm": "¿Está seguro de que desea eliminar esta fila?",
       "delete": "Eliminar fila",
+      "name": "Nombre de fila",
+      "rename": "Renombrar fila {{name}}",
       "wipLimit": "Límite",
       "wipExceeded": "¡excedido!",
       "lastRowWarning": "No se puede eliminar la última fila.",

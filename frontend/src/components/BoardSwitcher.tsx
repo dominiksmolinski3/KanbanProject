@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
@@ -12,6 +12,7 @@ function BoardSwitcher() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   const { t } = useTranslation();
 
   useOutsideClick(containerRef, open, () => {
@@ -44,8 +45,8 @@ function BoardSwitcher() {
       <button
         type="button"
         className="nav-link board-switcher-toggle"
-        aria-haspopup="true"
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen(!open)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
@@ -65,15 +66,15 @@ function BoardSwitcher() {
       </button>
 
       {open && (
-        <div className="board-switcher-menu" role="menu">
+        <div className="board-switcher-menu" id={panelId}>
           <p className="board-switcher-heading">{t('boards.switcher.heading')}</p>
           <ul className="board-switcher-list">
             {boards.map(board => (
               <li key={board.id}>
                 <button
                   type="button"
-                  role="menuitem"
                   className={board.id === activeBoardId ? 'board-option active' : 'board-option'}
+                  aria-current={board.id === activeBoardId ? 'true' : undefined}
                   onClick={() => {
                     selectBoard(board.id);
                     setOpen(false);

@@ -249,12 +249,16 @@
     "noLimit": "Bez limitu",
     "taskCount": "Zadania",
     "delete": "Usuń kolumnę",
+    "name": "Nazwa kolumny",
+    "rename": "Zmień nazwę kolumny {{name}}",
     "add": "Dodaj kolumnę"
   },
   "row": {
     "cannotDeleteLast": "Nie można usunąć ostatniego wiersza.",
     "deleteConfirm": "Czy na pewno chcesz usunąć ten wiersz?",
     "delete": "Usuń wiersz",
+    "name": "Nazwa wiersza",
+    "rename": "Zmień nazwę wiersza {{name}}",
     "wipLimit": "Limit",
     "wipExceeded": "przekroczony!",
     "lastRowWarning": "Nie można usunąć ostatniego wiersza.",

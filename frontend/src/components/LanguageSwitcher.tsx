@@ -52,7 +52,6 @@ function LanguageSwitcher() {
       <button
         className="language-switcher-button"
         onClick={toggleDropdown}
-        aria-haspopup="true"
         aria-expanded={isOpen}
         type="button"
       >

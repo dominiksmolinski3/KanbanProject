@@ -66,6 +66,7 @@
     "@types/sockjs-client": "^1.5.4",
     "@typescript-eslint/typescript-estree": "^8.72.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.0",
     "babel-jest": "^30.5.2",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "cypress": "^16.2.0",

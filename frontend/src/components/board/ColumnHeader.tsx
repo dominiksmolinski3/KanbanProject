@@ -36,6 +36,8 @@ export default function ColumnHeader({ column, onDelete }: ColumnHeaderProps) {
             id={column.id}
             text={column.name}
             onUpdate={updateColumnName}
+            label={t('column.name')}
+            renameLabel={t('column.rename', { name: column.name })}
             className="column-name"
             inputClassName="column-name-input"
             type="column"

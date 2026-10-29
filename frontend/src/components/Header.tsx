@@ -64,7 +64,6 @@ function Header() {
         <button
           type="button"
           className="nav-link header-menu-toggle"
-          aria-haspopup="true"
           aria-expanded={menuOpen}
           aria-label={t('header.settings')}
           title={t('header.settings')}

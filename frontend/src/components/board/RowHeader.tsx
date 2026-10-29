@@ -47,6 +47,8 @@ export default function RowHeader({ row, collapsed, onToggle, onDelete }: RowHea
           id={row.id}
           text={row.name}
           onUpdate={updateRowName}
+          label={t('row.name')}
+          renameLabel={t('row.rename', { name: row.name })}
           className="row-name"
           inputClassName="row-name-input"
           type="row"

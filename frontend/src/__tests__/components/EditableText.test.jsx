@@ -174,4 +174,40 @@ describe('EditableText Component', () => {
         expect(inputElement).toHaveClass('editable-text-input');
         expect(inputElement).toHaveClass('custom-input-class');
     });
+
+    test('the input is named by its label', () => {
+        render(<EditableText id="c1" text="To Do" onUpdate={mockOnUpdate} label="Column name" />);
+
+        fireEvent.doubleClick(screen.getByText('To Do'));
+
+        expect(screen.getByRole('textbox', { name: 'Column name' })).toHaveValue('To Do');
+    });
+
+    test('a rename button opens the editor without a mouse, and focus comes back to it after', async () => {
+        render(
+            <EditableText id="c1" text="To Do" onUpdate={mockOnUpdate} label="Column name" renameLabel="Rename column To Do" />
+        );
+        const rename = screen.getByRole('button', { name: 'Rename column To Do' });
+
+        fireEvent.click(rename);
+        const input = screen.getByRole('textbox', { name: 'Column name' });
+        expect(document.activeElement).toBe(input);
+        fireEvent.change(input, { target: { value: 'Backlog' } });
+        await act(async () => {
+            fireEvent.keyDown(input, { key: 'Enter' });
+        });
+
+        expect(mockOnUpdate).toHaveBeenCalledWith('c1', 'Backlog', 'default');
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Rename column To Do' }));
+    });
+
+    test('no rename button when there is no rename label, or editing is off', () => {
+        const { rerender } = render(<EditableText id="c1" text="To Do" onUpdate={mockOnUpdate} label="Column name" />);
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+
+        rerender(
+            <EditableText id="c1" text="To Do" onUpdate={mockOnUpdate} label="Column name" renameLabel="Rename" disabled />
+        );
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
 });

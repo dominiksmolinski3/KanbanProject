@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LABEL_MAX_LENGTH } from '../../services/textLimits';
 import LengthHint from '../LengthHint';
@@ -16,6 +17,8 @@ interface CustomLabelFormProps {
 
 export default function CustomLabelForm({ position, name, color, onNameChange, onColorChange, onAdd, onCancel }: CustomLabelFormProps) {
   const { t } = useTranslation();
+  const nameId = useId();
+  const colorId = useId();
   const blank = !name.trim();
 
   return (
@@ -32,8 +35,9 @@ export default function CustomLabelForm({ position, name, color, onNameChange, o
       >
         <h3 className="form-title">{t('taskLabels.addCustomLabelTitle')}</h3>
         <div className="form-group">
-          <label>{t('taskLabels.labelName')}</label>
+          <label htmlFor={nameId}>{t('taskLabels.labelName')}</label>
           <input
+            id={nameId}
             type="text"
             value={name}
             maxLength={LABEL_MAX_LENGTH}
@@ -44,8 +48,8 @@ export default function CustomLabelForm({ position, name, color, onNameChange, o
           <LengthHint value={name} max={LABEL_MAX_LENGTH} />
         </div>
         <div className="form-group">
-          <label>{t('taskLabels.labelColor')}</label>
-          <input type="color" value={color} onChange={(e) => onColorChange(e.target.value)} />
+          <label htmlFor={colorId}>{t('taskLabels.labelColor')}</label>
+          <input id={colorId} type="color" value={color} onChange={(e) => onColorChange(e.target.value)} />
         </div>
         <div className="form-actions">
           <button onClick={onAdd} disabled={blank} className={`add-button ${blank ? 'disabled' : ''}`}>

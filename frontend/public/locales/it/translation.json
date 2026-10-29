@@ -249,12 +249,16 @@
       "noLimit": "Nessun limite",
       "taskCount": "Attività",
       "delete": "Elimina colonna",
+      "name": "Nome colonna",
+      "rename": "Rinomina colonna {{name}}",
       "add": "Aggiungi colonna"
     },
     "row": {
       "cannotDeleteLast": "Impossibile eliminare l'ultima corsia.",
       "deleteConfirm": "Sei sicuro di voler eliminare questa riga?",
       "delete": "Elimina riga",
+      "name": "Nome riga",
+      "rename": "Rinomina riga {{name}}",
       "wipLimit": "Limite",
       "wipExceeded": "superato!",
       "lastRowWarning": "Impossibile eliminare l'ultima riga.",
