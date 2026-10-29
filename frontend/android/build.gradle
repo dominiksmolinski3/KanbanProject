@@ -13,16 +13,33 @@ buildscript {
             details.useVersion '0.9.7'
         } else if (group == 'org.jdom' && name == 'jdom2') {
             details.useVersion '2.0.6.1'
+        } else if (group == 'org.apache.commons' && name == 'commons-lang3') {
+            details.useVersion '3.21.0'
+        } else if (group == 'org.apache.httpcomponents' && name == 'httpclient') {
+            details.useVersion '4.5.14'
         }
     }
-    configurations.classpath.resolutionStrategy.eachDependency(patchBuildTools)
+    ext.agpVersion = '9.5.0'
+    // Capacitor's modules declare their own, older AGP; the build runs on this one, so their classpaths follow it.
+    ext.alignBuildscript = { DependencyResolveDetails details ->
+        def group = details.requested.group
+        def name = details.requested.name
+        if (group == 'com.android.tools.build' && name == 'gradle') {
+            details.useVersion agpVersion
+        } else if (group == 'org.jetbrains.kotlin' && name.startsWith('kotlin-gradle-plugin')) {
+            details.useVersion '2.4.21'
+        } else {
+            patchBuildTools(details)
+        }
+    }
+    configurations.classpath.resolutionStrategy.eachDependency(alignBuildscript)
 
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:9.5.0'
+        classpath "com.android.tools.build:gradle:$agpVersion"
         classpath 'com.google.gms:google-services:4.5.0'
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -39,6 +56,12 @@ allprojects {
     }
     configurations.configureEach {
         resolutionStrategy.eachDependency(rootProject.patchBuildTools)
+    }
+}
+
+subprojects {
+    buildscript.configurations.configureEach {
+        resolutionStrategy.eachDependency(rootProject.alignBuildscript)
     }
 }
 
