@@ -2,8 +2,6 @@ package pl.myproject.kanbanproject2.user.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +9,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.config.security.AuthenticationService;
 import pl.myproject.kanbanproject2.config.security.captcha.CaptchaVerifier;
@@ -83,10 +80,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/resend")
-    public ResponseEntity<Void> resendVerificationCode(
-            @RequestParam @NotBlank(message = "Email is required") @Email(message = "Invalid email address") String email
-    ) {
-        authenticationService.resendVerificationCode(email);
+    public ResponseEntity<Void> resendVerificationCode(@Valid @RequestBody ResendVerificationRequest request) {
+        authenticationService.resendVerificationCode(request.email());
         return ResponseEntity.accepted().build();
     }
 

@@ -127,8 +127,8 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
-    @DisplayName("resend is charged against the address in its query string")
-    void readsTheAccountFromAQueryParameter() throws Exception {
+    @DisplayName("resend is charged against the address in its body")
+    void chargesResendAgainstTheAddressInItsBody() throws Exception {
         assertThat(statusOf(resend("a@example.com"))).isEqualTo(HttpStatus.OK.value());
         assertThat(statusOf(resend("A@Example.com"))).isEqualTo(HttpStatus.OK.value());
         assertThat(statusOf(resend("a@example.com"))).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -331,10 +331,7 @@ class AuthRateLimitFilterTest {
     }
 
     private static MockHttpServletRequest resend(String email) {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", AuthRateLimitRule.RESEND_PATH);
-        request.setRemoteAddr("198.51.100.7");
-        request.setParameter("email", email);
-        return request;
+        return jsonPost(AuthRateLimitRule.RESEND_PATH, "{\"email\":\"" + email + "\"}");
     }
 
     private static final class RecordingFilterChain implements FilterChain {

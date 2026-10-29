@@ -45,7 +45,7 @@ describe('apiInterceptor', () => {
     localStorage.setItem('token', 'jwt');
     localStorage.setItem('tokenExpiration', futureExpiry());
 
-    for (const path of ['/api/auth/signup', '/api/auth/verify', '/api/auth/resend?email=a%40b.test',
+    for (const path of ['/api/auth/signup', '/api/auth/verify', '/api/auth/resend',
       '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/refresh',
       '/api/auth/logout']) {
       await window.fetch(path, { method: 'POST' });
