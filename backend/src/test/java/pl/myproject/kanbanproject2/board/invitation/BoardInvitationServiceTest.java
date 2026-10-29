@@ -20,7 +20,7 @@ import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -214,7 +214,7 @@ class BoardInvitationServiceTest {
 
         private BoardInvitation expired(String email) {
             var invitation = pending(email);
-            invitation.setCreatedAt(LocalDateTime.now().minus(EXPIRY).minusMinutes(1));
+            invitation.setCreatedAt(Instant.now().minus(EXPIRY).minus(Duration.ofMinutes(1)));
             return invitation;
         }
 
@@ -262,7 +262,7 @@ class BoardInvitationServiceTest {
         @Test
         @DisplayName("an account that sent the day's limit is refused before any mail goes out")
         void theDailyLimitStopsTheMail() {
-            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(LocalDateTime.class)))
+            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(Instant.class)))
                     .thenReturn((long) DAILY_LIMIT);
 
             assertThatThrownBy(() -> service.invite(owner, 10, new InviteRequest("one-more@example.test")))
@@ -280,7 +280,7 @@ class BoardInvitationServiceTest {
             when(invitationRepository.findByBoardAndEmailAndStatus(
                     board, "someone@example.test", InvitationStatus.PENDING))
                     .thenReturn(Optional.of(pending("someone@example.test")));
-            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(LocalDateTime.class)))
+            when(invitationRepository.countByInvitedByAndCreatedAtAfter(eq(owner), any(Instant.class)))
                     .thenReturn((long) DAILY_LIMIT);
 
             assertThat(service.invite(owner, 10, new InviteRequest("someone@example.test")).id()).isEqualTo(500);

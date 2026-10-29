@@ -15,8 +15,8 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -56,8 +56,9 @@ public class FlowMetricsService {
 
     public FlowMetricsDto metrics(User caller, Integer boardId, LocalDate from, LocalDate to,
                                   Integer startColumnId, Integer doneColumnId) {
-        var now = LocalDateTime.now(clock);
-        var lastDay = to != null ? to : now.toLocalDate();
+        var zone = clock.getZone();
+        var now = clock.instant();
+        var lastDay = to != null ? to : LocalDate.ofInstant(now, zone);
         var firstDay = from != null ? from : lastDay.minusDays(DEFAULT_DAYS - 1L);
         long days = ChronoUnit.DAYS.between(firstDay, lastDay) + 1;
         if (days < 1 || days > MAX_DAYS) {
@@ -85,7 +86,7 @@ public class FlowMetricsService {
             }
         }
 
-        var windowEnd = lastDay.plusDays(1).atStartOfDay();
+        var windowEnd = lastDay.plusDays(1).atStartOfDay(zone).toInstant();
         var histories = byTask(historyRepository.findBoardHistoryBefore(board, windowEnd));
 
         var index = new HashMap<Integer, Integer>();
@@ -95,7 +96,7 @@ public class FlowMetricsService {
 
         var cumulativeFlow = new ArrayList<FlowMetricsDto.CumulativeFlowDay>();
         for (var day = firstDay; !day.isAfter(lastDay); day = day.plusDays(1)) {
-            var endOfDay = day.plusDays(1).atStartOfDay();
+            var endOfDay = day.plusDays(1).atStartOfDay(zone).toInstant();
             var at = endOfDay.isAfter(now) ? now : endOfDay;
             var counts = new int[columns.size()];
             for (var entry : histories.entrySet()) {
@@ -108,7 +109,7 @@ public class FlowMetricsService {
                     java.util.Arrays.stream(counts).boxed().toList()));
         }
 
-        var windowStart = firstDay.atStartOfDay();
+        var windowStart = firstDay.atStartOfDay(zone).toInstant();
         var samples = new ArrayList<FlowMetricsDto.CycleTimeSample>();
         var throughput = new LinkedHashMap<LocalDate, Integer>();
         for (var day = firstDay; !day.isAfter(lastDay); day = day.plusDays(1)) {
@@ -127,7 +128,7 @@ public class FlowMetricsService {
             var task = entry.getKey();
             samples.add(new FlowMetricsDto.CycleTimeSample(task.getId(), task.getTitle(), doneAt,
                     hours(Duration.between(startedAt, doneAt))));
-            throughput.merge(doneAt.toLocalDate(), 1, Integer::sum);
+            throughput.merge(LocalDate.ofInstant(doneAt, zone), 1, Integer::sum);
         }
         samples.sort(Comparator.comparing(FlowMetricsDto.CycleTimeSample::doneAt)
                 .thenComparing(FlowMetricsDto.CycleTimeSample::taskId));
@@ -157,7 +158,7 @@ public class FlowMetricsService {
         return result;
     }
 
-    private static BoardColumn columnAt(Task task, List<TaskColumnHistory> rows, LocalDateTime at) {
+    private static BoardColumn columnAt(Task task, List<TaskColumnHistory> rows, Instant at) {
         TaskColumnHistory current = null;
         int i = 0;
         for (; i < rows.size(); i++) {
@@ -176,7 +177,7 @@ public class FlowMetricsService {
         return current.getColumn();
     }
 
-    private static LocalDateTime firstArrivalAtOrPast(List<TaskColumnHistory> rows, int threshold) {
+    private static Instant firstArrivalAtOrPast(List<TaskColumnHistory> rows, int threshold) {
         for (var row : rows) {
             var column = row.getColumn();
             if (column != null && position(column) >= threshold) {

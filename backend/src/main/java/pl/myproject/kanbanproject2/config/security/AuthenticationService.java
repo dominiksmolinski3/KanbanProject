@@ -23,7 +23,8 @@ import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -61,7 +62,7 @@ public class AuthenticationService {
         user.setLocale(SupportedLocales.normalise(input.getLocale()));
         String code = generateVerificationCode();
         user.setVerificationCode(passwordEncoder.encode(code));
-        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+        user.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(VERIFICATION_CODE_TTL_MINUTES)));
         user.setVerificationAttempts(0);
         user.setEnabled(false);
         userRepository.save(user);
@@ -74,7 +75,7 @@ public class AuthenticationService {
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE));
 
         if (user.getVerificationCodeExpiresAt() == null
-                || user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
+                || user.getVerificationCodeExpiresAt().isBefore(Instant.now())) {
             throw new GlobalException(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
         }
         if (!passwordEncoder.matches(input.getVerificationCode(), user.getVerificationCode())
@@ -164,7 +165,7 @@ public class AuthenticationService {
 
         String code = generateVerificationCode();
         user.setVerificationCode(passwordEncoder.encode(code));
-        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(VERIFICATION_CODE_TTL_MINUTES));
+        user.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(VERIFICATION_CODE_TTL_MINUTES)));
         user.setVerificationAttempts(0);
         userRepository.save(user);
         sendVerificationEmail(user, code);

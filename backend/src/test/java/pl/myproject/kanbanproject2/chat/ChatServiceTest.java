@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import pl.myproject.kanbanproject2.board.Board;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentCaptor.forClass;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 class ChatServiceTest {
 
-    private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 8, 29, 12, 0);
+    private static final Instant SENT_AT = Instant.parse("2026-08-29T12:00:00Z");
 
     private SimpMessagingTemplate messagingTemplate;
     private ChatRepository chatRepository;
