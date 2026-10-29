@@ -54,6 +54,19 @@ class EdgeMissingFileTest {
     }
 
     @Test
+    @DisplayName("a dot-prefixed path is a file, so a missing one is a 404")
+    void aDotfileIsNotTheShell() throws IOException {
+        Matcher file = FILE_LOCATION.matcher(template());
+        assertThat(file.find()).isTrue();
+        Pattern location = Pattern.compile(file.group(1));
+
+        assertThat(location.matcher("/._darcs").find()).isTrue();
+        assertThat(location.matcher("/.git/config").find()).isTrue();
+        assertThat(location.matcher("/.well-known/security.txt").find()).isTrue();
+        assertThat(location.matcher("/board/7").find()).isFalse();
+    }
+
+    @Test
     @DisplayName("no client route looks like a file name")
     void noClientRouteHasAnExtension() throws IOException {
         Matcher file = FILE_LOCATION.matcher(template());
