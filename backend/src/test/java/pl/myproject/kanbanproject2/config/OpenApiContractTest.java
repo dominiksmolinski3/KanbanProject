@@ -19,6 +19,14 @@ class OpenApiContractTest {
     private final OpenApiConfiguration configuration = new OpenApiConfiguration();
 
     @Test
+    @DisplayName("the document names no host, so it never shows the API's address behind the edge")
+    void namesARelativeServer() {
+        assertThat(configuration.kanbanOpenApi().getServers())
+                .extracting(server -> server.getUrl())
+                .containsExactly("/");
+    }
+
+    @Test
     @DisplayName("a route that needs a token says so")
     void securesAuthenticatedRoutes() {
         OpenAPI openApi = customized("/api/tasks", "/api/boards/{id}", "/api/activity");
