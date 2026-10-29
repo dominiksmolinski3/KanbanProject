@@ -1,0 +1,12 @@
+---
+# The VM, CI and Molecule install these. Each must still support ansible-core 2.16, the line Ubuntu 24.04 ships.
+collections:
+  - name: community.general
+    version: 11.4.9
+  - name: community.crypto
+    version: 2.26.9
+  - name: ansible.posix
+    version: 2.2.2
+  # Only Molecule's docker driver uses it.
+  - name: community.docker
+    version: 4.8.9
