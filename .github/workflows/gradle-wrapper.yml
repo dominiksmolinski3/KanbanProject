@@ -9,6 +9,9 @@ on:
     paths:
       - 'frontend/android/gradle/wrapper/**'
       - '.github/workflows/gradle-wrapper.yml'
+  # Android CI calls this before it runs the wrapper. Scorecard reads only the first workflow that names
+  # wrapper-validation, so this file must stay the only one.
+  workflow_call:
 
 permissions:
   contents: read
