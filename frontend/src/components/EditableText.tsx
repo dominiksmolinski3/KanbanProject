@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import Icon from './Icon';
 import LengthHint from './LengthHint';
 import { NAME_MAX_LENGTH } from '../services/textLimits';
 
@@ -6,6 +7,8 @@ interface EditableTextProps<Id> {
   id: Id;
   text: string;
   onUpdate: (id: Id, value: string, type: string) => Promise<boolean | void> | boolean | void;
+  label: string;
+  renameLabel?: string;
   className?: string;
   inputClassName?: string;
   type?: string;
@@ -17,6 +20,8 @@ function EditableText<Id>({
   id,
   text,
   onUpdate,
+  label,
+  renameLabel,
   className = '',
   inputClassName = '',
   type = 'default',
@@ -26,11 +31,18 @@ function EditableText<Id>({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(text);
   const inputRef = useRef<HTMLInputElement>(null);
+  const renameRef = useRef<HTMLButtonElement>(null);
+  const fromRenameButton = useRef(false);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
+    } else if (!isEditing && fromRenameButton.current) {
+      fromRenameButton.current = false;
+      if (!document.activeElement || document.activeElement === document.body) {
+        renameRef.current?.focus();
+      }
     }
   }, [isEditing]);
 
@@ -73,6 +85,7 @@ function EditableText<Id>({
           onKeyDown={handleKeyDown}
           className={`editable-text-input ${inputClassName}`}
           data-type={type}
+          aria-label={label}
         />
         <LengthHint value={value} max={maxLength} />
       </span>
@@ -80,15 +93,32 @@ function EditableText<Id>({
   }
 
   return (
-    <span
-      onDoubleClick={() => !disabled && setIsEditing(true)}
-      className={`editable-text ${className}`}
-      title={text}
-      data-type={type}
-      aria-disabled={disabled}
-    >
-      {text}
-    </span>
+    <>
+      <span
+        onDoubleClick={() => !disabled && setIsEditing(true)}
+        className={`editable-text ${className}`}
+        title={text}
+        data-type={type}
+        aria-disabled={disabled}
+      >
+        {text}
+      </span>
+      {renameLabel && !disabled && (
+        <button
+          ref={renameRef}
+          type="button"
+          className="icon-btn rename-btn"
+          title={renameLabel}
+          aria-label={renameLabel}
+          onClick={() => {
+            fromRenameButton.current = true;
+            setIsEditing(true);
+          }}
+        >
+          <Icon name="edit" size="sm" />
+        </button>
+      )}
+    </>
   );
 }
 

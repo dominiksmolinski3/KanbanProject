@@ -249,12 +249,16 @@
     "noLimit": "Kein Limit",
     "taskCount": "Aufgaben",
     "delete": "Spalte löschen",
+    "name": "Spaltenname",
+    "rename": "Spalte {{name}} umbenennen",
     "add": "Spalte hinzufügen"
   },
   "row": {
     "cannotDeleteLast": "Die letzte Swimlane kann nicht gelöscht werden.",
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Zeile löschen möchten?",
     "delete": "Zeile löschen",
+    "name": "Zeilenname",
+    "rename": "Zeile {{name}} umbenennen",
     "wipLimit": "Limit",
     "wipExceeded": "überschritten!",
     "lastRowWarning": "Die letzte Zeile kann nicht gelöscht werden.",

@@ -249,12 +249,16 @@
     "noLimit": "No limit",
     "taskCount": "Tasks",
     "delete": "Delete column",
+    "name": "Column name",
+    "rename": "Rename column {{name}}",
     "add": "Add column"
   },
   "row": {
     "cannotDeleteLast": "The last swimlane cannot be deleted.",
     "deleteConfirm": "Are you sure you want to delete this row?",
     "delete": "Delete row",
+    "name": "Row name",
+    "rename": "Rename row {{name}}",
     "wipLimit": "Limit",
     "wipExceeded": "exceeded!",
     "lastRowWarning": "Cannot delete the last row.",

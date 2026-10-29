@@ -862,6 +862,19 @@ first control, so a destructive "yes" is never focused by default. And Escape is
 dialog, because the header menu listens on `document` and would otherwise close with it, and so would
 the task panel behind a confirmation.
 
+**Every control has a name and a keyboard path, and axe checks it.** `axe-core` (no ESLint plugin:
+`eslint-plugin-jsx-a11y` stops at ESLint 9) runs over the controls fixed by name in
+`accessibility.test.jsx`, through `test-utils/axe.ts`, which leaves out the two rules jsdom cannot
+judge: contrast and page landmarks. Run over every rendered state of the whole Jest suite once, it
+found an inline name editor with no label, a status `select` labelled only by its fieldset, and a
+colour input whose `<label>` was not tied to it. It also found the board switcher declared as a
+`menu`, which a screen reader then announced with a list, a heading and a form inside it. The
+switcher and the header and language popups are disclosures now: `aria-expanded` and
+`aria-controls`, and no `aria-haspopup`. Column and row names had a second gap, which axe cannot
+see. They could be renamed only by double-clicking a span, so each header now has a rename button.
+Focus goes back to that button when the edit ends, but only when the edit would otherwise drop it
+on `body`. A user who moves on to another control keeps the focus they chose.
+
 The task panel is a `Modal` too, and the label picker and custom-label form are the reason it took a
 second step. Radix sets `pointer-events: none` on `body` while a modal is open and treats anything
 outside the dialog's own content as an outside click, so a layer portalled into `body` would be dead
