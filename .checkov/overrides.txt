@@ -1,1 +1,1 @@
-asteval==1.0.9
+asteval==1.0.10
