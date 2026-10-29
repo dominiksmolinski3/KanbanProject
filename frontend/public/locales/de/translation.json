@@ -746,6 +746,7 @@
       "PARENT_TASK_NOT_COMPLETED": "Schließe zuerst die übergeordnete Aufgabe ab.",
       "PARENT_TASK_NOT_FOUND": "Die übergeordnete Aufgabe existiert nicht mehr.",
       "PARENT_TASK_NOT_SET": "Diese Aufgabe hat keine übergeordnete Aufgabe.",
+      "PAYLOAD_TOO_LARGE": "Der Upload ist zu groß.",
       "RESET_CODE_EXPIRED": "Dieser Code ist abgelaufen. Fordere einen neuen an.",
       "ROW_NOT_FOUND": "Diese Swimlane existiert nicht mehr.",
       "SESSION_NOT_FOUND": "Diese Sitzung ist bereits beendet.",

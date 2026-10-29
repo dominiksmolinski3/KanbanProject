@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +22,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Set;
@@ -29,6 +33,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +64,11 @@ class ClientErrorStatusTest {
         @PostMapping("/limit")
         public String limit(@RequestBody @jakarta.validation.constraints.PositiveOrZero Integer value) {
             return String.valueOf(value);
+        }
+
+        @PostMapping("/upload")
+        public String upload(@RequestPart("file") MultipartFile file) {
+            return file.getOriginalFilename();
         }
 
         @PostMapping("/conflict")
@@ -184,6 +194,41 @@ class ClientErrorStatusTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("a path no controller maps is 404, the way it surfaces with static resources turned off")
+    void noHandlerIs404() throws Exception {
+        mvc.perform(delete("/probe/7/"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("an upload without its file part is 400")
+    void missingPartIs400() throws Exception {
+        mvc.perform(multipart("/probe/upload")
+                        .file(new MockMultipartFile("other", "a.txt", "text/plain", new byte[]{1})))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MISSING_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("an upload route sent something other than multipart is 400")
+    void notMultipartIs400() throws Exception {
+        mvc.perform(post("/probe/upload").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("an upload over the multipart limit is 413")
+    void oversizedUploadIs413() {
+        var response = new GlobalExceptionHandler()
+                .handleUploadTooLarge(new MaxUploadSizeExceededException(10L * 1024 * 1024));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+        assertThat(response.getBody().code()).isEqualTo("PAYLOAD_TOO_LARGE");
     }
 
     @Test

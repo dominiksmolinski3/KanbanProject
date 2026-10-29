@@ -746,6 +746,7 @@
             "PARENT_TASK_NOT_COMPLETED": "Completa primero la tarea principal.",
             "PARENT_TASK_NOT_FOUND": "La tarea principal ya no existe.",
             "PARENT_TASK_NOT_SET": "Esta tarea no tiene tarea principal.",
+            "PAYLOAD_TOO_LARGE": "El archivo subido es demasiado grande.",
             "RESET_CODE_EXPIRED": "Ese código ha caducado. Solicita uno nuevo.",
             "ROW_NOT_FOUND": "Ese carril ya no existe.",
             "SESSION_NOT_FOUND": "Esa sesión ya ha terminado.",
