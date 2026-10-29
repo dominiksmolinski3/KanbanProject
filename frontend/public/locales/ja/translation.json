@@ -746,6 +746,7 @@
             "PARENT_TASK_NOT_COMPLETED": "先に親タスクを完了してください。",
             "PARENT_TASK_NOT_FOUND": "親タスクはもう存在しません。",
             "PARENT_TASK_NOT_SET": "このタスクには親タスクがありません。",
+            "PAYLOAD_TOO_LARGE": "アップロードするファイルが大きすぎます。",
             "RESET_CODE_EXPIRED": "リセットコードの有効期限が切れました。新しいコードを請求してください。",
             "ROW_NOT_FOUND": "そのスイムレーンはもう存在しません。",
             "SESSION_NOT_FOUND": "そのセッションはすでに終了しています。",
