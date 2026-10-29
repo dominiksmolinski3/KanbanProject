@@ -1,0 +1,8 @@
+# No ecdsa release fixes it. The attack needs someone timing P-256 signing, and checkov only runs in CI and signs nothing.
+[[IgnoredVulns]]
+id = "GHSA-wj6h-64fc-37mp"
+reason = "No fixed release; checkov signs nothing, and only runs in CI."
+
+[[IgnoredVulns]]
+id = "PYSEC-2026-1325"
+reason = "Alias of GHSA-wj6h-64fc-37mp."
