@@ -98,7 +98,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install the same Ansible the VM gets from apt, and the test tools
-        run: pip install -r requirements-ci.txt
+        run: pip install --require-hashes -r requirements-ci.txt
 
       - name: Lint the playbook
         run: ansible-lint --profile production

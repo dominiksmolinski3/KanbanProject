@@ -82,7 +82,7 @@ jobs:
     - name: Scan with Checkov
       working-directory: .
       run: |
-        pip install -r .checkov/requirements.txt
+        pip install --require-hashes -r .checkov/requirements.txt
         checkov --config-file .checkov.yaml
 
   infrastructure-gate:
