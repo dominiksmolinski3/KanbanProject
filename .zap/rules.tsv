@@ -4,3 +4,8 @@
 10109	IGNORE	(Modern Web Application: informational, and answered by running the AJAX spider with -j)
 120000	IGNORE	(Information in Browser localStorage: an anonymous scan sees only i18nextLng; the tokens kept there are the trade-off the Auth section of CLAUDE.md makes, which this rule does not decide)
 90004	IGNORE	(Cross-Origin-Embedder-Policy missing: declined, since require-corp breaks the reCAPTCHA frame; SecurityHeadersTest asserts its absence)
+100000	IGNORE	(A Client Error response code: the scan fuzzes every route, and a 4xx is the answer the API is meant to give a malformed or foreign request)
+100001	IGNORE	(Unexpected Content-Type: the edge answers a path no client route owns with the app shell, which is how a single-page app refreshes on a client route)
+10104	IGNORE	(User Agent Fuzzer: the API reads User-Agent only to label the device on a login, never to decide an answer)
+10111	IGNORE	(Authentication Request Identified: informational, and the login routes are meant to be found)
+40014	IGNORE	(Persistent XSS in JSON Response: raised with low confidence because the API answers application/json, and React escapes a board name on render)
