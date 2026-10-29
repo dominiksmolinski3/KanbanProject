@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pl.myproject.kanbanproject2.board.Board;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "chat_messages")
@@ -45,7 +45,7 @@ public class Chat {
     @JoinColumn(name = "board_id")
     private Board board;
 
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 
     private String recipientId;
 }

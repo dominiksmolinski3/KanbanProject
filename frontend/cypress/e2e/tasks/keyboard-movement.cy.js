@@ -1,5 +1,6 @@
 beforeEach(() => {
   cy.loginAsTestUser();
+  cy.ensureRowExists();
 });
 
 afterEach(() => {

@@ -104,7 +104,7 @@ class FlowMetricsServiceTest {
         row.setTask(task);
         row.setColumn(column);
         row.setColumnName(column == null ? null : column.getName());
-        row.setChangedAt(LocalDateTime.parse(at));
+        row.setChangedAt(LocalDateTime.parse(at).toInstant(ZoneOffset.UTC));
         row.setHistoryOrder(0);
         history.add(row);
     }
@@ -209,7 +209,7 @@ class FlowMetricsServiceTest {
         void nearestRank() {
             var samples = new ArrayList<FlowMetricsDto.CycleTimeSample>();
             for (int i = 1; i <= 10; i++) {
-                samples.add(new FlowMetricsDto.CycleTimeSample(i, "t", LocalDateTime.MIN, i * 10.0));
+                samples.add(new FlowMetricsDto.CycleTimeSample(i, "t", Instant.MIN, i * 10.0));
             }
 
             var summary = FlowMetricsService.summarise(samples);

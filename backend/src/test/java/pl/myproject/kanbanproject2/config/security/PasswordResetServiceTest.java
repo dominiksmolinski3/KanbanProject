@@ -18,7 +18,8 @@ import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
 import java.lang.reflect.Method;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -86,7 +87,7 @@ class PasswordResetServiceTest {
             service.requestReset(KNOWN);
 
             assertThat(mailedCode()).hasSize(6);
-            assertThat(existing.getPasswordResetExpiresAt()).isAfter(LocalDateTime.now());
+            assertThat(existing.getPasswordResetExpiresAt()).isAfter(Instant.now());
         }
 
         @Test
@@ -255,7 +256,7 @@ class PasswordResetServiceTest {
         void expiredCodeIsRefusedAndCleared() {
             var existing = prepared(true);
             String code = mailedCode();
-            existing.setPasswordResetExpiresAt(LocalDateTime.now().minusMinutes(1));
+            existing.setPasswordResetExpiresAt(Instant.now().minus(Duration.ofMinutes(1)));
 
             assertThatThrownBy(() -> service.resetPassword(
                     new ResetPasswordRequest(KNOWN, code, "brand-new-password")))
