@@ -30,7 +30,7 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/pr-changes.yml
     with:
-      paths: '^(frontend/android/|frontend/src/|frontend/(capacitor\.config\.ts|vite\.config\.js|package\.json|package-lock\.json)$|\.github/workflows/(android-ci|pr-changes)\.yml$)'
+      paths: '^(frontend/android/|frontend/src/|frontend/(capacitor\.config\.ts|vite\.config\.js|package\.json|package-lock\.json)$|\.github/workflows/(android-ci|gradle-wrapper|pr-changes)\.yml$)'
 
   wrapper:
     needs: changes
