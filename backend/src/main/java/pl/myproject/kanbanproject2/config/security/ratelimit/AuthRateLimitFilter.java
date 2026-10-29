@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.UrlPathHelper;
+import pl.myproject.kanbanproject2.config.LogValues;
 import pl.myproject.kanbanproject2.exception.ErrorResponse;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 
@@ -109,7 +110,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     ) throws IOException {
 
         log.warn("Rate limit hit: {} {} on {} limit, retry in {}s",
-                request.getMethod(), path, rule + "/" + dimension, decision.retryAfterSeconds());
+                LogValues.oneLine(request.getMethod()), LogValues.oneLine(path), rule + "/" + dimension,
+                decision.retryAfterSeconds());
 
         response.setStatus(ExceptionIdentifier.TOO_MANY_REQUESTS.getStatus().value());
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(decision.retryAfterSeconds()));
