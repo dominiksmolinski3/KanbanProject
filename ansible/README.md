@@ -19,8 +19,9 @@ ansible/scripts/converge.sh <commit>          # defaults to origin/main
 ansible/scripts/converge.sh <commit> --check  # report what would change
 ```
 
-It runs `ansible-pull` through `az vm run-command` at that exact commit, so the VM only ever applies
-something that is on GitHub. A second converge must report `changed=0`. The full log is
+Through `az vm run-command` it clones the repository at that exact commit, installs the collections
+pinned in `requirements.yml` and runs the playbook locally, so the VM only ever applies something that is
+on GitHub. A second converge must report `changed=0`. The full log is
 `/var/log/kanban-converge.log` on the VM.
 
 `monitoring-converge.yml` runs it on every push to `main` that touches `ansible/` or `observability/`, then
@@ -31,4 +32,5 @@ by hand.
 
 `molecule test` (run from this directory, in CI by `observability-ci.yml`) converges the same roles twice
 in a systemd container, with throwaway credentials instead of Key Vault, and checks which credential
-reaches which path. Ansible itself is pinned to 9.2.0, the version Ubuntu 24.04's apt installs on the VM.
+reaches which path. CI runs ansible-core 2.16, the line Ubuntu 24.04's apt installs on the VM, with the same pinned
+collections.

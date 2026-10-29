@@ -139,5 +139,6 @@ updates:
         patterns:
           - "*"
     ignore:
-      # The monitoring VM runs Ubuntu's packaged Ansible; Molecule has to test that one.
-      - dependency-name: ansible
+      # The monitoring VM runs Ubuntu 24.04's ansible-core 2.16; Molecule has to test that line.
+      - dependency-name: ansible-core
+        versions: [ ">= 2.17" ]

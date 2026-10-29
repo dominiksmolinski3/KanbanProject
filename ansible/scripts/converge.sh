@@ -30,12 +30,18 @@ backup_endpoint=$(az storage account list -g "kanban-${env_name}-backup-rg" --qu
 script=$(cat <<EOF
 set -eu
 export DEBIAN_FRONTEND=noninteractive
-if ! command -v ansible-pull >/dev/null || ! command -v git >/dev/null; then
+if ! command -v ansible-playbook >/dev/null || ! command -v ansible-galaxy >/dev/null || ! command -v git >/dev/null; then
   apt-get update -q >/dev/null
-  apt-get install -yq ansible git >/dev/null
+  apt-get install -yq ansible-core git >/dev/null
 fi
+rm -rf /opt/kanban-config /opt/kanban-collections
+git clone -q "$repository" /opt/kanban-config
+git -C /opt/kanban-config checkout -q "$commit"
+cd /opt/kanban-config
+export ANSIBLE_COLLECTIONS_PATH=/opt/kanban-collections ANSIBLE_COLLECTIONS_SCAN_SYS_PATH=false
+ansible-galaxy collection install -r ansible/requirements.yml -p /opt/kanban-collections >/dev/null
 export ANSIBLE_DISPLAY_OK_HOSTS=false ANSIBLE_DISPLAY_SKIPPED_HOSTS=false ANSIBLE_NOCOLOR=1
-ansible-pull -U "$repository" -C "$commit" -d /opt/kanban-config --clean -i localhost, \
+ansible-playbook -c local -i localhost, \
   -e key_vault_name=$key_vault_name -e identity_client_id=$identity_client_id \
   -e backup_container_url=${backup_endpoint}monitoring \
   $check_args ansible/site.yml 2>&1 | tee /var/log/kanban-converge.log | tail -c 3500

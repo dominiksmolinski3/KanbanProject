@@ -97,8 +97,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install the same Ansible the VM gets from apt, and the test tools
+      - name: Install the ansible-core line the VM gets from apt, and the test tools
         run: pip install --require-hashes -r requirements-ci.txt
+
+      - name: Install the collections the VM installs
+        run: ansible-galaxy collection install -r requirements.yml
 
       - name: Lint the playbook
         run: ansible-lint --profile production
