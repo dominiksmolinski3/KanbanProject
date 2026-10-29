@@ -1,0 +1,4 @@
+# No deepmerge release fixes it. It is a dev dependency of jest-config, which merges the repository's own config.
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+reason = "No fixed release; dev-only through jest-config, on trusted input."
