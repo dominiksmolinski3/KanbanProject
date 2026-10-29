@@ -21,3 +21,5 @@ jobs:
           # Default is 'low', which blocks a PR on any advisory in any transitive
           # dependency. This gates only on what is worth stopping work for.
           fail-on-severity: high
+          # No release fixes it; it needs an attacker timing P-256 signing, and checkov in CI signs nothing.
+          allow-ghsas: GHSA-wj6h-64fc-37mp
