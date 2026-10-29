@@ -6,5 +6,3 @@
 90004	IGNORE	(Cross-Origin-Embedder-Policy missing: declined, since require-corp breaks the reCAPTCHA frame; SecurityHeadersTest asserts its absence)
 10104	IGNORE	(User Agent Fuzzer: the API reads User-Agent only to label the device on a login, never to decide an answer)
 10111	IGNORE	(Authentication Request Identified: informational, and the login routes are meant to be found)
-# 100001 is out of scope for the web edge only: the app shell, the assets and the edge's own 404 page are HTML by design, and an API route that answers HTML still raises it
-100001	OUTOFSCOPE	^http://localhost:8080(?!/(api/|v3/api-docs))
