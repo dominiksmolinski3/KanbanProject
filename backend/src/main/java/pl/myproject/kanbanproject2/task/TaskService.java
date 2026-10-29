@@ -380,6 +380,11 @@ public class TaskService {
 
         childTask.setParentTask(parentTask);
         parentTask.getChildTasks().add(childTask);
+        if (childTask.isCompleted() && !parentTask.isCompleted()) {
+            childTask.setCompleted(false);
+            updateDependentTasksCompletion(childTask);
+            activityRecorder.completionChanged(caller, childTask, false);
+        }
 
         taskRepository.save(parentTask);
         return saveAndAnnounce(childTask);
