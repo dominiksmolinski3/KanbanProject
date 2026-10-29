@@ -22,3 +22,5 @@ jobs:
           # dependency. CLAUDE.md described this as comment-only; neither was true of
           # the other. It gates, and it gates on what is worth stopping work for.
           fail-on-severity: high
+          # No release fixes it; it needs an attacker timing P-256 signing, and checkov in CI signs nothing.
+          allow-ghsas: GHSA-wj6h-64fc-37mp
