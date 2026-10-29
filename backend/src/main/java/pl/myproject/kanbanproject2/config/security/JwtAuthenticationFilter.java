@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+import pl.myproject.kanbanproject2.config.LogValues;
 
 import java.io.IOException;
 
@@ -48,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String method = request.getMethod();
 
         if (shouldSkipFilter(requestPath, method)) {
-            log.debug("JWT Filter - skipping {} {}", method, requestPath);
+            log.debug("JWT Filter - skipping {} {}", LogValues.oneLine(method), LogValues.oneLine(requestPath));
             filterChain.doFilter(request, response);
             return;
         }
@@ -83,7 +84,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
-            log.warn("JWT filter error for {} {}: {}", method, requestPath, exception.getMessage());
+            log.warn("JWT filter error for {} {}: {}", LogValues.oneLine(method), LogValues.oneLine(requestPath),
+                    LogValues.oneLine(exception.getMessage()));
             handlerExceptionResolver.resolveException(request, response, null, exception);
         }
     }
