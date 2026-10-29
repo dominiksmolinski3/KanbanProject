@@ -249,12 +249,16 @@
       "noLimit": "Pas de limite",
       "taskCount": "Tâches",
       "delete": "Supprimer la colonne",
+      "name": "Nom de la colonne",
+      "rename": "Renommer la colonne {{name}}",
       "add": "Ajouter une colonne"
     },
     "row": {
       "cannotDeleteLast": "Impossible de supprimer le dernier couloir.",
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette ligne ?",
       "delete": "Supprimer la ligne",
+      "name": "Nom de la ligne",
+      "rename": "Renommer la ligne {{name}}",
       "wipLimit": "Limite",
       "wipExceeded": "dépassée !",
       "lastRowWarning": "Impossible de supprimer la dernière ligne.",

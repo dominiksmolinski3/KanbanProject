@@ -249,12 +249,16 @@
       "noLimit": "制限なし",
       "taskCount": "タスク",
       "delete": "カラムを削除",
+      "name": "カラム名",
+      "rename": "カラム「{{name}}」の名前を変更",
       "add": "列を追加"
     },
     "row": {
       "cannotDeleteLast": "最後のスイムレーンは削除できません。",
       "deleteConfirm": "この行を削除してもよろしいですか？",
       "delete": "行を削除",
+      "name": "行名",
+      "rename": "行「{{name}}」の名前を変更",
       "wipLimit": "制限",
       "wipExceeded": "超過！",
       "lastRowWarning": "最後の行は削除できません。",
