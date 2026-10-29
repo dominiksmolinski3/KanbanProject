@@ -4,35 +4,38 @@ import zlib from 'node:zlib';
 const PORT = Number(process.env.PORT || 8080);
 
 const summary = {
-  items: {},
-  metrics: {},
-  requests: {},
+  items: new Map(),
+  metrics: new Map(),
+  requests: new Map(),
   roles: new Set(),
 };
 
+const bump = (counts, key) => counts.set(key, (counts.get(key) ?? 0) + 1);
+
 function record(item) {
   const type = item?.data?.baseType ?? 'unknown';
-  summary.items[type] = (summary.items[type] ?? 0) + 1;
+  bump(summary.items, type);
   const tags = item.tags ?? {};
   if (tags['ai.cloud.role']) summary.roles.add(tags['ai.cloud.role']);
   if (type === 'MetricData') {
     for (const metric of item.data.baseData.metrics ?? []) {
-      const entry = (summary.metrics[metric.name] ??= { count: 0, instances: new Set() });
+      if (!summary.metrics.has(metric.name)) summary.metrics.set(metric.name, { count: 0, instances: new Set() });
+      const entry = summary.metrics.get(metric.name);
       entry.count += 1;
       if (tags['ai.cloud.roleInstance']) entry.instances.add(tags['ai.cloud.roleInstance']);
     }
   } else if (type === 'RequestData') {
     const name = item.data.baseData.name ?? 'unnamed';
-    summary.requests[name] = (summary.requests[name] ?? 0) + 1;
+    bump(summary.requests, name);
   }
 }
 
 function snapshot() {
   return {
-    items: summary.items,
+    items: Object.fromEntries(summary.items),
     roles: [...summary.roles],
-    requests: summary.requests,
-    metrics: Object.fromEntries(Object.entries(summary.metrics)
+    requests: Object.fromEntries(summary.requests),
+    metrics: Object.fromEntries([...summary.metrics]
       .map(([name, entry]) => [name, { count: entry.count, instances: entry.instances.size }])),
   };
 }
@@ -54,7 +57,7 @@ http.createServer((req, res) => {
       }
       const lines = body.toString('utf8').split('\n').filter(Boolean);
       for (const line of lines) {
-        try { record(JSON.parse(line)); } catch { summary.items.unparseable = (summary.items.unparseable ?? 0) + 1; }
+        try { record(JSON.parse(line)); } catch { bump(summary.items, 'unparseable'); }
       }
       return json(200, { itemsReceived: lines.length, itemsAccepted: lines.length, errors: [] });
     }
