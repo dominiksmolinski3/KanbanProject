@@ -15,7 +15,7 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -51,20 +51,21 @@ class ChatHistoryControllerHttpTest {
     @Test
     @DisplayName("the board history answers 200 with the envelope and the message type as its enum name")
     void boardHistoryAnswers200() throws Exception {
-        var hello = new ChatMessageDto(1, MessageType.CHAT, "hello", "ann", 7, null, LocalDateTime.of(2026, 10, 1, 12, 0));
+        var hello = new ChatMessageDto(1, MessageType.CHAT, "hello", "ann", 7, null, Instant.parse("2026-10-01T12:00:00Z"));
         when(historyService.boardHistory(caller, 7, 1, 50)).thenReturn(page(hello));
 
         mvc.perform(get("/chat").param("boardId", "7").param("page", "1").param("size", "50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages[0].type").value("CHAT"))
                 .andExpect(jsonPath("$.messages[0].content").value("hello"))
+                .andExpect(jsonPath("$.messages[0].timestamp").value("2026-10-01T12:00:00Z"))
                 .andExpect(jsonPath("$.messages[0].boardId").value(7));
     }
 
     @Test
     @DisplayName("the direct history passes the peer through, with no paging params as nulls")
     void directHistoryPassesThePeer() throws Exception {
-        var whisper = new ChatMessageDto(2, MessageType.PRIVATE, "psst", "ann", null, "bob", LocalDateTime.of(2026, 10, 1, 12, 0));
+        var whisper = new ChatMessageDto(2, MessageType.PRIVATE, "psst", "ann", null, "bob", Instant.parse("2026-10-01T12:00:00Z"));
         when(historyService.directHistory(caller, "bob", null, null)).thenReturn(page(whisper));
 
         mvc.perform(get("/chat/direct").param("with", "bob"))

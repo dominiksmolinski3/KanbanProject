@@ -19,7 +19,7 @@ import pl.myproject.kanbanproject2.user.UserRepository;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
@@ -164,12 +164,12 @@ public class BoardInvitationService {
 
     private boolean isLive(BoardInvitation invitation) {
         return invitation.getCreatedAt() != null
-                && invitation.getCreatedAt().isAfter(LocalDateTime.now(clock).minus(expiry));
+                && invitation.getCreatedAt().isAfter(Instant.now(clock).minus(expiry));
     }
 
     private void requireUnderDailyLimit(User inviter) {
         long sent = invitationRepository.countByInvitedByAndCreatedAtAfter(
-                inviter, LocalDateTime.now(clock).minusHours(24));
+                inviter, Instant.now(clock).minus(Duration.ofHours(24)));
         if (sent >= dailyLimit) {
             throw new GlobalException(ExceptionIdentifier.TOO_MANY_REQUESTS,
                     "Wysłano już " + dailyLimit + " zaproszeń w ciągu ostatniej doby");
