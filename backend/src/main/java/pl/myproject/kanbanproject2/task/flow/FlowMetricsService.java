@@ -253,7 +253,7 @@ public class FlowMetricsService {
     private static FlowMetricsDto empty(Integer boardId, LocalDate from, LocalDate to, long days) {
         var cumulative = new ArrayList<FlowMetricsDto.CumulativeFlowDay>();
         var throughput = new ArrayList<FlowMetricsDto.ThroughputDay>();
-        for (int i = 0; i < days; i++) {
+        for (long i = 0; i < days; i++) {
             cumulative.add(new FlowMetricsDto.CumulativeFlowDay(from.plusDays(i), List.of()));
             throughput.add(new FlowMetricsDto.ThroughputDay(from.plusDays(i), 0));
         }
