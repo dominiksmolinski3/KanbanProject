@@ -4,8 +4,20 @@ set -euo pipefail
 dry_run=0
 [ "${1:-}" = "--dry-run" ] && dry_run=1
 
-name=$(curl -fsS -X POST http://127.0.0.1:9090/api/v1/admin/tsdb/snapshot |
-  python3 -c 'import json, sys; print(json.load(sys.stdin)["data"]["name"])')
+json_field() {
+  python3 - "$@" <<'PY'
+import json, sys, urllib.request
+method, url, field, *headers = sys.argv[1:]
+request = urllib.request.Request(url, method=method, headers=dict(h.split(":", 1) for h in headers))
+with urllib.request.urlopen(request, timeout=60) as response:
+    value = json.load(response)
+for key in field.split("."):
+    value = value[key]
+print(value)
+PY
+}
+
+name=$(json_field POST http://127.0.0.1:9090/api/v1/admin/tsdb/snapshot data.name)
 snapshot="{{ monitoring_data_dir }}/data/snapshots/${name}"
 archive="{{ monitoring_data_dir }}/prometheus-${name}.tar.gz"
 trap 'rm -rf "$snapshot" "$archive"' EXIT
@@ -17,9 +29,9 @@ if [ "$dry_run" = 1 ]; then
   exit 0
 fi
 
-token=$(curl -fsS -H Metadata:true \
-  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F&client_id={{ identity_client_id }}" |
-  python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
+token=$(json_field GET \
+  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F&client_id={{ identity_client_id }}" \
+  access_token Metadata:true)
 
 blob="prometheus-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 curl -fsS -X PUT -T "$archive" \
