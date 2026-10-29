@@ -1,13 +1,28 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    
+    // AGP's own tooling (signing, lint, test platform) lags these fixes; none of it ships in the APK.
+    ext.patchBuildTools = { DependencyResolveDetails details ->
+        def group = details.requested.group
+        def name = details.requested.name
+        if (group == 'org.bouncycastle' && name.endsWith('-jdk18on')) {
+            details.useVersion '1.86'
+        } else if (group == 'com.google.guava' && name == 'guava') {
+            details.useVersion(details.requested.version?.endsWith('-android') ? '33.7.2-android' : '33.7.2-jre')
+        } else if (group == 'org.bitbucket.b_c' && name == 'jose4j') {
+            details.useVersion '0.9.7'
+        } else if (group == 'org.jdom' && name == 'jdom2') {
+            details.useVersion '2.0.6.1'
+        }
+    }
+    configurations.classpath.resolutionStrategy.eachDependency(patchBuildTools)
+
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.android.tools.build:gradle:9.5.0'
         classpath 'com.google.gms:google-services:4.5.0'
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -22,8 +37,11 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.configureEach {
+        resolutionStrategy.eachDependency(rootProject.patchBuildTools)
+    }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
 }
