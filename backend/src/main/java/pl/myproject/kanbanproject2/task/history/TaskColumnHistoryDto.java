@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -15,5 +15,5 @@ public class TaskColumnHistoryDto {
     private String taskTitle;
     private Integer columnId;
     private String columnName;
-    private LocalDateTime changedAt;
+    private Instant changedAt;
 }

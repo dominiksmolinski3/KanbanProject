@@ -19,7 +19,8 @@ import pl.myproject.kanbanproject2.user.auth.RegisterUserDto;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
 import java.lang.reflect.Method;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -152,7 +153,7 @@ class AuthenticationServiceEnumerationTest {
         void pendingRegistrationIsReplaced() throws Exception {
             var pending = new User("first-registrant", KNOWN, "first-registrants-hash");
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             service.signup(registration(KNOWN));
@@ -223,7 +224,7 @@ class AuthenticationServiceEnumerationTest {
             service.resendVerificationCode(KNOWN);
 
             assertThat(pending.getVerificationCode()).isNotEqualTo(STORED_CODE);
-            assertThat(pending.getVerificationCodeExpiresAt()).isAfter(LocalDateTime.now());
+            assertThat(pending.getVerificationCodeExpiresAt()).isAfter(Instant.now());
             verify(emailService).sendVerificationCode(any(), any(), anyLong(), any());
         }
 
@@ -286,7 +287,7 @@ class AuthenticationServiceEnumerationTest {
         void wrongCodeReportsTheSameThing() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222"), DeviceContext.unknown()))
@@ -300,7 +301,7 @@ class AuthenticationServiceEnumerationTest {
         void rightCodeVerifies() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown());
@@ -315,7 +316,7 @@ class AuthenticationServiceEnumerationTest {
         void rightCodeReturnsASession() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
             when(jwtService.generateToken(pending)).thenReturn("signed-access-token");
             when(jwtService.getExpirationTime()).thenReturn(900000L);
@@ -332,7 +333,7 @@ class AuthenticationServiceEnumerationTest {
         void rightCodeWithAnotherPasswordIsRefused() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() -> service.verifyUser(
@@ -352,7 +353,7 @@ class AuthenticationServiceEnumerationTest {
         void wrongAttemptsRetireTheCode() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             for (int attempt = 0; attempt < AuthenticationService.MAX_VERIFICATION_ATTEMPTS; attempt++) {
@@ -377,7 +378,7 @@ class AuthenticationServiceEnumerationTest {
         void aWrongPasswordIsCounted() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() -> service.verifyUser(
@@ -418,7 +419,7 @@ class AuthenticationServiceEnumerationTest {
         void aFailedVerificationIssuesNothing() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(5));
+            pending.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(5)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "222222"), DeviceContext.unknown()))
@@ -433,7 +434,7 @@ class AuthenticationServiceEnumerationTest {
         void expiredCodeIsStillDistinct() {
             var pending = user(KNOWN, false);
             pending.setVerificationCode(STORED_CODE);
-            pending.setVerificationCodeExpiresAt(LocalDateTime.now().minusMinutes(1));
+            pending.setVerificationCodeExpiresAt(Instant.now().minus(Duration.ofMinutes(1)));
             when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() -> service.verifyUser(verification(KNOWN, "111111"), DeviceContext.unknown()))

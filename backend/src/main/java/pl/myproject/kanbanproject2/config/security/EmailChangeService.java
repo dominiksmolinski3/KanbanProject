@@ -21,7 +21,8 @@ import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 
 @RequiredArgsConstructor
@@ -65,7 +66,7 @@ public class EmailChangeService {
 
         user.setPendingEmail(address);
         user.setEmailChangeCode(String.valueOf(RANDOM.nextInt(900000) + 100000));
-        user.setEmailChangeExpiresAt(now().plusMinutes(CODE_TTL_MINUTES));
+        user.setEmailChangeExpiresAt(now().plus(Duration.ofMinutes(CODE_TTL_MINUTES)));
         user.setEmailChangeAttempts(0);
         userRepository.save(user);
         try {
@@ -136,7 +137,7 @@ public class EmailChangeService {
         user.setEmailChangeAttempts(0);
     }
 
-    private static LocalDateTime now() {
-        return LocalDateTime.now();
+    private static Instant now() {
+        return Instant.now();
     }
 }

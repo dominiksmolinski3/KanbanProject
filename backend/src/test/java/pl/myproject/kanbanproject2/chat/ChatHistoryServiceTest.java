@@ -14,8 +14,8 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -68,7 +68,7 @@ class ChatHistoryServiceTest {
                 .content(content)
                 .sender("anna@example.com")
                 .board(board)
-                .timestamp(LocalDateTime.of(2026, 9, 20, 9, 0))
+                .timestamp(Instant.parse("2026-09-20T09:00:00Z"))
                 .build();
         return chat;
     }
@@ -213,7 +213,7 @@ class ChatHistoryServiceTest {
                     .content("psst")
                     .sender("anna@example.com")
                     .recipientId("bob@example.com")
-                    .timestamp(LocalDateTime.of(2026, 9, 20, 9, 0))
+                    .timestamp(Instant.parse("2026-09-20T09:00:00Z"))
                     .build();
             when(boardService.peersOf(anna)).thenReturn(List.of(bob));
             when(chatRepository.findDirectThread(any(), any(), any()))
@@ -239,7 +239,7 @@ class ChatHistoryServiceTest {
             service.pruneExpiredMessages();
 
             verify(chatRepository).deleteOlderThan(
-                    LocalDateTime.ofInstant(FIXED.instant(), ZoneOffset.UTC).minusDays(90));
+                    FIXED.instant().minus(Duration.ofDays(90)));
         }
 
         @Test

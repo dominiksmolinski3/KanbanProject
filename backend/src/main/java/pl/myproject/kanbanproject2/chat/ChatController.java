@@ -13,7 +13,7 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.security.Principal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 // Handlers never throw: an exception on the inbound channel closes the client's STOMP session.
 @Controller
@@ -114,7 +114,7 @@ public class ChatController {
                 .type(type)
                 .sender(sender.getUsername())
                 .boardId(boardId)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 
@@ -133,7 +133,7 @@ public class ChatController {
         chatMessage.setSender(sender.getUsername());
         chatMessage.setType(type);
         chatMessage.setContent(normalized);
-        chatMessage.setTimestamp(LocalDateTime.now());
+        chatMessage.setTimestamp(Instant.now());
         return true;
     }
 

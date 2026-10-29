@@ -1,6 +1,6 @@
 package pl.myproject.kanbanproject2.task.activity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record TaskActivityDto(
         Integer id,
@@ -10,5 +10,5 @@ public record TaskActivityDto(
         String actorName,
         TaskActivityType type,
         String detail,
-        LocalDateTime occurredAt) {
+        Instant occurredAt) {
 }

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,12 +27,12 @@ class TaskColumnHistoryTest {
     @Test
     @DisplayName("an entry copies the stage's name as it was, and stamps the time of the move")
     void anEntryCopiesTheNameAtTheTimeOfTheMove() {
-        var before = LocalDateTime.now();
+        var before = Instant.now();
         var entry = new TaskColumnHistory(task(1, "Write the migration"), column(2, "Doing"));
 
         assertThat(entry.getColumnName()).isEqualTo("Doing");
         assertThat(entry.getHistoryOrder()).isZero();
-        assertThat(entry.getChangedAt()).isBetween(before, LocalDateTime.now());
+        assertThat(entry.getChangedAt()).isBetween(before, Instant.now());
     }
 
     @Test
@@ -87,7 +87,7 @@ class TaskColumnHistoryTest {
     @Test
     @DisplayName("two entries describing the same move are equal, which is what makes them comparable")
     void equalEntriesCompareEqual() {
-        var moved = LocalDateTime.of(2026, 8, 31, 12, 0);
+        var moved = Instant.parse("2026-08-31T12:00:00Z");
         var one = new TaskColumnHistoryDto(1, 2, "Write the migration", 3, "Doing", moved);
         var other = new TaskColumnHistoryDto(1, 2, "Write the migration", 3, "Doing", moved);
 

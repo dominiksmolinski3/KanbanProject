@@ -8,7 +8,7 @@ import lombok.Setter;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,7 +32,7 @@ public class TaskColumnHistory {
     private String columnName;
 
     @Column(name = "changed_at", nullable = false)
-    private LocalDateTime changedAt;
+    private Instant changedAt;
 
     @Column(name = "history_order", nullable = false)
     private Integer historyOrder;
@@ -41,7 +41,7 @@ public class TaskColumnHistory {
         this.task = task;
         this.column = column;
         this.columnName = column.getName();
-        this.changedAt = LocalDateTime.now();
+        this.changedAt = Instant.now();
         this.historyOrder = 0;
     }
 }

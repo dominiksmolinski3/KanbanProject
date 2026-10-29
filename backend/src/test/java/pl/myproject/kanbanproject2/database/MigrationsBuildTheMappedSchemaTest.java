@@ -45,4 +45,20 @@ class MigrationsBuildTheMappedSchemaTest {
         assertThat(jdbc.queryForObject("select current_schema()", String.class))
                 .isEqualTo(DatabaseTestConfiguration.SCHEMA);
     }
+
+    @Test
+    @DisplayName("every moment the schema stores carries its zone")
+    void noTimestampIsZoneless() {
+        var zoneless = jdbc.queryForList("""
+                select table_name || '.' || column_name from information_schema.columns
+                where table_schema = current_schema() and data_type = 'timestamp without time zone'
+                  and table_name <> 'flyway_schema_history'
+                order by 1""", String.class);
+        var zoned = jdbc.queryForObject("""
+                select count(*) from information_schema.columns
+                where table_schema = current_schema() and data_type = 'timestamp with time zone'""", Integer.class);
+
+        assertThat(zoned).as("the query sees the schema's timestamps at all").isGreaterThan(10);
+        assertThat(zoneless).isEmpty();
+    }
 }

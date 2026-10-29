@@ -18,7 +18,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardRole;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import pl.myproject.kanbanproject2.user.EmailAddresses;
 
 @NoArgsConstructor
@@ -52,10 +52,10 @@ public class BoardInvitation {
     private BoardRole role = BoardRole.MEMBER;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
     @Column(name = "responded_at")
-    private LocalDateTime respondedAt;
+    private Instant respondedAt;
 
     public BoardInvitation(Board board, String email, User invitedBy) {
         this(board, email, invitedBy, BoardRole.MEMBER);
@@ -74,6 +74,6 @@ public class BoardInvitation {
 
     public void resolveAs(InvitationStatus outcome) {
         this.status = outcome;
-        this.respondedAt = LocalDateTime.now();
+        this.respondedAt = Instant.now();
     }
 }

@@ -16,7 +16,8 @@ import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 @RequiredArgsConstructor
 @Transactional
@@ -45,7 +46,7 @@ public class PasswordResetService {
 
         String code = generateCode();
         user.setPasswordResetCode(passwordEncoder.encode(code));
-        user.setPasswordResetExpiresAt(LocalDateTime.now().plusMinutes(RESET_CODE_TTL_MINUTES));
+        user.setPasswordResetExpiresAt(Instant.now().plus(Duration.ofMinutes(RESET_CODE_TTL_MINUTES)));
         user.setPasswordResetAttempts(0);
         userRepository.save(user);
 
@@ -60,7 +61,7 @@ public class PasswordResetService {
         if (user.getPasswordResetCode() == null || user.getPasswordResetExpiresAt() == null) {
             throw new GlobalException(ExceptionIdentifier.INVALID_RESET_CODE);
         }
-        if (user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now())) {
+        if (user.getPasswordResetExpiresAt().isBefore(Instant.now())) {
             clearResetCode(user);
             userRepository.save(user);
             throw new GlobalException(ExceptionIdentifier.RESET_CODE_EXPIRED);

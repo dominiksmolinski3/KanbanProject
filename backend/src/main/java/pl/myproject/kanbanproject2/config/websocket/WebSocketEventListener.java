@@ -11,7 +11,7 @@ import pl.myproject.kanbanproject2.chat.ChatService;
 import pl.myproject.kanbanproject2.chat.MessageType;
 import pl.myproject.kanbanproject2.chat.ChatController;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 
 @Component
@@ -40,7 +40,7 @@ public class WebSocketEventListener {
                 .type(MessageType.LEAVE)
                 .sender(username)
                 .boardId(boardId)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build());
     }
 }

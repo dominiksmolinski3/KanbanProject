@@ -2,7 +2,7 @@ package pl.myproject.kanbanproject2.board.invitation;
 
 import pl.myproject.kanbanproject2.board.BoardRole;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record BoardInvitationDto(
         Integer id,
@@ -12,5 +12,5 @@ public record BoardInvitationDto(
         String invitedByName,
         InvitationStatus status,
         BoardRole role,
-        LocalDateTime createdAt) {
+        Instant createdAt) {
 }

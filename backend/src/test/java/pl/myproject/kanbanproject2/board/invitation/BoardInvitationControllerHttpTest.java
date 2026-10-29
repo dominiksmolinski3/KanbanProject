@@ -17,7 +17,7 @@ import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -55,7 +55,7 @@ class BoardInvitationControllerHttpTest {
 
     static BoardInvitationDto invitation(Integer id, BoardRole role) {
         return new BoardInvitationDto(id, 7, "Team", "ann@example.com", "Owner",
-                InvitationStatus.PENDING, role, LocalDateTime.of(2026, 10, 1, 12, 0));
+                InvitationStatus.PENDING, role, Instant.parse("2026-10-01T12:00:00Z"));
     }
 
     @Test

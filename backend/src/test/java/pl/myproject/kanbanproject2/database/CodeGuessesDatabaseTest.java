@@ -24,7 +24,8 @@ import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 import pl.myproject.kanbanproject2.user.auth.VerifyUserDto;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -84,9 +85,9 @@ class CodeGuessesDatabaseTest {
             var user = new User("someone", "guesses-" + UUID.randomUUID() + "@example.test", encoder.encode("password"));
             user.setEnabled(enabled);
             user.setPasswordResetCode(encoder.encode("111111"));
-            user.setPasswordResetExpiresAt(LocalDateTime.now().plusMinutes(10));
+            user.setPasswordResetExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
             user.setVerificationCode(encoder.encode("111111"));
-            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+            user.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
             return users.save(user);
         });
     }

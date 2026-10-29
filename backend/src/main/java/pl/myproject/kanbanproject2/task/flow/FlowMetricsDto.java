@@ -1,7 +1,7 @@
 package pl.myproject.kanbanproject2.task.flow;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public record FlowMetricsDto(Integer boardId,
@@ -26,7 +26,7 @@ public record FlowMetricsDto(Integer boardId,
     public record CycleTimeSummary(int count, Double averageHours, Double medianHours, Double p85Hours) {
     }
 
-    public record CycleTimeSample(Integer taskId, String title, LocalDateTime doneAt, double hours) {
+    public record CycleTimeSample(Integer taskId, String title, Instant doneAt, double hours) {
     }
 
     public record ThroughputDay(LocalDate date, int count) {

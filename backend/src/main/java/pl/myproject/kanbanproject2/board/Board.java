@@ -22,7 +22,7 @@ import pl.myproject.kanbanproject2.layout.row.Row;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -48,7 +48,7 @@ public class Board {
     private User owner;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

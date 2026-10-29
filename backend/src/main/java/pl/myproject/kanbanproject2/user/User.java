@@ -12,7 +12,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import pl.myproject.kanbanproject2.task.Task;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -38,13 +37,13 @@ public class User implements UserDetails {
     @Column(name = "verification_code")
     private String verificationCode;
     @Column(name = "verification_expiration")
-    private LocalDateTime verificationCodeExpiresAt;
+    private Instant verificationCodeExpiresAt;
     @Column(name = "verification_attempts", nullable = false)
     private int verificationAttempts;
     @Column(name = "password_reset_code")
     private String passwordResetCode;
     @Column(name = "password_reset_expiration")
-    private LocalDateTime passwordResetExpiresAt;
+    private Instant passwordResetExpiresAt;
     @Column(name = "password_reset_attempts", nullable = false)
     private int passwordResetAttempts;
     private Integer wipLimit;
@@ -66,7 +65,7 @@ public class User implements UserDetails {
     @Column(name = "email_change_code")
     private String emailChangeCode;
     @Column(name = "email_change_expiration")
-    private LocalDateTime emailChangeExpiresAt;
+    private Instant emailChangeExpiresAt;
     @Column(name = "email_change_attempts", nullable = false)
     private int emailChangeAttempts;
     @Column(name = "sessions_revoked_at")

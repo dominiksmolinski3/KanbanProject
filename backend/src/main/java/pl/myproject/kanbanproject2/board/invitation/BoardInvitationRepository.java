@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.user.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,7 +22,7 @@ public interface BoardInvitationRepository extends JpaRepository<BoardInvitation
 
     List<BoardInvitation> findByBoard(Board board);
 
-    long countByInvitedByAndCreatedAtAfter(User invitedBy, LocalDateTime since);
+    long countByInvitedByAndCreatedAtAfter(User invitedBy, Instant since);
 
     @Modifying(flushAutomatically = true)
     @Query("UPDATE BoardInvitation invitation SET invitation.invitedBy = null WHERE invitation.invitedBy = :user")

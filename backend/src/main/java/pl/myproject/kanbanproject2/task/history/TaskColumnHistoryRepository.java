@@ -9,7 +9,7 @@ import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.layout.column.BoardColumn;
 import pl.myproject.kanbanproject2.task.Task;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -24,6 +24,6 @@ public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHis
     @Query("SELECT h FROM TaskColumnHistory h WHERE h.task.board = :board AND h.changedAt < :before "
             + "ORDER BY h.task.id, h.changedAt, h.historyOrder, h.id")
     List<TaskColumnHistory> findBoardHistoryBefore(@Param("board") Board board,
-                                                   @Param("before") LocalDateTime before);
+                                                   @Param("before") Instant before);
 
 }
