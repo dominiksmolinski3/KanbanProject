@@ -142,11 +142,10 @@ Two exceptions:
 ## Commands
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use
-`mvnw.cmd`; on Linux/macOS/CI use `./mvnw` (it is committed as mode `100644`, so CI runs
-`chmod +x backend/mvnw` first). The README documents these same commands; keep the two in sync when
-a script is renamed.
+`mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The README documents these same commands; keep the two in
+sync when a script is renamed.
 
-### Backend (Java 21 language level / Spring Boot 4.1.1 / Maven wrapper)
+### Backend (Java 21 language level / Spring Boot 4.1.2 / Maven wrapper)
 
 Bytecode targets Java 21; CI, CodeQL and `backend/Dockerfile` all build and run on JDK 25.
 
