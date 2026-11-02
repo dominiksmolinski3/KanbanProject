@@ -123,7 +123,6 @@ server {
         try_files $uri =404;
     }
 
-    # Springdoc's /v3 beyond the document itself; without this /v3 and /v3/... get the shell and a 200.
     location ~ ^/v3(/|$) {
         include /etc/nginx/snippets/security-headers.conf;
         return 404;
