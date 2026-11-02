@@ -123,8 +123,8 @@ server {
         try_files $uri =404;
     }
 
-    # The API's own roots that no proxying location takes, such as /api and /v3/; without this they get the shell and a 200.
-    location ~ ^/(api|ws|v3)(/|$) {
+    # Springdoc's /v3 beyond the document itself; without this /v3 and /v3/... get the shell and a 200.
+    location ~ ^/v3(/|$) {
         include /etc/nginx/snippets/security-headers.conf;
         return 404;
     }

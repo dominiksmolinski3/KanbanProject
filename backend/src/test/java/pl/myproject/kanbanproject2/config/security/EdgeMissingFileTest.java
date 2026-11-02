@@ -82,40 +82,40 @@ class EdgeMissingFileTest {
     }
 
     @Test
-    @DisplayName("a root the API owns that no proxy takes is a 404, not the app shell")
-    void theApisRootsAreNotTheShell() throws IOException {
-        Pattern location = Pattern.compile(apiRootLocation().group(1));
+    @DisplayName("a path under /v3 that is not the API document is a 404, not the app shell")
+    void theRestOfV3IsNotTheShell() throws IOException {
+        Pattern location = Pattern.compile(v3Location().group(1));
 
-        for (String path : List.of("/api", "/ws", "/v3", "/v3/", "/v3/8091742919807082442")) {
+        for (String path : List.of("/v3", "/v3/", "/v3/8091742919807082442")) {
             assertThat(location.matcher(path).find())
                     .as("%s falls through to try_files in `location /`, which answers it with index.html "
                             + "and a 200, so a client or a scanner reads the API as serving a web page", path)
                     .isTrue();
         }
-        assertThat(location.matcher("/apiary").find()).isFalse();
+        assertThat(location.matcher("/v3x").find()).isFalse();
         assertThat(location.matcher("/board/7").find()).isFalse();
     }
 
     @Test
-    @DisplayName("no client route sits under a root the API owns")
-    void noClientRouteIsUnderTheApisRoots() throws IOException {
-        Pattern location = Pattern.compile(apiRootLocation().group(1));
+    @DisplayName("no client route sits under /v3")
+    void noClientRouteIsUnderV3() throws IOException {
+        Pattern location = Pattern.compile(v3Location().group(1));
 
         for (String route : SpaRoutes.ALL) {
             assertThat(location.matcher(route).find())
-                    .as("%s matches the edge's API-root location, so a refresh on it is a 404", route)
+                    .as("%s matches the edge's /v3 location, so a refresh on it is a 404", route)
                     .isFalse();
         }
     }
 
-    private static Matcher apiRootLocation() throws IOException {
+    private static Matcher v3Location() throws IOException {
         Matcher regex = FILE_LOCATION.matcher(template());
         while (regex.find()) {
             if (regex.group(2).contains("return 404;")) {
                 return regex;
             }
         }
-        throw new AssertionError("no regex location answers the API's roots with a 404");
+        throw new AssertionError("no regex location answers the rest of /v3 with a 404");
     }
 
     private static String template() throws IOException {
