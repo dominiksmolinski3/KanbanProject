@@ -165,6 +165,19 @@ jobs:
           artifact_name: 'zap_api_scan'
           fail_action: false
 
+      - name: Fail on a server error the API scan provoked
+        run: |
+          set -euo pipefail
+          test -s report_json.json || { echo "::error::the API scan left no report, so no answer was checked"; exit 1; }
+          errors=$(jq -r '[.site[] | ((.alerts // []) + (.ignoredAlerts // []))[]
+            | select(.pluginid == "100000") | .instances[] | select(.evidence | startswith("5"))
+            | "\(.evidence) \(.method) \(.uri)"] | unique | .[]' report_json.json)
+          if [ -n "$errors" ]; then
+            echo "::error::the API answered the scan with a server error"
+            echo "$errors"
+            exit 1
+          fi
+
       - name: Make sure somebody is subscribed to the report
         if: always()
         continue-on-error: true

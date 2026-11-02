@@ -4,3 +4,8 @@
 10109	IGNORE	(Modern Web Application: informational, and answered by running the AJAX spider with -j)
 120000	IGNORE	(Information in Browser localStorage: an anonymous scan sees only i18nextLng; the tokens kept there are the trade-off the Auth section of CLAUDE.md makes, which this rule does not decide)
 90004	IGNORE	(Cross-Origin-Embedder-Policy missing: declined, since require-corp breaks the reCAPTCHA frame; SecurityHeadersTest asserts its absence)
+10104	IGNORE	(User Agent Fuzzer: the differences are the verification lockout, not the agent)
+10111	IGNORE	(Authentication Request Identified: informational)
+40014	IGNORE	(Persistent XSS: the API answers JSON with nosniff and default-src 'none', and React renders stored text)
+100000	IGNORE	(HTTP response code errors: a 5xx fails the sweep in dast.yml instead)
+100001	IGNORE	(Unexpected Content-Type: the edge's own HTML for 404, 301 and 405)
