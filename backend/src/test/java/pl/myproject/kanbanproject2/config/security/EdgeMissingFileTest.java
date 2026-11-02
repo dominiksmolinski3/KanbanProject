@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,6 +79,43 @@ class EdgeMissingFileTest {
                     .as("%s matches the edge's extension location, so a refresh on it is a 404", route)
                     .isFalse();
         }
+    }
+
+    @Test
+    @DisplayName("a path under /v3 that is not the API document is a 404, not the app shell")
+    void theRestOfV3IsNotTheShell() throws IOException {
+        Pattern location = Pattern.compile(v3Location().group(1));
+
+        for (String path : List.of("/v3", "/v3/", "/v3/8091742919807082442")) {
+            assertThat(location.matcher(path).find())
+                    .as("%s falls through to try_files in `location /`, which answers it with index.html "
+                            + "and a 200, so a client or a scanner reads the API as serving a web page", path)
+                    .isTrue();
+        }
+        assertThat(location.matcher("/v3x").find()).isFalse();
+        assertThat(location.matcher("/board/7").find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("no client route sits under /v3")
+    void noClientRouteIsUnderV3() throws IOException {
+        Pattern location = Pattern.compile(v3Location().group(1));
+
+        for (String route : SpaRoutes.ALL) {
+            assertThat(location.matcher(route).find())
+                    .as("%s matches the edge's /v3 location, so a refresh on it is a 404", route)
+                    .isFalse();
+        }
+    }
+
+    private static Matcher v3Location() throws IOException {
+        Matcher regex = FILE_LOCATION.matcher(template());
+        while (regex.find()) {
+            if (regex.group(2).contains("return 404;")) {
+                return regex;
+            }
+        }
+        throw new AssertionError("no regex location answers the rest of /v3 with a 404");
     }
 
     private static String template() throws IOException {

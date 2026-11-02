@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from '@typescript-eslint/typescript-estree';
+import { LANGUAGES } from '../languages';
 
 const LOCALES_DIR = path.join(process.cwd(), 'public', 'locales');
 const SOURCE_DIR = path.join(process.cwd(), 'src');
@@ -36,6 +37,10 @@ describe('locale files', () => {
   test('ships more than one language', () => {
     expect(languages.length).toBeGreaterThan(1);
     expect(languages).toContain('en');
+  });
+
+  test('the languages i18next may load are exactly the bundles that ship', () => {
+    expect(LANGUAGES.map(({ code }) => code).sort()).toEqual([...languages].sort());
   });
 
   test.each(languages.filter((language) => language !== 'en'))(
