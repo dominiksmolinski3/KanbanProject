@@ -10,7 +10,7 @@ CREDENTIAL_ROUTES = re.compile(r'/api/auth/(login|verify|reset-password)|/api/us
 KNOWN = {
     '100000-1': lambda path, instance: instance.get('evidence') in CLIENT_ERRORS,
     '100001': lambda path, instance: not path.startswith('/api/'),
-    '10104': lambda path, instance: path == '/api/auth/verify',
+    '10104': lambda path, instance: instance.get('method') != 'GET',
     '10111': lambda path, instance: CREDENTIAL_ROUTES.fullmatch(path) is not None,
     '40014-2': lambda path, instance: path.startswith('/api/'),
     '40018': lambda path, instance: path == '/api/auth/verify' and instance.get('param') == 'verificationCode',
