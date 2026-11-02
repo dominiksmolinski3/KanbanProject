@@ -123,6 +123,12 @@ server {
         try_files $uri =404;
     }
 
+    # The API's own roots that no proxying location takes, such as /api and /v3/; without this they get the shell and a 200.
+    location ~ ^/(api|ws|v3)(/|$) {
+        include /etc/nginx/snippets/security-headers.conf;
+        return 404;
+    }
+
     location / {
         limit_req zone=edge_shell burst=100 nodelay;
         include /etc/nginx/snippets/security-headers.conf;
