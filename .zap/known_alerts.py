@@ -1,40 +1,48 @@
+import json
 import re
 from urllib.parse import urlsplit
+
+REPORT = '/zap/wrk/report_json.json'
 
 CLIENT_ERRORS = {'400', '401', '403', '404', '405', '409', '415'}
 CREDENTIAL_ROUTES = re.compile(r'/api/auth/(login|verify|reset-password)|/api/users/[0-9]+/email-change')
 
 KNOWN = {
-    '100000-1': lambda path, alert: alert.get('evidence') in CLIENT_ERRORS,
-    '100001': lambda path, alert: not path.startswith('/api/'),
-    '10104': lambda path, alert: path == '/api/auth/verify',
-    '10111': lambda path, alert: CREDENTIAL_ROUTES.fullmatch(path) is not None,
-    '40014-2': lambda path, alert: path.startswith('/api/'),
-    '40018': lambda path, alert: path == '/api/auth/verify' and alert.get('param') == 'verificationCode',
+    '100000-1': lambda path, instance: instance.get('evidence') in CLIENT_ERRORS,
+    '100001': lambda path, instance: not path.startswith('/api/'),
+    '10104': lambda path, instance: path == '/api/auth/verify',
+    '10111': lambda path, instance: CREDENTIAL_ROUTES.fullmatch(path) is not None,
+    '40014-2': lambda path, instance: path.startswith('/api/'),
+    '40018': lambda path, instance: path == '/api/auth/verify' and instance.get('param') == 'verificationCode',
 }
 
-PAGE = 5000
 
-
-def is_known(alert):
+def is_known(alert, instance):
     matches = KNOWN.get(alert.get('alertRef'))
-    return matches is not None and matches(urlsplit(alert.get('url', '')).path, alert)
+    return matches is not None and matches(urlsplit(instance.get('uri', '')).path, instance)
 
 
-def zap_get_alerts(zap, baseurl, ignore_scan_rules, out_of_scope_dict):
-    known = []
-    start = 0
-    alerts = zap.core.alerts(baseurl=baseurl, start=start, count=PAGE)
-    while alerts:
-        known += [alert for alert in alerts if is_known(alert)]
-        start += PAGE
-        alerts = zap.core.alerts(baseurl=baseurl, start=start, count=PAGE)
+def drop_known(report):
+    dropped = {ref: 0 for ref in KNOWN}
+    for site in report.get('site', []):
+        kept_alerts = []
+        for alert in site.get('alerts', []):
+            kept = [instance for instance in alert['instances'] if not is_known(alert, instance)]
+            if alert.get('alertRef') in dropped:
+                dropped[alert['alertRef']] += len(alert['instances']) - len(kept)
+            if kept:
+                alert['instances'] = kept
+                alert['count'] = str(len(kept))
+                kept_alerts.append(alert)
+        site['alerts'] = kept_alerts
+    return dropped
 
-    for alert in known:
-        zap.alert.delete_alert(alert['id'])
 
-    counts = {ref: 0 for ref in KNOWN}
-    for alert in known:
-        counts[alert['alertRef']] += 1
-    for ref, count in counts.items():
+def zap_pre_shutdown(zap):
+    with open(REPORT, encoding='utf-8') as f:
+        report = json.load(f)
+    dropped = drop_known(report)
+    with open(REPORT, 'w', encoding='utf-8') as f:
+        json.dump(report, f)
+    for ref, count in dropped.items():
         print(f'Known alert {ref}: {count} dropped')
