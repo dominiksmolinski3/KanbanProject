@@ -345,6 +345,7 @@ jobs:
       run: docker compose --profile replicas --profile monitoring logs --no-color --timestamps app app2 web prometheus grafana
 
   image-scan:
+    name: image-scan (${{ matrix.image }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -364,7 +365,7 @@ jobs:
           - image: kanbanproject-grafana
             context: observability/grafana
             dockerfile: observability/grafana/Dockerfile
-            trivy-skip-files: usr/share/grafana/bin/grafana
+            trivyignores: observability/grafana/.trivyignore.yaml
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -419,7 +420,7 @@ jobs:
         limit-severities-for-sarif: true
         ignore-unfixed: true
         exit-code: '1'
-        skip-files: ${{ matrix.trivy-skip-files }}
+        trivyignores: ${{ matrix.trivyignores }}
 
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''

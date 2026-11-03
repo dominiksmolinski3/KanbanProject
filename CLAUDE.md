@@ -314,6 +314,8 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   first pull, and a Buildx builder takes its `buildkitd-config` output. Never log in to docker.io:
   the mirror then refuses every pull once the account's quota is spent. Only `dhi.io` gets a login
   (`DockerHubMirrorCoverageTest`).
+- The `main` ruleset requires checks by their exact job name. Renaming a required job, or a matrix
+  job without its own `name:`, blocks every PR until the ruleset is changed to match.
 - A new scheduled workflow calls `sweep-alarm.yml` and is listed in `SweepAlarmCoverageTest`. A
   sweep that did not do its work must fail, never skip.
 - An alert on a `kanban_*` metric must name a meter the code registers and the agent exports

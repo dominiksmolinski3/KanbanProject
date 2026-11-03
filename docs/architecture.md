@@ -1947,6 +1947,9 @@ and reasons in `local.refusal_alerts`.
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
   base image that has picked up a fresh CRITICAL/HIGH between a PR opening and merging goes red on
   the PR itself rather than on `main` a day later, which is the shape #160 was.
+  Each leg is named `image-scan (<image>)` and nothing more, because the `main` ruleset requires
+  each one by that exact name. A name built from every matrix value changed when the Grafana leg's
+  `trivy-skip-files` became `trivyignores`, and the PR waited on a required check that never reported.
   **It also runs on a daily `schedule` (and `workflow_dispatch`), which is the only trigger that
   covers a merge.** A push made with the default `GITHUB_TOKEN` starts no workflow run, and
   `dependabot-auto-merge.yml` merges with exactly that token — so an auto-merged dependency PR
