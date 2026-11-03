@@ -266,7 +266,7 @@ resource "azurerm_container_app_job" "pg_dump" {
 
     container {
       name   = "upload"
-      image  = "curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6"
+      image  = "curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
       cpu    = 0.25
       memory = "0.5Gi"
       # A Windows checkout gives the script CRLF endings, and sh reads each \r as part of the command.
@@ -379,7 +379,7 @@ resource "azurerm_container_app_job" "restore_drill" {
   template {
     init_container {
       name    = "download"
-      image   = "curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6"
+      image   = "curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill-download.sh"), "\r", "")]
