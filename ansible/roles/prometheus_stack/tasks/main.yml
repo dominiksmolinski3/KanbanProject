@@ -16,7 +16,7 @@
     mode: "0755"
 
 - name: Install the pinned binaries
-  ansible.builtin.include_tasks: binary.yml
+  ansible.builtin.include_tasks: "{{ 'package.yml' if prometheus_stack_binary.deb is defined else 'binary.yml' }}"
   loop: "{{ monitoring_binaries }}"
   loop_control:
     loop_var: prometheus_stack_binary
@@ -24,6 +24,7 @@
   vars:
     prometheus_stack_archive: "{{ prometheus_stack_binary.name }}-{{ prometheus_stack_binary.version }}.linux-amd64"
     prometheus_stack_release: "https://github.com/prometheus/{{ prometheus_stack_binary.name }}/releases/download/v{{ prometheus_stack_binary.version }}"
+    prometheus_stack_package: "{{ prometheus_stack_binary.deb | default('') | basename | splitext | first }}"
 
 - name: Create the Prometheus data directory
   ansible.builtin.file:
