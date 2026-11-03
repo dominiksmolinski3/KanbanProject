@@ -345,6 +345,7 @@ jobs:
       run: docker compose --profile replicas --profile monitoring logs --no-color --timestamps app app2 web prometheus grafana
 
   image-scan:
+    name: image-scan (${{ matrix.image }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
