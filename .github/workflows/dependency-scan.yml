@@ -118,14 +118,69 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-terraform-${{ matrix.image.name }}
 
+  monitoring-binary-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Unpack the binaries the monitoring VM installs
+        run: |
+          set -euo pipefail
+          binaries=$(yq -o=json '.monitoring_binaries // []' ansible/group_vars/all.yml)
+          if [ "$(jq length <<<"$binaries")" -eq 0 ]; then
+            echo "::error::monitoring_binaries lists nothing, so this sweep would check nothing"
+            exit 1
+          fi
+          while IFS=$'\t' read -r name version sha256 executables deb; do
+            url=${deb:-https://github.com/prometheus/$name/releases/download/v$version/$name-$version.linux-amd64.tar.gz}
+            echo "$name $version from $url"
+            curl -fsSL --retry 3 -o download "$url"
+            sha256sum -c - <<<"$sha256  download"
+            mkdir -p "monitoring-binaries/$name"
+            case "$url" in
+              *.deb) dpkg-deb --extract download "monitoring-binaries/$name" ;;
+              *) tar -xzf download -C "monitoring-binaries/$name" ;;
+            esac
+            rm download
+            for executable in $executables; do
+              if [ -z "$(find "monitoring-binaries/$name" -type f -name "$executable")" ]; then
+                echo "::error::$name unpacked without $executable, so this sweep would not scan it"
+                exit 1
+              fi
+            done
+          done < <(jq -r '.[] | [.name, .version, .sha256, (.executables | join(" ")), (.deb // "")] | @tsv' <<<"$binaries")
+
+      - name: Scan the binaries
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: rootfs
+          scan-ref: monitoring-binaries
+          format: sarif
+          output: trivy-monitoring-results.sarif
+          severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload scan results to the Security tab
+        if: always() && hashFiles('trivy-monitoring-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: trivy-monitoring-results.sarif
+          category: trivy-monitoring-binaries
+
   scan-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ trivy-fs-scan, terraform-images, terraform-image-scan ]
+    needs: [ trivy-fs-scan, terraform-images, terraform-image-scan, monitoring-binary-scan ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.trivy-fs-scan.result }} ${{ needs.terraform-images.result }} ${{ needs.terraform-image-scan.result }}"
+      results: "${{ needs.trivy-fs-scan.result }} ${{ needs.terraform-images.result }} ${{ needs.terraform-image-scan.result }} ${{ needs.monitoring-binary-scan.result }}"
       subject: the dependency vulnerability sweep failed
       label: scan-red

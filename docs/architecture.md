@@ -2139,6 +2139,15 @@ and reasons in `local.refusal_alerts`.
   The scan skips `usr/local/bin/gosu` and nothing else: `govulncheck` finds one of gosu's findings
   reachable, a denial of service through parsing `/etc/passwd` and `/etc/group`, and in these jobs
   those are the image's own files.
+  **It scans the binaries the monitoring VM installs too.** `ansible/group_vars/all.yml` pins
+  Prometheus, `node_exporter` and `blackbox_exporter` by sha256, and no scanner looked at them.
+  `node_exporter` 1.12.1 was the latest release, and its archive had fifteen high findings in the
+  Go toolchain and `golang.org/x` modules it was built with. The job downloads each pin from where
+  the role does (the GitHub release archive, or the package under `deb:`), checks its sha256,
+  unpacks it and runs Trivy over the binaries. It fails when the list is empty, and when an
+  executable the role installs is missing from what it unpacked. A red result means moving a
+  pin: to a new release, or to a newer revision of the package. Prometheus and
+  `blackbox_exporter` also move with `docker-compose.yml`, through `PinnedImagesTest`.
 - `terraform-ci.yml` ("Infrastructure CI") — on changes under `terraform/`, to either
   Dockerfile, to any workflow or to `.checkov.yaml`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. It used to scan `terraform/` alone —
