@@ -7,6 +7,10 @@
     owner: root
     group: root
     mode: "0644"
+  register: prometheus_stack_download
+  until: prometheus_stack_download is succeeded
+  retries: 3
+  delay: 10
 
 - name: Unpack the package
   ansible.builtin.command:
