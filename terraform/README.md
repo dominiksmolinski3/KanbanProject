@@ -924,5 +924,9 @@ terraform/scripts/grafana-role.sh someone@example.com none     # remove access
 Editor means Explore and scratch dashboards. The provisioned dashboards only change through the
 repo.
 
-The Grafana image skips Trivy for `usr/share/grafana/bin/grafana` only, since those findings clear
-only when Grafana Labs ships a release. Every package the image can upgrade is still checked.
+The Grafana image is built on `grafana/grafana`, where Grafana Labs publishes OSS releases;
+`grafana/grafana-oss` stopped at 13.0.2. Its Trivy scans ignore only the findings listed in
+`observability/grafana/.trivyignore.yaml`. Each is scoped to the Grafana binary, since those clear
+only when Grafana Labs ships a release, and each has an expiry date after which it fails the scan
+again. A new finding in the binary fails at once, and every package the image can upgrade is still
+checked.

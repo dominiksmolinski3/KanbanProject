@@ -1947,6 +1947,9 @@ and reasons in `local.refusal_alerts`.
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
   base image that has picked up a fresh CRITICAL/HIGH between a PR opening and merging goes red on
   the PR itself rather than on `main` a day later, which is the shape #160 was.
+  Each leg is named `image-scan (<image>)` and nothing more, because the `main` ruleset requires
+  each one by that exact name. A name built from every matrix value changed when the Grafana leg's
+  `trivy-skip-files` became `trivyignores`, and the PR waited on a required check that never reported.
   **It also runs on a daily `schedule` (and `workflow_dispatch`), which is the only trigger that
   covers a merge.** A push made with the default `GITHUB_TOKEN` starts no workflow run, and
   `dependabot-auto-merge.yml` merges with exactly that token — so an auto-merged dependency PR
@@ -2126,6 +2129,16 @@ and reasons in `local.refusal_alerts`.
   not do its work must not report that it passed*, which is the alarm's own `skipped`-is-red rule
   read one level in — is pinned by `SweepAlarmCoverageTest`, which fails the build on a swept
   workflow that writes a `skip=true` flag or gates a step on one.
+  **`dependency-scan.yml` also scans every image Terraform pins**, because nothing else did. The
+  three Dockerfiles' bases are scanned in the images they build, and `PinnedImagesTest` keeps the
+  broker, Grafana and the monitoring VM's Prometheus on what Dependabot bumps in
+  `docker-compose.yml`. The backup and `db_roles` jobs' `postgres` and `curl` images were tied to
+  neither, and the curl one was fourteen months old, with two critical OpenSSL findings, when the
+  scan was added. Nothing bumps those pins, so this sweep is what says when one has to move. Its
+  first job lists every literal `image = "..."` under `terraform/` and fails when it finds none.
+  The scan skips `usr/local/bin/gosu` and nothing else: `govulncheck` finds one of gosu's findings
+  reachable, a denial of service through parsing `/etc/passwd` and `/etc/group`, and in these jobs
+  those are the image's own files.
 - `terraform-ci.yml` ("Infrastructure CI") — on changes under `terraform/`, to either
   Dockerfile, to any workflow or to `.checkov.yaml`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. It used to scan `terraform/` alone —
