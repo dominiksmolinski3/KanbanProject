@@ -54,14 +54,76 @@ jobs:
           sarif_file: trivy-fs-results.sarif
           category: trivy-fs
 
+  terraform-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.list.outputs.images }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: List the images Terraform pins
+        id: list
+        run: |
+          set -euo pipefail
+          images=$(git grep -hoE 'image[[:space:]]*=[[:space:]]*"[^"$]+"' -- 'terraform/*.tf' \
+            | sed -E 's/^image[[:space:]]*=[[:space:]]*"(.*)"$/\1/' | sort -u)
+          if [ -z "$images" ]; then
+            echo "::error::no image is pinned under terraform/, so this sweep would check nothing"
+            exit 1
+          fi
+          echo "$images"
+          echo "images=$(jq -Rnc '[inputs | {ref: ., name: (split("@")[0] | gsub("[/:]"; "-"))}]' <<<"$images")" >> "$GITHUB_OUTPUT"
+
+  terraform-image-scan:
+    needs: terraform-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.terraform-images.outputs.images) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Pull Docker Hub images through a mirror
+        uses: ./.github/actions/docker-hub-mirror
+
+      - name: Pull ${{ matrix.image.name }}
+        env:
+          IMAGE: ${{ matrix.image.ref }}
+        run: docker pull -q "$IMAGE"
+
+      - name: Scan ${{ matrix.image.name }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image.ref }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-files: usr/local/bin/gosu
+
+      - name: Upload scan results to the Security tab
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-terraform-${{ matrix.image.name }}
+
   scan-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ trivy-fs-scan ]
+    needs: [ trivy-fs-scan, terraform-images, terraform-image-scan ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.trivy-fs-scan.result }}"
+      results: "${{ needs.trivy-fs-scan.result }} ${{ needs.terraform-images.result }} ${{ needs.terraform-image-scan.result }}"
       subject: the dependency vulnerability sweep failed
       label: scan-red
