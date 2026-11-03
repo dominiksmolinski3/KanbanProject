@@ -1,4 +1,4 @@
-FROM grafana/grafana-oss:13.0.2@sha256:5dad0df181cb644a14e13617b913b261a54f7d4fd4510721dba420929f35bea2
+FROM grafana/grafana:13.0.12@sha256:28476aa8096cd8d0f658a05a443b605fffb450e57f444335216175d604cfd23d
 
 USER 0
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
