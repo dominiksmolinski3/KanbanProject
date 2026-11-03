@@ -1,10 +1,10 @@
-FROM grafana/grafana:13.0.12@sha256:28476aa8096cd8d0f658a05a443b605fffb450e57f444335216175d604cfd23d
+FROM grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
 
 USER 0
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
 ARG APK_UPGRADE_DATE
 RUN apk upgrade --no-cache \
- && rm -rf /usr/share/grafana/data/plugins-bundled/elasticsearch
+ && find /usr/share/grafana/data/plugins-bundled -mindepth 1 -maxdepth 1 ! -name prometheus ! -name canvas -exec rm -rf {} +
 USER 472
 
 COPY --chown=472:0 dashboards.yml /etc/grafana/provisioning/dashboards/kanban.yml
@@ -17,6 +17,7 @@ ENV GF_ANALYTICS_REPORTING_ENABLED=false \
     GF_AUTH_ANONYMOUS_ENABLED=false \
     GF_AUTH_DISABLE_LOGIN_FORM=true \
     GF_AUTH_OAUTH_AUTO_LOGIN=true \
+    GF_PLUGINS_PREINSTALL_DISABLED=true \
     GF_USERS_ALLOW_SIGN_UP=false
 
 EXPOSE 3000

@@ -925,8 +925,9 @@ Editor means Explore and scratch dashboards. The provisioned dashboards only cha
 repo.
 
 The Grafana image is built on `grafana/grafana`, where Grafana Labs publishes OSS releases;
-`grafana/grafana-oss` stopped at 13.0.2. Its Trivy scans ignore only the findings listed in
-`observability/grafana/.trivyignore.yaml`. Each is scoped to the Grafana binary, since those clear
-only when Grafana Labs ships a release, and each has an expiry date after which it fails the scan
-again. A new finding in the binary fails at once, and every package the image can upgrade is still
-checked.
+`grafana/grafana-oss` stopped at 13.0.2. Since 13.3, most data sources ship as bundled plugins,
+each with its own Go binary, and the ones this stack never uses carried high findings of their own.
+The image keeps only the `prometheus` and `canvas` plugins; Azure Monitor is still built in.
+`GF_PLUGINS_PREINSTALL_DISABLED` stops Grafana downloading plugins from grafana.com when it starts.
+Without it, Grafana fetches the plugins the image removed, and four apps besides, which no Trivy scan
+ever sees. What runs is what the image scan checked, with nothing ignored.

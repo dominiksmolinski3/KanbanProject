@@ -70,6 +70,19 @@ class PinnedImagesTest {
     }
 
     @Test
+    @DisplayName("Grafana runs only the plugins its image was scanned with")
+    void grafanaDownloadsNoPlugins() throws IOException {
+        assertThat(Files.readString(GRAFANA_DOCKERFILE))
+                .as("Grafana otherwise downloads plugins from grafana.com when it starts, the ones the image "
+                        + "removed among them, and no scan ever sees what it fetched")
+                .contains("GF_PLUGINS_PREINSTALL_DISABLED=true");
+        assertThat(Files.readString(COMPOSE))
+                .as("the local stack would fetch them too, and test dashboards on plugins the deployed "
+                        + "image does not have")
+                .containsPattern("GF_PLUGINS_PREINSTALL_DISABLED:\\s*\"true\"");
+    }
+
+    @Test
     @DisplayName("the local stack runs the Postgres major version the deployed server runs")
     void composePostgresMatchesTheServer() throws IOException {
         String composePostgres = imagesIn(COMPOSE, COMPOSE_IMAGE).stream()
