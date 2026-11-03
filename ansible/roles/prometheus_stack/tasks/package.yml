@@ -1,0 +1,25 @@
+---
+- name: Download the package
+  ansible.builtin.get_url:
+    url: "{{ prometheus_stack_binary.deb }}"
+    dest: "/opt/monitoring/{{ prometheus_stack_package }}.deb"
+    checksum: "sha256:{{ prometheus_stack_binary.sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Unpack the package
+  ansible.builtin.command:
+    cmd: "dpkg-deb --extract /opt/monitoring/{{ prometheus_stack_package }}.deb /opt/monitoring/{{ prometheus_stack_package }}"
+    creates: "/opt/monitoring/{{ prometheus_stack_package }}/usr/bin/{{ prometheus_stack_binary.executables | first }}"
+
+- name: Install the executables
+  ansible.builtin.copy:
+    src: "/opt/monitoring/{{ prometheus_stack_package }}/usr/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ prometheus_stack_binary.executables }}"
+  notify: "Restart {{ prometheus_stack_binary.name }}"
