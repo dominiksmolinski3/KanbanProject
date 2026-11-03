@@ -322,3 +322,6 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   (`MetricAlertsMatchTheMetersTest`).
 - `tf.sh apply` refuses a stale `app_image_tag`; `--allow-stale-image` is for a deliberate rollback
   or an image CD has not pushed yet.
+- An Azure API version written into the repo (an azapi `type`, an `api-version=`) is a stable one,
+  and Key Vault's control plane is `2026-02-01` or later (`AzureApiVersionsAreStableTest`). A script
+  that runs `az keyvault` against the vault itself refuses an Azure CLI older than 2.90.0.

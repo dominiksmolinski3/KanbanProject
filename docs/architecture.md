@@ -2238,6 +2238,25 @@ and reasons in `local.refusal_alerts`.
   is why no cert is bundled: the roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA
   Root Certificate Authority 2017") are already in the JDK trust store.
 - [terraform/](../terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,api_app,web_app}`. **Two Container Apps in one environment**: `kanban-web-<env>` (`modules/web_app`, nginx, the only external ingress) and `kanban-api-<env>` (`modules/api_app`, the jar, `external_enabled = false`). Both land in the same `snet-backend`, so the split adds no subnet, no NSG rule and no private endpoint; the blob and Key Vault grants stay with the API identity alone, and the edge gets a second identity granted `Key Vault Secrets User` on the **`GHCR-TOKEN` secret alone** rather than on the vault — a vault-scoped grant would let the nginx container read the Postgres password. The edge proxies to `https://kanban-api-<env>.internal.<env-domain>`: internal ingress still terminates TLS and answers plain HTTP with a 301, and the certificate it presents carries `*.internal.<env-domain>` and verifies against the stock CA bundle, so the hop is authenticated rather than merely allowed by `allow_insecure_connections`. The two modules compose that name independently so neither depends on the other's resources, and a root-level `check` block asserts they still agree — the failure otherwise is a green apply and a 502 on every API call. Renaming the module is a state move, not a rebuild: `terraform state mv module.container_app module.api_app` before the first apply, or the JWT secret is recreated with a fresh key and every signed-in user is signed out. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `api_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](../terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
+- **Every Azure API version written into the repository is a stable one, and Key Vault's control
+  plane is at `2026-02-01` or later.** A pin here is an azapi `type = "...@<version>"` or an
+  `api-version=` in a script, an Ansible task or a workflow. Azure retires a preview version on 90
+  days' notice whenever a newer one ships: Key Vault's `2026-03-01-preview` got that notice in
+  November 2026, for 31 January 2027. A preview pin is a series of deadlines, not a dependency.
+  Separately, **every Key Vault control-plane version before `2026-02-01` retires on 27 February
+  2027**, stable ones included. After that date the vault still exists, but nothing older can manage
+  it. `AzureApiVersionsAreStableTest` holds both rules over `terraform/`, `ansible/`, `.github/`,
+  `observability/`, `loadtest/` and `backend/src/main`. Nothing the test can see pins the Key Vault
+  control plane today. Terraform reaches it through azurerm, and every azurerm 5.x release calls
+  `2026-02-01`. The data plane is not part of the retirement: `api-version=7.4` in
+  `ansible/roles/tls_material`, and azurerm's secret reads, are both stable versions.
+  **The one client that does not update itself is the operator's Azure CLI.** Its release decides
+  the version `az keyvault` sends, and releases before 2.90.0 bundle `azure-mgmt-keyvault` 13 or
+  older, which calls `2025-05-01` or earlier. `terraform/scripts/drift-inputs.sh` and
+  `ansible/scripts/converge.sh` are the two scripts that run `az keyvault` against the vault itself,
+  and both refuse an older CLI. It fails today with the fix in the message, rather than after the
+  retirement with an ARM error. The runner image ships a current CLI, so the workflows that call
+  those scripts pass the check with no setup of their own.
 
 ## i18n
 
