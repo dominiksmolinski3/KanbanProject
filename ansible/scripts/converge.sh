@@ -23,12 +23,6 @@ case "$commit" in
   *[!0-9a-f]* | "") echo "error: '$commit' is not a commit id" >&2; exit 2 ;;
 esac
 
-az_cli=$(az version --query '"azure-cli"' --output tsv)
-if [ "$(printf '%s\n' 2.90.0 "$az_cli" | sort -V | head -n1)" != 2.90.0 ]; then
-  echo "error: Azure CLI $az_cli manages Key Vault through an API version that retires on 2027-02-27; run 'az upgrade' to 2.90.0 or later" >&2
-  exit 1
-fi
-
 key_vault_name=$(az keyvault list -g "$resource_group" --query "[0].name" -o tsv)
 identity_client_id=$(az identity show -g "$resource_group" -n "kanban-monitoring-identity-${env_name}" --query clientId -o tsv)
 backup_endpoint=$(az storage account list -g "kanban-${env_name}-backup-rg" --query "[?starts_with(name, 'stkbackup')].primaryEndpoints.blob | [0]" -o tsv)

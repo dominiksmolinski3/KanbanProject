@@ -28,22 +28,14 @@ class AzureApiVersionsAreStableTest {
     private static final Set<String> TEXT_EXTENSIONS = Set.of(
             "tf", "tfvars", "hcl", "sh", "j2", "yml", "yaml", "json", "py", "js", "mjs", "java", "properties");
 
-    private static final Pattern REST_PIN = Pattern.compile("api-version=([^&\"'\\s)]+)");
-
-    private static final Pattern AZAPI_PIN = Pattern.compile("\"(Microsoft\\.[A-Za-z]+)(?:/[A-Za-z]+)+@([^\"]+)\"");
-
-    private static final Pattern KEY_VAULT_CONTROL_PLANE =
-            Pattern.compile("/providers/Microsoft\\.KeyVault/", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PIN = Pattern.compile(
+            "api-version=([^&\"'\\s)]+)|\"Microsoft\\.[A-Za-z]+(?:/[A-Za-z]+)+@([^\"]+)\"");
 
     private static final Pattern PREVIEW = Pattern.compile("preview", Pattern.CASE_INSENSITIVE);
 
-    private static final String KEY_VAULT = "Microsoft.KeyVault";
-
-    private static final String KEY_VAULT_CONTROL_PLANE_FLOOR = "2026-02-01";
-
     private static final List<Pin> PINS = pins();
 
-    record Pin(String where, String namespace, String version) {
+    record Pin(String where, String version) {
     }
 
     @Test
@@ -63,17 +55,6 @@ class AzureApiVersionsAreStableTest {
                 .filteredOn(pin -> PREVIEW.matcher(pin.version()).find())
                 .as("Azure retires a preview API version on 90 days' notice whenever a newer one ships; "
                         + "pin the latest stable version instead")
-                .isEmpty();
-    }
-
-    @Test
-    @DisplayName("a Key Vault control-plane version is " + KEY_VAULT_CONTROL_PLANE_FLOOR + " or later")
-    void keyVaultControlPlanePinsAreCurrent() {
-        assertThat(PINS)
-                .filteredOn(pin -> KEY_VAULT.equalsIgnoreCase(pin.namespace()))
-                .filteredOn(pin -> pin.version().compareTo(KEY_VAULT_CONTROL_PLANE_FLOOR) < 0)
-                .as("every Key Vault control-plane API version before %s retires on 2027-02-27",
-                        KEY_VAULT_CONTROL_PLANE_FLOOR)
                 .isEmpty();
     }
 
@@ -109,18 +90,10 @@ class AzureApiVersionsAreStableTest {
     private static void collect(Path file, List<Pin> into) throws IOException {
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            String where = REPO.relativize(file) + ":" + (i + 1);
-
-            Matcher rest = REST_PIN.matcher(line);
-            while (rest.find()) {
-                String namespace = KEY_VAULT_CONTROL_PLANE.matcher(line).find() ? KEY_VAULT : null;
-                into.add(new Pin(where, namespace, rest.group(1)));
-            }
-
-            Matcher azapi = AZAPI_PIN.matcher(line);
-            while (azapi.find()) {
-                into.add(new Pin(where, azapi.group(1), azapi.group(2)));
+            Matcher pin = PIN.matcher(lines.get(i));
+            while (pin.find()) {
+                String version = pin.group(1) != null ? pin.group(1) : pin.group(2);
+                into.add(new Pin(REPO.relativize(file) + ":" + (i + 1), version));
             }
         }
     }

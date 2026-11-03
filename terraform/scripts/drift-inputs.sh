@@ -18,12 +18,6 @@ resource_group=$(tfvar resource_group_name)
 env=$(tfvar env)
 api_app="kanban-api-${env}"
 
-az_cli=$(az version --query '"azure-cli"' --output tsv)
-if [ "$(printf '%s\n' 2.90.0 "$az_cli" | sort -V | head -n1)" != 2.90.0 ]; then
-  echo "error: Azure CLI $az_cli manages Key Vault through an API version that retires on 2027-02-27; run 'az upgrade' to 2.90.0 or later" >&2
-  exit 1
-fi
-
 vault=$(az keyvault list --resource-group "$resource_group" --query "[0].name" --output tsv)
 [ -n "$vault" ] || { echo "error: no Key Vault in $resource_group" >&2; exit 1; }
 

@@ -10,9 +10,8 @@ container and everything needed to rebuild it with `./tf.sh dev apply` are still
 ## Prerequisites
 
 - [Terraform CLI](https://developer.hashicorp.com/terraform/install)
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.90.0 or later, logged in,
-  with the right subscription selected. Older releases manage Key Vault through an API version that
-  retires on 2027-02-27, so `scripts/drift-inputs.sh` refuses them; `az upgrade` moves you on
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), logged in, with the right
+  subscription selected
 - An Azure Storage account for Terraform state (step 2 below creates one)
 - `bash` and `python3` on `PATH` for `tf.sh` and the scripts it calls
 

@@ -28,8 +28,7 @@ not a documented download. If it ever goes, drop `deb:` and pin the upstream arc
 
 ## Converge
 
-From a checkout, signed in to Azure as someone who may run commands on the VM, with Azure CLI 2.90.0
-or later (see [terraform/README.md](../terraform/README.md#prerequisites)):
+From a checkout, signed in to Azure as someone who may run commands on the VM:
 
 ```bash
 ansible/scripts/converge.sh <commit>          # defaults to origin/main
