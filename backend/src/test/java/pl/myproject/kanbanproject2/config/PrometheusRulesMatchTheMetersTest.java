@@ -24,11 +24,18 @@ class PrometheusRulesMatchTheMetersTest {
     private static final Path OBSERVABILITY = Path.of("..", "observability");
     private static final Path RULES = OBSERVABILITY.resolve(Path.of("prometheus", "rules"));
     private static final Path DASHBOARDS = OBSERVABILITY.resolve(Path.of("grafana", "dashboards"));
+    private static final Path APP_PROPERTIES = Path.of("src", "main", "resources", "application.properties");
 
     private static final Pattern DECLARED = Pattern.compile(
             "static final String (\\w+)\\s*=\\s*\"(kanban\\.[a-z0-9_.]+)\"");
 
     private static final Pattern NAMED = Pattern.compile("\\bkanban_[a-z0-9_]+");
+
+    private static final Pattern QUANTILE_OF = Pattern.compile(
+            "histogram_quantile\\(.*?\\b([a-z][a-z0-9_]*)_seconds_bucket\\b");
+
+    private static final Pattern HISTOGRAM_ON = Pattern.compile(
+            "(?m)^management\\.metrics\\.distribution\\.percentiles-histogram\\.([a-z0-9.]+)=true\\s*$");
 
     @Test
     @DisplayName("every kanban_* series a rule or dashboard reads is a meter the code registers, as Prometheus names it")
@@ -39,6 +46,24 @@ class PrometheusRulesMatchTheMetersTest {
                 .as("these rules or panels read a series nothing sends: a meter was renamed, or a counter "
                         + "lost the _total Prometheus adds to it. Series the code exports: %s", exported)
                 .isSubsetOf(exported);
+    }
+
+    @Test
+    @DisplayName("every timer a rule or panel takes a quantile of publishes buckets for it")
+    void everyQuantileReadsAHistogram() {
+        Set<String> histograms = new TreeSet<>();
+        HISTOGRAM_ON.matcher(read(APP_PROPERTIES)).results()
+                .forEach(match -> histograms.add(match.group(1).replace('.', '_')));
+
+        Set<String> quantiled = new TreeSet<>();
+        Stream.concat(files(RULES, ".yml").stream(), files(DASHBOARDS, ".json").stream())
+                .forEach(file -> QUANTILE_OF.matcher(read(file)).results()
+                        .forEach(match -> quantiled.add(match.group(1))));
+
+        assertThat(quantiled).as("the quantile reader has stopped matching").contains("http_server_requests");
+        assertThat(quantiled)
+                .as("without percentiles-histogram a timer exports only le=\"+Inf\", so its quantile is always NaN")
+                .isSubsetOf(histograms);
     }
 
     @Test
