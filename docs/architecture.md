@@ -1771,7 +1771,9 @@ the report names. Five things carry it.
   exactly those into `kanban.mail.delivery.undelivered`, and the bounce alert reads the counter.
   It used to be written twice, the second copy in the alert's KQL, and that copy had already been
   wrong once (its first draft omitted `Bounced` itself). The alert needs delivery reports flowing,
-  so it is gated on the same key the Event Grid subscription is.
+  so it is gated on the same key the Event Grid subscription is. The five counters are registered at
+  start-up: one created by its first bounce reaches Prometheus already at 1, and `increase()` sees
+  no rise in it until the second.
 
 The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
 (`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module
