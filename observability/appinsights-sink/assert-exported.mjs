@@ -9,7 +9,7 @@ if (!response.ok) {
 const summary = await response.json();
 const failures = [];
 
-const alwaysExported = ['kanban_mail_outbox_pending', 'kanban_mail_outbox_dead_letters'];
+const alwaysExported = ['kanban_mail_outbox_pending', 'kanban_mail_outbox_dead_letters', 'kanban_mail_delivery_undelivered'];
 for (const name of alwaysExported) {
   if (!summary.metrics[name]) {
     failures.push(`${name} never arrived - the agent is not attached, the filter drops it, or the name changed`);
