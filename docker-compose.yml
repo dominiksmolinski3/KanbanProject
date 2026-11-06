@@ -39,7 +39,7 @@ x-api: &api
   deploy:
     resources:
       limits:
-        memory: 1G
+        memory: 2G
 
 services:
   web:
