@@ -187,9 +187,9 @@ argcomplete==3.7.2 \
     --hash=sha256:6029205678bdd9c1c728a155f5f9ecf5812393f969eef58807641a2bc2aa5b19 \
     --hash=sha256:aad8b69a0b9969edb62db0d1752354c0d50717b10e0cbb00e2a958381b9fc6b9
     # via checkov
-asteval==1.0.9 \
-    --hash=sha256:4f7323d63d9fbf89d7e1d5f8bb59b6c093970c15bb5926e6e67d0195858aa230 \
-    --hash=sha256:60513ea5d608d27bdb0cf3785dc993a6c3adeaee45f1bded0953a09e904e461f
+asteval==1.0.10 \
+    --hash=sha256:46a4ed13cc2e4a29a21418f89dedd57db70d98eb96db0fb4c441d4edb2f5afed \
+    --hash=sha256:8d805fa8084aa12204715f799430f0012a0db38b42e997f9f11a9637ad59855f
     # via
     #   --override overrides.txt
     #   checkov
@@ -527,9 +527,9 @@ charset-normalizer==3.5.2 \
     # via
     #   checkov
     #   requests
-checkov==3.3.30 \
-    --hash=sha256:32c3d6a808399f3fd6ec83e68a337050d17f019336f4d8f3b23aae469ba79408 \
-    --hash=sha256:d827f79e25797d0a54a6643683869dea9893ea06e16e1b81635c9d21c1f0f4a4
+checkov==3.4.3 \
+    --hash=sha256:2513d366c9b6bec3b91528faa6095b410be5f940277833771b427a6a56134915 \
+    --hash=sha256:666f376019f6a9fdbeb5c9d2a57be3fb83a4acd2d924d447942450a926ba0f55
     # via -r requirements.in
 click==8.5.0 \
     --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360 \
