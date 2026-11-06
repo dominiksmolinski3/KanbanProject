@@ -2,11 +2,3 @@
 [[IgnoredVulns]]
 id = "GHSA-gcqx-w48m-w2h4"
 reason = "No fixed release; dev-only through jest-config, on trusted input."
-
-[[IgnoredVulns]]
-id = "GHSA-3g3m-2fjr-6pw4"
-reason = "Fixed only in glob 14, which no jest, rimraf or test-exclude release accepts; dev-only, and nothing passes it an AbortSignal."
-
-[[IgnoredVulns]]
-id = "GHSA-g3hv-75wg-m249"
-reason = "Fixed only in minimatch 11, which no eslint, typescript-eslint, glob or test-exclude release accepts; dev-only, on the repository's own patterns."
