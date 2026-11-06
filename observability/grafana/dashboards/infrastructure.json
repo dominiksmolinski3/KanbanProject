@@ -69,7 +69,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "pg_up",
+          "expr": "pg_up or on(instance) up{job=\"postgres\"}",
           "legendFormat": "",
           "refId": "A",
           "instant": true
@@ -125,7 +125,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "redis_up",
+          "expr": "redis_up or on(instance) up{job=\"redis\"}",
           "legendFormat": "",
           "refId": "A",
           "instant": true
