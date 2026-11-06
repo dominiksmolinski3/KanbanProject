@@ -651,7 +651,7 @@ Four decisions carry the feature:
   rather than kept unused.
 - **Nothing on either path holds a file.** Upload hands `MultipartFile.getInputStream()` straight to
   the store; download returns the store's own stream as an `InputStreamResource`, which Spring
-  copies through a buffer and closes. Nothing calls `getBytes()`. On a 1 GiB container that is the
+  copies through a buffer and closes. Nothing calls `getBytes()`. On a 2 GiB container that is the
   difference between a buffer per transfer and 10 MB per concurrent one, and it is the only reason
   proxying the bytes is affordable at all. `Content-Length` comes from `size_bytes` on the row
   rather than from the stream, which is why that column is stored.
@@ -1771,7 +1771,9 @@ the report names. Five things carry it.
   exactly those into `kanban.mail.delivery.undelivered`, and the bounce alert reads the counter.
   It used to be written twice, the second copy in the alert's KQL, and that copy had already been
   wrong once (its first draft omitted `Bounced` itself). The alert needs delivery reports flowing,
-  so it is gated on the same key the Event Grid subscription is.
+  so it is gated on the same key the Event Grid subscription is. The five counters are registered at
+  start-up: one created by its first bounce reaches Prometheus already at 1, and `increase()` sees
+  no rise in it until the second.
 
 The Terraform half is an `azurerm_eventgrid_system_topic` on the Communication Services resource
 (`location = "global"`, because ACS is global) and one subscription whose URL the diagnostics module

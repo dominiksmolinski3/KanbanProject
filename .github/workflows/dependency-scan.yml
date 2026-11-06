@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload scan results to the Security tab
         if: always() && hashFiles('trivy-fs-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           sarif_file: trivy-fs-results.sarif
           category: trivy-fs
@@ -113,7 +113,7 @@ jobs:
 
       - name: Upload scan results to the Security tab
         if: always() && hashFiles('trivy-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           sarif_file: trivy-results.sarif
           category: trivy-terraform-${{ matrix.image.name }}
@@ -168,7 +168,7 @@ jobs:
 
       - name: Upload scan results to the Security tab
         if: always() && hashFiles('trivy-monitoring-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           sarif_file: trivy-monitoring-results.sarif
           category: trivy-monitoring-binaries
