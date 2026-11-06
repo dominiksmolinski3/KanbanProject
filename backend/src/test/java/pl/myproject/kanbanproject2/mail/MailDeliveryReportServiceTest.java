@@ -88,7 +88,20 @@ class MailDeliveryReportServiceTest {
         service.record(report("op-d", "Delivered", NOW, null));
 
         assertThat(undelivered("Bounced")).isEqualTo(1);
-        assertThat(meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).counters()).hasSize(1);
+        assertThat(meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).counters())
+                .filteredOn(counter -> counter.count() > 0)
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("every undelivered status is counted from zero at start-up, so its first bounce is an increase")
+    void undeliveredCountersExistBeforeTheFirstReport() {
+        assertThat(meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).counters())
+                .as("a counter created by its first increment arrives at 1, and increase() reads no rise in it")
+                .extracting(counter -> counter.getId().getTag("status"))
+                .containsExactlyInAnyOrderElementsOf(MailDeliveryStatuses.UNDELIVERED);
+        assertThat(meterRegistry.find(MailDeliveryReportService.UNDELIVERED_COUNTER).counters())
+                .allMatch(counter -> counter.count() == 0);
     }
 
     @Test
