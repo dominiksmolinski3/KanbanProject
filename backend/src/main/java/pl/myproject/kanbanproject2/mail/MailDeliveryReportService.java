@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.mail;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -17,7 +21,7 @@ public class MailDeliveryReportService {
     static final String UNDELIVERED_COUNTER = "kanban.mail.delivery.undelivered";
 
     private final OutboxEmailRepository outbox;
-    private final MeterRegistry meterRegistry;
+    private final Map<String, Counter> undelivered;
     private final Clock clock;
 
     @Autowired
@@ -27,7 +31,8 @@ public class MailDeliveryReportService {
 
     MailDeliveryReportService(OutboxEmailRepository outbox, MeterRegistry meterRegistry, Clock clock) {
         this.outbox = outbox;
-        this.meterRegistry = meterRegistry;
+        this.undelivered = MailDeliveryStatuses.UNDELIVERED.stream().collect(Collectors.toUnmodifiableMap(
+                Function.identity(), status -> meterRegistry.counter(UNDELIVERED_COUNTER, "status", status)));
         this.clock = clock;
     }
 
@@ -57,8 +62,7 @@ public class MailDeliveryReportService {
         outbox.save(message);
 
         if (MailDeliveryStatuses.isUndelivered(report.status())) {
-            meterRegistry.counter(UNDELIVERED_COUNTER, "status", MailDeliveryStatuses.canonical(report.status()))
-                    .increment();
+            undelivered.get(MailDeliveryStatuses.canonical(report.status())).increment();
             log.warn("Outbox message {} was accepted and then not delivered: {}",
                     message.getId(), report.status());
         } else {

@@ -55,6 +55,7 @@ class ConfigurationTest {
 
     private static final Pattern TERRAFORM_ENV_BLOCK = Pattern.compile("\\benv\\s*\\{([^}]*)}");
     private static final Pattern TERRAFORM_ENV_NAME = Pattern.compile("name\\s*=\\s*\"([A-Z][A-Z0-9_]*)\"");
+    private static final Pattern TERRAFORM_MEMORY_GIB = Pattern.compile("\\bmemory_gib\\s*=\\s*(\\d+)");
 
     @Test
     @DisplayName("every variable the application cannot start without is supplied by docker-compose")
@@ -193,6 +194,20 @@ class ConfigurationTest {
     }
 
     @Test
+    @DisplayName("docker-compose gives each API replica the memory the container app has")
+    void dockerComposeSizesTheApiAsTheContainerAppIs() throws IOException {
+        Matcher azure = TERRAFORM_MEMORY_GIB.matcher(read(API_APP));
+        assertThat(azure.find()).as("the API module no longer sets memory_gib").isTrue();
+
+        for (String service : List.of("app", "app2")) {
+            assertThat(composeMemoryLimit(service))
+                    .as("the JVM sizes its heap from the `%s` limit, so less than Azure's runs the local "
+                            + "stack at its ceiling under load the deployment carries", service)
+                    .isEqualTo(azure.group(1) + "G");
+        }
+    }
+
+    @Test
     @DisplayName("metrics export over OTLP is off unless an environment turns it on")
     void otlpExportIsOffByDefault() throws IOException {
         assertThat(read(APP_PROPERTIES))
@@ -261,7 +276,7 @@ class ConfigurationTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, String> composeServiceEnvironment(String service) throws IOException {
+    private static Map<String, Object> composeService(String service) throws IOException {
         assertThat(COMPOSE).as("the compose file has moved or gone").isRegularFile();
 
         Map<String, Object> compose;
@@ -273,8 +288,22 @@ class ConfigurationTest {
         assertThat(services).as("the compose file declares no services").isNotNull();
         Map<String, Object> app = (Map<String, Object>) services.get(service);
         assertThat(app).as("the compose file no longer has a `%s` service", service).isNotNull();
+        return app;
+    }
 
-        Object environment = app.get("environment");
+    @SuppressWarnings("unchecked")
+    private static String composeMemoryLimit(String service) throws IOException {
+        Object limit = composeService(service);
+        for (String key : List.of("deploy", "resources", "limits", "memory")) {
+            assertThat(limit).as("the `%s` service has no deploy.resources.limits.memory", service)
+                    .isInstanceOf(Map.class);
+            limit = ((Map<String, Object>) limit).get(key);
+        }
+        return String.valueOf(limit);
+    }
+
+    private static Map<String, String> composeServiceEnvironment(String service) throws IOException {
+        Object environment = composeService(service).get("environment");
         assertThat(environment).as("the `%s` service passes no environment at all", service).isNotNull();
 
         Map<String, String> variables = new LinkedHashMap<>();
