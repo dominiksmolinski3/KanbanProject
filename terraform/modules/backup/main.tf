@@ -228,7 +228,7 @@ resource "azurerm_container_app_job" "pg_dump" {
   template {
     init_container {
       name    = "pg-dump"
-      image   = "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
+      image   = "postgres:17-alpine@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/pg-dump.sh"), "\r", "")]
@@ -401,7 +401,7 @@ resource "azurerm_container_app_job" "restore_drill" {
 
     container {
       name    = "restore"
-      image   = "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
+      image   = "postgres:17-alpine@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0"
       cpu     = 0.5
       memory  = "1Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill.sh"), "\r", "")]
