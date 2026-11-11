@@ -930,4 +930,7 @@ each with its own Go binary, and the ones this stack never uses carried high fin
 The image keeps only the `prometheus` and `canvas` plugins; Azure Monitor is still built in.
 `GF_PLUGINS_PREINSTALL_DISABLED` stops Grafana downloading plugins from grafana.com when it starts.
 Without it, Grafana fetches the plugins the image removed, and four apps besides, which no Trivy scan
-ever sees. What runs is what the image scan checked, with nothing ignored.
+ever sees. What runs is what the image scan checked. A finding compiled into Grafana's own binaries
+or its bundled plugins clears only with a Grafana or plugin release, so until one ships it can go into
+`observability/grafana/.trivyignore.yaml`, scoped to that binary and with an expiry date after which
+it fails the scan again. Every other finding fails at once.
