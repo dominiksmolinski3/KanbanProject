@@ -1,0 +1,6 @@
+vulnerabilities:
+  - id: CVE-2026-78661
+    paths:
+      - usr/share/grafana/data/plugins-bundled/prometheus/gpx_grafana-prometheus-datasource_linux_amd64
+    statement: golang.org/x/net is compiled into the Prometheus plugin Grafana 13.3.1 bundles; it clears only with a plugin release.
+    expired_at: 2026-12-12
