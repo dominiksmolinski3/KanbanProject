@@ -365,6 +365,7 @@ jobs:
           - image: kanbanproject-grafana
             context: observability/grafana
             dockerfile: observability/grafana/Dockerfile
+            trivyignores: observability/grafana/.trivyignore.yaml
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -419,6 +420,7 @@ jobs:
         limit-severities-for-sarif: true
         ignore-unfixed: true
         exit-code: '1'
+        trivyignores: ${{ matrix.trivyignores }}
 
     - name: Upload scan results to the Security tab
       if: always() && hashFiles('trivy-results.sarif') != ''
