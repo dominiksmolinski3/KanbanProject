@@ -144,7 +144,7 @@ services:
           memory: 128M
 
   rabbitmq:
-    image: rabbitmq:4-alpine@sha256:6931816af1a943f471c038b278835d36692d55dec769232739296bb91b7de0f5
+    image: rabbitmq:4-alpine@sha256:8425b8435b0203e87292cf1a4a7e5f8108c610bbd8217f8cc952f43628b24987
     restart: unless-stopped
     command: sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp rabbitmq_prometheus && exec docker-entrypoint.sh rabbitmq-server"
     environment:
