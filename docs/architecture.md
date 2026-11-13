@@ -195,6 +195,10 @@ Splitting the tier is also what makes the bundle cacheable at last: Spring Secur
 on everything it serves, so the hashed assets had never once been cached. `/assets/` is `immutable`
 now and `/index.html` is `no-cache`.
 
+The edge is also the only place that compresses. It gzips the bundle and the JSON it proxies, so the
+API needs no `server.compression`; `gzip_proxied any` keeps that true for a request that reached nginx
+through the platform's ingress. `EdgeCompressionTest` pins the directives.
+
 **The edge image runs `apk upgrade` on its own base, and that is not defensiveness.** The pinned
 `nginx-unprivileged:1.29-alpine` digest is the newest tag Docker Hub publishes, and its package set
 is far enough behind Alpine's security branch that Trivy found **35 fixable HIGH findings** in it —
@@ -1238,6 +1242,12 @@ Postgres sat at 16% while the JVM was at 400%, so caching would only have made t
   A refused call takes no token, so hammering keeps being refused without lengthening the wait.
   It recognises `/api/` on the decoded path, for the auth limiter's reason: on the raw URI,
   `/%61pi/tasks` reached the tasks handler with no limit at all.
+- **Socket sends have a bucket of their own** (`StompSendRateLimiter`, on the inbound channel after
+  the destination policy): 5/s with a burst of 20 per account, in the same Redis script. The HTTP
+  filter never sees a STOMP frame, so without it one connection could store and broadcast chat
+  messages as fast as it could write them. A frame over the budget is dropped and counted in
+  `kanban.board.subscription.dropped{reason="rate-limited"}`; `security.api-rate-limit.enabled=false`
+  switches this off too.
 
 `EdgeRateLimitTest` pins the edge's side: every proxying location is limited, the key is the last
 hop, the 429 carries the headers, and the edge's API rate stays above the per-account one - so a

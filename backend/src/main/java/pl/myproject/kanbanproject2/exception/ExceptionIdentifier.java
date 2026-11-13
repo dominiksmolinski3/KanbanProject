@@ -10,6 +10,7 @@ public enum ExceptionIdentifier {
 
     USER_NOT_FOUND(NOT_FOUND, "User not found"),
     NOT_ACCOUNT_OWNER(FORBIDDEN, "You can only modify your own account"),
+    DEMO_ACCOUNT_LOCKED(FORBIDDEN, "This shared demo account cannot be changed or deleted"),
 
     AVATAR_NOT_FOUND(NOT_FOUND, "Avatar not found"),
     INVALID_AVATAR_FILE_TYPE(UNSUPPORTED_MEDIA_TYPE, "Only image files are allowed"),
@@ -54,6 +55,7 @@ public enum ExceptionIdentifier {
 
     TASK_NOT_FOUND(NOT_FOUND, "Task not found"),
     SUBTASK_NOT_FOUND(NOT_FOUND, "Subtask not found"),
+    INVALID_SUBTASK(BAD_REQUEST, "That change to the subtask is not allowed"),
     PARENT_TASK_NOT_FOUND(NOT_FOUND, "Parent task not found"),
     PARENT_TASK_NOT_SET(NOT_FOUND, "The task does not have a parent task"),
     CYCLIC_TASK_DEPENDENCY(BAD_REQUEST, "The dependency would create a cycle, which is not allowed"),

@@ -2,6 +2,8 @@ package pl.myproject.kanbanproject2.user.auth;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
+import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.util.List;
@@ -26,5 +28,11 @@ public class DemoAccounts {
 
     public boolean isDemo(User user) {
         return user.getEmail() != null && emails.contains(user.getEmail().toLowerCase(Locale.ROOT));
+    }
+
+    public void requireNotDemo(User user) {
+        if (isDemo(user)) {
+            throw new GlobalException(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED);
+        }
     }
 }

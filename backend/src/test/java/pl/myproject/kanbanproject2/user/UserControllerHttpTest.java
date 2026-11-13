@@ -18,6 +18,7 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 
 import java.util.List;
 
@@ -37,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserControllerHttpTest {
     private static final Integer CALLER_ID = 1;
     private static final Integer OTHER_ID = 2;
+    private static final String DEMO_EMAIL = "demo@example.test";
 
     private UserService userService;
     private UserMapper userMapper;
@@ -66,7 +68,8 @@ class UserControllerHttpTest {
         caller = new User();
         caller.setId(CALLER_ID);
 
-        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService))
+        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService,
+                        new DemoAccounts(List.of(DEMO_EMAIL))))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(
@@ -125,6 +128,18 @@ class UserControllerHttpTest {
         }
 
         verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("a shared demo account cannot be deleted by a caller signed in to it")
+    void aDemoAccountIsNotDeleted() throws Exception {
+        caller.setEmail(DEMO_EMAIL);
+
+        mvc.perform(delete("/users/" + CALLER_ID))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DEMO_ACCOUNT_LOCKED"));
+
+        verify(userService, never()).deleteUser(any());
     }
 
     @Test
