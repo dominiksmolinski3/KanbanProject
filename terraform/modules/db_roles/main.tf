@@ -69,7 +69,7 @@ resource "azurerm_container_app_job" "roles" {
   template {
     container {
       name   = "roles"
-      image  = "postgres:17-alpine@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0"
+      image  = "postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065"
       cpu    = 0.25
       memory = "0.5Gi"
       # A Windows checkout gives the script CRLF endings, and sh reads each \r as part of the command.
