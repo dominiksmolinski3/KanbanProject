@@ -755,6 +755,7 @@
       "ROW_NOT_FOUND": "Ten tor już nie istnieje.",
       "SESSION_NOT_FOUND": "Ta sesja już się zakończyła.",
       "SUBTASK_NOT_FOUND": "To podzadanie już nie istnieje.",
+      "INVALID_SUBTASK": "Tej zmiany podzadania nie można wprowadzić.",
       "TASK_NOT_FOUND": "To zadanie już nie istnieje.",
       "TOO_MANY_REQUESTS": "Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.",
       "UNSUPPORTED_LOCALE": "Ten język nie jest obsługiwany.",

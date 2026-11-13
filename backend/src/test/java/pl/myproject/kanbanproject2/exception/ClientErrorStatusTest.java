@@ -71,6 +71,11 @@ class ClientErrorStatusTest {
             return file.getOriginalFilename();
         }
 
+        @PostMapping("/library")
+        public String library() {
+            throw new IllegalArgumentException("password cannot be more than 72 bytes");
+        }
+
         @PostMapping("/conflict")
         public String conflict() {
             throw new DataIntegrityViolationException(
@@ -129,6 +134,17 @@ class ClientErrorStatusTest {
                 .doesNotContain("Body")
                 .doesNotContain("size")
                 .doesNotContain("com.fasterxml");
+    }
+
+    @Test
+    @DisplayName("an IllegalArgumentException from a library is 400, and its message stays on the server")
+    void aLibraryRefusalIsNotEchoed() throws Exception {
+        String body = mvc.perform(post("/probe/library"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("72 bytes");
     }
 
     @Test

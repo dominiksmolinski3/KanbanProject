@@ -755,6 +755,7 @@
       "ROW_NOT_FOUND": "That swimlane no longer exists.",
       "SESSION_NOT_FOUND": "That session has already ended.",
       "SUBTASK_NOT_FOUND": "That subtask no longer exists.",
+      "INVALID_SUBTASK": "That change to the subtask is not allowed.",
       "TASK_NOT_FOUND": "That task no longer exists.",
       "TOO_MANY_REQUESTS": "Too many attempts. Wait a moment and try again.",
       "UNSUPPORTED_LOCALE": "That language is not supported.",

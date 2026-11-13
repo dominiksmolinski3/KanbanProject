@@ -54,6 +54,7 @@ public enum ExceptionIdentifier {
 
     TASK_NOT_FOUND(NOT_FOUND, "Task not found"),
     SUBTASK_NOT_FOUND(NOT_FOUND, "Subtask not found"),
+    INVALID_SUBTASK(BAD_REQUEST, "That change to the subtask is not allowed"),
     PARENT_TASK_NOT_FOUND(NOT_FOUND, "Parent task not found"),
     PARENT_TASK_NOT_SET(NOT_FOUND, "The task does not have a parent task"),
     CYCLIC_TASK_DEPENDENCY(BAD_REQUEST, "The dependency would create a cycle, which is not allowed"),
