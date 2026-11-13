@@ -68,6 +68,7 @@ class ApiRateLimiterIntegrationTest {
     @AfterEach
     void tearDown() {
         redis.delete("api-rate-limit:account:" + account);
+        redis.delete("socket-send-rate-limit:account:" + account);
         connectionFactory.destroy();
     }
 
@@ -104,6 +105,39 @@ class ApiRateLimiterIntegrationTest {
 
         now.addAndGet(3_600_000);
         assertThat(allowedInARow(limiter)).as("an hour idle refills to the burst, not to 72 000").isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("socket sends have a smaller budget of their own, which API calls do not spend")
+    void socketSendsHaveTheirOwnBudget() {
+        var limiter = replica();
+        for (int call = 0; call < 100; call++) {
+            limiter.attempt(account);
+        }
+
+        for (int send = 0; send < ApiRateLimiter.SOCKET_SEND_BURST; send++) {
+            assertThat(limiter.allowsSocketSend(account)).as("send %d of the burst", send + 1).isTrue();
+        }
+        assertThat(limiter.allowsSocketSend(account)).isFalse();
+        assertThat(registry.counter(ApiRateLimiter.REFUSED_COUNTER).count())
+                .as("a dropped frame is counted where it is dropped, not as a refused API call").isZero();
+
+        now.addAndGet(1_000);
+        int refilled = 0;
+        while (limiter.allowsSocketSend(account)) {
+            refilled++;
+        }
+        assertThat(refilled).isEqualTo(ApiRateLimiter.SOCKET_SENDS_PER_SECOND);
+    }
+
+    @Test
+    @DisplayName("with the API limit switched off, socket sends are not limited either")
+    void switchedOffMeansNoSocketLimit() {
+        var limiter = new ApiRateLimiter(new ApiRateLimitProperties(false, 20, 100), redis, clock, registry);
+
+        for (int send = 0; send < ApiRateLimiter.SOCKET_SEND_BURST * 3; send++) {
+            assertThat(limiter.allowsSocketSend(account)).isTrue();
+        }
     }
 
     @Test
