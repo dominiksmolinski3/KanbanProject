@@ -49,6 +49,9 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(input.getEmail()).orElse(null);
         if (user != null && user.isEnabled()) {
             log.info("Signup for an address that already has an account; answering as if it were new");
+            // Hashes what a new registration hashes, or the response time tells the two apart.
+            passwordEncoder.encode(input.getPassword());
+            passwordEncoder.encode(generateVerificationCode());
             return;
         }
 
@@ -160,6 +163,8 @@ public class AuthenticationService {
 
         if (user == null || user.isEnabled()) {
             log.info("Resend requested for an address with no account pending verification; answering as if it had one");
+            // Hashes what a real resend hashes, or the response time tells the two apart.
+            passwordEncoder.encode(generateVerificationCode());
             return;
         }
 
