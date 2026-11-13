@@ -744,6 +744,7 @@
       "METHOD_NOT_ALLOWED": "Diese Aktion ist hier nicht verfügbar.",
       "MISSING_PARAMETER": "In der Anfrage fehlen Angaben.",
       "NOT_ACCOUNT_OWNER": "Du kannst nur dein eigenes Konto ändern.",
+      "DEMO_ACCOUNT_LOCKED": "Dieses gemeinsame Demokonto kann nicht geändert oder gelöscht werden.",
       "NOT_BOARD_OWNER": "Nur der Board-Eigentümer kann das tun.",
       "NOT_COMMENT_AUTHOR": "Nur der Verfasser kann diesen Kommentar ändern.",
       "NOT_FOUND": "Das existiert nicht mehr.",
