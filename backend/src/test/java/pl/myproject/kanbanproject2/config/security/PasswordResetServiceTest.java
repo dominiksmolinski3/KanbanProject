@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +46,7 @@ class PasswordResetServiceTest {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private final AtomicInteger hashes = new AtomicInteger();
     private EmailService emailService;
     private RefreshTokenService refreshTokenService;
     private PasswordResetService service;
@@ -52,7 +54,20 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        passwordEncoder = new BCryptPasswordEncoder();
+        var bcrypt = new BCryptPasswordEncoder();
+        hashes.set(0);
+        passwordEncoder = new PasswordEncoder() {
+            @Override
+            public String encode(CharSequence rawPassword) {
+                hashes.incrementAndGet();
+                return bcrypt.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                return bcrypt.matches(rawPassword, encodedPassword);
+            }
+        };
         emailService = mock(EmailService.class);
         refreshTokenService = mock(RefreshTokenService.class);
         service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService,
@@ -131,6 +146,22 @@ class PasswordResetServiceTest {
             assertThat(shared.getPasswordResetCode()).isNull();
             verifyNoInteractions(emailService);
             verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("an address with no account costs the same hashing as one with, so the response time does not tell them apart")
+        void unknownAddressHashesAsMuchAsAKnownOne() {
+            var existing = user(KNOWN, true);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
+            when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
+
+            hashes.set(0);
+            service.requestReset(KNOWN);
+            int forAKnownAddress = hashes.getAndSet(0);
+            service.requestReset(UNKNOWN);
+
+            assertThat(forAKnownAddress).isEqualTo(1);
+            assertThat(hashes.get()).isEqualTo(forAKnownAddress);
         }
 
         @Test
