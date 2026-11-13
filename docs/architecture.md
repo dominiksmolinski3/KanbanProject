@@ -195,6 +195,10 @@ Splitting the tier is also what makes the bundle cacheable at last: Spring Secur
 on everything it serves, so the hashed assets had never once been cached. `/assets/` is `immutable`
 now and `/index.html` is `no-cache`.
 
+The edge is also the only place that compresses. It gzips the bundle and the JSON it proxies, so the
+API needs no `server.compression`; `gzip_proxied any` keeps that true for a request that reached nginx
+through the platform's ingress. `EdgeCompressionTest` pins the directives.
+
 **The edge image runs `apk upgrade` on its own base, and that is not defensiveness.** The pinned
 `nginx-unprivileged:1.29-alpine` digest is the newest tag Docker Hub publishes, and its package set
 is far enough behind Alpine's security branch that Trivy found **35 fixable HIGH findings** in it —
