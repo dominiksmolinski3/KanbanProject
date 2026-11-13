@@ -52,7 +52,8 @@ class CodeGuessesDatabaseTest {
 
         @Bean
         PasswordResetService passwordResetService(UserRepository users, PasswordEncoder encoder) {
-            return new PasswordResetService(users, encoder, mock(EmailService.class), mock(RefreshTokenService.class));
+            return new PasswordResetService(users, encoder, mock(EmailService.class), mock(RefreshTokenService.class),
+                    new DemoAccounts(List.of()));
         }
 
         @Bean

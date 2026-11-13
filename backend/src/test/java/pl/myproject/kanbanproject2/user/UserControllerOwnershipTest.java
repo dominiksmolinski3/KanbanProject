@@ -27,7 +27,8 @@ class UserControllerOwnershipTest {
     void setUp() {
         userService = mock(UserService.class);
         controller = new UserController(userService, mock(UserMapper.class),
-                mock(pl.myproject.kanbanproject2.config.security.PasswordResetService.class));
+                mock(pl.myproject.kanbanproject2.config.security.PasswordResetService.class),
+                new pl.myproject.kanbanproject2.user.auth.DemoAccounts(java.util.List.of()));
 
         caller = new User();
         caller.setId(OWNER_ID);

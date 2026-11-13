@@ -744,6 +744,7 @@
             "METHOD_NOT_ALLOWED": "その操作はここでは利用できません。",
             "MISSING_PARAMETER": "リクエストに不足している情報があります。",
             "NOT_ACCOUNT_OWNER": "変更できるのは自分のアカウントだけです。",
+            "DEMO_ACCOUNT_LOCKED": "この共有デモアカウントは変更も削除もできません。",
             "NOT_BOARD_OWNER": "この操作はボードの所有者のみ可能です。",
             "NOT_COMMENT_AUTHOR": "このコメントを変更できるのは投稿者だけです。",
             "NOT_FOUND": "それはもう存在しません。",

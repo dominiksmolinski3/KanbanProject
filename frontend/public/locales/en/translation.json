@@ -744,6 +744,7 @@
       "METHOD_NOT_ALLOWED": "That action is not available here.",
       "MISSING_PARAMETER": "Some information is missing from the request.",
       "NOT_ACCOUNT_OWNER": "You can only change your own account.",
+      "DEMO_ACCOUNT_LOCKED": "This shared demo account cannot be changed or deleted.",
       "NOT_BOARD_OWNER": "Only the board owner can do that.",
       "NOT_COMMENT_AUTHOR": "Only the author can change this comment.",
       "NOT_FOUND": "That no longer exists.",

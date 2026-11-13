@@ -13,11 +13,13 @@ import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.when;
 
 class EmailChangeServiceTest {
     private static final PasswordEncoder ENCODER = new BCryptPasswordEncoder(4);
+    private static final String DEMO = "demo@example.test";
     private static final DeviceContext DEVICE = new DeviceContext("203.0.113.9", "JUnit");
 
     private UserRepository userRepository;
@@ -52,7 +55,7 @@ class EmailChangeServiceTest {
         authenticationService = mock(AuthenticationService.class);
         chatRepository = mock(ChatRepository.class);
         service = new EmailChangeService(userRepository, ENCODER, emailService, refreshTokenService,
-                authenticationService, chatRepository);
+                authenticationService, chatRepository, new DemoAccounts(List.of(DEMO)));
 
         account = new User("Owner", "owner@example.test", ENCODER.encode("the-password"));
         account.setId(1);
@@ -214,6 +217,22 @@ class EmailChangeServiceTest {
     void nothingPendingIsRefused() {
         expect(ExceptionIdentifier.INVALID_VERIFICATION_CODE, () ->
                 service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
+    }
+
+    @Test
+    @DisplayName("a shared demo account cannot be moved to another address, with the right password or a live code")
+    void aDemoAccountKeepsItsAddress() {
+        account.setEmail(DEMO);
+
+        expect(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED, () ->
+                service.requestChange(account, new EmailChangeRequest("mine@example.test", "the-password")));
+        pending("mine@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
+        expect(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED, () ->
+                service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
+
+        assertThat(account.getEmail()).isEqualTo(DEMO);
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(emailService, refreshTokenService, authenticationService);
     }
 
     private void pending(String address, String code, Instant expiresAt) {
