@@ -51,11 +51,11 @@ class ColumnControllerHttpTest {
     }
 
     private static ColumnDto column(Integer id, String name, Integer position) {
-        return new ColumnDto(id, name, position, 3, List.of());
+        return new ColumnDto(id, name, position, 3);
     }
 
     @Test
-    @DisplayName("the column list answers 200 and passes the board through")
+    @DisplayName("the column list answers 200, passes the board through and carries no tasks")
     void listAnswers200() throws Exception {
         when(columnService.getAllColumns(caller, 7)).thenReturn(List.of(column(2, "Doing", 1)));
 
@@ -63,14 +63,14 @@ class ColumnControllerHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Doing"))
                 .andExpect(jsonPath("$[0].wipLimit").value(3))
-                .andExpect(jsonPath("$[0].taskDTO").isArray());
+                .andExpect(jsonPath("$[0].taskDTO").doesNotExist());
     }
 
     @Test
-    @DisplayName("creating answers 201 with the slim response DTO")
+    @DisplayName("creating answers 201 with the new column")
     void createAnswers201() throws Exception {
         when(columnService.addNewColumn(caller, 7, new CreateColumnRequest("Review", null, 2)))
-                .thenReturn(new ColumnResponseDto(9, "Review", 3, 2));
+                .thenReturn(new ColumnDto(9, "Review", 3, 2));
 
         mvc.perform(post("/columns").param("boardId", "7")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -42,13 +42,9 @@ export interface Column {
   name: string;
   position: number;
   wipLimit: number;
-  taskDTO: Task[];
 }
 
 export type Row = Column;
-
-export type ColumnSummary = Omit<Column, 'taskDTO'>;
-export type RowSummary = ColumnSummary;
 
 export interface SubTask {
   id: Id;

@@ -23,7 +23,6 @@ import pl.myproject.kanbanproject2.layout.row.RowMapper;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.layout.row.RowService;
 import pl.myproject.kanbanproject2.task.Task;
-import pl.myproject.kanbanproject2.task.TaskMapper;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
@@ -38,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,7 +53,7 @@ class LayoutServiceTest {
 
         private final ColumnRepository repository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
-                repository, new ColumnMapper(new TaskMapper()),
+                repository, new ColumnMapper(),
                 mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
 
@@ -172,7 +172,7 @@ class LayoutServiceTest {
         private final RowRepository repository = mock(RowRepository.class);
         private final TaskRepository taskRepository = mock(TaskRepository.class);
         private final RowService service = new RowService(
-                repository, new RowMapper(new TaskMapper()), taskRepository, TENANT.boardService(), mock(BoardEventPublisher.class));
+                repository, new RowMapper(), taskRepository, TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Row row(int id, Board board) {
             var row = new Row();
@@ -229,6 +229,47 @@ class LayoutServiceTest {
         }
 
         @Test
+        @DisplayName("a patch can rename a swimlane and change its WIP limit in one call")
+        void aPatchCanRenameAndLimit() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            var patched = service.patchRow(CALLER, new PatchRowRequest("Bugs", null, 2), 1);
+
+            assertThat(patched.name()).isEqualTo("Bugs");
+            assertThat(patched.wipLimit()).isEqualTo(2);
+            assertThat(patched.position()).isZero();
+        }
+
+        @Test
+        @DisplayName("a new swimlane takes the position it asks for")
+        void aNewSwimlaneCanNameItsPosition() {
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            assertThat(service.createRow(CALLER, null, new CreateRowRequest("Bugs", 7, null)).position())
+                    .isEqualTo(7);
+            verify(repository, never()).findMaxPosition(any());
+        }
+
+        @Test
+        @DisplayName("a swimlane on the caller's board is read by id")
+        void aSwimlaneIsReadById() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+
+            assertThat(service.getRowById(CALLER, 1))
+                    .isEqualTo(new RowDto(1, "Features", 0, 5));
+        }
+
+        @Test
+        @DisplayName("repositioning writes the position")
+        void repositioningWritesThePosition() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            assertThat(service.updateRowPosition(CALLER, 1, 4).position()).isEqualTo(4);
+        }
+
+        @Test
         @DisplayName("a swimlane on another board answers 404, not 403")
         void aSwimlaneOnAnotherBoardIsNotFound() {
             when(repository.findById(5)).thenReturn(Optional.of(row(5, OTHER_BOARD)));
@@ -268,18 +309,14 @@ class LayoutServiceTest {
         }
 
         @Test
-        @DisplayName("the mapper carries a swimlane's tasks, and answers null for no swimlane at all")
-        void theMapperHandlesTasksAndNull() {
-            var mapper = new RowMapper(new TaskMapper());
-            var swimlane = row(1, BOARD);
-            var task = new Task();
-            task.setId(11);
-            swimlane.setTasks(new ArrayList<>(List.of(task)));
+        @DisplayName("the mapper describes a swimlane without reading its tasks, and answers null for none at all")
+        void theMapperLeavesTheTasksAlone() {
+            var mapper = new RowMapper();
+            var swimlane = spy(row(1, BOARD));
 
-            assertThat(mapper.apply(swimlane).taskDTO()).hasSize(1);
+            assertThat(mapper.apply(swimlane).name()).isEqualTo("Features");
             assertThat(mapper.apply(null)).isNull();
-            assertThat(mapper.toResponseDto(null)).isNull();
-            assertThat(mapper.toResponseDto(swimlane).name()).isEqualTo("Features");
+            verify(swimlane, never()).getTasks();
         }
     }
 }
