@@ -13,6 +13,7 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
 import java.security.SecureRandom;
@@ -35,12 +36,17 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
+    private final DemoAccounts demoAccounts;
 
     public void requestReset(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
 
         if (user == null) {
             log.info("Password reset requested for an address with no account; answering as if it had one");
+            return;
+        }
+        if (demoAccounts.isDemo(user)) {
+            log.info("Password reset requested for a shared demo account; sending nothing");
             return;
         }
 
@@ -91,6 +97,7 @@ public class PasswordResetService {
     }
 
     public void changePassword(User currentUser, ChangePasswordRequest request) {
+        demoAccounts.requireNotDemo(currentUser);
         if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
             throw new GlobalException(ExceptionIdentifier.WRONG_PASSWORD);
         }

@@ -744,6 +744,7 @@
       "METHOD_NOT_ALLOWED": "Ta akcja nie jest tu dostępna.",
       "MISSING_PARAMETER": "W żądaniu brakuje części informacji.",
       "NOT_ACCOUNT_OWNER": "Możesz zmieniać tylko własne konto.",
+      "DEMO_ACCOUNT_LOCKED": "To wspólne konto demonstracyjne — nie można go zmienić ani usunąć.",
       "NOT_BOARD_OWNER": "Tylko właściciel tablicy może to zrobić.",
       "NOT_COMMENT_AUTHOR": "Tylko autor może zmienić ten komentarz.",
       "NOT_FOUND": "To już nie istnieje.",
