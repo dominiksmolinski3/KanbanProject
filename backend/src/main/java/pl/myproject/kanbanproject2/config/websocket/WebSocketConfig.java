@@ -18,6 +18,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final StompDestinationPolicy stompDestinationPolicy;
+    private final StompSendRateLimiter stompSendRateLimiter;
     private final BoardSubscriptionInterceptor boardSubscriptionInterceptor;
     private final BoardFrameAccessInterceptor boardFrameAccessInterceptor;
     private final SignedOutSessionInterceptor signedOutSessionInterceptor;
@@ -52,8 +53,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // Order matters: authentication puts the principal on the session that the subscription check reads.
-        registration.interceptors(webSocketAuthInterceptor, stompDestinationPolicy, boardSubscriptionInterceptor);
+        // Order matters: authentication puts the principal on the session that the later checks read.
+        registration.interceptors(webSocketAuthInterceptor, stompDestinationPolicy, stompSendRateLimiter,
+                boardSubscriptionInterceptor);
     }
 
     @Override

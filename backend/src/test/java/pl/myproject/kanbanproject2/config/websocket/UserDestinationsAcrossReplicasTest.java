@@ -48,6 +48,7 @@ class UserDestinationsAcrossReplicasTest {
 
     private static WebSocketConfig config() {
         return new WebSocketConfig(mock(WebSocketAuthInterceptor.class), mock(StompDestinationPolicy.class),
+                mock(StompSendRateLimiter.class),
                 mock(BoardSubscriptionInterceptor.class), mock(BoardFrameAccessInterceptor.class),
                 mock(SignedOutSessionInterceptor.class), new AllowedOriginsProperties(List.of("http://localhost:5173")),
                 new StompRelayProperties("localhost", 61613, "guest", "guest"));

@@ -123,6 +123,7 @@ class AllowedOriginsTest {
         when(registry.addEndpoint("/ws")).thenReturn(registration);
 
         new WebSocketConfig(mock(WebSocketAuthInterceptor.class), mock(StompDestinationPolicy.class),
+                mock(pl.myproject.kanbanproject2.config.websocket.StompSendRateLimiter.class),
                 mock(BoardSubscriptionInterceptor.class), mock(BoardFrameAccessInterceptor.class),
                 mock(SignedOutSessionInterceptor.class), origins,
                 new StompRelayProperties("localhost", 61613, "guest", "guest"))
