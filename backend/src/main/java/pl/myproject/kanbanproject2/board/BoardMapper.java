@@ -24,9 +24,26 @@ public class BoardMapper {
 
         Map<Integer, String> roleByUserId = new HashMap<>();
         for (Object[] row : boardRepository.findMemberRoles(board.getId())) {
-            roleByUserId.put((Integer) row[0], (String) row[1]);
+            roleByUserId.put(((Number) row[0]).intValue(), (String) row[1]);
         }
+        return describe(board, caller, roleByUserId);
+    }
 
+    public List<BoardDto> applyAll(List<Board> boards, User caller) {
+        if (boards.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, Map<Integer, String>> rolesByBoardId = new HashMap<>();
+        for (Object[] row : boardRepository.findMemberRolesIn(boards.stream().map(Board::getId).toList())) {
+            rolesByBoardId.computeIfAbsent(((Number) row[0]).intValue(), boardId -> new HashMap<>())
+                    .put(((Number) row[1]).intValue(), (String) row[2]);
+        }
+        return boards.stream()
+                .map(board -> describe(board, caller, rolesByBoardId.getOrDefault(board.getId(), Map.of())))
+                .toList();
+    }
+
+    private static BoardDto describe(Board board, User caller, Map<Integer, String> roleByUserId) {
         List<BoardMemberDto> members = board.everyone().stream()
                 .sorted(Comparator.comparing(User::getId))
                 .map(user -> new BoardMemberDto(
