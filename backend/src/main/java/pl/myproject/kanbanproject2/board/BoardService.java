@@ -205,7 +205,6 @@ public class BoardService {
         if (!tasks.isEmpty()) {
             for (Task task : tasks) {
                 task.setParentTask(null);
-                task.getChildTasks().clear();
             }
             taskRepository.saveAll(tasks);
             taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskIn(tasks));
