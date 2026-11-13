@@ -7,9 +7,10 @@ import java.time.ZoneId;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.Arrays;
 import java.util.Locale;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 final class MailTemplates {
 
@@ -18,8 +19,7 @@ final class MailTemplates {
 
     private static final MessageSource MESSAGES = messageSource();
 
-    private static final Pattern LINK = Pattern.compile(
-            "(?i)\\b[a-z][a-z0-9+.-]*://\\S+|(?:[\\p{L}\\p{N}-]+\\.)+\\p{L}{2,}\\S*");
+    private static final Pattern DOMAIN = Pattern.compile("[\\p{L}\\p{N}]\\.\\p{L}{2}");
 
     private MailTemplates() {
     }
@@ -118,8 +118,13 @@ final class MailTemplates {
     static String quoted(String value, int maxLength) {
         String oneLine = value.strip().replaceAll("[\\s\\p{Cntrl}]+", " ");
         String capped = oneLine.length() <= maxLength ? oneLine : oneLine.substring(0, maxLength - 1) + "\u2026";
-        return LINK.matcher(capped).replaceAll(link -> Matcher.quoteReplacement(
-                link.group().replace("://", "[://]").replace(".", "[.]")));
+        return Arrays.stream(capped.split(" ")).map(MailTemplates::defanged).collect(Collectors.joining(" "));
+    }
+
+    private static String defanged(String word) {
+        return word.contains("://") || DOMAIN.matcher(word).find()
+                ? word.replace("://", "[://]").replace(".", "[.]")
+                : word;
     }
 
     private static String on(Instant deadline, Locale locale) {
