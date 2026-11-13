@@ -24,6 +24,9 @@ import pl.myproject.kanbanproject2.config.security.ratelimit.ApiRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.AuthRateLimiter;
 import pl.myproject.kanbanproject2.config.security.ratelimit.ClientIpResolver;
 
+import java.io.IOException;
+import java.util.Properties;
+
 import static jakarta.servlet.http.HttpServletResponse.SC_OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -73,9 +76,23 @@ class PublicChainPathsTest {
     }
 
     @Test
-    @DisplayName("metrics is exposed but not public - it follows health's detail rule, not its route rule")
+    @DisplayName("metrics is not public")
     void metricsRequiresAuthentication() {
         assertDenied("/actuator/metrics", "/actuator/metrics/kanban.mail.outbox.dead_letters");
+    }
+
+    @Test
+    @DisplayName("health and info are the only actuator endpoints served over HTTP")
+    void onlyHealthAndInfoAreExposed() throws IOException {
+        var properties = new Properties();
+        try (var in = getClass().getResourceAsStream("/application.properties")) {
+            properties.load(in);
+        }
+
+        assertThat(properties.getProperty("management.endpoints.web.exposure.include").split("\\s*,\\s*"))
+                .as("any signed-in account counts as authorized here, so an endpoint added to this list is "
+                        + "readable with any member's token; the meters leave through OTLP and the agent instead")
+                .containsExactlyInAnyOrder("health", "info");
     }
 
     @Test
