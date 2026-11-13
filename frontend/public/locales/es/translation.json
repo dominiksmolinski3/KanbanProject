@@ -756,6 +756,7 @@
             "ROW_NOT_FOUND": "Ese carril ya no existe.",
             "SESSION_NOT_FOUND": "Esa sesión ya ha terminado.",
             "SUBTASK_NOT_FOUND": "Esa subtarea ya no existe.",
+            "INVALID_SUBTASK": "Ese cambio en la subtarea no está permitido.",
             "TASK_NOT_FOUND": "Esa tarea ya no existe.",
             "TOO_MANY_REQUESTS": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
             "UNSUPPORTED_LOCALE": "Ese idioma no es compatible.",

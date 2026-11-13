@@ -756,6 +756,7 @@
             "ROW_NOT_FOUND": "Questa corsia non esiste più.",
             "SESSION_NOT_FOUND": "Questa sessione è già terminata.",
             "SUBTASK_NOT_FOUND": "Questa sottoattività non esiste più.",
+            "INVALID_SUBTASK": "Questa modifica alla sottoattività non è consentita.",
             "TASK_NOT_FOUND": "Questa attività non esiste più.",
             "TOO_MANY_REQUESTS": "Troppi tentativi. Attendi un momento e riprova.",
             "UNSUPPORTED_LOCALE": "Questa lingua non è supportata.",

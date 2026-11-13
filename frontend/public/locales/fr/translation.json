@@ -756,6 +756,7 @@
             "ROW_NOT_FOUND": "Ce couloir n'existe plus.",
             "SESSION_NOT_FOUND": "Cette session est déjà terminée.",
             "SUBTASK_NOT_FOUND": "Cette sous-tâche n'existe plus.",
+            "INVALID_SUBTASK": "Cette modification de la sous-tâche n'est pas autorisée.",
             "TASK_NOT_FOUND": "Cette tâche n'existe plus.",
             "TOO_MANY_REQUESTS": "Trop de tentatives. Patientez un instant et réessayez.",
             "UNSUPPORTED_LOCALE": "Cette langue n'est pas prise en charge.",
