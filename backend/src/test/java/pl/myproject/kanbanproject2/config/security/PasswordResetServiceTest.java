@@ -15,11 +15,13 @@ import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -38,6 +40,7 @@ import static org.mockito.Mockito.when;
 class PasswordResetServiceTest {
     private static final String KNOWN = "known@example.test";
     private static final String UNKNOWN = "unknown@example.test";
+    private static final String DEMO = "demo@example.test";
     private static final Pattern SIX_DIGITS = Pattern.compile("\\d{6}");
 
     private UserRepository userRepository;
@@ -52,7 +55,8 @@ class PasswordResetServiceTest {
         passwordEncoder = new BCryptPasswordEncoder();
         emailService = mock(EmailService.class);
         refreshTokenService = mock(RefreshTokenService.class);
-        service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService);
+        service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService,
+                new DemoAccounts(List.of(DEMO)));
 
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
         when(userRepository.findByEmailForUpdate(anyString()))
@@ -112,6 +116,19 @@ class PasswordResetServiceTest {
 
             assertThatCode(() -> service.requestReset(UNKNOWN)).doesNotThrowAnyException();
 
+            verifyNoInteractions(emailService);
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("a shared demo account is answered the same way, and gets no code")
+        void aDemoAccountGetsNoCode() {
+            var shared = user(DEMO, true);
+            when(userRepository.findByEmail(DEMO)).thenReturn(Optional.of(shared));
+
+            assertThatCode(() -> service.requestReset(DEMO)).doesNotThrowAnyException();
+
+            assertThat(shared.getPasswordResetCode()).isNull();
             verifyNoInteractions(emailService);
             verify(userRepository, never()).save(any());
         }
@@ -320,6 +337,24 @@ class PasswordResetServiceTest {
             service.changePassword(existing, new ChangePasswordRequest("old-password", "a-new-password"));
 
             assertThat(passwordEncoder.matches("a-new-password", existing.getPassword())).isTrue();
+        }
+
+        @Test
+        @DisplayName("a shared demo account keeps its published password, even for a caller who knows it")
+        void aDemoAccountKeepsItsPassword() {
+            var shared = user(DEMO, true);
+            String before = shared.getPassword();
+            when(userRepository.findById(1)).thenReturn(Optional.of(shared));
+
+            assertThatThrownBy(() -> service.changePassword(shared,
+                    new ChangePasswordRequest("old-password", "a-new-password")))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED);
+
+            assertThat(shared.getPassword()).isEqualTo(before);
+            verify(userRepository, never()).save(any());
+            verifyNoInteractions(refreshTokenService);
         }
 
         @Test

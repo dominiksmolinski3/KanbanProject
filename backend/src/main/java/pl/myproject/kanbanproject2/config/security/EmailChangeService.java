@@ -15,6 +15,7 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 
@@ -40,6 +41,7 @@ public class EmailChangeService {
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationService authenticationService;
     private final ChatRepository chatRepository;
+    private final DemoAccounts demoAccounts;
 
     @Transactional
     public void requestChange(User caller, EmailChangeRequest request) {
@@ -116,8 +118,10 @@ public class EmailChangeService {
         if (caller == null) {
             throw new GlobalException(ExceptionIdentifier.NOT_ACCOUNT_OWNER);
         }
-        return userRepository.findById(caller.getId())
+        User user = userRepository.findById(caller.getId())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND));
+        demoAccounts.requireNotDemo(user);
+        return user;
     }
 
     private boolean isLive(User user) {

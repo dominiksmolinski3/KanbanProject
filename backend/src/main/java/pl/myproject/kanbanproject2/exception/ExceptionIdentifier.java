@@ -10,6 +10,7 @@ public enum ExceptionIdentifier {
 
     USER_NOT_FOUND(NOT_FOUND, "User not found"),
     NOT_ACCOUNT_OWNER(FORBIDDEN, "You can only modify your own account"),
+    DEMO_ACCOUNT_LOCKED(FORBIDDEN, "This shared demo account cannot be changed or deleted"),
 
     AVATAR_NOT_FOUND(NOT_FOUND, "Avatar not found"),
     INVALID_AVATAR_FILE_TYPE(UNSUPPORTED_MEDIA_TYPE, "Only image files are allowed"),

@@ -744,6 +744,7 @@
             "METHOD_NOT_ALLOWED": "Esa acción no está disponible aquí.",
             "MISSING_PARAMETER": "Faltan datos en la solicitud.",
             "NOT_ACCOUNT_OWNER": "Solo puedes cambiar tu propia cuenta.",
+            "DEMO_ACCOUNT_LOCKED": "Esta cuenta de demostración compartida no se puede modificar ni eliminar.",
             "NOT_BOARD_OWNER": "Solo el propietario del tablero puede hacerlo.",
             "NOT_COMMENT_AUTHOR": "Solo el autor puede cambiar este comentario.",
             "NOT_FOUND": "Eso ya no existe.",
