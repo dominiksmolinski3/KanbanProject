@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 final class MailTemplates {
 
@@ -15,6 +17,9 @@ final class MailTemplates {
     static final ZoneId DEADLINE_ZONE = ZoneId.of("Europe/Warsaw");
 
     private static final MessageSource MESSAGES = messageSource();
+
+    private static final Pattern LINK = Pattern.compile(
+            "(?i)\\b[a-z][a-z0-9+.-]*://\\S+|(?:[\\p{L}\\p{N}-]+\\.)+\\p{L}{2,}\\S*");
 
     private MailTemplates() {
     }
@@ -62,15 +67,15 @@ final class MailTemplates {
 
     static EmailMessage boardInvitation(String to, String boardName, String inviterName,
                                         boolean registered, Locale locale) {
-        String board = blank(boardName) ? say(locale, "mail.overdue.defaultBoard") : boardName;
-        String inviter = blank(inviterName) ? say(locale, "mail.invitation.someone") : inviterName;
+        String board = blank(boardName) ? say(locale, "mail.overdue.defaultBoard") : quoted(boardName, 80);
+        String inviter = blank(inviterName) ? say(locale, "mail.invitation.someone") : quoted(inviterName, 60);
         String heading = say(locale, "mail.invitation.heading");
         String footnote = say(locale, "mail.invitation.footnote");
         String intro = registered
                 ? say(locale, "mail.invitation.introExisting", inviter, board)
                 : say(locale, "mail.invitation.introNew", inviter, board);
 
-        return new EmailMessage(to, say(locale, "mail.invitation.subject", board),
+        return new EmailMessage(to, say(locale, "mail.invitation.subject"),
                 html(locale, heading, intro, null, null, footnote),
                 text(heading, intro, null, footnote));
     }
@@ -107,6 +112,14 @@ final class MailTemplates {
             body.append("\n\n").append(footnote);
         }
         return body.append("\n").toString();
+    }
+
+    // Text an account chose, sent to an address that never asked for it: no link survives and length is capped.
+    static String quoted(String value, int maxLength) {
+        String oneLine = value.strip().replaceAll("[\\s\\p{Cntrl}]+", " ");
+        String capped = oneLine.length() <= maxLength ? oneLine : oneLine.substring(0, maxLength - 1) + "\u2026";
+        return LINK.matcher(capped).replaceAll(link -> Matcher.quoteReplacement(
+                link.group().replace("://", "[://]").replace(".", "[.]")));
     }
 
     private static String on(Instant deadline, Locale locale) {

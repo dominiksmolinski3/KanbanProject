@@ -80,7 +80,7 @@ class MailTemplatesTest {
             EmailMessage message = MailTemplates
                     .boardInvitation("someone@example.test", "Delivery", "Ada", true, EN);
 
-            assertThat(message.subject()).isEqualTo("You have been invited to Delivery");
+            assertThat(message.subject()).isEqualTo("You have been invited to a board");
             assertThat(message.htmlBody()).contains("Delivery").contains("Ada");
             assertThat(message.textBody()).contains("Delivery").contains("Ada").doesNotContain("<");
         }
@@ -103,8 +103,32 @@ class MailTemplatesTest {
             EmailMessage message = MailTemplates
                     .boardInvitation("someone@example.test", " ", null, false, EN);
 
-            assertThat(message.subject()).isEqualTo("You have been invited to your board");
             assertThat(message.textBody()).contains("Someone").contains("your board");
+        }
+
+        @Test
+        @DisplayName("an invitation carries nothing the inviter wrote in its subject, and no working link in its body")
+        void invitationTextCannotCarryALink() {
+            EmailMessage message = MailTemplates.boardInvitation("stranger@example.test",
+                    "URGENT: your account is locked, sign in at http://evil.example/login", "support www.evil.example",
+                    false, EN);
+
+            assertThat(message.subject()).isEqualTo("You have been invited to a board");
+            assertThat(message.textBody() + message.htmlBody())
+                    .doesNotContain("http://")
+                    .doesNotContain("evil.example")
+                    .contains("http[://]evil[.]example/login")
+                    .contains("www[.]evil[.]example");
+        }
+
+        @Test
+        @DisplayName("a long or multi-line name is cut to one short line, and an ordinary one is left as written")
+        void invitationTextIsCapped() {
+            assertThat(MailTemplates.quoted("Delivery v1.2", 80)).isEqualTo("Delivery v1.2");
+            assertThat(MailTemplates.quoted("\u043f\u0440\u0438\u043c\u0435\u0440.\u0440\u0444/login", 80))
+                    .isEqualTo("\u043f\u0440\u0438\u043c\u0435\u0440[.]\u0440\u0444/login");
+            assertThat(MailTemplates.quoted("  two\r\nlines\there ", 80)).isEqualTo("two lines here");
+            assertThat(MailTemplates.quoted("x".repeat(200), 80)).hasSize(80).endsWith("\u2026");
         }
 
         @Test
