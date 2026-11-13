@@ -67,7 +67,7 @@ public class SubTaskService {
         if (request.title().isPresent()) {
             var title = request.title().get();
             if (title == null || title.isBlank()) {
-                throw new IllegalArgumentException("A subtask title cannot be blank");
+                throw new GlobalException(ExceptionIdentifier.INVALID_SUBTASK, "A subtask title cannot be blank");
             }
             existingSubTask.setTitle(title);
         }
@@ -77,14 +77,14 @@ public class SubTaskService {
         if (request.completed().isPresent()) {
             var completed = request.completed().get();
             if (completed == null) {
-                throw new IllegalArgumentException("A subtask completion state cannot be cleared");
+                throw new GlobalException(ExceptionIdentifier.INVALID_SUBTASK, "A subtask completion state cannot be cleared");
             }
             existingSubTask.setCompleted(completed);
         }
         if (request.task().isPresent()) {
             var task = request.task().get();
             if (task == null) {
-                throw new IllegalArgumentException("A subtask must belong to a task");
+                throw new GlobalException(ExceptionIdentifier.INVALID_SUBTASK, "A subtask must belong to a task");
             }
             var target = findTask(caller, task.id());
             boardService.requireWritable(caller, target.getBoard());
@@ -94,7 +94,7 @@ public class SubTaskService {
         if (request.position().isPresent()) {
             var position = request.position().get();
             if (position == null) {
-                throw new IllegalArgumentException("A subtask position cannot be cleared");
+                throw new GlobalException(ExceptionIdentifier.INVALID_SUBTASK, "A subtask position cannot be cleared");
             }
             existingSubTask.setPosition(position);
         }

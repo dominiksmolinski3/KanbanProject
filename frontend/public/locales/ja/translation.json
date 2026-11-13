@@ -756,6 +756,7 @@
             "ROW_NOT_FOUND": "そのスイムレーンはもう存在しません。",
             "SESSION_NOT_FOUND": "そのセッションはすでに終了しています。",
             "SUBTASK_NOT_FOUND": "そのサブタスクはもう存在しません。",
+            "INVALID_SUBTASK": "サブタスクに対するその変更は許可されていません。",
             "TASK_NOT_FOUND": "そのタスクはもう存在しません。",
             "TOO_MANY_REQUESTS": "試行回数が多すぎます。少し待ってからもう一度お試しください。",
             "UNSUPPORTED_LOCALE": "その言語はサポートされていません。",

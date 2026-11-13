@@ -154,16 +154,17 @@ class SubTaskControllerHttpTest {
     }
 
     @Test
-    @DisplayName("a service-level IllegalArgumentException reaches the client as 400 BAD_REQUEST")
+    @DisplayName("a service-level refusal reaches the client as 400 INVALID_SUBTASK with the reason")
     void serviceRefusalIs400() throws Exception {
         when(subTaskService.patchSubTask(eq(caller), eq(1), any()))
-                .thenThrow(new IllegalArgumentException("A subtask title cannot be blank"));
+                .thenThrow(new GlobalException(ExceptionIdentifier.INVALID_SUBTASK, "A subtask title cannot be blank"));
 
         mvc.perform(patch("/subtasks/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"  \"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+                .andExpect(jsonPath("$.code").value("INVALID_SUBTASK"))
+                .andExpect(jsonPath("$.message").value("A subtask title cannot be blank"));
     }
 
     @Test

@@ -111,4 +111,22 @@ class AuthDtoValidationTest {
         assertThat(validator.validate(verify("anna@example.test", "123456", "x".repeat(73)))).isNotEmpty();
         assertThat(validator.validate(verify("anna@example.test", "123456", "x".repeat(72)))).isEmpty();
     }
+
+    @Test
+    @DisplayName("a password is bounded by its bytes, since that is what bcrypt counts")
+    void aPasswordOverSeventyTwoBytesIsRefused() {
+        String fortyCyrillic = "ж".repeat(40);
+        String thirtySixCyrillic = "ж".repeat(36);
+
+        assertThat(validator.validate(register("someone", "a@example.test", fortyCyrillic)))
+                .extracting(violation -> violation.getMessage())
+                .containsExactly("Password must be at most 72 bytes long");
+        assertThat(validator.validate(login("a@example.test", fortyCyrillic))).hasSize(1);
+        assertThat(validator.validate(verify("a@example.test", "123456", fortyCyrillic))).hasSize(1);
+        assertThat(validator.validate(new ResetPasswordRequest("a@example.test", "123456", fortyCyrillic))).hasSize(1);
+        assertThat(validator.validate(new ChangePasswordRequest("old-password", fortyCyrillic))).hasSize(1);
+
+        assertThat(validator.validate(register("someone", "a@example.test", thirtySixCyrillic))).isEmpty();
+        assertThat(validator.validate(register("someone", "a@example.test", "x".repeat(72)))).isEmpty();
+    }
 }

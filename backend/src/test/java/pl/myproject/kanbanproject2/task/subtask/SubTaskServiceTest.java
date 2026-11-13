@@ -211,7 +211,7 @@ class SubTaskServiceTest {
 
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(JsonNullable.of("   "), null, null, null, null)))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(GlobalException.class)
                     .hasMessageContaining("blank");
 
             verify(subTaskRepository, never()).save(any());
@@ -224,7 +224,7 @@ class SubTaskServiceTest {
 
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(JsonNullable.of(null), null, null, null, null)))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(GlobalException.class);
         }
 
         @Test
@@ -234,12 +234,12 @@ class SubTaskServiceTest {
 
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(null, null, JsonNullable.of(null), null, null)))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(GlobalException.class)
                     .hasMessageContaining("completion");
 
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(null, null, null, JsonNullable.of(null), null)))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(GlobalException.class)
                     .hasMessageContaining("position");
         }
 
@@ -273,7 +273,7 @@ class SubTaskServiceTest {
 
             assertThatThrownBy(() -> service.patchSubTask(caller, 1,
                     patch(null, null, null, null, JsonNullable.of(null))))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(GlobalException.class);
 
             assertThat(existing.getTask()).isNotNull();
         }
