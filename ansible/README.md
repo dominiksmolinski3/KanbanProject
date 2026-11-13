@@ -12,19 +12,19 @@ it to itself: nothing connects to it over SSH, because nothing can.
 
 ## Pinned binaries
 
-`monitoring_binaries` in `group_vars/all.yml` pins each binary by version and sha256. Prometheus and
-`blackbox_exporter` come from their GitHub release archives. `node_exporter` comes from the Debian package
-that Docker Hardened Images builds from the same tagged commit (`deb:`). An upstream archive keeps the Go
-toolchain and `golang.org/x` modules it was built with until the next release. `node_exporter` 1.12.1,
-built with Go 1.26.5, had fifteen high findings in them four months later, and no release had replaced it.
-DHI rebuilds it with the current toolchain and publishes a new revision of the package each time;
-revision `1.12.1-9` has none of those findings. The package holds one static binary and depends on nothing. The role unpacks it with
-`dpkg-deb` and installs the binary like the others, so `dpkg` never sees it.
+`monitoring_binaries` in `group_vars/all.yml` pins each binary by version and sha256. All three come
+from the Debian packages that Docker Hardened Images builds from the same tagged upstream commit
+(`deb:`). An upstream release archive keeps the Go toolchain and `golang.org/x` modules it was built
+with until the next release, and those collect high findings long before one ships. DHI rebuilds each
+package with current dependencies and publishes a new revision each time. A package holds the static
+binaries and depends on nothing. The role unpacks it with `dpkg-deb` and installs the binaries, so
+`dpkg` never sees it.
 
-To move it, find the newest `node-exporter` entry in
-`https://dhi.io/deb/debian/main/dists/trixie/main/binary-amd64/Packages` and pin its `Filename` (under
-`https://dhi.io/deb/debian/main/`) and `SHA256`. That repository is the one DHI's images install from,
-not a documented download. If it ever goes, drop `deb:` and pin the upstream archive's sha256 instead.
+To move one, find the newest entry for its package (`prometheus-<major.minor>`, `node-exporter`,
+`blackbox-exporter`) in `https://dhi.io/deb/debian/main/dists/trixie/main/binary-amd64/Packages` and
+pin its `Filename` (under `https://dhi.io/deb/debian/main/`) and `SHA256`. That repository is the one
+DHI's images install from, not a documented download. If it ever goes, drop `deb:` and pin the upstream
+archive's sha256 instead; the role falls back to the GitHub release.
 
 ## Converge
 
