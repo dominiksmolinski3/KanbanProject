@@ -16,6 +16,7 @@ import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class UserController {
     private final UserService userService;
     private final UserMapper userMapper;
     private final PasswordResetService passwordResetService;
+    private final DemoAccounts demoAccounts;
 
     @GetMapping
     public ResponseEntity<List<UserDto>> getAllUsers(@AuthenticationPrincipal User currentUser) {
@@ -48,6 +50,7 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Integer id,
                                            @AuthenticationPrincipal User currentUser) {
         requireSelf(id, currentUser);
+        demoAccounts.requireNotDemo(currentUser);
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
