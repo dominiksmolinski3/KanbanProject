@@ -43,6 +43,8 @@ public class PasswordResetService {
 
         if (user == null) {
             log.info("Password reset requested for an address with no account; answering as if it had one");
+            // Hashes what a real request hashes, or the response time tells the two apart.
+            passwordEncoder.encode(generateCode());
             return;
         }
         if (demoAccounts.isDemo(user)) {
