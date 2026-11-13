@@ -50,9 +50,7 @@ public class UserService {
             return caller;
         }
         var user = userRepository.findById(id).orElseThrow(() -> userNotFound(id));
-        boolean sharesABoard = boardService.peersOf(caller).stream()
-                .anyMatch(peer -> peer.getId().equals(id));
-        if (!sharesABoard) {
+        if (!boardService.shareABoard(caller, id)) {
             throw userNotFound(id);
         }
         return user;
@@ -107,7 +105,7 @@ public class UserService {
     private WipStatusDto wipStatusOf(Integer userId) {
         var user = userRepository.findById(userId).orElseThrow(() -> userNotFound(userId));
         Integer wipLimit = user.getWipLimit();
-        int assignedCount = (int) user.getTasks().stream().filter(task -> !task.isCompleted()).count();
+        int assignedCount = (int) taskRepository.countOpenAssignedTo(userId);
         boolean withinLimit = wipLimit == null || assignedCount < wipLimit;
 
         return new WipStatusDto(user.getId(), wipLimit, assignedCount, withinLimit);

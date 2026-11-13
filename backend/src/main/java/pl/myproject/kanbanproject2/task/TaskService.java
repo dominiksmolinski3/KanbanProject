@@ -281,9 +281,6 @@ public class TaskService {
         }
 
         task.getUsers().add(user);
-        user.getTasks().add(task);
-
-        userRepository.save(user);
         activityRecorder.assigned(caller, task, user);
         return saveAndAnnounce(task);
     }
@@ -297,9 +294,6 @@ public class TaskService {
                 .orElseThrow(() -> userNotFound(userId));
 
         task.getUsers().remove(user);
-        user.getTasks().remove(task);
-
-        userRepository.save(user);
         activityRecorder.unassigned(caller, task, user);
         return saveAndAnnounce(task);
     }

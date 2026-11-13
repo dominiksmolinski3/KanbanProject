@@ -299,6 +299,11 @@ public class BoardService {
                 .orElse(null);
     }
 
+    public boolean shareABoard(User caller, Integer userId) {
+        return caller != null && caller.getId() != null && userId != null
+                && boardRepository.shareABoard(caller.getId(), userId);
+    }
+
     public Collection<User> peersOf(User caller) {
         var peers = new LinkedHashMap<Integer, User>();
         for (Board board : visibleTo(caller)) {
