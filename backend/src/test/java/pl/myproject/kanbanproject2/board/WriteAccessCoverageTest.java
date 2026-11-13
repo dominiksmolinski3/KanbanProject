@@ -30,13 +30,13 @@ class WriteAccessCoverageTest {
                     "public TaskDto updateTaskCompletion(",
                     "public TaskDto setDailyFocus("),
             "layout/column/ColumnService.java", List.of(
-                    "public ColumnResponseDto addNewColumn(",
+                    "public ColumnDto addNewColumn(",
                     "public ColumnDto patchColumn(",
                     "public void deleteColumn(",
                     "public ColumnDto updateColumnPosition(",
                     "public List<ColumnDto> reorderColumns("),
             "layout/row/RowService.java", List.of(
-                    "public RowResponseDto createRow(",
+                    "public RowDto createRow(",
                     "public RowDto patchRow(",
                     "public void deleteRow(",
                     "public RowDto updateRowPosition(",

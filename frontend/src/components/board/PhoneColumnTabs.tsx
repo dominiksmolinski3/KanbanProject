@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import type { WipDecoration } from '../../board/boardModel';
-import type { ColumnSummary } from '../../types/api';
+import type { Column } from '../../types/api';
 
 interface PhoneColumnTabsProps {
-  columns: (ColumnSummary & WipDecoration)[];
+  columns: (Column & WipDecoration)[];
   activeId: number | undefined;
   onSelect: (columnId: number) => void;
 }

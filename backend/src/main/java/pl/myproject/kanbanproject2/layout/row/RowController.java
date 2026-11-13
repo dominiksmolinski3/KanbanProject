@@ -40,7 +40,7 @@ public class RowController {
     }
 
     @PostMapping
-    public ResponseEntity<RowResponseDto> createRow(
+    public ResponseEntity<RowDto> createRow(
             @Valid @RequestBody CreateRowRequest request,
             @RequestParam(required = false) Integer boardId,
             @AuthenticationPrincipal User currentUser) {

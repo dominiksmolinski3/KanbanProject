@@ -1,7 +1,7 @@
 import { useMemo, useRef, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchColumns, fetchRows, fetchTasks } from '../../services/api';
-import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
+import type { Column, Id, Row, Task } from '../../types/api';
 import { logged } from '../../services/logged';
 import { boardKeys, byPosition } from './boardQueries';
 import { messageOf } from './reportError';
@@ -50,8 +50,8 @@ export function useBoardData({ activeBoardId, onBoardsChanged }: BoardDataDeps):
     },
   });
 
-  const columns: ColumnSummary[] = columnsQuery.data ?? NONE;
-  const rows: RowSummary[] = rowsQuery.data ?? NONE;
+  const columns: Column[] = columnsQuery.data ?? NONE;
+  const rows: Row[] = rowsQuery.data ?? NONE;
   const storedTasks: Task[] = tasksQuery.data ?? NONE;
   const tasks = useMemo(
     () => (rows.length > 0 ? storedTasks.map(task => (task.rowId ? task : { ...task, rowId: rows[0].id })) : storedTasks),
@@ -84,9 +84,9 @@ export function useBoardData({ activeBoardId, onBoardsChanged }: BoardDataDeps):
   useLiveBoardSync(activeBoardId, { refreshTasks, refreshBoard, onBoardsChanged });
 
   return {
-    columns, setColumns: writer<ColumnSummary>(keys.columns),
+    columns, setColumns: writer<Column>(keys.columns),
     tasks, setTasks: writer<Task>(keys.tasks, () => { localChanges.current += 1; }),
-    rows, setRows: writer<RowSummary>(keys.rows),
+    rows, setRows: writer<Row>(keys.rows),
     refreshTasks,
     refreshBoard,
     loading,

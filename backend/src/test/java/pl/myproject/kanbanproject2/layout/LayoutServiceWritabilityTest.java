@@ -24,7 +24,6 @@ import pl.myproject.kanbanproject2.layout.row.RowDto;
 import pl.myproject.kanbanproject2.layout.row.RowMapper;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.layout.row.RowService;
-import pl.myproject.kanbanproject2.task.TaskMapper;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
@@ -74,7 +73,7 @@ class LayoutServiceWritabilityTest {
 
         @BeforeEach
         void setUp() {
-            service = new ColumnService(repository, new ColumnMapper(new TaskMapper()),
+            service = new ColumnService(repository, new ColumnMapper(),
                     mock(TaskService.class), boardService, mock(BoardEventPublisher.class),
                     mock(TaskColumnHistoryRepository.class));
         }
@@ -130,7 +129,7 @@ class LayoutServiceWritabilityTest {
 
         @BeforeEach
         void setUp() {
-            service = new RowService(repository, new RowMapper(new TaskMapper()),
+            service = new RowService(repository, new RowMapper(),
                     mock(TaskRepository.class), boardService, mock(BoardEventPublisher.class));
         }
 

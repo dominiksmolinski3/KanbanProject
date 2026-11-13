@@ -1,14 +1,14 @@
 import { onActiveBoard } from './activeBoard';
 import { deleteQuietly, getJson, patchJson, postJson, withRetries } from './http';
 import { reorder } from './reorder';
-import type { Column, ColumnSummary, Id } from '../types/api';
+import type { Column, Id } from '../types/api';
 
 const COLUMNS = '/api/columns';
 
 export const fetchColumns = (retries = 3) => withRetries(() => getJson<Column[]>(onActiveBoard(COLUMNS)), retries);
 
 export const addColumn = async (name: string, wipLimit: number | string) =>
-  postJson<ColumnSummary>(onActiveBoard(COLUMNS), { name, wipLimit: parseInt(String(wipLimit), 10) || 0 });
+  postJson<Column>(onActiveBoard(COLUMNS), { name, wipLimit: parseInt(String(wipLimit), 10) || 0 });
 
 export const updateColumnWipLimit = (columnId: Id, wipLimit: number | string) =>
   patchJson<Column>(`${COLUMNS}/${columnId}`, { wipLimit: parseInt(String(wipLimit), 10) });

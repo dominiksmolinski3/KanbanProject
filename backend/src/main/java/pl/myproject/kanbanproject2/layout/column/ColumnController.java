@@ -27,7 +27,7 @@ public class ColumnController {
     }
 
     @PostMapping
-    public ResponseEntity<ColumnResponseDto> addNewColumn(
+    public ResponseEntity<ColumnDto> addNewColumn(
             @Valid @RequestBody CreateColumnRequest request,
             @RequestParam(required = false) Integer boardId,
             @AuthenticationPrincipal User currentUser) {
