@@ -77,6 +77,16 @@ class RowControllerHttpTest {
     }
 
     @Test
+    @DisplayName("one swimlane is read by id")
+    void readByIdAnswers200() throws Exception {
+        when(rowService.getRowById(caller, 4)).thenReturn(row(4, "Urgent", 0));
+
+        mvc.perform(get("/rows/4"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Urgent"));
+    }
+
+    @Test
     @DisplayName("a blank name or a negative WIP limit is a 400 before the service is reached")
     void badCreateIs400() throws Exception {
         mvc.perform(post("/rows")

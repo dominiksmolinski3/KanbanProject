@@ -229,6 +229,47 @@ class LayoutServiceTest {
         }
 
         @Test
+        @DisplayName("a patch can rename a swimlane and change its WIP limit in one call")
+        void aPatchCanRenameAndLimit() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            var patched = service.patchRow(CALLER, new PatchRowRequest("Bugs", null, 2), 1);
+
+            assertThat(patched.name()).isEqualTo("Bugs");
+            assertThat(patched.wipLimit()).isEqualTo(2);
+            assertThat(patched.position()).isZero();
+        }
+
+        @Test
+        @DisplayName("a new swimlane takes the position it asks for")
+        void aNewSwimlaneCanNameItsPosition() {
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            assertThat(service.createRow(CALLER, null, new CreateRowRequest("Bugs", 7, null)).position())
+                    .isEqualTo(7);
+            verify(repository, never()).findMaxPosition(any());
+        }
+
+        @Test
+        @DisplayName("a swimlane on the caller's board is read by id")
+        void aSwimlaneIsReadById() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+
+            assertThat(service.getRowById(CALLER, 1))
+                    .isEqualTo(new RowDto(1, "Features", 0, 5));
+        }
+
+        @Test
+        @DisplayName("repositioning writes the position")
+        void repositioningWritesThePosition() {
+            when(repository.findById(1)).thenReturn(Optional.of(row(1, BOARD)));
+            when(repository.save(any(Row.class))).thenAnswer(call -> call.getArgument(0));
+
+            assertThat(service.updateRowPosition(CALLER, 1, 4).position()).isEqualTo(4);
+        }
+
+        @Test
         @DisplayName("a swimlane on another board answers 404, not 403")
         void aSwimlaneOnAnotherBoardIsNotFound() {
             when(repository.findById(5)).thenReturn(Optional.of(row(5, OTHER_BOARD)));
