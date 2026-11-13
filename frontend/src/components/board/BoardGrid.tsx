@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../../context/KanbanContext';
 import type { BoardModel } from '../../board/boardModel';
-import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
+import type { Column, Id, Row, Task } from '../../types/api';
 import Icon from '../Icon';
 import BoardCell from './BoardCell';
 import ColumnHeader from './ColumnHeader';
@@ -14,7 +14,7 @@ export type AddRequest =
   | { type: 'row' };
 
 interface BoardGridProps {
-  model: BoardModel<ColumnSummary, RowSummary, Task>;
+  model: BoardModel<Column, Row, Task>;
   phoneColumnId: Id | undefined;
   isCollapsed: (rowId: Id) => boolean;
   toggleLane: (rowId: Id) => void;

@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../../context/KanbanContext';
 import type { WipDecoration } from '../../board/boardModel';
-import type { ColumnSummary, RowSummary, Task as TaskModel } from '../../types/api';
+import type { Column, Row, Task as TaskModel } from '../../types/api';
 import Task from '../Task';
 import { DROP_TARGET, markDropTarget, unmarkDropTarget } from './dropTarget';
 
 interface BoardCellProps {
-  column: ColumnSummary & WipDecoration;
-  row: RowSummary & WipDecoration;
+  column: Column & WipDecoration;
+  row: Row & WipDecoration;
   tasks: TaskModel[];
   collapsed: boolean;
   phoneActive: boolean;

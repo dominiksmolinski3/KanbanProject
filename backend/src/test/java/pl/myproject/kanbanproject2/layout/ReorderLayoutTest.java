@@ -18,7 +18,6 @@ import pl.myproject.kanbanproject2.layout.row.RowDto;
 import pl.myproject.kanbanproject2.layout.row.RowMapper;
 import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.layout.row.RowService;
-import pl.myproject.kanbanproject2.task.TaskMapper;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.TaskService;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
@@ -51,7 +50,7 @@ class ReorderLayoutTest {
         private final Map<Integer, BoardColumn> stored = new HashMap<>();
         private final ColumnRepository columnRepository = mock(ColumnRepository.class);
         private final ColumnService service = new ColumnService(
-                columnRepository, new ColumnMapper(new TaskMapper()),
+                columnRepository, new ColumnMapper(),
                 mock(TaskService.class), TENANT.boardService(), mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
 
@@ -120,7 +119,7 @@ class ReorderLayoutTest {
         private final Map<Integer, Row> stored = new HashMap<>();
         private final RowRepository rowRepository = mock(RowRepository.class);
         private final RowService service = new RowService(
-                rowRepository, new RowMapper(new TaskMapper()),
+                rowRepository, new RowMapper(),
                 mock(TaskRepository.class), TENANT.boardService(), mock(BoardEventPublisher.class));
 
         private Row row(int id, Board board, int position) {

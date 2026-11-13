@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../../context/KanbanContext';
 import type { WipDecoration } from '../../board/boardModel';
-import type { RowSummary } from '../../types/api';
+import type { Row } from '../../types/api';
 import EditableText from '../EditableText';
 import Icon from '../Icon';
 import WipMeter from '../WipMeter';
 import { markDropTarget, unmarkDropTarget } from './dropTarget';
 
 interface RowHeaderProps {
-  row: RowSummary & WipDecoration;
+  row: Row & WipDecoration;
   collapsed: boolean;
   onToggle: (rowId: number) => void;
   onDelete: (rowId: number) => void;
