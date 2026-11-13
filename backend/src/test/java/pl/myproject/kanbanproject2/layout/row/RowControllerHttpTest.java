@@ -49,25 +49,25 @@ class RowControllerHttpTest {
     }
 
     private static RowDto row(Integer id, String name, Integer position) {
-        return new RowDto(id, name, position, null, List.of());
+        return new RowDto(id, name, position, null);
     }
 
     @Test
-    @DisplayName("the swimlane list answers 200 and passes the board through")
+    @DisplayName("the swimlane list answers 200, passes the board through and carries no tasks")
     void listAnswers200() throws Exception {
         when(rowService.getAllRows(caller, 7)).thenReturn(List.of(row(4, "Urgent", 0)));
 
         mvc.perform(get("/rows").param("boardId", "7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Urgent"))
-                .andExpect(jsonPath("$[0].taskDTO").isArray());
+                .andExpect(jsonPath("$[0].taskDTO").doesNotExist());
     }
 
     @Test
-    @DisplayName("creating answers 201 with the slim response DTO")
+    @DisplayName("creating answers 201 with the new swimlane")
     void createAnswers201() throws Exception {
         when(rowService.createRow(caller, 7, new CreateRowRequest("Later", null, null)))
-                .thenReturn(new RowResponseDto(5, "Later", 1, null));
+                .thenReturn(new RowDto(5, "Later", 1, null));
 
         mvc.perform(post("/rows").param("boardId", "7")
                         .contentType(MediaType.APPLICATION_JSON)

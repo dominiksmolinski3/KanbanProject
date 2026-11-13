@@ -35,7 +35,7 @@ public class ColumnService {
                 .map(columnMapper).toList();
     }
 
-    public ColumnResponseDto addNewColumn(User caller, Integer boardId, CreateColumnRequest request) {
+    public ColumnDto addNewColumn(User caller, Integer boardId, CreateColumnRequest request) {
         var board = boardService.resolve(caller, boardId);
         boardService.requireWritable(caller, board);
 
@@ -48,7 +48,7 @@ public class ColumnService {
                 : nextPosition(board));
         var created = columnRepository.save(column);
         boardEvents.columnsChanged(created.getBoard());
-        return columnMapper.toResponseDto(created);
+        return columnMapper.apply(created);
     }
 
     private ColumnDto saveAndAnnounce(BoardColumn column) {

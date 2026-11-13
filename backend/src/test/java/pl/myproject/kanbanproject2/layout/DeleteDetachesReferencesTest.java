@@ -56,7 +56,7 @@ class DeleteDetachesReferencesTest {
         private final RowRepository rowRepository = Mockito.mock(RowRepository.class);
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final RowService rowService =
-                new RowService(rowRepository, new RowMapper(new pl.myproject.kanbanproject2.task.TaskMapper()),
+                new RowService(rowRepository, new RowMapper(),
                         taskRepository, TENANT.boardService(), mock(BoardEventPublisher.class));
 
         @Test
@@ -104,7 +104,7 @@ class DeleteDetachesReferencesTest {
                 Mockito.mock(TaskColumnHistoryRepository.class);
         private final ColumnService columnService =
                 new ColumnService(columnRepository,
-                        new ColumnMapper(new pl.myproject.kanbanproject2.task.TaskMapper()), taskService,
+                        new ColumnMapper(), taskService,
                         TENANT.boardService(), mock(BoardEventPublisher.class), historyRepository);
 
         @Test
