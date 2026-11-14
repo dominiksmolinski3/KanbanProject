@@ -15,7 +15,9 @@ RUN ./mvnw --batch-mode --quiet dependency:go-offline
 
 COPY src ./src/
 
-RUN ./mvnw package -Dmaven.test.skip=true
+RUN ./mvnw package -Dmaven.test.skip=true \
+ && mv target/*.jar app.jar \
+ && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 FROM eclipse-temurin:25-jre-noble@sha256:a98128a57de944a72bd31fbc79b898edd5a5864d3652071d5bbd2160ab7d7dce
 WORKDIR /app
@@ -29,7 +31,11 @@ RUN apt-get update \
 RUN groupadd --system --gid 10001 appuser \
  && useradd --system --uid 10001 --gid 10001 --no-create-home appuser
 
-COPY --from=backend-build --chown=10001:10001 /build/target/*.jar app.jar
+# Ordered from what changes least: a code change then rebuilds only the last, small layer.
+COPY --from=backend-build --chown=10001:10001 /build/extracted/dependencies/ ./
+COPY --from=backend-build --chown=10001:10001 /build/extracted/spring-boot-loader/ ./
+COPY --from=backend-build --chown=10001:10001 /build/extracted/snapshot-dependencies/ ./
+COPY --from=backend-build --chown=10001:10001 /build/extracted/application/ ./
 
 ADD --checksum=sha256:93a70c8f5d364c7e777f6c4d1b235dba91aef8448bd3fa94359f1d7f3e2eb0ec --chown=10001:10001     https://repo1.maven.org/maven2/com/microsoft/azure/applicationinsights-agent/3.7.10/applicationinsights-agent-3.7.10.jar     applicationinsights-agent.jar
 COPY --chown=10001:10001 applicationinsights.json ./
