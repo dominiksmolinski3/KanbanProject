@@ -173,7 +173,7 @@ public class BoardService {
     }
 
     public List<BoardDto> myBoards(User caller) {
-        return visibleTo(caller).stream().map(board -> boardMapper.apply(board, caller)).toList();
+        return boardMapper.applyAll(visibleTo(caller), caller);
     }
 
     public BoardDto getBoard(User caller, Integer id) {
@@ -297,6 +297,11 @@ public class BoardService {
                 .min(Comparator.comparing((User candidate) -> BoardRole.VIEWER.name().equals(roles.get(candidate.getId())))
                         .thenComparing(User::getId))
                 .orElse(null);
+    }
+
+    public boolean shareABoard(User caller, Integer userId) {
+        return caller != null && caller.getId() != null && userId != null
+                && boardRepository.shareABoard(caller.getId(), userId);
     }
 
     public Collection<User> peersOf(User caller) {

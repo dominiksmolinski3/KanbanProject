@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,12 +40,23 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
             """)
     boolean isVisibleTo(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(board) > 0 THEN TRUE ELSE FALSE END FROM Board board
+            WHERE (board.owner.id = :first OR EXISTS (SELECT 1 FROM board.members member WHERE member.id = :first))
+              AND (board.owner.id = :second OR EXISTS (SELECT 1 FROM board.members member WHERE member.id = :second))
+            """)
+    boolean shareABoard(@Param("first") Integer first, @Param("second") Integer second);
+
     @Query(value = "SELECT role FROM board_members WHERE board_id = :boardId AND user_id = :userId",
             nativeQuery = true)
     Optional<String> findMemberRole(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
 
     @Query(value = "SELECT user_id, role FROM board_members WHERE board_id = :boardId", nativeQuery = true)
     List<Object[]> findMemberRoles(@Param("boardId") Integer boardId);
+
+    @Query(value = "SELECT board_id, user_id, role FROM board_members WHERE board_id IN (:boardIds)",
+            nativeQuery = true)
+    List<Object[]> findMemberRolesIn(@Param("boardIds") Collection<Integer> boardIds);
 
     @Modifying
     @Query(value = "UPDATE board_members SET role = :role WHERE board_id = :boardId AND user_id = :userId",
