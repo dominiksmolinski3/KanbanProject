@@ -71,7 +71,7 @@ public class StompDestinationPolicy implements ChannelInterceptor {
     private Message<?> drop(StompHeaderAccessor accessor, String destination, String reason) {
         var caller = StompPrincipals.userOf(accessor.getUser());
         log.warn("Dropped a {} to {} from {}", accessor.getCommand(), destination,
-                caller == null ? "an unauthenticated session" : caller.getUsername());
+                caller == null ? "an unauthenticated session" : "account " + caller.getId());
         meterRegistry.counter(BoardSubscriptionInterceptor.DROPPED_COUNTER, "reason", reason).increment();
         return null;
     }

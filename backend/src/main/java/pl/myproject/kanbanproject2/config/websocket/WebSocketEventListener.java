@@ -35,7 +35,7 @@ public class WebSocketEventListener {
             return;
         }
 
-        log.info("User {} disconnected from board {}", username, boardId);
+        log.info("A session disconnected from board {}", boardId);
         chatService.announcePresence(boardId, ChatMessage.builder()
                 .type(MessageType.LEAVE)
                 .sender(username)

@@ -39,8 +39,8 @@ public class ChatController {
             return;
         }
         if (!boardService.isWritable(sender, board)) {
-            log.warn("Dropped an attempt by {} to send a message on read-only board {}",
-                    sender.getUsername(), board.getId());
+            log.warn("Dropped an attempt by account {} to send a message on read-only board {}",
+                    sender.getId(), board.getId());
             chatService.refuse(sender.getUsername(), ChatRefusal.READ_ONLY_BOARD);
             return;
         }
@@ -59,7 +59,7 @@ public class ChatController {
         }
         String recipient = chatMessage == null ? null : peerNamed(sender, chatMessage.getRecipientId());
         if (recipient == null) {
-            log.warn("Dropped a direct message from {} to an account that is not a peer", sender.getUsername());
+            log.warn("Dropped a direct message from account {} to an account that is not a peer", sender.getId());
             return;
         }
         if (!prepare(chatMessage, sender, MessageType.PRIVATE)) {
@@ -148,13 +148,13 @@ public class ChatController {
     private Board visibleBoardOr(User caller, ChatMessage chatMessage, String attempted) {
         Integer boardId = chatMessage == null ? null : chatMessage.getBoardId();
         if (boardId == null) {
-            log.warn("Dropped an attempt by {} to {} naming no board", caller.getUsername(), attempted);
+            log.warn("Dropped an attempt by account {} to {} naming no board", caller.getId(), attempted);
             return null;
         }
         try {
             return boardService.requireVisible(caller, boardId);
         } catch (GlobalException exception) {
-            log.warn("Dropped an attempt by {} to {} on board {}", caller.getUsername(), attempted, boardId);
+            log.warn("Dropped an attempt by account {} to {} on board {}", caller.getId(), attempted, boardId);
             return null;
         }
     }

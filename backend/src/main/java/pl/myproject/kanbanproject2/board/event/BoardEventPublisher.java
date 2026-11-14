@@ -117,7 +117,7 @@ public class BoardEventPublisher {
         try {
             messagingTemplate.convertAndSendToUser(username, BOARDS_QUEUE, new BoardEvent(BoardEventType.BOARDS, null));
         } catch (RuntimeException exception) {
-            log.warn("Could not tell {} their boards changed: {}", username, exception.getMessage());
+            log.warn("Could not tell an account their boards changed: {}", exception.getMessage());
         }
     }
 
