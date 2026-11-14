@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '../../test-utils/rtl';
+import { render, screen, fireEvent, waitFor, act, within } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import { toast } from 'react-toastify';
 import UsersManagement from '../../components/UsersManagement';
@@ -60,60 +60,73 @@ describe('UsersManagement', () => {
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
   });
 
-  test('deleting a user: declining the confirm sends no request', async () => {
+  const openDeleteDialog = async () => {
+    render(<UsersManagement />);
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByTitle('usersManagement.buttons.delete')[0]);
+    return within(await screen.findByRole('dialog'));
+  };
+
+  const confirmWith = (dialog, password) => {
+    fireEvent.change(dialog.getByLabelText('account.password.currentLabel'), { target: { value: password } });
+    fireEvent.click(dialog.getByRole('button', { name: 'usersManagement.buttons.delete' }));
+  };
+
+  test('deleting an account: the button asks for the password first, and cancelling sends no request', async () => {
     global.fetch = jest.fn((url) => {
       if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
       if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
       throw new Error(`unexpected fetch ${url}`);
     });
-    jest.spyOn(window, 'confirm').mockReturnValue(false);
 
-    render(<UsersManagement />);
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    const dialog = await openDeleteDialog();
+    expect(dialog.getByText('usersManagement.messages.deleteConfirm')).toBeInTheDocument();
     global.fetch.mockClear();
 
-    fireEvent.click(screen.getAllByTitle('usersManagement.buttons.delete')[0]);
+    fireEvent.click(dialog.getByRole('button', { name: 'account.email.cancel' }));
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(global.fetch).not.toHaveBeenCalled();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 
-  test('deleting a user: confirming removes them from the list on success', async () => {
+  test('deleting an account: confirming sends the password, removes them from the list and signs out', async () => {
     global.fetch = jest.fn((url, options) => {
       if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
       if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
-      if (url === '/api/users/1' && options?.method === 'DELETE') return Promise.resolve({ ok: true });
+      if (url === '/api/users/1' && options?.method === 'DELETE') return Promise.resolve({ ok: true, status: 204 });
       throw new Error(`unexpected fetch ${url}`);
     });
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
 
-    render(<UsersManagement />);
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    confirmWith(await openDeleteDialog(), 'the-password');
 
-    fireEvent.click(screen.getAllByTitle('usersManagement.buttons.delete')[0]);
-
-    await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
-    expect(screen.getByText('Bob Marsh')).toBeInTheDocument();
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledWith('/api/users/1', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: 'the-password' }),
+    });
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(screen.getByText('Bob Marsh')).toBeInTheDocument();
   });
 
-  test('deleting a user: a server refusal reports the error and keeps them listed', async () => {
+  test('deleting an account: a wrong password says so, keeps the dialog open and signs nobody out', async () => {
     global.fetch = jest.fn((url, options) => {
       if (url === '/api/users') return Promise.resolve(jsonResponse(USERS));
       if (String(url).includes('/avatar')) return Promise.resolve(blobResponse(false));
-      if (url === '/api/users/1' && options?.method === 'DELETE') return Promise.resolve({ ok: false, status: 500 });
+      if (url === '/api/users/1' && options?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: false, status: 400, json: async () => ({ code: 'WRONG_PASSWORD', message: 'The current password is not correct' }),
+        });
+      }
       throw new Error(`unexpected fetch ${url}`);
     });
-    jest.spyOn(window, 'confirm').mockReturnValue(true);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<UsersManagement />);
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    confirmWith(await openDeleteDialog(), 'not-the-password');
 
-    fireEvent.click(screen.getAllByTitle('usersManagement.buttons.delete')[0]);
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('usersManagement.messages.deleteError'));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('account.errors.wrongPassword'));
     expect(mockLogout).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 

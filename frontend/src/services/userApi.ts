@@ -1,4 +1,4 @@
-import { deleteQuietly, getJson, patchJson, readVoid } from './http';
+import { deleteChecked, getJson, patchJson, readVoid } from './http';
 import type { Id, User, WipStatus } from '../types/api';
 
 const USERS = '/api/users';
@@ -7,7 +7,8 @@ export const fetchUsers = () => getJson<User[]>(USERS);
 
 export const fetchUser = (userId: Id) => getJson<User>(`${USERS}/${userId}`);
 
-export const deleteUser = (userId: Id) => deleteQuietly(`${USERS}/${userId}`);
+export const deleteUser = (userId: Id, currentPassword: string) =>
+  deleteChecked(`${USERS}/${userId}`, { currentPassword });
 
 export const uploadUserAvatar = async (userId: Id, file: Blob) => {
   const formData = new FormData();

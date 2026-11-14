@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 class UserControllerOwnershipTest {
     private static final Integer OWNER_ID = 1;
     private static final Integer VICTIM_ID = 2;
+    private static final pl.myproject.kanbanproject2.user.auth.DeleteAccountRequest PASSWORD =
+            new pl.myproject.kanbanproject2.user.auth.DeleteAccountRequest("the-password");
 
     private UserService userService;
     private UserController controller;
@@ -37,7 +39,8 @@ class UserControllerOwnershipTest {
     @Test
     @DisplayName("deleting another user's account is refused before the service is reached")
     void deleteRejectsOtherAccounts() {
-        assertThatThrownBy(() -> controller.deleteUser(VICTIM_ID, caller))
+        assertThatThrownBy(() -> controller.deleteUser(VICTIM_ID,
+                new pl.myproject.kanbanproject2.user.auth.DeleteAccountRequest("the-password"), caller))
                 .isInstanceOf(GlobalException.class)
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.NOT_ACCOUNT_OWNER);
@@ -61,7 +64,7 @@ class UserControllerOwnershipTest {
     @Test
     @DisplayName("an unauthenticated principal is refused rather than treated as the target")
     void nullPrincipalIsRejected() {
-        assertThatThrownBy(() -> controller.deleteUser(OWNER_ID, null))
+        assertThatThrownBy(() -> controller.deleteUser(OWNER_ID, PASSWORD, null))
                 .isInstanceOf(GlobalException.class)
                 .extracting(e -> ((GlobalException) e).getIdentifier())
                 .isEqualTo(ExceptionIdentifier.NOT_ACCOUNT_OWNER);
@@ -74,7 +77,7 @@ class UserControllerOwnershipTest {
         var rename = new PatchUserRequest("Owner", 3, "en");
         when(userService.patchUser(rename, OWNER_ID)).thenReturn(own);
 
-        controller.deleteUser(OWNER_ID, caller);
+        controller.deleteUser(OWNER_ID, PASSWORD, caller);
         var patched = controller.patchUser(OWNER_ID, rename, caller);
 
         verify(userService).deleteUser(OWNER_ID);

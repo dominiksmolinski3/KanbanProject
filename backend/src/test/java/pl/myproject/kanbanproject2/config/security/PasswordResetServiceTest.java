@@ -420,6 +420,18 @@ class PasswordResetServiceTest {
         }
 
         @Test
+        @DisplayName("the current-password check passes the right password and refuses any other")
+        void theCurrentPasswordCheckIsExact() {
+            var existing = user(KNOWN, true);
+
+            assertThatCode(() -> service.requireCurrentPassword(existing, "old-password")).doesNotThrowAnyException();
+            assertThatThrownBy(() -> service.requireCurrentPassword(existing, "old-passwor"))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.WRONG_PASSWORD);
+        }
+
+        @Test
         @DisplayName("changing a password ends every session the account had, including this one")
         void changingWithdrawsEverySession() {
             var existing = user(KNOWN, true);

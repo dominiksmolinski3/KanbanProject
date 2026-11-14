@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import type { User } from '../types/api';
+import type { Id, User } from '../types/api';
 import BoardMembers from './BoardMembers';
 import Invitations from './Invitations';
+import DeleteAccountDialog from './people/DeleteAccountDialog';
 import PersonRow from './people/PersonRow';
 import { usePeople } from './people/usePeople';
 import '../styles/components/Users.css';
@@ -11,6 +13,7 @@ function UsersManagement() {
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const { users, avatars, uploadAvatar, removeUser } = usePeople();
+  const [deleting, setDeleting] = useState<Id | null>(null);
 
   const isMe = (person: User) => currentUser?.id != null && person.id === currentUser.id;
   const people = [...users].sort((a, b) => Number(isMe(b)) - Number(isMe(a)));
@@ -36,11 +39,18 @@ function UsersManagement() {
               avatar={avatars[person.id]}
               isMe={isMe(person)}
               onUpload={uploadAvatar}
-              onDelete={removeUser}
+              onDelete={setDeleting}
             />
           ))}
         </ul>
       </section>
+
+      {deleting !== null && (
+        <DeleteAccountDialog
+          onConfirm={(currentPassword) => removeUser(deleting, currentPassword)}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </div>
   );
 }

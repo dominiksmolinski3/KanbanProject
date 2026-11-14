@@ -7,6 +7,7 @@ const ERROR_KEYS: Record<string, string> = {
   INVALID_VERIFICATION_CODE: 'account.errors.invalidCode',
   VERIFICATION_CODE_EXPIRED: 'account.errors.expiredCode',
   VALIDATION_ERROR: 'account.errors.invalid',
+  DEMO_ACCOUNT_LOCKED: 'errors.codes.DEMO_ACCOUNT_LOCKED',
 };
 
 export const failureText = (t: Translate, error: unknown): string =>
