@@ -1,87 +1,55 @@
 import BoardEvents from '../../services/boardEvents';
+import { joinLiveSocket, leaveLiveSocket } from '../../services/liveSocket';
+import { clientInstances } from '../../test-utils/stompMock';
 
 jest.mock('sockjs-client', () => jest.fn().mockImplementation((url) => ({ url })));
+jest.mock('@stomp/stompjs', () => require('../../test-utils/stompMock'));
 
-const clientInstances = [];
-jest.mock('@stomp/stompjs', () => ({
-  Client: jest.fn().mockImplementation(function Client(config) {
-    Object.assign(this, config);
-    this.connected = false;
-    this.subscribe = jest.fn((destination, handler) => {
-      const subscription = { destination, handler, unsubscribe: jest.fn() };
-      this.subscriptions.push(subscription);
-      return subscription;
-    });
-    this.subscriptions = [];
-    this.activate = jest.fn();
-    this.deactivate = jest.fn();
-    this.completeConnect = async () => {
-      await this.beforeConnect(this);
-      this.connected = true;
-      this.onConnect();
-    };
-    clientInstances.push(this);
-  }),
-}));
-
-const mockRenewOrSignOut = jest.fn(() => Promise.resolve(null));
 jest.mock('../../services/apiInterceptor', () => ({
-  renewOrSignOut: () => mockRenewOrSignOut(),
+  renewOrSignOut: () => Promise.resolve(null),
 }));
 
-const session = { expired: false, token: 'jwt-fresh', refreshes: 0 };
 jest.mock('../../services/session', () => ({
-  getAccessToken: () => session.token,
-  isAccessTokenExpired: () => session.expired,
-  refreshSession: () => {
-    session.refreshes += 1;
-    session.token = 'jwt-renewed';
-    session.expired = false;
-    return Promise.resolve();
-  },
+  getAccessToken: () => 'jwt-fresh',
+  isAccessTokenExpired: () => false,
+  refreshSession: () => Promise.resolve(),
 }));
 
 describe('BoardEvents', () => {
+  let watchers;
+
   beforeEach(() => {
     clientInstances.length = 0;
-    session.expired = false;
-    session.token = 'jwt-fresh';
-    session.refreshes = 0;
+    watchers = [];
     jest.clearAllMocks();
   });
 
-  const boardTopic = (client) => client.subscriptions.find((s) => s.destination.startsWith('/topic/'));
+  afterEach(() => {
+    watchers.forEach((events) => events.stop());
+  });
 
-  const watch = async (boardId = 7, onEvent = jest.fn()) => {
+  const boardTopic = (client) => client.subscriptions.findLast((s) => s.destination.startsWith('/topic/'));
+
+  const watch = async (boardId = 7, onEvent = jest.fn(), onBoardsChanged = undefined) => {
     const events = new BoardEvents();
-    events.watch(boardId, onEvent);
+    watchers.push(events);
+    events.watch(boardId, onEvent, onBoardsChanged);
     const client = clientInstances[0];
     await client.completeConnect();
     return { events, client, onEvent };
   };
 
-  it('renews or signs out when the server closes the connection with an ERROR', async () => {
-    const { client } = await watch(7);
-
-    client.onStompError({ headers: { message: 'This connection was signed out' } });
-
-    expect(mockRenewOrSignOut).toHaveBeenCalledTimes(1);
-  });
-
   it('subscribes to the board it was asked to watch, and to its own boards notices', async () => {
     const { client } = await watch(7);
 
-    expect(client.subscriptions.map((s) => s.destination)).toEqual(['/user/queue/boards', '/topic/boards.7']);
+    expect(client.destinations()).toEqual(['/user/queue/boards', '/topic/boards.7']);
   });
 
   it('hands a boards notice to the caller', async () => {
-    const events = new BoardEvents();
     const onBoardsChanged = jest.fn();
-    events.watch(7, jest.fn(), onBoardsChanged);
-    const client = clientInstances[0];
-    await client.completeConnect();
+    const { client } = await watch(7, jest.fn(), onBoardsChanged);
 
-    client.subscriptions.find((s) => s.destination === '/user/queue/boards').handler({ body: '{"type":"BOARDS"}' });
+    client.subscriptionTo('/user/queue/boards').handler({ body: '{"type":"BOARDS"}' });
 
     expect(onBoardsChanged).toHaveBeenCalledTimes(1);
   });
@@ -101,28 +69,26 @@ describe('BoardEvents', () => {
     expect(onEvent).not.toHaveBeenCalled();
   });
 
-  it('takes a live token on every connection attempt, not the one it was built with', async () => {
-    const { client } = await watch();
-    expect(client.connectHeaders).toEqual({ Authorization: 'Bearer jwt-fresh' });
-
-    session.expired = true;
-    client.connected = false;
-    await client.completeConnect();
-
-    expect(session.refreshes).toBe(1);
-    expect(client.connectHeaders).toEqual({ Authorization: 'Bearer jwt-renewed' });
-  });
-
   it('resubscribes after a reconnect, or the board goes quiet without looking broken', async () => {
     const { client } = await watch(7);
     client.connected = false;
 
     await client.completeConnect();
 
-    expect(client.subscriptions.map((s) => s.destination).filter((d) => d.startsWith('/topic/'))).toEqual([
+    expect(client.destinations().filter((d) => d.startsWith('/topic/'))).toEqual([
       '/topic/boards.7',
       '/topic/boards.7',
     ]);
+  });
+
+  it('leaves the handles of a lost connection alone, whose ids the new connection hands out again', async () => {
+    const { client } = await watch(7);
+    const stale = [...client.subscriptions];
+    client.connected = false;
+
+    await client.completeConnect();
+
+    stale.forEach((subscription) => expect(subscription.unsubscribe).not.toHaveBeenCalled());
   });
 
   it('moves the subscription on a board switch and keeps the one connection', async () => {
@@ -136,22 +102,37 @@ describe('BoardEvents', () => {
     expect(clientInstances).toHaveLength(1);
   });
 
-  it('refuses to connect rather than throwing when the session cannot be renewed', async () => {
-    session.expired = true;
-    const failing = jest.spyOn(require('../../services/session'), 'refreshSession');
-    failing.mockRejectedValueOnce(new Error('refresh refused'));
-
+  it('waits for the connection when the board is switched before it is up', async () => {
     const events = new BoardEvents();
+    watchers.push(events);
+    events.watch(7, jest.fn());
+    const client = clientInstances[0];
+
+    expect(() => events.watch(9, jest.fn())).not.toThrow();
+    expect(client.subscriptions).toEqual([]);
+
+    await client.completeConnect();
+    expect(client.destinations()).toEqual(['/user/queue/boards', '/topic/boards.9']);
+  });
+
+  it('subscribes at once on a connection somebody else already opened', async () => {
+    const other = { onConnect: jest.fn() };
+    const client = joinLiveSocket(other);
+    await client.completeConnect();
+    const events = new BoardEvents();
+    watchers.push(events);
+
     events.watch(7, jest.fn());
 
-    await expect(clientInstances[0].completeConnect()).resolves.not.toThrow();
-    failing.mockRestore();
+    expect(clientInstances).toHaveLength(1);
+    expect(client.destinations()).toEqual(['/user/queue/boards', '/topic/boards.7']);
+    leaveLiveSocket(other);
   });
 
   it('stops cleanly and lets go of the connection', async () => {
     const { events, client } = await watch();
     const subscription = boardTopic(client);
-    const notices = client.subscriptions.find((s) => s.destination === '/user/queue/boards');
+    const notices = client.subscriptionTo('/user/queue/boards');
 
     events.stop();
 
@@ -159,5 +140,28 @@ describe('BoardEvents', () => {
     expect(notices.unsubscribe).toHaveBeenCalled();
     expect(client.deactivate).toHaveBeenCalled();
     expect(events.client).toBeNull();
+  });
+
+  it('stops without closing a connection somebody else still uses', async () => {
+    const { events, client } = await watch();
+    const other = { onConnect: jest.fn() };
+    joinLiveSocket(other);
+
+    events.stop();
+
+    expect(boardTopic(client).unsubscribe).toHaveBeenCalled();
+    expect(client.deactivate).not.toHaveBeenCalled();
+    leaveLiveSocket(other);
+  });
+
+  it('stops without unsubscribing on a connection that is down, where the library throws', async () => {
+    const { events, client } = await watch();
+    const subscription = boardTopic(client);
+    client.connected = false;
+
+    events.stop();
+
+    expect(subscription.unsubscribe).not.toHaveBeenCalled();
+    expect(client.deactivate).toHaveBeenCalled();
   });
 });

@@ -1,9 +1,6 @@
-import SockJS from 'sockjs-client';
-import { Client, type StompSubscription } from '@stomp/stompjs';
-import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
-import { renewOrSignOut } from './apiInterceptor';
+import type { Client, StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
-import { socketOrigin } from './apiOrigin';
+import { joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
 
 export interface BoardEvent {
   type: string;
@@ -19,7 +16,15 @@ export default class BoardEvents {
   onBoardsChanged: (() => void) | null = null;
   boardId: Id | null = null;
   onEvent: BoardEventHandler | null = null;
-  serverUrl = socketOrigin();
+
+  private readonly socketUser: LiveSocketUser = {
+    onConnect: (client) => {
+      this.client = client;
+      this.subscription = null;
+      this.boardsSubscription = null;
+      this.subscribe();
+    },
+  };
 
   watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void) {
     this.onEvent = onEvent;
@@ -27,49 +32,15 @@ export default class BoardEvents {
     this.boardId = boardId;
 
     if (this.client) {
-      this.resubscribe();
+      this.unsubscribe();
+      this.subscribe();
       return;
     }
 
-    this.client = new Client({
-      webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
-      debug: () => {},
-      reconnectDelay: 5000,
-      heartbeatIncoming: 10000,
-      heartbeatOutgoing: 10000,
-
-      beforeConnect: async (client) => {
-        if (isAccessTokenExpired()) {
-          try {
-            await refreshSession();
-          } catch {
-            // The interceptor owns signing somebody out; refusing to connect is all this can do.
-          }
-        }
-        const token = getAccessToken();
-        client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-      },
-
-      onConnect: () => this.resubscribe(),
-
-      onStompError: () => {
-        renewOrSignOut().catch(() => {});
-      },
-      onWebSocketError: () => {},
-    });
-
-    this.client.activate();
+    this.client = joinLiveSocket(this.socketUser);
   }
 
-  resubscribe() {
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-      this.subscription = null;
-    }
-    if (this.boardsSubscription) {
-      this.boardsSubscription.unsubscribe();
-      this.boardsSubscription = null;
-    }
+  private subscribe() {
     if (!this.client || !this.client.connected || this.boardId == null) {
       return;
     }
@@ -88,18 +59,20 @@ export default class BoardEvents {
     });
   }
 
+  private unsubscribe() {
+    if (this.client?.connected) {
+      this.subscription?.unsubscribe();
+      this.boardsSubscription?.unsubscribe();
+    }
+    this.subscription = null;
+    this.boardsSubscription = null;
+  }
+
   stop() {
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-      this.subscription = null;
-    }
-    if (this.boardsSubscription) {
-      this.boardsSubscription.unsubscribe();
-      this.boardsSubscription = null;
-    }
+    this.unsubscribe();
     this.onBoardsChanged = null;
     if (this.client) {
-      this.client.deactivate();
+      leaveLiveSocket(this.socketUser);
       this.client = null;
     }
     this.onEvent = null;
