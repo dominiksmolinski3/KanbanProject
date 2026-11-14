@@ -173,7 +173,7 @@ public class BoardService {
     }
 
     public List<BoardDto> myBoards(User caller) {
-        return visibleTo(caller).stream().map(board -> boardMapper.apply(board, caller)).toList();
+        return boardMapper.applyAll(visibleTo(caller), caller);
     }
 
     public BoardDto getBoard(User caller, Integer id) {
