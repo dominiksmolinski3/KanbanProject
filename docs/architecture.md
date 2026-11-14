@@ -701,8 +701,12 @@ Four decisions carry the feature:
   Terraform state. A connection string is accepted too, and is only ever local development against
   Azurite, whose key is a published constant.
 - **A blob and a row are two systems, and the order chooses which failure is possible.** Upload
-  writes the blob first and the row second, removing the blob if the transaction does not commit;
-  delete removes the row and the blob *after* the commit. Both orders leave the same failure
+  writes the blob first and the row second, removing the blob if the row is not written;
+  delete removes the row and the blob *after* the commit. **No transaction spans a transfer**: an
+  upload checks access and quota in one short transaction, sends the bytes with none open, and
+  records the row in a second one; a download reads the row and then opens the blob. A transaction
+  around the transfer held a database connection for as long as storage took, so a stalled store
+  emptied the pool for every other request (`BlobTransferTransactionDatabaseTest`). Both orders leave the same failure
   available — an orphaned blob, invisible and costing a fraction of a cent — and rule out the other
   one, a row whose bytes are gone, which is an attachment that fails every time somebody clicks it.
   `TaskService.deleteTask` calls `TaskAttachmentService.deleteAllFor` rather than relying on a
