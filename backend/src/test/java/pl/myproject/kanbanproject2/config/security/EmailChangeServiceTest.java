@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
@@ -13,11 +14,13 @@ import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +37,7 @@ import static org.mockito.Mockito.when;
 
 class EmailChangeServiceTest {
     private static final PasswordEncoder ENCODER = new BCryptPasswordEncoder(4);
+    private static final String DEMO = "demo@example.test";
     private static final DeviceContext DEVICE = new DeviceContext("203.0.113.9", "JUnit");
 
     private UserRepository userRepository;
@@ -52,12 +56,13 @@ class EmailChangeServiceTest {
         authenticationService = mock(AuthenticationService.class);
         chatRepository = mock(ChatRepository.class);
         service = new EmailChangeService(userRepository, ENCODER, emailService, refreshTokenService,
-                authenticationService, chatRepository);
+                authenticationService, chatRepository, new DemoAccounts(List.of(DEMO)));
 
         account = new User("Owner", "owner@example.test", ENCODER.encode("the-password"));
         account.setId(1);
         account.setLocale("en");
         when(userRepository.findById(1)).thenReturn(Optional.of(account));
+        when(userRepository.findByIdForUpdate(1)).thenReturn(Optional.of(account));
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
     }
@@ -68,10 +73,15 @@ class EmailChangeServiceTest {
         service.requestChange(account, new EmailChangeRequest("  New@Example.TEST ", "the-password"));
 
         assertThat(account.getPendingEmail()).isEqualTo("new@example.test");
-        assertThat(account.getEmailChangeCode()).matches("\\d{6}");
         assertThat(account.getEmail()).isEqualTo("owner@example.test");
-        verify(emailService).sendEmailChangeCode(eq("new@example.test"), eq(account.getEmailChangeCode()),
+        var mailed = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendEmailChangeCode(eq("new@example.test"), mailed.capture(),
                 eq((long) EmailChangeService.CODE_TTL_MINUTES), any());
+        assertThat(mailed.getValue()).matches("\\d{6}");
+        assertThat(account.getEmailChangeCode())
+                .as("read access to the users table must not be enough to move an account to another address")
+                .isNotEqualTo(mailed.getValue());
+        assertThat(ENCODER.matches(mailed.getValue(), account.getEmailChangeCode())).isTrue();
     }
 
     @Test
@@ -216,9 +226,25 @@ class EmailChangeServiceTest {
                 service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
     }
 
+    @Test
+    @DisplayName("a shared demo account cannot be moved to another address, with the right password or a live code")
+    void aDemoAccountKeepsItsAddress() {
+        account.setEmail(DEMO);
+
+        expect(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED, () ->
+                service.requestChange(account, new EmailChangeRequest("mine@example.test", "the-password")));
+        pending("mine@example.test", "123456", Instant.now().plus(Duration.ofMinutes(5)));
+        expect(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED, () ->
+                service.confirmChange(account, new ConfirmEmailChangeRequest("123456"), DEVICE));
+
+        assertThat(account.getEmail()).isEqualTo(DEMO);
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(emailService, refreshTokenService, authenticationService);
+    }
+
     private void pending(String address, String code, Instant expiresAt) {
         account.setPendingEmail(address);
-        account.setEmailChangeCode(code);
+        account.setEmailChangeCode(ENCODER.encode(code));
         account.setEmailChangeExpiresAt(expiresAt);
     }
 

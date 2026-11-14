@@ -18,11 +18,13 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.exception.GlobalExceptionHandler;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserControllerHttpTest {
     private static final Integer CALLER_ID = 1;
     private static final Integer OTHER_ID = 2;
+    private static final String DEMO_EMAIL = "demo@example.test";
 
     private UserService userService;
     private UserMapper userMapper;
@@ -66,7 +69,8 @@ class UserControllerHttpTest {
         caller = new User();
         caller.setId(CALLER_ID);
 
-        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService))
+        mvc = MockMvcBuilders.standaloneSetup(new UserController(userService, userMapper, passwordResetService,
+                        new DemoAccounts(List.of(DEMO_EMAIL))))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PrincipalResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(
@@ -78,7 +82,7 @@ class UserControllerHttpTest {
     @DisplayName("the listing answers 200 and never exposes the password field")
     void listAnswers200() throws Exception {
         when(userService.getVisibleUsers(caller))
-                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3, "en")));
+                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3, "en", false)));
 
         mvc.perform(get("/users"))
                 .andExpect(status().isOk())
@@ -103,7 +107,7 @@ class UserControllerHttpTest {
     @DisplayName("an email in the patch body is dropped before the service, so an address cannot be taken over")
     void emailInThePatchBodyIsIgnored() throws Exception {
         when(userService.patchUser(any(), eq(CALLER_ID)))
-                .thenReturn(new UserDto(CALLER_ID, "owner@example.test", "Renamed", null, "en"));
+                .thenReturn(new UserDto(CALLER_ID, "owner@example.test", "Renamed", null, "en", false));
 
         mvc.perform(patch("/users/" + CALLER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -128,15 +132,56 @@ class UserControllerHttpTest {
     }
 
     @Test
+    @DisplayName("a shared demo account cannot be deleted by a caller signed in to it")
+    void aDemoAccountIsNotDeleted() throws Exception {
+        caller.setEmail(DEMO_EMAIL);
+
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DEMO_ACCOUNT_LOCKED"));
+
+        verify(userService, never()).deleteUser(any());
+    }
+
+    @Test
     @DisplayName("deleting another account is a 403, and deleting one's own is a 204")
     void deleteChecksOwnership() throws Exception {
-        mvc.perform(delete("/users/" + OTHER_ID))
+        mvc.perform(delete("/users/" + OTHER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isForbidden());
         verify(userService, never()).deleteUser(any());
 
-        mvc.perform(delete("/users/" + CALLER_ID))
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isNoContent());
+        verify(passwordResetService).requireCurrentPassword(caller, "the-password");
         verify(userService).deleteUser(CALLER_ID);
+    }
+
+    @Test
+    @DisplayName("deleting an account needs its current password: a token alone, or a wrong password, deletes nothing")
+    void deleteNeedsTheCurrentPassword() throws Exception {
+        doThrow(new GlobalException(ExceptionIdentifier.WRONG_PASSWORD))
+                .when(passwordResetService).requireCurrentPassword(caller, "not-the-password");
+
+        mvc.perform(delete("/users/" + CALLER_ID))
+                .andExpect(status().isBadRequest());
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"  \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"not-the-password\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("WRONG_PASSWORD"));
+
+        verify(userService, never()).deleteUser(any());
     }
 
     @Test
@@ -144,7 +189,9 @@ class UserControllerHttpTest {
     void nullPrincipalIsRefused() throws Exception {
         caller = null;
 
-        mvc.perform(delete("/users/" + CALLER_ID))
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_ACCOUNT_OWNER"));
     }
@@ -166,7 +213,7 @@ class UserControllerHttpTest {
     @DisplayName("the WIP limit route reaches the service with the parsed body")
     void wipLimitRoute() throws Exception {
         when(userService.updateWipLimit(eq(caller), eq(CALLER_ID), eq(5)))
-                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5, "en"));
+                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5, "en", false));
 
         mvc.perform(patch("/users/" + CALLER_ID + "/wip-limit")
                         .contentType(MediaType.APPLICATION_JSON)

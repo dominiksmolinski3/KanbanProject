@@ -73,6 +73,20 @@ describe('the users read by the bench and the people list', () => {
     expect(api.getUserAvatar).toHaveBeenCalledWith(2);
   });
 
+  it('does not ask for the avatar of an account that has none', async () => {
+    api.fetchUsers.mockResolvedValue([
+      { id: 1, name: 'Ada', email: 'ada@example.com', hasAvatar: true },
+      { id: 2, name: 'Bob', email: 'bob@example.com', hasAvatar: false },
+    ]);
+
+    const { result } = renderHook(() => useBenchUsers(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {});
+
+    expect(api.getUserAvatar).toHaveBeenCalledTimes(1);
+    expect(api.getUserAvatar).toHaveBeenCalledWith(1);
+  });
+
   it('shows an avatar once it has arrived', async () => {
     api.getUserAvatar.mockImplementation(async (id) => (id === 1 ? 'blob:ada' : null));
 
@@ -138,38 +152,31 @@ describe('the users read by the bench and the people list', () => {
   });
 
   it('removing a person drops them from every screen that shows the users', async () => {
-    window.confirm = jest.fn(() => true);
     api.deleteUser.mockResolvedValue(undefined);
     const bench = renderHook(() => useBenchUsers(), { wrapper });
     const people = renderHook(() => usePeople(), { wrapper });
     await waitFor(() => expect(people.result.current.users).toHaveLength(2));
 
     await act(async () => {
-      await people.result.current.removeUser(1);
+      await people.result.current.removeUser(1, 'the-password');
     });
 
+    expect(api.deleteUser).toHaveBeenCalledWith(1, 'the-password');
     expect(people.result.current.users.map((u) => u.id)).toEqual([2]);
     expect(bench.result.current.users.map((u) => u.id)).toEqual([2]);
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a person whose removal was not confirmed or was refused', async () => {
+  it('keeps a person whose removal was refused, and hands the refusal to the caller', async () => {
     const { result } = renderHook(() => usePeople(), { wrapper });
     await waitFor(() => expect(result.current.users).toHaveLength(2));
 
-    window.confirm = jest.fn(() => false);
-    await act(async () => {
-      await result.current.removeUser(1);
-    });
-    expect(api.deleteUser).not.toHaveBeenCalled();
-
-    window.confirm = jest.fn(() => true);
     api.deleteUser.mockRejectedValue(new Error('no'));
     await act(async () => {
-      await result.current.removeUser(1);
+      await expect(result.current.removeUser(1, 'not-the-password')).rejects.toThrow('no');
     });
+
     expect(result.current.users).toHaveLength(2);
-    expect(toast.error).toHaveBeenCalledWith('usersManagement.messages.deleteError');
     expect(mockLogout).not.toHaveBeenCalled();
   });
 

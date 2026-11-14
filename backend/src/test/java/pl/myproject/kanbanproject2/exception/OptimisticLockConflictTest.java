@@ -58,7 +58,7 @@ class OptimisticLockConflictTest {
     }
 
     @Test
-    @DisplayName("each stale write counts a conflict, so the rate is visible on /actuator/metrics")
+    @DisplayName("each stale write counts a conflict")
     void staleWriteCountsAConflict() throws Exception {
         mvc.perform(get("/probe"));
         mvc.perform(get("/probe"));

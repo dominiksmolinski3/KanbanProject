@@ -453,7 +453,6 @@
     },
     "messages": {
       "deleteConfirm": "Usunąć Twoje konto? Tablice, z których korzystasz tylko Ty, zostaną usunięte wraz z całą zawartością, a każda współdzielona tablica przejdzie na innego członka. Tej operacji nie można cofnąć.",
-      "deleteError": "Wystąpił błąd podczas usuwania użytkownika",
       "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 1 MB.",
       "fileTypeError": "Dozwolone są tylko pliki JPG, PNG, WebP i GIF.",
       "avatarUpdated": "Avatar został pomyślnie zaktualizowany",
@@ -744,6 +743,7 @@
       "METHOD_NOT_ALLOWED": "Ta akcja nie jest tu dostępna.",
       "MISSING_PARAMETER": "W żądaniu brakuje części informacji.",
       "NOT_ACCOUNT_OWNER": "Możesz zmieniać tylko własne konto.",
+      "DEMO_ACCOUNT_LOCKED": "To wspólne konto demonstracyjne — nie można go zmienić ani usunąć.",
       "NOT_BOARD_OWNER": "Tylko właściciel tablicy może to zrobić.",
       "NOT_COMMENT_AUTHOR": "Tylko autor może zmienić ten komentarz.",
       "NOT_FOUND": "To już nie istnieje.",
@@ -755,6 +755,7 @@
       "ROW_NOT_FOUND": "Ten tor już nie istnieje.",
       "SESSION_NOT_FOUND": "Ta sesja już się zakończyła.",
       "SUBTASK_NOT_FOUND": "To podzadanie już nie istnieje.",
+      "INVALID_SUBTASK": "Tej zmiany podzadania nie można wprowadzić.",
       "TASK_NOT_FOUND": "To zadanie już nie istnieje.",
       "TOO_MANY_REQUESTS": "Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.",
       "UNSUPPORTED_LOCALE": "Ten język nie jest obsługiwany.",

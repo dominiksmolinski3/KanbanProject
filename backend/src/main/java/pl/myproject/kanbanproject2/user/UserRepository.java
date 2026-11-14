@@ -19,6 +19,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Query("SELECT user FROM User user WHERE user.email = :email")
     Optional<User> findLockedUserByEmail(@Param("email") String email);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT user FROM User user WHERE user.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") Integer id);
+
     @Query("SELECT user.sessionsRevokedAt FROM User user WHERE user.id = :id")
     Optional<Instant> findSessionsRevokedAt(@Param("id") Integer id);
 

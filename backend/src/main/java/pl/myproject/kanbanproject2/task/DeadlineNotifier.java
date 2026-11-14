@@ -27,8 +27,8 @@ public class DeadlineNotifier {
                 emailService.sendTaskOverdue(address, task.getTitle(), boardOf(task),
                         task.getDeadline(), SupportedLocales.toLocale(user.getLocale()));
             } catch (Exception e) {
-                log.error("Failed to send the deadline notification for task {} to {}",
-                        task.getId(), address, e);
+                log.error("Failed to send the deadline notification for task {} to user {}",
+                        task.getId(), user.getId(), e);
             }
         }
     }

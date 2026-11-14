@@ -17,6 +17,9 @@ import pl.myproject.kanbanproject2.config.security.PasswordResetService;
 import pl.myproject.kanbanproject2.config.security.RefreshTokenService;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.mail.EmailService;
+import pl.myproject.kanbanproject2.chat.ChatRepository;
+import pl.myproject.kanbanproject2.config.security.EmailChangeService;
+import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
@@ -52,13 +55,21 @@ class CodeGuessesDatabaseTest {
 
         @Bean
         PasswordResetService passwordResetService(UserRepository users, PasswordEncoder encoder) {
-            return new PasswordResetService(users, encoder, mock(EmailService.class), mock(RefreshTokenService.class));
+            return new PasswordResetService(users, encoder, mock(EmailService.class), mock(RefreshTokenService.class),
+                    new DemoAccounts(List.of()));
         }
 
         @Bean
         AuthenticationService authenticationService(UserRepository users, PasswordEncoder encoder) {
             return new AuthenticationService(users, encoder, mock(AuthenticationManager.class), mock(EmailService.class),
                     mock(JwtService.class), mock(RefreshTokenService.class), new DemoAccounts(List.of()));
+        }
+
+        @Bean
+        EmailChangeService emailChangeService(UserRepository users, PasswordEncoder encoder,
+                                              AuthenticationService authentication, ChatRepository chats) {
+            return new EmailChangeService(users, encoder, mock(EmailService.class), mock(RefreshTokenService.class),
+                    authentication, chats, new DemoAccounts(List.of()));
         }
     }
 
@@ -67,6 +78,9 @@ class CodeGuessesDatabaseTest {
 
     @Autowired
     private AuthenticationService authentication;
+
+    @Autowired
+    private EmailChangeService emailChanges;
 
     @Autowired
     private UserRepository users;
@@ -88,6 +102,9 @@ class CodeGuessesDatabaseTest {
             user.setPasswordResetExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
             user.setVerificationCode(encoder.encode("111111"));
             user.setVerificationCodeExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
+            user.setPendingEmail("moved-" + UUID.randomUUID() + "@example.test");
+            user.setEmailChangeCode(encoder.encode("111111"));
+            user.setEmailChangeExpiresAt(Instant.now().plus(Duration.ofMinutes(10)));
             return users.save(user);
         });
     }
@@ -119,6 +136,20 @@ class CodeGuessesDatabaseTest {
         });
 
         assertThat(jdbc.queryForObject("select verification_code is null from users where id = ?",
+                Boolean.class, user.getId()))
+                .as("concurrent guesses overwrote each other's count, so more guesses than the limit were tried")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("wrong email-change codes guessed at the same moment are all counted, so the limit retires the code")
+    void simultaneousEmailChangeGuessesAreAllCounted() throws Exception {
+        var user = account(true);
+
+        guessAtOnce(() -> emailChanges.confirmChange(user, new ConfirmEmailChangeRequest("222222"),
+                DeviceContext.unknown()));
+
+        assertThat(jdbc.queryForObject("select email_change_code is null from users where id = ?",
                 Boolean.class, user.getId()))
                 .as("concurrent guesses overwrote each other's count, so more guesses than the limit were tried")
                 .isTrue();

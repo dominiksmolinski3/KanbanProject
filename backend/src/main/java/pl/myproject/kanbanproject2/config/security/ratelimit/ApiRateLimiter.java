@@ -25,6 +25,9 @@ public class ApiRateLimiter {
 
     static final String REFUSED_COUNTER = "kanban.api.ratelimit.refused";
 
+    static final int SOCKET_SENDS_PER_SECOND = 5;
+    static final int SOCKET_SEND_BURST = 20;
+
     private static final RedisScript<List> SCRIPT = loadScript();
 
     private final ApiRateLimitProperties properties;
@@ -50,20 +53,33 @@ public class ApiRateLimiter {
         this.refused = registry.counter(REFUSED_COUNTER);
     }
 
-    @SuppressWarnings("unchecked")
     public AuthRateLimitDecision attempt(Integer accountId) {
+        var decision = spend("api-rate-limit:account:" + accountId, properties.perSecond(), properties.burst());
+        if (!decision.allowed()) {
+            refused.increment();
+        }
+        return decision;
+    }
+
+    public boolean allowsSocketSend(Integer accountId) {
+        return !properties.enabled()
+                || spend("socket-send-rate-limit:account:" + accountId, SOCKET_SENDS_PER_SECOND, SOCKET_SEND_BURST)
+                        .allowed();
+    }
+
+    @SuppressWarnings("unchecked")
+    private AuthRateLimitDecision spend(String bucket, int perSecond, int burst) {
         try {
-            List<Long> result = redis.execute(SCRIPT, List.of("api-rate-limit:account:" + accountId),
+            List<Long> result = redis.execute(SCRIPT, List.of(bucket),
                     String.valueOf(clock.millis()),
-                    String.valueOf(properties.perSecond()),
-                    String.valueOf(properties.burst()));
+                    String.valueOf(perSecond),
+                    String.valueOf(burst));
             if (result == null || result.size() != 2) {
                 throw new IllegalStateException("api-rate-limit.lua returned " + result);
             }
             if (result.get(0) == 1L) {
                 return AuthRateLimitDecision.allow();
             }
-            refused.increment();
             return AuthRateLimitDecision.refuse(Duration.ofMillis(result.get(1)));
         } catch (DataAccessException | IllegalStateException e) {
             log.warn("API rate limiter could not use Redis, allowing the call: {}", e.getMessage());

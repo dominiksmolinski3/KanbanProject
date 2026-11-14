@@ -18,7 +18,9 @@ public interface TaskActivityRepository extends JpaRepository<TaskActivity, Inte
 
     List<TaskActivity> findByTask(Task task);
 
-    List<TaskActivity> findByBoard(Board board);
+    @Modifying
+    @Query("DELETE FROM TaskActivity activity WHERE activity.board = :board")
+    int deleteAllOn(@Param("board") Board board);
 
     @Modifying(flushAutomatically = true)
     @Query("UPDATE TaskActivity activity SET activity.actor = null WHERE activity.actor = :user")

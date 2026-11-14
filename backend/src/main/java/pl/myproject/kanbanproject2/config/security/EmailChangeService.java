@@ -15,11 +15,10 @@ import pl.myproject.kanbanproject2.user.SupportedLocales;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ConfirmEmailChangeRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.EmailChangeRequest;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -40,10 +39,11 @@ public class EmailChangeService {
     private final RefreshTokenService refreshTokenService;
     private final AuthenticationService authenticationService;
     private final ChatRepository chatRepository;
+    private final DemoAccounts demoAccounts;
 
     @Transactional
     public void requestChange(User caller, EmailChangeRequest request) {
-        User user = load(caller);
+        User user = load(caller, false);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new GlobalException(ExceptionIdentifier.WRONG_PASSWORD);
         }
@@ -64,13 +64,14 @@ public class EmailChangeService {
             return;
         }
 
+        String code = String.valueOf(RANDOM.nextInt(900000) + 100000);
         user.setPendingEmail(address);
-        user.setEmailChangeCode(String.valueOf(RANDOM.nextInt(900000) + 100000));
+        user.setEmailChangeCode(passwordEncoder.encode(code));
         user.setEmailChangeExpiresAt(now().plus(Duration.ofMinutes(CODE_TTL_MINUTES)));
         user.setEmailChangeAttempts(0);
         userRepository.save(user);
         try {
-            emailService.sendEmailChangeCode(address, user.getEmailChangeCode(), CODE_TTL_MINUTES,
+            emailService.sendEmailChangeCode(address, code, CODE_TTL_MINUTES,
                     SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);
@@ -79,7 +80,7 @@ public class EmailChangeService {
 
     @Transactional(dontRollbackOn = GlobalException.class)
     public LoginResponse confirmChange(User caller, ConfirmEmailChangeRequest request, DeviceContext device) {
-        User user = load(caller);
+        User user = load(caller, true);
         if (user.getPendingEmail() == null || user.getEmailChangeCode() == null) {
             throw new GlobalException(ExceptionIdentifier.INVALID_VERIFICATION_CODE);
         }
@@ -88,7 +89,7 @@ public class EmailChangeService {
             userRepository.save(user);
             throw new GlobalException(ExceptionIdentifier.VERIFICATION_CODE_EXPIRED);
         }
-        if (!sameCode(user.getEmailChangeCode(), request.code())) {
+        if (!passwordEncoder.matches(Objects.requireNonNullElse(request.code(), ""), user.getEmailChangeCode())) {
             user.setEmailChangeAttempts(user.getEmailChangeAttempts() + 1);
             if (user.getEmailChangeAttempts() >= MAX_ATTEMPTS) {
                 clearPending(user);
@@ -112,22 +113,18 @@ public class EmailChangeService {
         return authenticationService.startSession(saved, device);
     }
 
-    private User load(User caller) {
+    private User load(User caller, boolean forUpdate) {
         if (caller == null) {
             throw new GlobalException(ExceptionIdentifier.NOT_ACCOUNT_OWNER);
         }
-        return userRepository.findById(caller.getId())
+        User user = (forUpdate ? userRepository.findByIdForUpdate(caller.getId()) : userRepository.findById(caller.getId()))
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND));
+        demoAccounts.requireNotDemo(user);
+        return user;
     }
 
     private boolean isLive(User user) {
         return user.getEmailChangeExpiresAt() != null && user.getEmailChangeExpiresAt().isAfter(now());
-    }
-
-    private static boolean sameCode(String expected, String given) {
-        return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
-                Objects.requireNonNullElse(given, "").getBytes(StandardCharsets.UTF_8));
     }
 
     private static void clearPending(User user) {

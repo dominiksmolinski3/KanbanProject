@@ -15,12 +15,15 @@ import pl.myproject.kanbanproject2.mail.EmailService;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
 import pl.myproject.kanbanproject2.user.auth.ChangePasswordRequest;
+import pl.myproject.kanbanproject2.user.auth.DemoAccounts;
 import pl.myproject.kanbanproject2.user.auth.ResetPasswordRequest;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,10 +41,12 @@ import static org.mockito.Mockito.when;
 class PasswordResetServiceTest {
     private static final String KNOWN = "known@example.test";
     private static final String UNKNOWN = "unknown@example.test";
+    private static final String DEMO = "demo@example.test";
     private static final Pattern SIX_DIGITS = Pattern.compile("\\d{6}");
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private final AtomicInteger hashes = new AtomicInteger();
     private EmailService emailService;
     private RefreshTokenService refreshTokenService;
     private PasswordResetService service;
@@ -49,10 +54,24 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        passwordEncoder = new BCryptPasswordEncoder();
+        var bcrypt = new BCryptPasswordEncoder();
+        hashes.set(0);
+        passwordEncoder = new PasswordEncoder() {
+            @Override
+            public String encode(CharSequence rawPassword) {
+                hashes.incrementAndGet();
+                return bcrypt.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                return bcrypt.matches(rawPassword, encodedPassword);
+            }
+        };
         emailService = mock(EmailService.class);
         refreshTokenService = mock(RefreshTokenService.class);
-        service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService);
+        service = new PasswordResetService(userRepository, passwordEncoder, emailService, refreshTokenService,
+                new DemoAccounts(List.of(DEMO)));
 
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
         when(userRepository.findByEmailForUpdate(anyString()))
@@ -114,6 +133,35 @@ class PasswordResetServiceTest {
 
             verifyNoInteractions(emailService);
             verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("a shared demo account is answered the same way, and gets no code")
+        void aDemoAccountGetsNoCode() {
+            var shared = user(DEMO, true);
+            when(userRepository.findByEmail(DEMO)).thenReturn(Optional.of(shared));
+
+            assertThatCode(() -> service.requestReset(DEMO)).doesNotThrowAnyException();
+
+            assertThat(shared.getPasswordResetCode()).isNull();
+            verifyNoInteractions(emailService);
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("an address with no account costs the same hashing as one with, so the response time does not tell them apart")
+        void unknownAddressHashesAsMuchAsAKnownOne() {
+            var existing = user(KNOWN, true);
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(existing));
+            when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
+
+            hashes.set(0);
+            service.requestReset(KNOWN);
+            int forAKnownAddress = hashes.getAndSet(0);
+            service.requestReset(UNKNOWN);
+
+            assertThat(forAKnownAddress).isEqualTo(1);
+            assertThat(hashes.get()).isEqualTo(forAKnownAddress);
         }
 
         @Test
@@ -323,6 +371,24 @@ class PasswordResetServiceTest {
         }
 
         @Test
+        @DisplayName("a shared demo account keeps its published password, even for a caller who knows it")
+        void aDemoAccountKeepsItsPassword() {
+            var shared = user(DEMO, true);
+            String before = shared.getPassword();
+            when(userRepository.findById(1)).thenReturn(Optional.of(shared));
+
+            assertThatThrownBy(() -> service.changePassword(shared,
+                    new ChangePasswordRequest("old-password", "a-new-password")))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.DEMO_ACCOUNT_LOCKED);
+
+            assertThat(shared.getPassword()).isEqualTo(before);
+            verify(userRepository, never()).save(any());
+            verifyNoInteractions(refreshTokenService);
+        }
+
+        @Test
         @DisplayName("a wrong current password is refused, so a borrowed token cannot lock the owner out")
         void wrongCurrentPasswordIsRefused() {
             var existing = user(KNOWN, true);
@@ -351,6 +417,18 @@ class PasswordResetServiceTest {
 
             assertThat(existing.getPasswordResetCode()).isNull();
             assertThat(existing.getPasswordResetExpiresAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("the current-password check passes the right password and refuses any other")
+        void theCurrentPasswordCheckIsExact() {
+            var existing = user(KNOWN, true);
+
+            assertThatCode(() -> service.requireCurrentPassword(existing, "old-password")).doesNotThrowAnyException();
+            assertThatThrownBy(() -> service.requireCurrentPassword(existing, "old-passwor"))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.WRONG_PASSWORD);
         }
 
         @Test
