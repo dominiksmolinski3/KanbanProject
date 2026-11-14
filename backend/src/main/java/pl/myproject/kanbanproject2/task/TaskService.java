@@ -246,16 +246,8 @@ public class TaskService {
     }
 
     private void saveTaskColumnHistory(Task task, BoardColumn column) {
-        var taskHistory = taskColumnHistoryRepository.findByTaskOrderByChangedAtDesc(task);
-        var nextHistoryOrder = 0;
-
-        if (!taskHistory.isEmpty()) {
-            var lastHistory = taskHistory.getFirst();
-            nextHistoryOrder = (lastHistory.getHistoryOrder() != null ? lastHistory.getHistoryOrder() : 0) + 1;
-        }
-
         var history = new TaskColumnHistory(task, column);
-        history.setHistoryOrder(nextHistoryOrder);
+        history.setHistoryOrder(taskColumnHistoryRepository.nextHistoryOrder(task));
         taskColumnHistoryRepository.save(history);
     }
 

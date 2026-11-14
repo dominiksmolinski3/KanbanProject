@@ -17,6 +17,9 @@ import java.util.List;
 public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHistory, Integer> {
     List<TaskColumnHistory> findByTaskOrderByChangedAtDesc(Task task);
 
+    @Query("SELECT COALESCE(MAX(h.historyOrder) + 1, 0) FROM TaskColumnHistory h WHERE h.task = :task")
+    int nextHistoryOrder(@Param("task") Task task);
+
     @Modifying
     @Query("DELETE FROM TaskColumnHistory h WHERE h.task IN (SELECT task FROM Task task WHERE task.board = :board)")
     int deleteAllOn(@Param("board") Board board);
