@@ -1,5 +1,7 @@
 package pl.myproject.kanbanproject2.database;
 
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +56,9 @@ class BoardDeletionDatabaseTest {
 
     @Autowired
     private TaskRepository tasks;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Autowired
     private ColumnRepository columns;
@@ -159,6 +164,20 @@ class BoardDeletionDatabaseTest {
         assertThat(count("select count(*) from task_column_history h where not exists (select 1 from task t where t.id = h.task_id)"))
                 .isZero();
         assertThat(count("select count(*) from boards where id = ?", doomed)).isZero();
+    }
+
+    @Test
+    @DisplayName("a board's tasks leave in batches, not in one round trip each")
+    void tasksLeaveInBatches() {
+        var owner = account("owner");
+        Integer board = boardWithTasks(owner, 120, false);
+        var statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
+
+        boardService.deleteBoard(owner, board);
+
+        assertThat(count("select count(*) from task where board_id = ?", board)).isZero();
+        assertThat(statistics.getPrepareStatementCount()).isLessThan(60);
     }
 
     @Test

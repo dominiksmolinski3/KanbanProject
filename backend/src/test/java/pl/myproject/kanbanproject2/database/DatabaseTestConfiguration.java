@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -80,7 +81,8 @@ public class DatabaseTestConfiguration {
         var properties = new Properties();
         properties.put("hibernate.hbm2ddl.auto", "validate");
         properties.put("hibernate.default_schema", SCHEMA);
-        properties.put("hibernate.order_updates", "true");
+        properties.put("hibernate.generate_statistics", "true");
+        properties.putAll(hibernateSettingsOfTheApplication());
         properties.put("hibernate.implicit_naming_strategy", "org.springframework.boot.hibernate.SpringImplicitNamingStrategy");
         properties.put("hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
         factory.setJpaProperties(properties);
@@ -105,6 +107,23 @@ public class DatabaseTestConfiguration {
     @Bean
     public DisposableBean dropSchemaOnClose(JdbcTemplate jdbc) {
         return () -> jdbc.execute("DROP SCHEMA IF EXISTS " + SCHEMA + " CASCADE");
+    }
+
+    private static Map<String, String> hibernateSettingsOfTheApplication() {
+        var application = new Properties();
+        try (var in = DatabaseTestConfiguration.class.getResourceAsStream("/application.properties")) {
+            application.load(in);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        String prefix = "spring.jpa.properties.";
+        var settings = new HashMap<String, String>();
+        for (String name : application.stringPropertyNames()) {
+            if (name.startsWith(prefix)) {
+                settings.put(name.substring(prefix.length()), application.getProperty(name));
+            }
+        }
+        return settings;
     }
 
     private static String setting(String name, String fallback, Map<String, String> dotEnv) {
