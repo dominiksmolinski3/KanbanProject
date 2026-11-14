@@ -61,6 +61,7 @@ export interface User {
   name: string;
   wipLimit: number;
   locale: string | null;
+  hasAvatar?: boolean;
 }
 
 export interface WipStatus {

@@ -73,6 +73,20 @@ describe('the users read by the bench and the people list', () => {
     expect(api.getUserAvatar).toHaveBeenCalledWith(2);
   });
 
+  it('does not ask for the avatar of an account that has none', async () => {
+    api.fetchUsers.mockResolvedValue([
+      { id: 1, name: 'Ada', email: 'ada@example.com', hasAvatar: true },
+      { id: 2, name: 'Bob', email: 'bob@example.com', hasAvatar: false },
+    ]);
+
+    const { result } = renderHook(() => useBenchUsers(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {});
+
+    expect(api.getUserAvatar).toHaveBeenCalledTimes(1);
+    expect(api.getUserAvatar).toHaveBeenCalledWith(1);
+  });
+
   it('shows an avatar once it has arrived', async () => {
     api.getUserAvatar.mockImplementation(async (id) => (id === 1 ? 'blob:ada' : null));
 

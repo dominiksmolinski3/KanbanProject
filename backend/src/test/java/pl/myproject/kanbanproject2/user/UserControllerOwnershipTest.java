@@ -73,7 +73,7 @@ class UserControllerOwnershipTest {
     @Test
     @DisplayName("the caller can still delete and patch their own account")
     void ownAccountStillMutable() {
-        var own = new UserDto(OWNER_ID, "owner@example.com", "Owner", 3, "en");
+        var own = new UserDto(OWNER_ID, "owner@example.com", "Owner", 3, "en", false);
         var rename = new PatchUserRequest("Owner", 3, "en");
         when(userService.patchUser(rename, OWNER_ID)).thenReturn(own);
 

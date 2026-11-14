@@ -17,7 +17,8 @@ public class UserMapper implements Function<User, UserDto> {
                 user.getEmail(),
                 user.getName(),
                 user.getWipLimit(),
-                user.getLocale()
+                user.getLocale(),
+                user.getAvatarBlobName() != null
         );
     }
 }
