@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../../context/KanbanContext';
 import type { WipDecoration } from '../../board/boardModel';
-import type { ColumnSummary } from '../../types/api';
+import type { Column } from '../../types/api';
 import EditableText from '../EditableText';
 import Icon from '../Icon';
 import WipMeter from '../WipMeter';
 import { markDropTarget, unmarkDropTarget } from './dropTarget';
 
 interface ColumnHeaderProps {
-  column: ColumnSummary & WipDecoration;
+  column: Column & WipDecoration;
   onDelete: (columnId: number) => void;
 }
 

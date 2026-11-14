@@ -68,8 +68,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 accessor.getSessionAttributes().put("username", username);
                 if (userDetails instanceof User user) {
                     sessionUsers.register(accessor.getSessionId(), user.getId(), jwtService.issuedAt(token));
+                    log.info("Account {} authenticated via WebSocket", user.getId());
                 }
-                log.info("User authenticated via WebSocket: {}", username);
             } catch (AccessDeniedException exception) {
                 throw exception;
             } catch (Exception exception) {

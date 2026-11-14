@@ -1,11 +1,11 @@
 import type { ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ColumnSummary } from '../../types/api';
+import type { Column } from '../../types/api';
 import type { WipTarget } from './useWipLimitForm';
 
 interface WipLimitFieldsProps {
   target: WipTarget;
-  items: ColumnSummary[];
+  items: Column[];
   selectedItem: string;
   wipLimit: string;
   disabled: boolean;

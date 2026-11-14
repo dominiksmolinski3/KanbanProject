@@ -54,7 +54,7 @@ public class BoardSubscriptionInterceptor implements ChannelInterceptor {
         try {
             boardService.requireVisible(caller, boardId);
         } catch (GlobalException exception) {
-            log.warn("Dropped a board subscription for {} to board {}", caller.getUsername(), boardId);
+            log.warn("Dropped a board subscription for account {} to board {}", caller.getId(), boardId);
             meterRegistry.counter(DROPPED_COUNTER, "reason", "not-visible").increment();
             return null;
         }

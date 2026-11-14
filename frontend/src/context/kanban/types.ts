@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { TFunction } from 'i18next';
-import type { ColumnSummary, Id, RowSummary, Task } from '../../types/api';
+import type { Column, Id, Row, Task } from '../../types/api';
 
 export type Translate = TFunction;
 
@@ -17,12 +17,12 @@ export interface ReadOnlyGuard {
 }
 
 export interface BoardData {
-  columns: ColumnSummary[];
-  setColumns: SetState<ColumnSummary[]>;
+  columns: Column[];
+  setColumns: SetState<Column[]>;
   tasks: Task[];
   setTasks: SetState<Task[]>;
-  rows: RowSummary[];
-  setRows: SetState<RowSummary[]>;
+  rows: Row[];
+  setRows: SetState<Row[]>;
   refreshTasks: () => Promise<void>;
   refreshBoard: () => Promise<void>;
 }

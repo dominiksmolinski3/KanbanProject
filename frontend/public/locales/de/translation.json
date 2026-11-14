@@ -453,7 +453,6 @@
     },
     "messages": {
       "deleteConfirm": "Möchten Sie Ihr Konto löschen? Boards, die nur Sie nutzen, werden mit ihrem gesamten Inhalt gelöscht, und jedes geteilte Board geht an ein anderes Mitglied über. Dies kann nicht rückgängig gemacht werden.",
-      "deleteError": "Beim Löschen des Benutzers ist ein Fehler aufgetreten",
       "fileTooLarge": "Die Datei ist zu groß. Maximale Größe ist 1 MB.",
       "fileTypeError": "Nur JPG-, PNG-, WebP- und GIF-Dateien sind erlaubt.",
       "avatarUpdated": "Avatar wurde erfolgreich aktualisiert",
@@ -744,6 +743,7 @@
       "METHOD_NOT_ALLOWED": "Diese Aktion ist hier nicht verfügbar.",
       "MISSING_PARAMETER": "In der Anfrage fehlen Angaben.",
       "NOT_ACCOUNT_OWNER": "Du kannst nur dein eigenes Konto ändern.",
+      "DEMO_ACCOUNT_LOCKED": "Dieses gemeinsame Demokonto kann nicht geändert oder gelöscht werden.",
       "NOT_BOARD_OWNER": "Nur der Board-Eigentümer kann das tun.",
       "NOT_COMMENT_AUTHOR": "Nur der Verfasser kann diesen Kommentar ändern.",
       "NOT_FOUND": "Das existiert nicht mehr.",
@@ -755,6 +755,7 @@
       "ROW_NOT_FOUND": "Diese Swimlane existiert nicht mehr.",
       "SESSION_NOT_FOUND": "Diese Sitzung ist bereits beendet.",
       "SUBTASK_NOT_FOUND": "Diese Unteraufgabe existiert nicht mehr.",
+      "INVALID_SUBTASK": "Diese Änderung an der Unteraufgabe ist nicht zulässig.",
       "TASK_NOT_FOUND": "Diese Aufgabe existiert nicht mehr.",
       "TOO_MANY_REQUESTS": "Zu viele Versuche. Warte kurz und versuche es erneut.",
       "UNSUPPORTED_LOCALE": "Diese Sprache wird nicht unterstützt.",

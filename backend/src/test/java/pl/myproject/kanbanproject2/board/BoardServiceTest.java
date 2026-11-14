@@ -15,7 +15,6 @@ import pl.myproject.kanbanproject2.layout.row.RowRepository;
 import pl.myproject.kanbanproject2.task.Task;
 import pl.myproject.kanbanproject2.task.TaskRepository;
 import pl.myproject.kanbanproject2.task.activity.TaskActivityRepository;
-import pl.myproject.kanbanproject2.task.history.TaskColumnHistory;
 import pl.myproject.kanbanproject2.task.history.TaskColumnHistoryRepository;
 import pl.myproject.kanbanproject2.user.User;
 import pl.myproject.kanbanproject2.user.UserRepository;
@@ -376,14 +375,13 @@ class BoardServiceTest {
 
             var tasks = List.of(parent, child);
             when(taskRepository.findByBoardOrderByIdAsc(board)).thenReturn(tasks);
-            when(historyRepository.findByTaskIn(tasks)).thenReturn(List.of(new TaskColumnHistory()));
             when(columnRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
             when(rowRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
 
             boardService.deleteBoard(owner, 10);
 
             assertThat(child.getParentTask()).isNull();
-            verify(historyRepository).deleteAll(any());
+            verify(historyRepository).deleteAllOn(board);
             verify(taskRepository).deleteAll(tasks);
             verify(boardRepository).delete(board);
         }
@@ -415,7 +413,6 @@ class BoardServiceTest {
             task.setBoard(board);
             var tasks = List.of(task);
             when(taskRepository.findByBoardOrderByIdAsc(board)).thenReturn(tasks);
-            when(historyRepository.findByTaskIn(tasks)).thenReturn(List.of());
             when(columnRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
             when(rowRepository.findByBoardOrderByPositionAsc(board)).thenReturn(new ArrayList<>());
 

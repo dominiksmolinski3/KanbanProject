@@ -453,7 +453,6 @@
       },
       "messages": {
         "deleteConfirm": "¿Desea eliminar su cuenta? Los tableros que solo usa usted se eliminarán con todo su contenido, y cada tablero compartido pasará a otro miembro. Esta acción no se puede deshacer.",
-        "deleteError": "Ocurrió un error al eliminar el usuario",
         "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es 1 MB.",
         "fileTypeError": "Solo se permiten archivos JPG, PNG, WebP y GIF.",
         "avatarUpdated": "El avatar ha sido actualizado exitosamente",
@@ -744,6 +743,7 @@
             "METHOD_NOT_ALLOWED": "Esa acción no está disponible aquí.",
             "MISSING_PARAMETER": "Faltan datos en la solicitud.",
             "NOT_ACCOUNT_OWNER": "Solo puedes cambiar tu propia cuenta.",
+            "DEMO_ACCOUNT_LOCKED": "Esta cuenta de demostración compartida no se puede modificar ni eliminar.",
             "NOT_BOARD_OWNER": "Solo el propietario del tablero puede hacerlo.",
             "NOT_COMMENT_AUTHOR": "Solo el autor puede cambiar este comentario.",
             "NOT_FOUND": "Eso ya no existe.",
@@ -755,6 +755,7 @@
             "ROW_NOT_FOUND": "Ese carril ya no existe.",
             "SESSION_NOT_FOUND": "Esa sesión ya ha terminado.",
             "SUBTASK_NOT_FOUND": "Esa subtarea ya no existe.",
+            "INVALID_SUBTASK": "Ese cambio en la subtarea no está permitido.",
             "TASK_NOT_FOUND": "Esa tarea ya no existe.",
             "TOO_MANY_REQUESTS": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
             "UNSUPPORTED_LOCALE": "Ese idioma no es compatible.",

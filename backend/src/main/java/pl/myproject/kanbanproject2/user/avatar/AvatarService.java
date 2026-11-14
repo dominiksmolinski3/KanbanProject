@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,25 +42,29 @@ public class AvatarService {
 
     private final UserRepository userRepository;
     private final BlobStore blobStore;
+    private final TransactionOperations transactions;
     private final Clock clock;
 
     private final Semaphore transferPermits;
 
     @Autowired
     public AvatarService(UserRepository userRepository, BlobStore blobStore,
-                         BlobStorageProperties storageProperties) {
-        this(userRepository, blobStore, storageProperties, Clock.systemUTC());
+                         BlobStorageProperties storageProperties, TransactionOperations transactions) {
+        this(userRepository, blobStore, storageProperties, transactions, Clock.systemUTC());
     }
 
     AvatarService(UserRepository userRepository, BlobStore blobStore,
-                 BlobStorageProperties storageProperties, Clock clock) {
+                 BlobStorageProperties storageProperties, TransactionOperations transactions, Clock clock) {
         this.userRepository = userRepository;
         this.blobStore = blobStore;
+        this.transactions = transactions;
         this.clock = clock;
         this.transferPermits = new Semaphore(Math.max(1,
                 storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
     }
 
+    // No transaction spans the transfer: a slow store would hold a database connection for every file in flight.
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public void upload(User caller, MultipartFile file) {
         requireStorage();
         validate(file);
@@ -70,9 +75,7 @@ public class AvatarService {
             throw new GlobalException(ExceptionIdentifier.INVALID_AVATAR_FILE_TYPE);
         }
 
-        var user = findUser(caller.getId());
-        String previousBlobName = user.getAvatarBlobName();
-        String blobName = blobNameFor(user);
+        String blobName = transactions.execute(status -> blobNameFor(findUser(caller.getId())));
 
         if (!transferPermits.tryAcquire()) {
             throw new GlobalException(ExceptionIdentifier.ATTACHMENT_TRANSFER_BUSY);
@@ -84,26 +87,30 @@ public class AvatarService {
         } finally {
             transferPermits.release();
         }
-        // Blob written, row not yet: if this transaction does not commit, nothing else knows the blob exists.
-        onCompletion(status -> {
-            if (status != TransactionSynchronization.STATUS_COMMITTED) {
-                removeQuietly(blobName);
-            }
-        });
-
-        user.setAvatarBlobName(blobName);
-        user.setAvatarContentType(contentType);
-        user.setAvatarSizeBytes((long) bytes.length);
-        user.setAvatarUploadedAt(clock.instant());
-        userRepository.save(user);
-
+        String previousBlobName;
+        try {
+            previousBlobName = transactions.execute(status -> {
+                var user = findUser(caller.getId());
+                String replaced = user.getAvatarBlobName();
+                user.setAvatarBlobName(blobName);
+                user.setAvatarContentType(contentType);
+                user.setAvatarSizeBytes((long) bytes.length);
+                user.setAvatarUploadedAt(clock.instant());
+                userRepository.save(user);
+                return replaced;
+            });
+        } catch (RuntimeException e) {
+            removeQuietly(blobName);
+            throw e;
+        }
         if (previousBlobName != null) {
-            removeAfterCommit(previousBlobName);
+            removeQuietly(previousBlobName);
         }
     }
 
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public AvatarContent content(Integer userId) {
-        var user = findUser(userId);
+        var user = transactions.execute(status -> findUser(userId));
         if (user.getAvatarBlobName() == null) {
             throw new GlobalException(ExceptionIdentifier.AVATAR_NOT_FOUND);
         }

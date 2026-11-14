@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.task.history;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +17,9 @@ import java.util.List;
 public interface TaskColumnHistoryRepository extends JpaRepository<TaskColumnHistory, Integer> {
     List<TaskColumnHistory> findByTaskOrderByChangedAtDesc(Task task);
 
-    List<TaskColumnHistory> findByTaskIn(List<Task> tasks);
+    @Modifying
+    @Query("DELETE FROM TaskColumnHistory h WHERE h.task IN (SELECT task FROM Task task WHERE task.board = :board)")
+    int deleteAllOn(@Param("board") Board board);
 
     List<TaskColumnHistory> findByColumn(BoardColumn column);
 

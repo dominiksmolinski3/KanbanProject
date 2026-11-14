@@ -31,8 +31,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -122,6 +124,20 @@ class AuthenticationServiceEnumerationTest {
 
             verify(userRepository, never()).save(any());
             verify(emailService, never()).sendVerificationCode(any(), any(), anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("a taken address costs the same hashing as a new one, so the response time does not tell them apart")
+        void collisionHashesAsMuchAsARegistration() {
+            when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
+            service.signup(registration(UNKNOWN));
+            verify(passwordEncoder, times(2)).encode(anyString());
+            clearInvocations(passwordEncoder);
+
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(user(KNOWN, true)));
+            service.signup(registration(KNOWN));
+
+            verify(passwordEncoder, times(2)).encode(anyString());
         }
 
         @Test
@@ -248,6 +264,20 @@ class AuthenticationServiceEnumerationTest {
 
             verify(emailService, never()).sendVerificationCode(any(), any(), anyLong(), any());
             verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("an address with nothing pending costs the same hashing as one with a code to resend")
+        void nothingPendingHashesAsMuchAsAResend() {
+            when(userRepository.findByEmail(KNOWN)).thenReturn(Optional.of(user(KNOWN, false)));
+            service.resendVerificationCode(KNOWN);
+            verify(passwordEncoder, times(1)).encode(anyString());
+            clearInvocations(passwordEncoder);
+
+            when(userRepository.findByEmail(UNKNOWN)).thenReturn(Optional.empty());
+            service.resendVerificationCode(UNKNOWN);
+
+            verify(passwordEncoder, times(1)).encode(anyString());
         }
 
         @Test

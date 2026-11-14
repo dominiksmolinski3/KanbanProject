@@ -453,7 +453,6 @@
       },
       "messages": {
         "deleteConfirm": "Eliminare il tuo account? Le bacheche che usi solo tu verranno eliminate con tutto il loro contenuto, e ogni bacheca condivisa passerà a un altro membro. L'operazione non può essere annullata.",
-        "deleteError": "Si è verificato un errore durante l'eliminazione dell'utente",
         "fileTooLarge": "Il file è troppo grande. La dimensione massima è 1 MB.",
         "fileTypeError": "Sono consentiti solo file JPG, PNG, WebP e GIF.",
         "avatarUpdated": "Avatar aggiornato con successo",
@@ -744,6 +743,7 @@
             "METHOD_NOT_ALLOWED": "Questa azione non è disponibile qui.",
             "MISSING_PARAMETER": "Mancano alcune informazioni nella richiesta.",
             "NOT_ACCOUNT_OWNER": "Puoi modificare solo il tuo account.",
+            "DEMO_ACCOUNT_LOCKED": "Questo account demo condiviso non può essere modificato né eliminato.",
             "NOT_BOARD_OWNER": "Solo il proprietario della bacheca può farlo.",
             "NOT_COMMENT_AUTHOR": "Solo l'autore può modificare questo commento.",
             "NOT_FOUND": "Non esiste più.",
@@ -755,6 +755,7 @@
             "ROW_NOT_FOUND": "Questa corsia non esiste più.",
             "SESSION_NOT_FOUND": "Questa sessione è già terminata.",
             "SUBTASK_NOT_FOUND": "Questa sottoattività non esiste più.",
+            "INVALID_SUBTASK": "Questa modifica alla sottoattività non è consentita.",
             "TASK_NOT_FOUND": "Questa attività non esiste più.",
             "TOO_MANY_REQUESTS": "Troppi tentativi. Attendi un momento e riprova.",
             "UNSUPPORTED_LOCALE": "Questa lingua non è supportata.",

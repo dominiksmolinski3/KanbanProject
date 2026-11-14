@@ -453,7 +453,6 @@
       },
       "messages": {
         "deleteConfirm": "アカウントを削除しますか？あなただけが使っているボードは中身ごと削除され、共有しているボードはそれぞれ別のメンバーに引き継がれます。この操作は元に戻せません。",
-        "deleteError": "ユーザーの削除中にエラーが発生しました",
         "fileTooLarge": "ファイルが大きすぎます。最大サイズは1MBです。",
         "fileTypeError": "JPG、PNG、WebP、GIFファイルのみ許可されています。",
         "avatarUpdated": "アバターが正常に更新されました",
@@ -744,6 +743,7 @@
             "METHOD_NOT_ALLOWED": "その操作はここでは利用できません。",
             "MISSING_PARAMETER": "リクエストに不足している情報があります。",
             "NOT_ACCOUNT_OWNER": "変更できるのは自分のアカウントだけです。",
+            "DEMO_ACCOUNT_LOCKED": "この共有デモアカウントは変更も削除もできません。",
             "NOT_BOARD_OWNER": "この操作はボードの所有者のみ可能です。",
             "NOT_COMMENT_AUTHOR": "このコメントを変更できるのは投稿者だけです。",
             "NOT_FOUND": "それはもう存在しません。",
@@ -755,6 +755,7 @@
             "ROW_NOT_FOUND": "そのスイムレーンはもう存在しません。",
             "SESSION_NOT_FOUND": "そのセッションはすでに終了しています。",
             "SUBTASK_NOT_FOUND": "そのサブタスクはもう存在しません。",
+            "INVALID_SUBTASK": "サブタスクに対するその変更は許可されていません。",
             "TASK_NOT_FOUND": "そのタスクはもう存在しません。",
             "TOO_MANY_REQUESTS": "試行回数が多すぎます。少し待ってからもう一度お試しください。",
             "UNSUPPORTED_LOCALE": "その言語はサポートされていません。",
