@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
@@ -61,6 +62,7 @@ class EmailChangeServiceTest {
         account.setId(1);
         account.setLocale("en");
         when(userRepository.findById(1)).thenReturn(Optional.of(account));
+        when(userRepository.findByIdForUpdate(1)).thenReturn(Optional.of(account));
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
     }
@@ -71,10 +73,15 @@ class EmailChangeServiceTest {
         service.requestChange(account, new EmailChangeRequest("  New@Example.TEST ", "the-password"));
 
         assertThat(account.getPendingEmail()).isEqualTo("new@example.test");
-        assertThat(account.getEmailChangeCode()).matches("\\d{6}");
         assertThat(account.getEmail()).isEqualTo("owner@example.test");
-        verify(emailService).sendEmailChangeCode(eq("new@example.test"), eq(account.getEmailChangeCode()),
+        var mailed = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendEmailChangeCode(eq("new@example.test"), mailed.capture(),
                 eq((long) EmailChangeService.CODE_TTL_MINUTES), any());
+        assertThat(mailed.getValue()).matches("\\d{6}");
+        assertThat(account.getEmailChangeCode())
+                .as("read access to the users table must not be enough to move an account to another address")
+                .isNotEqualTo(mailed.getValue());
+        assertThat(ENCODER.matches(mailed.getValue(), account.getEmailChangeCode())).isTrue();
     }
 
     @Test
@@ -237,7 +244,7 @@ class EmailChangeServiceTest {
 
     private void pending(String address, String code, Instant expiresAt) {
         account.setPendingEmail(address);
-        account.setEmailChangeCode(code);
+        account.setEmailChangeCode(ENCODER.encode(code));
         account.setEmailChangeExpiresAt(expiresAt);
     }
 
