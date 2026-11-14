@@ -9,7 +9,7 @@ import Icon from '../Icon';
 import type { CSSProperties } from 'react';
 
 function AssigneeAvatar({ user }: { user: User }) {
-  const url = useUserAvatar(user.id);
+  const url = useUserAvatar(user.id, user.hasAvatar);
   if (url) {
     return <img src={url} alt="" className="assignee-avatar" />;
   }

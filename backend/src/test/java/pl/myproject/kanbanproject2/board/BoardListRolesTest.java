@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
@@ -36,6 +37,22 @@ class BoardListRolesTest {
         assertThat(listed.get(0).role()).isEqualTo(BoardRole.MEMBER);
         verify(repository, times(1)).findMemberRolesIn(anyCollection());
         verify(repository, never()).findMemberRoles(any());
+    }
+
+    @Test
+    @DisplayName("a board says which of its members have an avatar")
+    void membersSayWhetherTheyHaveAnAvatar() {
+        var owner = TenancyFixtures.user(1);
+        var member = TenancyFixtures.user(2);
+        member.setAvatarBlobName("avatars/2/3f2c");
+        var board = TenancyFixtures.board(10, owner);
+        board.addMember(member);
+        var repository = mock(BoardRepository.class);
+
+        var listed = new BoardMapper(repository).applyAll(List.of(board), owner);
+
+        assertThat(listed.getFirst().members()).extracting(BoardMemberDto::id, BoardMemberDto::hasAvatar)
+                .containsExactly(tuple(1, false), tuple(2, true));
     }
 
     @Test
