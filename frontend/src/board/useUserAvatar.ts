@@ -24,11 +24,11 @@ function load(userId: Id): Promise<string | null> {
   return pending;
 }
 
-export default function useUserAvatar(userId: Id | null | undefined): string | null {
+export default function useUserAvatar(userId: Id | null | undefined, hasAvatar?: boolean): string | null {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userId === undefined || userId === null) return undefined;
+    if (userId === undefined || userId === null || hasAvatar === false) return undefined;
     let live = true;
     load(userId).then((loaded) => {
       if (live) setUrl(loaded || null);
@@ -36,7 +36,7 @@ export default function useUserAvatar(userId: Id | null | undefined): string | n
     return () => {
       live = false;
     };
-  }, [userId]);
+  }, [userId, hasAvatar]);
 
-  return url;
+  return hasAvatar === false ? null : url;
 }

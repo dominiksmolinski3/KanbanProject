@@ -6,5 +6,6 @@ public record BoardMemberDto(
         String name,
         Integer wipLimit,
         String locale,
+        boolean hasAvatar,
         BoardRole role) {
 }
