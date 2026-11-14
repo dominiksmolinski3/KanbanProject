@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.config.security;
 
+import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceRevocationTest {
 
@@ -27,6 +29,31 @@ class JwtServiceRevocationTest {
         user = new User("someone", "someone@example.test", "hashed");
         token = jwtService.generateToken(user);
         issuedAt = jwtService.issuedAt(token);
+    }
+
+    @Test
+    @DisplayName("a token is valid only for the account it names")
+    void aTokenBelongsToOneAccount() {
+        var someoneElse = new User("other", "other@example.test", "hashed");
+
+        assertThat(jwtService.isTokenValid(token, someoneElse)).isFalse();
+    }
+
+    @Test
+    @DisplayName("a token signed with another key is refused, on the first read and on every later one")
+    void aForeignSignatureIsRefused() {
+        var foreign = new JwtService();
+        byte[] otherKey = new byte[64];
+        otherKey[0] = 1;
+        ReflectionTestUtils.setField(foreign, "secretKey", Base64.getEncoder().encodeToString(otherKey));
+        ReflectionTestUtils.setField(foreign, "jwtExpiration", 900_000L);
+        String forged = foreign.generateToken(user);
+
+        assertThat(jwtService.isTokenValid(token, user)).isTrue();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            assertThatThrownBy(() -> jwtService.isTokenValid(forged, user)).isInstanceOf(JwtException.class);
+            assertThatThrownBy(() -> jwtService.extractUsername(forged)).isInstanceOf(JwtException.class);
+        }
     }
 
     @Test

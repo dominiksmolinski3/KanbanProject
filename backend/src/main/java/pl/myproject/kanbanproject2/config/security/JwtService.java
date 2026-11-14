@@ -1,6 +1,7 @@
 package pl.myproject.kanbanproject2.config.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -24,6 +25,8 @@ public class JwtService {
 
     @Value("${security.jwt.expiration-time}")
     private long jwtExpiration;
+
+    private volatile JwtParser parser;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -62,9 +65,10 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token)
-                && !isRevoked(issuedAt(token), userDetails);
+        final Claims claims = extractAllClaims(token);
+        return claims.getSubject().equals(userDetails.getUsername())
+                && !claims.getExpiration().before(new Date())
+                && !isRevoked(claims.getIssuedAt().toInstant(), userDetails);
     }
 
     public Instant issuedAt(String token) {
@@ -80,21 +84,17 @@ public class JwtService {
         return sessionsRevokedAt != null && issuedAt.isBefore(sessionsRevokedAt.truncatedTo(ChronoUnit.SECONDS));
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
     private Claims extractAllClaims(String token) {
-        return Jwts
-                .parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        return parser().parseSignedClaims(token).getPayload();
+    }
+
+    private JwtParser parser() {
+        JwtParser built = parser;
+        if (built == null) {
+            built = Jwts.parser().verifyWith(getSignInKey()).build();
+            parser = built;
+        }
+        return built;
     }
 
     private SecretKey getSignInKey() {
