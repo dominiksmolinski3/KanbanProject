@@ -1373,9 +1373,14 @@ STOMP over SockJS at `/ws`, relayed to a real broker (RabbitMQ, via its STOMP pl
 [StompRelayProperties](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/StompRelayProperties.java)
 and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`;
 `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not
-`useState`) and delegates the connection to [chatApi.ts](../frontend/src/services/chatApi.ts), which
-points SockJS at `window.location.origin` — correct for the single-origin monolith, so only a chat
-server on a separate host would need a configured URL rather than the page's.
+`useState`) and delegates its subscriptions to [chatApi.ts](../frontend/src/services/chatApi.ts).
+
+**The page holds one connection, in [liveSocket.ts](../frontend/src/services/liveSocket.ts), and the
+board and the chat both subscribe on it.** It opens with the first user and closes with the last, so
+opening the chat panel costs no second socket, sign-in or broker session. Each user subscribes again
+in its `onConnect`, and drops the handles of the connection before without unsubscribing them: a
+connection numbers its subscriptions from zero, so an old handle names somebody else's new
+subscription.
 
 **Chat is the board's conversation, and until `V18` it was the one feature the boards-with-members
 model never reached.** The destination was built out of a `roomId` the client supplied — so any
@@ -1488,7 +1493,7 @@ the STOMP broker relay forwards the destination to RabbitMQ's STOMP plugin as-is
 parses everything after `/topic/` as one AMQP routing key, refusing the whole destination the
 moment it contains a further `/` — and the client re-reads; `board/event/` holds the publisher,
 `config/websocket/BoardSubscriptionInterceptor` holds the check on who may listen, and
-[boardEvents.ts](../frontend/src/services/boardEvents.ts) holds the client's own connection.
+[boardEvents.ts](../frontend/src/services/boardEvents.ts) holds the client's subscriptions.
 
 Six decisions carry it, and none of them is visible from the destination name:
 

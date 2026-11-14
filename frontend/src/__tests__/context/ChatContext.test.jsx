@@ -74,7 +74,7 @@ describe('ChatContext', () => {
     fireEvent.click(screen.getByText('Toggle'));
 
     await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
-    expect(chatApiInstance.connect).toHaveBeenCalledWith('jwt-token');
+    expect(chatApiInstance.connect).toHaveBeenCalledTimes(1);
     expect(chatApiInstance.joinBoard).toHaveBeenCalledWith(1);
     expect(fetchBoardChatHistory).toHaveBeenCalled();
   });
