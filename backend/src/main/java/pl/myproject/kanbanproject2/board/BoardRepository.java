@@ -40,6 +40,13 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
             """)
     boolean isVisibleTo(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(board) > 0 THEN TRUE ELSE FALSE END FROM Board board
+            WHERE (board.owner.id = :first OR EXISTS (SELECT 1 FROM board.members member WHERE member.id = :first))
+              AND (board.owner.id = :second OR EXISTS (SELECT 1 FROM board.members member WHERE member.id = :second))
+            """)
+    boolean shareABoard(@Param("first") Integer first, @Param("second") Integer second);
+
     @Query(value = "SELECT role FROM board_members WHERE board_id = :boardId AND user_id = :userId",
             nativeQuery = true)
     Optional<String> findMemberRole(@Param("boardId") Integer boardId, @Param("userId") Integer userId);
