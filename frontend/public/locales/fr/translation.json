@@ -453,7 +453,6 @@
       },
       "messages": {
         "deleteConfirm": "Supprimer votre compte ? Les tableaux que vous êtes seul à utiliser seront supprimés avec tout leur contenu, et chaque tableau partagé passera à un autre membre. Cette action est irréversible.",
-        "deleteError": "Une erreur s'est produite lors de la suppression de l'utilisateur",
         "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 1 Mo.",
         "fileTypeError": "Seuls les fichiers JPG, PNG, WebP et GIF sont autorisés.",
         "avatarUpdated": "L'avatar a été mis à jour avec succès",
@@ -756,6 +755,7 @@
             "ROW_NOT_FOUND": "Ce couloir n'existe plus.",
             "SESSION_NOT_FOUND": "Cette session est déjà terminée.",
             "SUBTASK_NOT_FOUND": "Cette sous-tâche n'existe plus.",
+            "INVALID_SUBTASK": "Cette modification de la sous-tâche n'est pas autorisée.",
             "TASK_NOT_FOUND": "Cette tâche n'existe plus.",
             "TOO_MANY_REQUESTS": "Trop de tentatives. Patientez un instant et réessayez.",
             "UNSUPPORTED_LOCALE": "Cette langue n'est pas prise en charge.",

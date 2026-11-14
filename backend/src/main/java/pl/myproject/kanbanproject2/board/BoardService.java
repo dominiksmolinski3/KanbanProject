@@ -173,7 +173,7 @@ public class BoardService {
     }
 
     public List<BoardDto> myBoards(User caller) {
-        return visibleTo(caller).stream().map(board -> boardMapper.apply(board, caller)).toList();
+        return boardMapper.applyAll(visibleTo(caller), caller);
     }
 
     public BoardDto getBoard(User caller, Integer id) {
@@ -207,18 +207,19 @@ public class BoardService {
                 task.setParentTask(null);
             }
             taskRepository.saveAll(tasks);
-            taskColumnHistoryRepository.deleteAll(taskColumnHistoryRepository.findByTaskIn(tasks));
+            taskColumnHistoryRepository.deleteAllOn(board);
             events.publishEvent(new BoardTasksDeleting(board, tasks));
-            taskRepository.deleteAll(tasks);
         }
+        // One statement per table, and before the tasks go: these rows can number in the thousands and some point at a task.
+        activityRepository.deleteAllOn(board);
+        chatRepository.deleteAllOn(board);
+        invitationRepository.deleteAllOn(board);
+        taskRepository.deleteAll(tasks);
 
         board.setFlowStartColumn(null);
         board.setFlowDoneColumn(null);
         columnRepository.deleteAll(columnRepository.findByBoardOrderByPositionAsc(board));
         rowRepository.deleteAll(rowRepository.findByBoardOrderByPositionAsc(board));
-        invitationRepository.deleteAll(invitationRepository.findByBoard(board));
-        activityRepository.deleteAll(activityRepository.findByBoard(board));
-        chatRepository.deleteAll(chatRepository.findByBoard(board));
 
         board.getMembers().clear();
         boardRepository.delete(board);
@@ -297,6 +298,11 @@ public class BoardService {
                 .min(Comparator.comparing((User candidate) -> BoardRole.VIEWER.name().equals(roles.get(candidate.getId())))
                         .thenComparing(User::getId))
                 .orElse(null);
+    }
+
+    public boolean shareABoard(User caller, Integer userId) {
+        return caller != null && caller.getId() != null && userId != null
+                && boardRepository.shareABoard(caller.getId(), userId);
     }
 
     public Collection<User> peersOf(User caller) {

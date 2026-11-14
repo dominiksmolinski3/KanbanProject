@@ -48,7 +48,7 @@ export function usePeople() {
 
   const people = users.map(user => user.id).join(',');
   useEffect(() => {
-    users.forEach(async (user) => {
+    users.filter(user => user.hasAvatar !== false).forEach(async (user) => {
       const avatarUrl = await getUserAvatar(user.id);
       if (avatarUrl) {
         setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
@@ -93,18 +93,10 @@ export function usePeople() {
     }
   };
 
-  const removeUser = async (userId: Id) => {
-    if (!window.confirm(t('usersManagement.messages.deleteConfirm'))) {
-      return;
-    }
-    try {
-      await deleteUser(userId);
-      queryClient.setQueryData<User[]>(USERS_KEY, current => (current ?? NONE).filter(user => user.id !== userId));
-      await logout();
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(t('usersManagement.messages.deleteError'));
-    }
+  const removeUser = async (userId: Id, currentPassword: string) => {
+    await deleteUser(userId, currentPassword);
+    queryClient.setQueryData<User[]>(USERS_KEY, current => (current ?? NONE).filter(user => user.id !== userId));
+    await logout();
   };
 
   return { users, avatars, uploadAvatar, removeUser };

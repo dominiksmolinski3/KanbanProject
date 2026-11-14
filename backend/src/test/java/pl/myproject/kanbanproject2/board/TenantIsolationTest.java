@@ -85,6 +85,9 @@ class TenantIsolationTest {
         when(boardRepository.findByOwnerOrderByIdAsc(them)).thenReturn(List.of(theirBoard));
         when(boardRepository.findVisibleTo(me)).thenReturn(List.of(myBoard));
         when(boardRepository.findVisibleTo(them)).thenReturn(List.of(theirBoard));
+        when(boardRepository.shareABoard(any(), any())).thenAnswer(call -> List.of(myBoard, theirBoard).stream()
+                .anyMatch(board -> board.everyone().stream().map(User::getId).toList()
+                        .containsAll(List.of(call.<Integer>getArgument(0), call.<Integer>getArgument(1)))));
         when(historyRepository.findByTaskOrderByChangedAtDesc(any())).thenReturn(List.of());
         when(taskRepository.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
         when(taskRepository.findMaxPosition(any(), any(), any())).thenReturn(Optional.empty());
@@ -107,10 +110,10 @@ class TenantIsolationTest {
                 mock(pl.myproject.kanbanproject2.task.attachment.TaskAttachmentService.class),
                 mock(pl.myproject.kanbanproject2.task.activity.TaskActivityRecorder.class), mock(BoardEventPublisher.class),
                 mock(pl.myproject.kanbanproject2.task.comment.TaskCommentService.class));
-        columnService = new ColumnService(columnRepository, new ColumnMapper(taskMapper),
+        columnService = new ColumnService(columnRepository, new ColumnMapper(),
                 taskService, boardService, mock(BoardEventPublisher.class),
                 mock(TaskColumnHistoryRepository.class));
-        rowService = new RowService(rowRepository, new RowMapper(taskMapper), taskRepository, boardService, mock(BoardEventPublisher.class));
+        rowService = new RowService(rowRepository, new RowMapper(), taskRepository, boardService, mock(BoardEventPublisher.class));
     }
 
     private Task theirTask(int id) {

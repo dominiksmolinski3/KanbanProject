@@ -31,7 +31,7 @@ public class RowService {
         return rowRepository.findByBoardOrderByPositionAsc(board).stream().map(rowMapper).toList();
     }
 
-    public RowResponseDto createRow(User caller, Integer boardId, CreateRowRequest request) {
+    public RowDto createRow(User caller, Integer boardId, CreateRowRequest request) {
         var board = boardService.resolve(caller, boardId);
         boardService.requireWritable(caller, board);
 
@@ -44,7 +44,7 @@ public class RowService {
                 : nextPosition(board));
         var created = rowRepository.save(row);
         boardEvents.rowsChanged(created.getBoard());
-        return rowMapper.toResponseDto(created);
+        return rowMapper.apply(created);
     }
 
     private RowDto saveAndAnnounce(Row row) {

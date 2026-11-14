@@ -57,7 +57,7 @@ export const postVoid = async (path: string, body?: unknown): Promise<void> => r
 
 export const patchVoid = async (path: string, body?: unknown): Promise<void> => readVoid(await send('PATCH', path, body));
 
-export const deleteChecked = async (path: string): Promise<true> => readOk(await send('DELETE', path));
+export const deleteChecked = async (path: string, body?: unknown): Promise<true> => readOk(await send('DELETE', path, body));
 
 export const deleteQuietly = async (path: string): Promise<true> => readDeleted(await send('DELETE', path));
 

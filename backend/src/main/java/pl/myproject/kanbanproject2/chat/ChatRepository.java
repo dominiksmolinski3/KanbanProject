@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.board.Board;
 
 import java.time.Instant;
-import java.util.List;
 
 @Repository
 public interface ChatRepository extends JpaRepository<Chat, Integer> {
@@ -26,7 +25,9 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
             """)
     Page<Chat> findDirectThread(@Param("one") String one, @Param("other") String other, Pageable pageable);
 
-    List<Chat> findByBoard(Board board);
+    @Modifying
+    @Query("delete from Chat c where c.board = :board")
+    int deleteAllOn(@Param("board") Board board);
 
     @Modifying(flushAutomatically = true)
     @Query("update Chat c set c.sender = :to where lower(c.sender) = :from")
