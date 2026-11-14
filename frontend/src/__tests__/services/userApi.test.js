@@ -111,31 +111,27 @@ test('fetchUser should return a specific user', async () => {
   expect(result).toEqual(mockUser);
 });
 
-test('deleteUser should delete a user', async () => {
-  fetch.mockResolvedValueOnce({
-    ok: true
-  });
-  
-  const result = await deleteUser('user1');
-  
+test('deleteUser sends the current password with the delete', async () => {
+  fetch.mockResolvedValueOnce({ ok: true, status: 204 });
+
+  const result = await deleteUser('user1', 'the-password');
+
   expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword: 'the-password' }),
   });
   expect(result).toBe(true);
 });
 
-test('deleteUser should handle 404 responses', async () => {
+test('deleteUser rejects when the server refuses, carrying the code', async () => {
   fetch.mockResolvedValueOnce({
     ok: false,
-    status: 404
+    status: 400,
+    json: async () => ({ code: 'WRONG_PASSWORD', message: 'The current password is not correct' }),
   });
-  
-  const result = await deleteUser('user1');
-  
-  expect(fetch).toHaveBeenCalledWith('/api/users/user1', {
-    method: 'DELETE'
-  });
-  expect(result).toBe(true);
+
+  await expect(deleteUser('user1', 'nope')).rejects.toMatchObject({ code: 'WRONG_PASSWORD' });
 });
 
 test('updateUserWipLimit should handle non-numeric input', async () => {

@@ -100,9 +100,7 @@ public class PasswordResetService {
 
     public void changePassword(User currentUser, ChangePasswordRequest request) {
         demoAccounts.requireNotDemo(currentUser);
-        if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPassword())) {
-            throw new GlobalException(ExceptionIdentifier.WRONG_PASSWORD);
-        }
+        requireCurrentPassword(currentUser, request.currentPassword());
 
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND));
@@ -111,6 +109,12 @@ public class PasswordResetService {
         clearResetCode(user);
         userRepository.save(user);
         refreshTokenService.revokeAllFor(user);
+    }
+
+    public void requireCurrentPassword(User currentUser, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, currentUser.getPassword())) {
+            throw new GlobalException(ExceptionIdentifier.WRONG_PASSWORD);
+        }
     }
 
     private static void clearResetCode(User user) {
@@ -124,7 +128,7 @@ public class PasswordResetService {
             emailService.sendPasswordResetCode(user.getEmail(), code, RESET_CODE_TTL_MINUTES,
                     SupportedLocales.toLocale(user.getLocale()));
         } catch (EmailDeliveryException e) {
-            log.error("Failed to send password reset email to {}", user.getEmail(), e);
+            log.error("Failed to send the password reset email to user {}", user.getId(), e);
             throw new GlobalException(ExceptionIdentifier.EMAIL_SEND_FAILED, e);
         }
     }
