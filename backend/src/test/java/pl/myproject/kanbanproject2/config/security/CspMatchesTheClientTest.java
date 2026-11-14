@@ -84,7 +84,7 @@ class CspMatchesTheClientTest {
     }
 
     private static void collectHosts(Path file, Set<String> into) throws IOException {
-        Matcher host = EXTERNAL_HOST.matcher(Files.readString(file, StandardCharsets.UTF_8));
+        Matcher host = EXTERNAL_HOST.matcher(Files.readString(file, StandardCharsets.ISO_8859_1));
         while (host.find()) {
             into.add(host.group(1));
         }
