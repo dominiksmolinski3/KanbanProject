@@ -21,6 +21,9 @@ import java.util.Set;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Integer> {
 
+    @Query("SELECT COUNT(task) FROM Task task JOIN task.users assignee WHERE assignee.id = :userId AND task.completed = false")
+    long countOpenAssignedTo(@Param("userId") Integer userId);
+
     @Modifying
     @Query("update Task t set t.row = null where t.row = :row")
     int detachFromRow(@Param("row") Row row);

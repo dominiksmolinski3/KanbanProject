@@ -10,6 +10,7 @@ import org.springframework.http.HttpRange;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
@@ -55,6 +56,7 @@ public class TaskAttachmentService {
     private final BlobStore blobStore;
     private final BoardService boardService;
     private final BoardEventPublisher boardEvents;
+    private final TransactionOperations transactions;
     private final Clock clock;
 
     private final Semaphore transferPermits;
@@ -74,8 +76,9 @@ public class TaskAttachmentService {
                                  BoardService boardService,
                                  BoardEventPublisher boardEvents,
                                  BlobStorageProperties storageProperties,
+                                 TransactionOperations transactions,
                                  MeterRegistry meterRegistry) {
-        this(attachments, tasks, mapper, blobStore, boardService, boardEvents, storageProperties,
+        this(attachments, tasks, mapper, blobStore, boardService, boardEvents, storageProperties, transactions,
                 Clock.systemUTC(), meterRegistry);
     }
 
@@ -86,6 +89,7 @@ public class TaskAttachmentService {
                           BoardService boardService,
                           BoardEventPublisher boardEvents,
                           BlobStorageProperties storageProperties,
+                          TransactionOperations transactions,
                           Clock clock,
                           MeterRegistry meterRegistry) {
         this.attachments = attachments;
@@ -94,6 +98,7 @@ public class TaskAttachmentService {
         this.blobStore = blobStore;
         this.boardService = boardService;
         this.boardEvents = boardEvents;
+        this.transactions = transactions;
         this.clock = clock;
         this.transferPermits = new Semaphore(Math.max(1,
                 storageProperties.maxConcurrentTransfers() / Math.max(1, storageProperties.replicaCountHint())));
@@ -109,16 +114,20 @@ public class TaskAttachmentService {
                 .toList();
     }
 
+    // No transaction spans the transfer: a slow store would hold a database connection for every file in flight.
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public TaskAttachmentDto upload(User caller, Integer taskId, MultipartFile file) {
-        var task = findTask(caller, taskId);
-        boardService.requireWritable(caller, task.getBoard());
-        requireStorage();
-        validate(file);
-        requireQuota(task.getBoard(), file.getSize());
+        String blobName = transactions.execute(status -> {
+            var task = findTask(caller, taskId);
+            boardService.requireWritable(caller, task.getBoard());
+            requireStorage();
+            validate(file);
+            requireQuota(task.getBoard(), file.getSize());
+            return blobNameFor(task);
+        });
 
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         String contentType = contentTypeOf(file);
-        String blobName = blobNameFor(task);
 
         if (!transferPermits.tryAcquire()) {
             uploadBusy.increment();
@@ -131,29 +140,33 @@ public class TaskAttachmentService {
         } finally {
             transferPermits.release();
         }
-        // Blob written, row not yet: if this transaction does not commit, nothing else knows the blob exists.
-        onCompletion(status -> {
-            if (status != TransactionSynchronization.STATUS_COMMITTED) {
-                removeQuietly(blobName);
-            }
-        });
+        try {
+            return transactions.execute(status -> {
+                var task = findTask(caller, taskId);
+                boardService.requireWritable(caller, task.getBoard());
 
-        var attachment = new TaskAttachment();
-        attachment.setTask(task);
-        attachment.setBlobName(blobName);
-        attachment.setFileName(fileName);
-        attachment.setContentType(contentType);
-        attachment.setSizeBytes(file.getSize());
-        attachment.setUploadedBy(caller);
-        attachment.setUploadedAt(clock.instant());
+                var attachment = new TaskAttachment();
+                attachment.setTask(task);
+                attachment.setBlobName(blobName);
+                attachment.setFileName(fileName);
+                attachment.setContentType(contentType);
+                attachment.setSizeBytes(file.getSize());
+                attachment.setUploadedBy(caller);
+                attachment.setUploadedAt(clock.instant());
 
-        var saved = attachments.save(attachment);
-        boardEvents.attachmentsChanged(task.getBoard());
-        return mapper.apply(saved);
+                var saved = attachments.save(attachment);
+                boardEvents.attachmentsChanged(task.getBoard());
+                return mapper.apply(saved);
+            });
+        } catch (RuntimeException e) {
+            removeQuietly(blobName);
+            throw e;
+        }
     }
 
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public TaskAttachmentContent content(User caller, Integer taskId, Long attachmentId, HttpRange range) {
-        var attachment = findAttachment(caller, taskId, attachmentId);
+        var attachment = transactions.execute(status -> findAttachment(caller, taskId, attachmentId));
         long size = attachment.getSizeBytes();
         long start = 0;
         long length = size;

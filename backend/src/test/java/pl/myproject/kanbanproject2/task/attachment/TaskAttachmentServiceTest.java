@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpRange;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.board.Board;
 import pl.myproject.kanbanproject2.board.BoardTasksDeleting;
@@ -114,6 +115,7 @@ class TaskAttachmentServiceTest {
                 tenant.boardService(),
                 boardEvents,
                 storageProperties,
+                TransactionOperations.withoutTransaction(),
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 meterRegistry);
     }
@@ -286,6 +288,35 @@ class TaskAttachmentServiceTest {
                     .extracting(e -> ((GlobalException) e).getIdentifier())
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_STORAGE_UNAVAILABLE);
 
+            verify(attachments, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("a row that cannot be written takes its blob with it, since nothing else knows the blob exists")
+        void removesTheBlobWhenTheRowIsNotWritten() {
+            when(attachments.save(any(TaskAttachment.class))).thenThrow(new IllegalStateException("no row"));
+            var blobName = ArgumentCaptor.forClass(String.class);
+
+            assertThatThrownBy(() -> service.upload(caller, 42, upload("notes.txt", "text/plain", CONTENT)))
+                    .isInstanceOf(IllegalStateException.class);
+
+            verify(blobStore).put(blobName.capture(), anyString(), any(InputStream.class), anyLong());
+            verify(blobStore).remove(blobName.getValue());
+        }
+
+        @Test
+        @DisplayName("a task deleted while its file was in flight is a 404, and the blob is removed")
+        void removesTheBlobWhenTheTaskWentAway() {
+            when(tasks.findById(42)).thenReturn(Optional.of(task), Optional.empty());
+            var blobName = ArgumentCaptor.forClass(String.class);
+
+            assertThatThrownBy(() -> service.upload(caller, 42, upload("notes.txt", "text/plain", CONTENT)))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.TASK_NOT_FOUND);
+
+            verify(blobStore).put(blobName.capture(), anyString(), any(InputStream.class), anyLong());
+            verify(blobStore).remove(blobName.getValue());
             verify(attachments, never()).save(any());
         }
 

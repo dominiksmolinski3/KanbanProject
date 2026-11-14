@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.multipart.MultipartFile;
 import pl.myproject.kanbanproject2.config.BlobStorageProperties;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -70,7 +71,8 @@ class AvatarServiceTest {
     }
 
     private AvatarService serviceWith(BlobStorageProperties storageProperties) {
-        return new AvatarService(users, blobStore, storageProperties, Clock.fixed(NOW, ZoneOffset.UTC));
+        return new AvatarService(users, blobStore, storageProperties, TransactionOperations.withoutTransaction(),
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static MultipartFile upload(String name, String type, byte[] content) {
@@ -202,6 +204,20 @@ class AvatarServiceTest {
                     .isEqualTo(ExceptionIdentifier.ATTACHMENT_STORAGE_UNAVAILABLE);
 
             verify(users, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("an account that cannot be updated takes the new blob with it, and keeps the old one")
+        void removesTheNewBlobWhenTheRowIsNotWritten() {
+            caller.setAvatarBlobName("avatars/1/previous");
+            when(users.save(any())).thenThrow(new IllegalStateException("no row"));
+            var blobName = ArgumentCaptor.forClass(String.class);
+
+            assertThatThrownBy(() -> service.upload(caller, png())).isInstanceOf(IllegalStateException.class);
+
+            verify(blobStore).put(blobName.capture(), anyString(), any(InputStream.class), anyLong());
+            verify(blobStore).remove(blobName.getValue());
+            verify(blobStore, never()).remove("avatars/1/previous");
         }
 
         @Test
