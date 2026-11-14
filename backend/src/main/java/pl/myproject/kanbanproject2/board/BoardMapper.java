@@ -52,6 +52,7 @@ public class BoardMapper {
                         user.getName(),
                         user.getWipLimit(),
                         user.getLocale(),
+                        user.getAvatarBlobName() != null,
                         roleOf(roleByUserId, user.getId())))
                 .toList();
 

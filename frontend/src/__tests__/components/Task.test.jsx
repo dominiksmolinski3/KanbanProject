@@ -562,6 +562,26 @@ describe('Task Component', () => {
         expect(frontendLabel).toHaveTextContent('Frontend');
     });
     
+    test('asks for no avatar of an assignee the board says has none', async () => {
+        const context = {
+            ...mockContextValue,
+            activeBoard: { members: [{ id: 1, name: 'Ada', hasAvatar: false }, { id: 2, name: 'Bob', hasAvatar: true }] },
+        };
+
+        await act(async () => {
+            render(
+                <KanbanContext.Provider value={context}>
+                    <Task task={{ ...mockTask, userIds: [1, 2] }} columnId="col1" />
+                </KanbanContext.Provider>
+            );
+        });
+
+        expect(await screen.findAllByAltText('taskActions.avatarAlt')).toHaveLength(1);
+        expect(getUserAvatar).toHaveBeenCalledTimes(1);
+        expect(getUserAvatar).toHaveBeenCalledWith(2);
+        expect(screen.getByRole('img', { name: 'Ada' })).toHaveTextContent('A');
+    });
+
     test('renders task with assigned users', async () => {
         const taskWithUsers = {
             ...mockTask,
