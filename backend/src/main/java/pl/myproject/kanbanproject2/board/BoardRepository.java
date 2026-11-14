@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.user.User;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +53,10 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
 
     @Query(value = "SELECT user_id, role FROM board_members WHERE board_id = :boardId", nativeQuery = true)
     List<Object[]> findMemberRoles(@Param("boardId") Integer boardId);
+
+    @Query(value = "SELECT board_id, user_id, role FROM board_members WHERE board_id IN (:boardIds)",
+            nativeQuery = true)
+    List<Object[]> findMemberRolesIn(@Param("boardIds") Collection<Integer> boardIds);
 
     @Modifying
     @Query(value = "UPDATE board_members SET role = :role WHERE board_id = :boardId AND user_id = :userId",
