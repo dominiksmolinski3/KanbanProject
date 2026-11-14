@@ -20,7 +20,9 @@ public interface BoardInvitationRepository extends JpaRepository<BoardInvitation
 
     List<BoardInvitation> findByEmailAndStatusOrderByIdAsc(String email, InvitationStatus status);
 
-    List<BoardInvitation> findByBoard(Board board);
+    @Modifying
+    @Query("DELETE FROM BoardInvitation invitation WHERE invitation.board = :board")
+    int deleteAllOn(@Param("board") Board board);
 
     long countByInvitedByAndCreatedAtAfter(User invitedBy, Instant since);
 
