@@ -453,7 +453,6 @@
     },
     "messages": {
       "deleteConfirm": "Usunąć Twoje konto? Tablice, z których korzystasz tylko Ty, zostaną usunięte wraz z całą zawartością, a każda współdzielona tablica przejdzie na innego członka. Tej operacji nie można cofnąć.",
-      "deleteError": "Wystąpił błąd podczas usuwania użytkownika",
       "fileTooLarge": "Plik jest zbyt duży. Maksymalny rozmiar to 1 MB.",
       "fileTypeError": "Dozwolone są tylko pliki JPG, PNG, WebP i GIF.",
       "avatarUpdated": "Avatar został pomyślnie zaktualizowany",

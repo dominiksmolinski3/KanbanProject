@@ -24,6 +24,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -135,7 +136,9 @@ class UserControllerHttpTest {
     void aDemoAccountIsNotDeleted() throws Exception {
         caller.setEmail(DEMO_EMAIL);
 
-        mvc.perform(delete("/users/" + CALLER_ID))
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("DEMO_ACCOUNT_LOCKED"));
 
@@ -145,13 +148,40 @@ class UserControllerHttpTest {
     @Test
     @DisplayName("deleting another account is a 403, and deleting one's own is a 204")
     void deleteChecksOwnership() throws Exception {
-        mvc.perform(delete("/users/" + OTHER_ID))
+        mvc.perform(delete("/users/" + OTHER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isForbidden());
         verify(userService, never()).deleteUser(any());
 
-        mvc.perform(delete("/users/" + CALLER_ID))
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isNoContent());
+        verify(passwordResetService).requireCurrentPassword(caller, "the-password");
         verify(userService).deleteUser(CALLER_ID);
+    }
+
+    @Test
+    @DisplayName("deleting an account needs its current password: a token alone, or a wrong password, deletes nothing")
+    void deleteNeedsTheCurrentPassword() throws Exception {
+        doThrow(new GlobalException(ExceptionIdentifier.WRONG_PASSWORD))
+                .when(passwordResetService).requireCurrentPassword(caller, "not-the-password");
+
+        mvc.perform(delete("/users/" + CALLER_ID))
+                .andExpect(status().isBadRequest());
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"  \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"not-the-password\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("WRONG_PASSWORD"));
+
+        verify(userService, never()).deleteUser(any());
     }
 
     @Test
@@ -159,7 +189,9 @@ class UserControllerHttpTest {
     void nullPrincipalIsRefused() throws Exception {
         caller = null;
 
-        mvc.perform(delete("/users/" + CALLER_ID))
+        mvc.perform(delete("/users/" + CALLER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"the-password\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOT_ACCOUNT_OWNER"));
     }
