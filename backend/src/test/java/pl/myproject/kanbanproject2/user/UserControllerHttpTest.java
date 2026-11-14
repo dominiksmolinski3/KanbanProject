@@ -81,7 +81,7 @@ class UserControllerHttpTest {
     @DisplayName("the listing answers 200 and never exposes the password field")
     void listAnswers200() throws Exception {
         when(userService.getVisibleUsers(caller))
-                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3, "en")));
+                .thenReturn(List.of(new UserDto(1, "a@example.test", "a", 3, "en", false)));
 
         mvc.perform(get("/users"))
                 .andExpect(status().isOk())
@@ -106,7 +106,7 @@ class UserControllerHttpTest {
     @DisplayName("an email in the patch body is dropped before the service, so an address cannot be taken over")
     void emailInThePatchBodyIsIgnored() throws Exception {
         when(userService.patchUser(any(), eq(CALLER_ID)))
-                .thenReturn(new UserDto(CALLER_ID, "owner@example.test", "Renamed", null, "en"));
+                .thenReturn(new UserDto(CALLER_ID, "owner@example.test", "Renamed", null, "en", false));
 
         mvc.perform(patch("/users/" + CALLER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -181,7 +181,7 @@ class UserControllerHttpTest {
     @DisplayName("the WIP limit route reaches the service with the parsed body")
     void wipLimitRoute() throws Exception {
         when(userService.updateWipLimit(eq(caller), eq(CALLER_ID), eq(5)))
-                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5, "en"));
+                .thenReturn(new UserDto(CALLER_ID, "a@example.test", "a", 5, "en", false));
 
         mvc.perform(patch("/users/" + CALLER_ID + "/wip-limit")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -48,7 +48,7 @@ export function usePeople() {
 
   const people = users.map(user => user.id).join(',');
   useEffect(() => {
-    users.forEach(async (user) => {
+    users.filter(user => user.hasAvatar !== false).forEach(async (user) => {
       const avatarUrl = await getUserAvatar(user.id);
       if (avatarUrl) {
         setAvatars(previous => ({ ...previous, [user.id]: avatarUrl }));
