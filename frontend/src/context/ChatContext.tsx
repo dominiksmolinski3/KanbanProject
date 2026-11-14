@@ -125,7 +125,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { activeBoardId, activeBoard } = useKanban();
   const isBoardReadOnly = activeBoard?.role === 'VIEWER';
   const { t } = useTranslation();
@@ -200,14 +200,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         onRefusal,
         () => dispatch({ type: 'SET_CONNECTED', payload: true })
       );
-      await chatApiRef.current.connect(token);
+      await chatApiRef.current.connect();
       chatApiRef.current.joinBoard(activeBoardId);
       dispatch({ type: 'SET_CONNECTED', payload: true });
     } catch (error) {
       onError(error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token, activeBoardId]);
+  }, [user, activeBoardId]);
 
   const disconnect = useCallback(() => {
     if (!chatApiRef.current) return;

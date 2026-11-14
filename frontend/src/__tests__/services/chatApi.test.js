@@ -1,119 +1,183 @@
 import ChatApi from '../../services/chatApi';
+import BoardEvents from '../../services/boardEvents';
+import { clientInstances } from '../../test-utils/stompMock';
 
 jest.mock('sockjs-client', () => jest.fn().mockImplementation((url) => ({ url })));
+jest.mock('@stomp/stompjs', () => require('../../test-utils/stompMock'));
 
-const clientInstances = [];
-jest.mock('@stomp/stompjs', () => ({
-  Client: jest.fn().mockImplementation(function Client(config) {
-    Object.assign(this, config);
-    this.active = false;
-    this.subscriptions = [];
-    this.published = [];
-    this.activate = jest.fn(() => {
-      this.active = true;
-      this.onConnect();
-    });
-    this.subscribe = jest.fn((destination, handler) => {
-      this.subscriptions.push(destination);
-      return { unsubscribe: jest.fn(), destination, handler };
-    });
-    this.publish = jest.fn((frame) => this.published.push(frame));
-    this.deactivate = jest.fn();
-    clientInstances.push(this);
-  }),
+jest.mock('../../services/apiInterceptor', () => ({
+  renewOrSignOut: () => Promise.resolve(null),
 }));
 
-import SockJS from 'sockjs-client';
-
-const mockRenewOrSignOut = jest.fn(() => Promise.resolve(null));
-jest.mock('../../services/apiInterceptor', () => ({
-  renewOrSignOut: () => mockRenewOrSignOut(),
+jest.mock('../../services/session', () => ({
+  getAccessToken: () => 'jwt-123',
+  isAccessTokenExpired: () => false,
+  refreshSession: () => Promise.resolve(),
 }));
 
 describe('ChatApi', () => {
   let onMessage;
   let onError;
   let onRefusal;
+  let opened;
 
   beforeEach(() => {
     clientInstances.length = 0;
+    opened = [];
     jest.clearAllMocks();
     onMessage = jest.fn();
     onError = jest.fn();
     onRefusal = jest.fn();
   });
 
-  const connect = async (...token) => {
-    const api = new ChatApi(onMessage, onError, onRefusal);
-    await api.connect(token.length ? token[0] : 'jwt-123');
-    return { api, client: clientInstances[0] };
+  afterEach(() => {
+    opened.forEach((each) => (each.disconnect ? each.disconnect() : each.stop()));
+  });
+
+  const connect = async (onConnected) => {
+    const api = new ChatApi(onMessage, onError, onRefusal, onConnected);
+    opened.push(api);
+    const connecting = api.connect();
+    const client = clientInstances[0];
+    if (!client.connected) {
+      await client.completeConnect();
+    }
+    await connecting;
+    return { api, client };
   };
 
-  it('renews or signs out when the server closes the connection with an ERROR', async () => {
-    const { client } = await connect();
-
-    client.onStompError({ headers: { message: 'This connection was signed out' } });
-
-    expect(mockRenewOrSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  it('sends the JWT on the CONNECT frame, which the interceptor requires', async () => {
-    const { client } = await connect();
-
-    expect(client.connectHeaders).toEqual({ Authorization: 'Bearer jwt-123' });
-  });
-
-  it('connects to /ws on the page origin rather than a hardcoded host', async () => {
-    const { client } = await connect();
-
-    client.webSocketFactory();
-
-    expect(SockJS).toHaveBeenCalledWith(`${window.location.origin}/ws`);
-  });
+  const reconnect = async (client) => {
+    client.connected = false;
+    await client.completeConnect();
+  };
 
   it('subscribes to the private queue without naming the account', async () => {
     const { client } = await connect();
 
-    expect(client.subscriptions).toContain('/user/queue/messages');
-    expect(client.subscriptions.some((d) => d.includes('@'))).toBe(false);
+    expect(client.destinations()).toContain('/user/queue/messages');
+    expect(client.destinations().some((d) => d.includes('@'))).toBe(false);
   });
 
   it('subscribes to no topic on connect - there is no global room to join', async () => {
     const { client } = await connect();
 
-    expect(client.subscriptions.filter((d) => d.startsWith('/topic/'))).toEqual([]);
-    expect(client.subscriptions).not.toContain('/topic/public');
+    expect(client.destinations().filter((d) => d.startsWith('/topic/'))).toEqual([]);
   });
 
-  it('subscribes to the error queue, which is how a refusal arrives without closing the session', async () => {
+  it('hands a direct message to the caller', async () => {
     const { client } = await connect();
+    const frame = { body: '{"type":"PRIVATE"}' };
 
-    expect(client.subscriptions).toContain('/user/queue/errors');
+    client.subscriptionTo('/user/queue/messages').handler(frame);
+
+    expect(onMessage).toHaveBeenCalledWith(frame);
   });
 
   it('hands a refusal to the caller as the parsed payload', async () => {
     const { client } = await connect();
-    const errorQueue = client.subscribe.mock.calls
-      .find(([destination]) => destination.endsWith('/queue/errors'))[1];
 
-    errorQueue({ body: JSON.stringify({ reason: 'chat.errors.tooLong' }) });
+    client.subscriptionTo('/user/queue/errors').handler({ body: JSON.stringify({ reason: 'chat.errors.tooLong' }) });
 
     expect(onRefusal).toHaveBeenCalledWith({ reason: 'chat.errors.tooLong' });
   });
 
   it('survives a refusal frame that will not parse', async () => {
     const { client } = await connect();
-    const errorQueue = client.subscribe.mock.calls
-      .find(([destination]) => destination.endsWith('/queue/errors'))[1];
 
-    expect(() => errorQueue({ body: 'not json' })).not.toThrow();
+    expect(() => client.subscriptionTo('/user/queue/errors').handler({ body: 'not json' })).not.toThrow();
     expect(onRefusal).not.toHaveBeenCalled();
   });
 
-  it('connects without an Authorization header when there is no token to send', async () => {
-    const { client } = await connect(undefined);
+  it('reports a failure of the socket and fails the connect that was waiting on it', async () => {
+    const api = new ChatApi(onMessage, onError, onRefusal);
+    opened.push(api);
+    const connecting = api.connect();
+    const failure = new Error('socket closed');
 
-    expect(client.connectHeaders).toEqual({});
+    clientInstances[0].onWebSocketError(failure);
+
+    await expect(connecting).rejects.toBe(failure);
+    expect(onError).toHaveBeenCalledWith(failure);
+  });
+
+  describe('sharing the board connection', () => {
+    const watchBoard = async () => {
+      const events = new BoardEvents();
+      opened.push(events);
+      events.watch(7, jest.fn());
+      const client = clientInstances[0];
+      await client.completeConnect();
+      return { events, client };
+    };
+
+    it('opens no second connection when the board already holds one', async () => {
+      const { client } = await watchBoard();
+
+      const { client: chatClient } = await connect();
+
+      expect(chatClient).toBe(client);
+      expect(clientInstances).toHaveLength(1);
+      expect(client.destinations()).toEqual([
+        '/user/queue/boards',
+        '/topic/boards.7',
+        '/user/queue/messages',
+        '/user/queue/errors',
+      ]);
+    });
+
+    it('closes its own subscriptions and leaves the connection to the board', async () => {
+      const { client } = await watchBoard();
+      const { api } = await connect();
+      api.joinBoard(7);
+
+      expect(api.disconnect()).toBe(true);
+
+      expect(client.subscriptionTo('/user/queue/messages').unsubscribe).toHaveBeenCalled();
+      expect(client.subscriptionTo('/user/queue/errors').unsubscribe).toHaveBeenCalled();
+      expect(client.subscriptionTo('/topic/boards.7.chat').unsubscribe).toHaveBeenCalled();
+      expect(client.subscriptionTo('/topic/boards.7').unsubscribe).not.toHaveBeenCalled();
+      expect(client.deactivate).not.toHaveBeenCalled();
+    });
+
+    it('hears nothing more after it disconnects, though the connection comes back', async () => {
+      const { client } = await watchBoard();
+      const { api } = await connect();
+      api.disconnect();
+      const before = client.subscriptions.length;
+
+      await reconnect(client);
+
+      expect(client.destinations().slice(before)).toEqual(['/user/queue/boards', '/topic/boards.7']);
+    });
+  });
+
+  describe('disconnecting', () => {
+    it('closes the connection when nothing else uses it', async () => {
+      const { api, client } = await connect();
+
+      expect(api.disconnect()).toBe(true);
+
+      expect(client.deactivate).toHaveBeenCalledTimes(1);
+      expect(api.isConnected()).toBe(false);
+    });
+
+    it('says so when there was nothing to disconnect', () => {
+      const api = new ChatApi(onMessage, onError, onRefusal);
+
+      expect(api.disconnect()).toBe(false);
+    });
+
+    it('sends nothing on a connection that is down, where the library throws', async () => {
+      const { api, client } = await connect();
+      api.joinBoard(7);
+      client.connected = false;
+      client.published.length = 0;
+
+      expect(() => api.disconnect()).not.toThrow();
+
+      expect(client.published).toEqual([]);
+      expect(client.subscriptionTo('/user/queue/messages').unsubscribe).not.toHaveBeenCalled();
+    });
   });
 
   describe('joining a board', () => {
@@ -122,7 +186,7 @@ describe('ChatApi', () => {
 
       api.joinBoard(7);
 
-      expect(client.subscriptions).toContain('/topic/boards.7.chat');
+      expect(client.destinations()).toContain('/topic/boards.7.chat');
       expect(client.published).toContainEqual({
         destination: '/app/chat.join',
         body: JSON.stringify({ boardId: 7 }),
@@ -133,18 +197,18 @@ describe('ChatApi', () => {
       const { api, client } = await connect();
 
       api.joinBoard(7);
-      const first = client.subscribe.mock.results.at(-1).value;
+      const first = client.subscriptionTo('/topic/boards.7.chat');
       api.joinBoard(8);
 
       expect(first.unsubscribe).toHaveBeenCalled();
-      expect(client.subscriptions).toContain('/topic/boards.8.chat');
+      expect(client.destinations()).toContain('/topic/boards.8.chat');
     });
 
     it('does nothing without a board to join', async () => {
       const { api, client } = await connect();
 
       expect(api.joinBoard(null)).toBe(false);
-      expect(client.subscriptions.filter((d) => d.startsWith('/topic/'))).toEqual([]);
+      expect(client.destinations().filter((d) => d.startsWith('/topic/'))).toEqual([]);
     });
 
     it('unsubscribes and says so when leaving', async () => {
@@ -153,6 +217,7 @@ describe('ChatApi', () => {
 
       api.leaveBoard(7);
 
+      expect(client.subscriptionTo('/topic/boards.7.chat').unsubscribe).toHaveBeenCalled();
       expect(client.published).toContainEqual({
         destination: '/app/chat.leave',
         body: JSON.stringify({ boardId: 7 }),
@@ -161,55 +226,49 @@ describe('ChatApi', () => {
   });
 
   describe('reconnecting', () => {
-    beforeEach(() => localStorage.clear());
-
     it('joins the board it was on again once the socket is back', async () => {
       const { api, client } = await connect();
       api.joinBoard(7);
-      client.subscriptions.length = 0;
+      const before = client.subscriptions.length;
       client.published.length = 0;
 
-      client.onConnect();
+      await reconnect(client);
 
-      expect(client.subscriptions).toContain('/topic/boards.7.chat');
+      expect(client.destinations().slice(before)).toEqual([
+        '/user/queue/messages',
+        '/user/queue/errors',
+        '/topic/boards.7.chat',
+      ]);
       expect(client.published).toContainEqual({
         destination: '/app/chat.join',
         body: JSON.stringify({ boardId: 7 }),
       });
     });
 
+    it('leaves the handles of a lost connection alone, whose ids the new connection hands out again', async () => {
+      const { api, client } = await connect();
+      api.joinBoard(7);
+      const stale = [...client.subscriptions];
+
+      await reconnect(client);
+
+      stale.forEach((subscription) => expect(subscription.unsubscribe).not.toHaveBeenCalled());
+    });
+
     it('joins no board when none was joined before the drop', async () => {
       const { client } = await connect();
-      client.subscriptions.length = 0;
+      const before = client.subscriptions.length;
 
-      client.onConnect();
+      await reconnect(client);
 
-      expect(client.subscriptions.filter((d) => d.startsWith('/topic/'))).toEqual([]);
-    });
-
-    it('presents the token the session holds now, not the one it first connected with', async () => {
-      const { client } = await connect('old-jwt');
-      localStorage.setItem('token', 'renewed-jwt');
-
-      client.beforeConnect();
-
-      expect(client.connectHeaders).toEqual({ Authorization: 'Bearer renewed-jwt' });
-    });
-
-    it('falls back to the token it was given when the session holds none', async () => {
-      const { client } = await connect('old-jwt');
-
-      client.beforeConnect();
-
-      expect(client.connectHeaders).toEqual({ Authorization: 'Bearer old-jwt' });
+      expect(client.destinations().slice(before).filter((d) => d.startsWith('/topic/'))).toEqual([]);
     });
 
     it('tells the caller on every connect, so a reconnect can clear the failure it reported', async () => {
       const onConnected = jest.fn();
-      const api = new ChatApi(onMessage, onError, onRefusal, onConnected);
-      await api.connect('jwt-123');
+      const { client } = await connect(onConnected);
 
-      clientInstances[0].onConnect();
+      await reconnect(client);
 
       expect(onConnected).toHaveBeenCalledTimes(2);
     });
@@ -255,6 +314,14 @@ describe('ChatApi', () => {
       const { api } = await connect();
 
       expect(api.sendMessage('board', '   ', 7, '')).toBe(false);
+    });
+
+    it('keeps a message while the connection is down, where the library throws', async () => {
+      const { api, client } = await connect();
+      client.connected = false;
+
+      expect(api.sendMessage('board', 'hello', 7, '')).toBe(false);
+      expect(client.published).toEqual([]);
     });
   });
 });

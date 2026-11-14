@@ -1,9 +1,6 @@
-import SockJS from 'sockjs-client';
-import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
+import type { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
-import { socketOrigin } from './apiOrigin';
-import { getAccessToken } from './session';
-import { renewOrSignOut } from './apiInterceptor';
+import { joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
 
 type MessageHandler = (message: IMessage) => void;
 
@@ -17,9 +14,10 @@ export default class ChatApi {
   onError: (error: unknown) => void;
   onRefusal: (refusal: ChatRefusal | null | undefined) => void;
   onConnected?: () => void;
+  queueSubscriptions: StompSubscription[] = [];
   boardSubscription: StompSubscription | null = null;
   boardId: Id | null = null;
-  serverUrl = socketOrigin();
+  private socketUser: LiveSocketUser | null = null;
 
   constructor(
     onMessageReceived: MessageHandler,
@@ -33,69 +31,56 @@ export default class ChatApi {
     this.onConnected = onConnected;
   }
 
-  connect(token?: string | null): Promise<void> {
+  connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      try {
-        const client = new Client({
-          webSocketFactory: () => new SockJS(`${this.serverUrl}/ws`),
-          connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-          beforeConnect: () => {
-            const current = getAccessToken() ?? token;
-            client.connectHeaders = current ? { Authorization: `Bearer ${current}` } : {};
-          },
-          debug: () => {},
-          reconnectDelay: 5000,
-          heartbeatIncoming: 4000,
-          heartbeatOutgoing: 4000,
-          onConnect: () => {
-            client.subscribe('/user/queue/messages', this.onMessageReceived);
+      this.socketUser = {
+        onConnect: (client) => {
+          this.stompClient = client;
+          this.boardSubscription = null;
+          this.queueSubscriptions = [
+            client.subscribe('/user/queue/messages', this.onMessageReceived),
             client.subscribe('/user/queue/errors', (frame) => {
               try {
                 this.onRefusal(JSON.parse(frame.body));
               } catch {
                 // A refusal that will not parse is one there is nothing useful to say about.
               }
-            });
-            if (this.boardId !== null) {
-              this.joinBoard(this.boardId);
-            }
-            this.onConnected?.();
-            resolve();
-          },
-          onStompError: (frame) => {
-            this.onError(new Error('STOMP protocol error'));
-            reject(frame);
-            renewOrSignOut().catch(() => {});
-          },
-          onWebSocketError: (error) => {
-            this.onError(error);
-            reject(error);
+            }),
+          ];
+          if (this.boardId !== null) {
+            this.joinBoard(this.boardId);
           }
-        });
-        this.stompClient = client;
-
-        client.activate();
-      } catch (error) {
-        this.onError(error);
-        reject(error);
-      }
+          this.onConnected?.();
+          resolve();
+        },
+        onError: (error) => {
+          this.onError(error);
+          reject(error);
+        },
+      };
+      this.stompClient = joinLiveSocket(this.socketUser);
     });
   }
 
   disconnect() {
+    if (!this.socketUser) {
+      return false;
+    }
     if (this.boardId !== null) {
       this.leaveBoard(this.boardId);
     }
-
-    if (this.stompClient && this.stompClient.active) {
-      this.stompClient.deactivate();
-      return true;
+    if (this.stompClient?.connected) {
+      this.queueSubscriptions.forEach((subscription) => subscription.unsubscribe());
     }
-    return false;
+    this.queueSubscriptions = [];
+    leaveLiveSocket(this.socketUser);
+    this.socketUser = null;
+    this.stompClient = null;
+    return true;
   }
 
   joinBoard(boardId: Id | null | undefined) {
-    if (!this.stompClient || !this.stompClient.active || boardId === null || boardId === undefined) {
+    if (!this.stompClient || !this.stompClient.connected || boardId === null || boardId === undefined) {
       return false;
     }
     if (this.boardSubscription) {
@@ -114,7 +99,7 @@ export default class ChatApi {
   }
 
   leaveBoard(boardId: Id | null) {
-    if (!this.stompClient || !this.stompClient.active) return false;
+    if (!this.stompClient || !this.stompClient.connected) return false;
 
     if (this.boardSubscription) {
       this.boardSubscription.unsubscribe();
@@ -129,7 +114,7 @@ export default class ChatApi {
   }
 
   sendMessage(messageType: string, message: string, boardId?: Id | null, recipient?: string | null) {
-    if (!this.stompClient || !this.stompClient.active || !message.trim()) return false;
+    if (!this.stompClient || !this.stompClient.connected || !message.trim()) return false;
 
     if (messageType === 'private') {
       if (!recipient || !recipient.trim()) return false;
@@ -151,6 +136,6 @@ export default class ChatApi {
   }
 
   isConnected() {
-    return this.stompClient && this.stompClient.active;
+    return Boolean(this.stompClient?.connected);
   }
 }
