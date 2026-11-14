@@ -33,7 +33,7 @@ export function useBenchUsers() {
 
   const people = users.map(user => user.id).join(',');
   useEffect(() => {
-    users.forEach(async (user) => {
+    users.filter(user => user.hasAvatar !== false).forEach(async (user) => {
       try {
         const avatarUrl = await getUserAvatar(user.id);
         if (avatarUrl) {

@@ -51,6 +51,22 @@ describe('UsersManagement', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/users/1/avatar', expect.any(Object));
   });
 
+  test('an account the server says has no avatar is not asked for one', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url === '/api/users') {
+        return Promise.resolve(jsonResponse([{ ...USERS[0], hasAvatar: true }, { ...USERS[1], hasAvatar: false }]));
+      }
+      if (String(url).includes('/avatar')) return Promise.resolve(blobResponse());
+      throw new Error(`unexpected fetch ${url}`);
+    });
+
+    render(<UsersManagement />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/users/1/avatar', expect.any(Object)));
+    await act(async () => {});
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/users/2/avatar', expect.any(Object));
+  });
+
   test('a failed roster load reports the error and shows nobody', async () => {
     global.fetch = jest.fn(() => Promise.resolve({ ok: false }));
 
