@@ -473,8 +473,9 @@ docker compose --profile loadtest run --rm --no-deps -e LOAD_PROFILE=load k6   #
 ```
 
 `LOAD_PROFILE` can be `smoke`, `load`, `stress` or `spike`, and `LOAD_RATE_SCALE`, `LOAD_DURATION` and
-`LOAD_P95_MS` tune it. A run fails on any 5xx, on more than 1% unexpected responses, or when p95 goes
-over the profile's limit. Watch it on the **Load test** dashboard in Grafana
+`LOAD_P95_MS` tune it. A run fails on any 5xx, on more than 1% unexpected responses, on a raced
+route that never once succeeds, or when p95 goes over the profile's limit. Watch it on the **Load
+test** dashboard in Grafana
 (`http://localhost:3000`). The override turns mail and captcha off and spreads traffic over both API
 replicas. Access tokens last 15 minutes, so seed again before each run.
 
