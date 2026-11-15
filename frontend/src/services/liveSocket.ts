@@ -1,5 +1,5 @@
 import SockJS from 'sockjs-client';
-import { Client } from '@stomp/stompjs';
+import { Client, type StompHeaders } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
 import { renewOrSignOut } from './apiInterceptor';
 import { socketOrigin } from './apiOrigin';
@@ -12,6 +12,15 @@ export interface LiveSocketUser {
 
 let client: Client | null = null;
 const users = new Set<LiveSocketUser>();
+let receipts = 0;
+
+// The broker drops what is published before it confirms a subscription, so act on a subscription only from here.
+export function confirmedBy(subscriber: Client, onLive: () => void): StompHeaders {
+  receipts += 1;
+  const receipt = `live-${receipts}`;
+  subscriber.watchForReceipt(receipt, onLive);
+  return { receipt };
+}
 
 export function joinLiveSocket(user: LiveSocketUser): Client {
   users.add(user);

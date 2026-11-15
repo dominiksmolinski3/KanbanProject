@@ -96,8 +96,6 @@ describe('a board is the same board for everybody on it', () => {
 
     if (live) {
       cy.wait('@sockjsHandshake');
-
-      cy.wait(1500);
     }
 
     cy.window().then((win) => {

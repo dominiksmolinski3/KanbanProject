@@ -1,6 +1,6 @@
 import type { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
-import { joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
+import { confirmedBy, joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
 
 type MessageHandler = (message: IMessage) => void;
 
@@ -13,22 +13,25 @@ export default class ChatApi {
   onMessageReceived: MessageHandler;
   onError: (error: unknown) => void;
   onRefusal: (refusal: ChatRefusal | null | undefined) => void;
-  onConnected?: () => void;
+  onReady?: (ready: boolean) => void;
   queueSubscriptions: StompSubscription[] = [];
   boardSubscription: StompSubscription | null = null;
   boardId: Id | null = null;
   private socketUser: LiveSocketUser | null = null;
+  private queuesLive = false;
+  private boardLive = false;
+  private ready = false;
 
   constructor(
     onMessageReceived: MessageHandler,
     onError: (error: unknown) => void,
     onRefusal: (refusal: ChatRefusal | null | undefined) => void,
-    onConnected?: () => void
+    onReady?: (ready: boolean) => void
   ) {
     this.onMessageReceived = onMessageReceived;
     this.onError = onError;
     this.onRefusal = onRefusal;
-    this.onConnected = onConnected;
+    this.onReady = onReady;
   }
 
   connect(): Promise<void> {
@@ -37,8 +40,17 @@ export default class ChatApi {
         onConnect: (client) => {
           this.stompClient = client;
           this.boardSubscription = null;
+          this.queuesLive = false;
+          this.boardLive = false;
+          this.announce();
+          const messages = client.subscribe('/user/queue/messages', this.onMessageReceived, confirmedBy(client, () => {
+            if (this.queueSubscriptions.includes(messages)) {
+              this.queuesLive = true;
+              this.announce();
+            }
+          }));
           this.queueSubscriptions = [
-            client.subscribe('/user/queue/messages', this.onMessageReceived),
+            messages,
             client.subscribe('/user/queue/errors', (frame) => {
               try {
                 this.onRefusal(JSON.parse(frame.body));
@@ -50,7 +62,6 @@ export default class ChatApi {
           if (this.boardId !== null) {
             this.joinBoard(this.boardId);
           }
-          this.onConnected?.();
           resolve();
         },
         onError: (error) => {
@@ -60,6 +71,14 @@ export default class ChatApi {
       };
       this.stompClient = joinLiveSocket(this.socketUser);
     });
+  }
+
+  private announce() {
+    const ready = this.queuesLive && (this.boardId === null || this.boardLive);
+    if (ready !== this.ready) {
+      this.ready = ready;
+      this.onReady?.(ready);
+    }
   }
 
   disconnect() {
@@ -73,6 +92,8 @@ export default class ChatApi {
       this.queueSubscriptions.forEach((subscription) => subscription.unsubscribe());
     }
     this.queueSubscriptions = [];
+    this.queuesLive = false;
+    this.ready = false;
     leaveLiveSocket(this.socketUser);
     this.socketUser = null;
     this.stompClient = null;
@@ -89,12 +110,22 @@ export default class ChatApi {
     }
 
     this.boardId = boardId;
-    this.boardSubscription = this.stompClient.subscribe(
-      `/topic/boards.${boardId}.chat`, this.onMessageReceived);
-    this.stompClient.publish({
-      destination: '/app/chat.join',
-      body: JSON.stringify({ boardId })
-    });
+    this.boardLive = false;
+    this.announce();
+    const client = this.stompClient;
+    const conversation = client.subscribe(
+      `/topic/boards.${boardId}.chat`, this.onMessageReceived, confirmedBy(client, () => {
+        if (this.boardSubscription !== conversation) {
+          return;
+        }
+        client.publish({
+          destination: '/app/chat.join',
+          body: JSON.stringify({ boardId })
+        });
+        this.boardLive = true;
+        this.announce();
+      }));
+    this.boardSubscription = conversation;
     return true;
   }
 
@@ -106,6 +137,7 @@ export default class ChatApi {
       this.boardSubscription = null;
     }
     this.boardId = null;
+    this.boardLive = false;
     this.stompClient.publish({
       destination: '/app/chat.leave',
       body: JSON.stringify({ boardId })

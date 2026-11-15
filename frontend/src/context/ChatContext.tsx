@@ -82,6 +82,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'SET_MESSAGE':
       return { ...state, message: action.payload };
     case 'ADD_MESSAGE':
+      if (state.messages.some((known) => String(known.id) === String(action.payload.id))) {
+        return state;
+      }
       return {
         ...state,
         messages: [...state.messages, { ...action.payload, read: state.isOpen }],
@@ -93,8 +96,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         isLoadingHistory: false,
-        historyPage: action.payload.page,
-        hasMoreHistory: action.payload.page + 1 < action.payload.totalPages,
+        historyPage: Math.max(state.historyPage, action.payload.page),
+        hasMoreHistory: Math.max(state.historyPage, action.payload.page) + 1 < action.payload.totalPages,
         messages: chronological([
           ...action.payload.messages
             .filter((entry) => !state.messages.some((known) => String(known.id) === String(entry.id)))
@@ -190,6 +193,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [user, activeBoardId, conversationKey, state.messageType, state.recipient, t]);
 
+  const loadHistoryRef = useRef(loadHistory);
+  loadHistoryRef.current = loadHistory;
+
+  const onReady = (ready: boolean) => {
+    dispatch({ type: 'SET_CONNECTED', payload: ready });
+    if (ready) {
+      loadHistoryRef.current(0);
+    }
+  };
+
   const connect = useCallback(async () => {
     if (!user) return;
 
@@ -198,11 +211,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         onMessageReceived,
         onError,
         onRefusal,
-        () => dispatch({ type: 'SET_CONNECTED', payload: true })
+        onReady
       );
       await chatApiRef.current.connect();
       chatApiRef.current.joinBoard(activeBoardId);
-      dispatch({ type: 'SET_CONNECTED', payload: true });
     } catch (error) {
       onError(error);
     }

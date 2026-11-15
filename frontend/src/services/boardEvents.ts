@@ -1,6 +1,6 @@
 import type { Client, StompSubscription } from '@stomp/stompjs';
 import type { Id } from '../types/api';
-import { joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
+import { confirmedBy, joinLiveSocket, leaveLiveSocket, type LiveSocketUser } from './liveSocket';
 
 export interface BoardEvent {
   type: string;
@@ -16,6 +16,7 @@ export default class BoardEvents {
   onBoardsChanged: (() => void) | null = null;
   boardId: Id | null = null;
   onEvent: BoardEventHandler | null = null;
+  onLive: (() => void) | null = null;
 
   private readonly socketUser: LiveSocketUser = {
     onConnect: (client) => {
@@ -26,8 +27,9 @@ export default class BoardEvents {
     },
   };
 
-  watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void) {
+  watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void, onLive?: () => void) {
     this.onEvent = onEvent;
+    this.onLive = onLive ?? null;
     this.onBoardsChanged = onBoardsChanged ?? null;
     this.boardId = boardId;
 
@@ -47,7 +49,7 @@ export default class BoardEvents {
     this.boardsSubscription = this.client.subscribe('/user/queue/boards', () => {
       this.onBoardsChanged?.();
     });
-    this.subscription = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
+    const topic = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
       if (!this.onEvent) {
         return;
       }
@@ -56,7 +58,12 @@ export default class BoardEvents {
       } catch {
         // A frame this client cannot read is a frame it cannot act on; the board is still correct.
       }
-    });
+    }, confirmedBy(this.client, () => {
+      if (this.subscription === topic) {
+        this.onLive?.();
+      }
+    }));
+    this.subscription = topic;
   }
 
   private unsubscribe() {
@@ -76,6 +83,7 @@ export default class BoardEvents {
       this.client = null;
     }
     this.onEvent = null;
+    this.onLive = null;
     this.boardId = null;
   }
 }

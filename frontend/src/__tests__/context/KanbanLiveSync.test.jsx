@@ -14,7 +14,8 @@ jest.mock('react-toastify', () => ({
 
 const watchers = [];
 jest.mock('../../services/boardEvents', () => jest.fn().mockImplementation(function BoardEvents() {
-  this.watch = jest.fn((boardId, onEvent, onBoardsChanged) => {
+  this.watch = jest.fn((boardId, onEvent, onBoardsChanged, onLive) => {
+    this.onLive = onLive;
     this.boardId = boardId;
     this.onEvent = onEvent;
     this.onBoardsChanged = onBoardsChanged;
@@ -94,6 +95,15 @@ describe('KanbanContext live board sync', () => {
     });
     await settle();
   };
+
+  it('reads the board again once its subscription is live, for whatever changed before that', async () => {
+    act(() => watchers[0].onLive());
+    await settle();
+
+    expect(api.fetchColumns).toHaveBeenCalledTimes(1);
+    expect(api.fetchRows).toHaveBeenCalledTimes(1);
+    expect(api.fetchTasks).toHaveBeenCalledTimes(1);
+  });
 
   it('a boards notice about another board re-reads the boards but not the open one', async () => {
     boardApi.fetchBoards.mockResolvedValueOnce([BOARD, { id: 2, name: 'Renamed', ownerId: 3, owned: false, members: [] }]);
