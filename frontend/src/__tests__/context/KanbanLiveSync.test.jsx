@@ -97,12 +97,50 @@ describe('KanbanContext live board sync', () => {
   };
 
   it('reads the board again once its subscription is live, for whatever changed before that', async () => {
-    act(() => watchers[0].onLive());
+    act(() => watchers[0].onLive('board'));
     await settle();
 
     expect(api.fetchColumns).toHaveBeenCalledTimes(1);
     expect(api.fetchRows).toHaveBeenCalledTimes(1);
     expect(api.fetchTasks).toHaveBeenCalledTimes(1);
+    expect(boardApi.fetchBoards).not.toHaveBeenCalled();
+  });
+
+  it('marks the open panels stale once the board subscription is live', async () => {
+    client.setQueryData(['comments', 5], { comments: [], total: 0 });
+    client.setQueryData(['subtasks', 5], []);
+    client.setQueryData(['attachments', 5], []);
+
+    act(() => watchers[0].onLive('board'));
+    await settle();
+
+    expect(client.getQueryState(['comments', 5]).isInvalidated).toBe(true);
+    expect(client.getQueryState(['subtasks', 5]).isInvalidated).toBe(true);
+    expect(client.getQueryState(['attachments', 5]).isInvalidated).toBe(true);
+  });
+
+  it('reads the boards again once its notices are live, and the open board only if it changed', async () => {
+    await act(async () => {
+      watchers[0].onLive('boards');
+      await Promise.resolve();
+    });
+    await settle();
+
+    expect(boardApi.fetchBoards).toHaveBeenCalledTimes(1);
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+  });
+
+  it('leaves a board that was taken away while its notices were not live', async () => {
+    boardApi.fetchBoards.mockResolvedValue([{ id: 2, name: 'Other', ownerId: 1, owned: true, members: [] }]);
+
+    await act(async () => {
+      watchers[0].onLive('boards');
+      await Promise.resolve();
+    });
+    await settle();
+
+    await waitFor(() => expect(api.setActiveBoardId).toHaveBeenCalledWith(2));
+    boardApi.fetchBoards.mockResolvedValue([BOARD]);
   });
 
   it('a boards notice about another board re-reads the boards but not the open one', async () => {

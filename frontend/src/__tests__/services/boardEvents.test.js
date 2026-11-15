@@ -76,7 +76,41 @@ describe('BoardEvents', () => {
     expect(onLive).not.toHaveBeenCalled();
     client.confirm(boardTopic(client));
 
-    expect(onLive).toHaveBeenCalledTimes(1);
+    expect(onLive.mock.calls).toEqual([['board']]);
+  });
+
+  it('says its boards notices are live once the broker confirms them', async () => {
+    const onLive = jest.fn();
+    const { client } = await watch(7, jest.fn(), undefined, onLive);
+
+    client.confirm(client.subscriptionTo('/user/queue/boards'));
+
+    expect(onLive.mock.calls).toEqual([['boards']]);
+  });
+
+  it('keeps its boards notices open across a board switch', async () => {
+    const onLive = jest.fn();
+    const { events, client } = await watch(7, jest.fn(), undefined, onLive);
+    const notices = client.subscriptionTo('/user/queue/boards');
+
+    events.watch(9, jest.fn(), undefined, onLive);
+    client.confirm(notices);
+
+    expect(notices.unsubscribe).not.toHaveBeenCalled();
+    expect(client.destinations()).toEqual(['/user/queue/boards', '/topic/boards.7', '/topic/boards.9']);
+    expect(onLive.mock.calls).toEqual([['boards']]);
+  });
+
+  it('ignores the confirmation of boards notices from a lost connection', async () => {
+    const onLive = jest.fn();
+    const { client } = await watch(7, jest.fn(), undefined, onLive);
+    const stale = client.subscriptionTo('/user/queue/boards');
+    client.connected = false;
+    await client.completeConnect();
+
+    client.confirm(stale);
+
+    expect(onLive).not.toHaveBeenCalled();
   });
 
   it('says so again after a reconnect, when events may have been missed', async () => {
@@ -192,11 +226,13 @@ describe('BoardEvents', () => {
   it('stops without unsubscribing on a connection that is down, where the library throws', async () => {
     const { events, client } = await watch();
     const subscription = boardTopic(client);
+    const notices = client.subscriptionTo('/user/queue/boards');
     client.connected = false;
 
     events.stop();
 
     expect(subscription.unsubscribe).not.toHaveBeenCalled();
+    expect(notices.unsubscribe).not.toHaveBeenCalled();
     expect(client.deactivate).toHaveBeenCalled();
   });
 });
