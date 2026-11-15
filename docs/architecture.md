@@ -1385,8 +1385,8 @@ subscription.
 
 **A subscription counts as live only when the broker confirms it.** RabbitMQ takes up to a second to
 open one, and a frame published before then never reaches it. Each subscription that matters carries
-a `receipt`, and on the `RECEIPT` the board is read once more and the chat reads its history again,
-announces itself and only then lets a message be sent.
+a `receipt`, and on the `RECEIPT` the board, its open panels and the list of boards are read once
+more, and the chat reads its history again, announces itself and only then lets a message be sent.
 
 **Chat is the board's conversation, and until `V18` it was the one feature the boards-with-members
 model never reached.** The destination was built out of a `roomId` the client supplied — so any
