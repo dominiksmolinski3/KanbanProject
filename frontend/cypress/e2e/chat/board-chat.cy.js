@@ -2,8 +2,6 @@ import { Client } from '@stomp/stompjs';
 
 const LIVE_TIMEOUT = 20000;
 
-const HEARING_ATTEMPTS = 30;
-
 const COLUMN_NAME = 'Chat Column';
 const ROW_NAME = 'Chat Row';
 
@@ -61,37 +59,7 @@ describe('chat reaches the people it is meant for', () => {
         })
     );
 
-  // The broker takes a moment to open a subscription, and a frame published meanwhile is never delivered.
-  const untilTheChatHears = (ping, attempts = HEARING_ATTEMPTS) => {
-    memberSends('/app/chat.sendMessage', { content: ping, boardId });
-    cy.wait(500);
-    cy.get('.chat-messages').then(($log) => {
-      if ($log.text().includes(ping)) {
-        return;
-      }
-      expect(attempts, 'the chat panel heard the board conversation').to.be.greaterThan(1);
-      untilTheChatHears(ping, attempts - 1);
-    });
-  };
-
-  const openChat = () => {
-    cy.intercept('GET', '**/api/chat?*').as('history');
-    cy.get('.chat-toggle-button').click();
-    cy.wait('@history');
-    untilTheChatHears(`ready-${Date.now()}`);
-  };
-
-  const untilTheBoardShows = (title, taskId, attempts = HEARING_ATTEMPTS) => {
-    cy.wait(500);
-    cy.get('.board-grid').then(($board) => {
-      if ($board.find(`.task:contains("${title}")`).length > 0) {
-        return;
-      }
-      expect(attempts, 'the board heard about the new task').to.be.greaterThan(1);
-      as(memberToken, { method: 'PATCH', url: `/api/tasks/${taskId}/complete/${attempts % 2 === 0}` });
-      untilTheBoardShows(title, taskId, attempts - 1);
-    });
-  };
+  const openChat = () => cy.get('.chat-toggle-button').click();
 
   before(() => {
     cy.fixture('test-account').then((account) => {
@@ -230,7 +198,7 @@ describe('chat reaches the people it is meant for', () => {
         body: { title, column: { id: columnId }, row: { id: rowId } },
       })
     ).then((response) => {
-      untilTheBoardShows(title, response.body.id);
+      cy.contains('.task', title, { timeout: LIVE_TIMEOUT }).should('exist');
 
       memberSends('/app/chat.sendMessage', { content: text, boardId });
       cy.contains('.other-message', text, { timeout: LIVE_TIMEOUT }).should('exist');

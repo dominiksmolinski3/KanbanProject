@@ -30,10 +30,10 @@ describe('BoardEvents', () => {
 
   const boardTopic = (client) => client.subscriptions.findLast((s) => s.destination.startsWith('/topic/'));
 
-  const watch = async (boardId = 7, onEvent = jest.fn(), onBoardsChanged = undefined) => {
+  const watch = async (boardId = 7, onEvent = jest.fn(), onBoardsChanged = undefined, onLive = undefined) => {
     const events = new BoardEvents();
     watchers.push(events);
-    events.watch(boardId, onEvent, onBoardsChanged);
+    events.watch(boardId, onEvent, onBoardsChanged, onLive);
     const client = clientInstances[0];
     await client.completeConnect();
     return { events, client, onEvent };
@@ -67,6 +67,41 @@ describe('BoardEvents', () => {
 
     expect(() => boardTopic(client).handler({ body: 'not json' })).not.toThrow();
     expect(onEvent).not.toHaveBeenCalled();
+  });
+
+  it('says the board is live only once the broker confirms the subscription', async () => {
+    const onLive = jest.fn();
+    const { client } = await watch(7, jest.fn(), undefined, onLive);
+
+    expect(onLive).not.toHaveBeenCalled();
+    client.confirm(boardTopic(client));
+
+    expect(onLive).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so again after a reconnect, when events may have been missed', async () => {
+    const onLive = jest.fn();
+    const { client } = await watch(7, jest.fn(), undefined, onLive);
+    client.confirm(boardTopic(client));
+    client.connected = false;
+
+    await client.completeConnect();
+    client.confirm(boardTopic(client));
+
+    expect(onLive).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores the confirmation of a board it has moved on from', async () => {
+    const onLive = jest.fn();
+    const { events, client } = await watch(7, jest.fn(), undefined, jest.fn());
+    const first = boardTopic(client);
+    events.watch(9, jest.fn(), undefined, onLive);
+
+    client.confirm(first);
+    expect(onLive).not.toHaveBeenCalled();
+
+    client.confirm(boardTopic(client));
+    expect(onLive).toHaveBeenCalledTimes(1);
   });
 
   it('resubscribes after a reconnect, or the board goes quiet without looking broken', async () => {

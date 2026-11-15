@@ -34,8 +34,8 @@ describe('ChatApi', () => {
     opened.forEach((each) => (each.disconnect ? each.disconnect() : each.stop()));
   });
 
-  const connect = async (onConnected) => {
-    const api = new ChatApi(onMessage, onError, onRefusal, onConnected);
+  const connect = async (onReady) => {
+    const api = new ChatApi(onMessage, onError, onRefusal, onReady);
     opened.push(api);
     const connecting = api.connect();
     const client = clientInstances[0];
@@ -181,16 +181,31 @@ describe('ChatApi', () => {
   });
 
   describe('joining a board', () => {
-    it('subscribes to the board chat topic and announces on it', async () => {
+    it('subscribes to the board chat topic and announces on it once the broker confirms', async () => {
       const { api, client } = await connect();
 
       api.joinBoard(7);
 
       expect(client.destinations()).toContain('/topic/boards.7.chat');
+      expect(client.published).toEqual([]);
+
+      client.confirm(client.subscriptionTo('/topic/boards.7.chat'));
+
       expect(client.published).toContainEqual({
         destination: '/app/chat.join',
         body: JSON.stringify({ boardId: 7 }),
       });
+    });
+
+    it('does not announce on a board it has already moved on from', async () => {
+      const { api, client } = await connect();
+      api.joinBoard(7);
+      const first = client.subscriptionTo('/topic/boards.7.chat');
+      api.joinBoard(8);
+
+      client.confirm(first);
+
+      expect(client.published).toEqual([]);
     });
 
     it('drops the previous board subscription rather than stacking them up', async () => {
@@ -239,6 +254,7 @@ describe('ChatApi', () => {
         '/user/queue/errors',
         '/topic/boards.7.chat',
       ]);
+      client.confirm(client.subscriptionTo('/topic/boards.7.chat'));
       expect(client.published).toContainEqual({
         destination: '/app/chat.join',
         body: JSON.stringify({ boardId: 7 }),
@@ -264,13 +280,75 @@ describe('ChatApi', () => {
       expect(client.destinations().slice(before).filter((d) => d.startsWith('/topic/'))).toEqual([]);
     });
 
-    it('tells the caller on every connect, so a reconnect can clear the failure it reported', async () => {
-      const onConnected = jest.fn();
-      const { client } = await connect(onConnected);
+  });
+
+  describe('being ready to send', () => {
+    const confirmQueue = (client) => client.confirm(client.subscriptionTo('/user/queue/messages'));
+    const confirmBoard = (client, boardId) => client.confirm(client.subscriptionTo(`/topic/boards.${boardId}.chat`));
+
+    it('is ready with no board once the broker confirms the private queue', async () => {
+      const onReady = jest.fn();
+      const { client } = await connect(onReady);
+
+      expect(onReady).not.toHaveBeenCalled();
+      confirmQueue(client);
+
+      expect(onReady.mock.calls).toEqual([[true]]);
+    });
+
+    it('is not ready on a board until its conversation is confirmed too', async () => {
+      const onReady = jest.fn();
+      const { api, client } = await connect(onReady);
+      api.joinBoard(7);
+
+      confirmQueue(client);
+      expect(onReady).not.toHaveBeenCalled();
+
+      confirmBoard(client, 7);
+      expect(onReady.mock.calls).toEqual([[true]]);
+    });
+
+    it('stops being ready while it moves to another board', async () => {
+      const onReady = jest.fn();
+      const { api, client } = await connect(onReady);
+      api.joinBoard(7);
+      confirmQueue(client);
+      confirmBoard(client, 7);
+
+      api.joinBoard(8);
+      expect(onReady.mock.calls).toEqual([[true], [false]]);
+
+      confirmBoard(client, 8);
+      expect(onReady.mock.calls).toEqual([[true], [false], [true]]);
+    });
+
+    it('is not ready after a reconnect until the broker confirms again', async () => {
+      const onReady = jest.fn();
+      const { client } = await connect(onReady);
+      confirmQueue(client);
+      const stale = client.subscriptionTo('/user/queue/messages');
 
       await reconnect(client);
+      client.confirm(stale);
+      expect(onReady.mock.calls).toEqual([[true], [false]]);
 
-      expect(onConnected).toHaveBeenCalledTimes(2);
+      confirmQueue(client);
+      expect(onReady.mock.calls).toEqual([[true], [false], [true]]);
+    });
+
+    it('waits for the board again after a reconnect', async () => {
+      const onReady = jest.fn();
+      const { api, client } = await connect(onReady);
+      api.joinBoard(7);
+      confirmQueue(client);
+      confirmBoard(client, 7);
+
+      await reconnect(client);
+      confirmQueue(client);
+      expect(onReady.mock.calls).toEqual([[true], [false]]);
+
+      confirmBoard(client, 7);
+      expect(onReady.mock.calls).toEqual([[true], [false], [true]]);
     });
   });
 

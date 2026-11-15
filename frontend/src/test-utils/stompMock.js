@@ -8,12 +8,14 @@ export class Client {
     this.connected = false;
     this.subscriptions = [];
     this.published = [];
+    this.receipts = new Map();
     this.activate = jest.fn();
     this.deactivate = jest.fn(() => {
       this.connected = false;
     });
-    this.subscribe = jest.fn((destination, handler) => {
-      const subscription = { destination, handler, unsubscribe: jest.fn() };
+    this.watchForReceipt = jest.fn((receipt, onReceipt) => this.receipts.set(receipt, onReceipt));
+    this.subscribe = jest.fn((destination, handler, headers = {}) => {
+      const subscription = { destination, handler, receipt: headers.receipt, unsubscribe: jest.fn() };
       this.subscriptions.push(subscription);
       return subscription;
     });
@@ -25,6 +27,10 @@ export class Client {
     await this.beforeConnect(this);
     this.connected = true;
     this.onConnect();
+  }
+
+  confirm(subscription) {
+    this.receipts.get(subscription.receipt)?.();
   }
 
   destinations() {
