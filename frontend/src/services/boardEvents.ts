@@ -9,6 +9,8 @@ export interface BoardEvent {
 
 type BoardEventHandler = (event: BoardEvent) => void;
 
+export type LiveSubscription = 'board' | 'boards';
+
 export default class BoardEvents {
   client: Client | null = null;
   subscription: StompSubscription | null = null;
@@ -16,7 +18,7 @@ export default class BoardEvents {
   onBoardsChanged: (() => void) | null = null;
   boardId: Id | null = null;
   onEvent: BoardEventHandler | null = null;
-  onLive: (() => void) | null = null;
+  onLive: ((subscription: LiveSubscription) => void) | null = null;
 
   private readonly socketUser: LiveSocketUser = {
     onConnect: (client) => {
@@ -27,14 +29,15 @@ export default class BoardEvents {
     },
   };
 
-  watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void, onLive?: () => void) {
+  watch(boardId: Id, onEvent: BoardEventHandler, onBoardsChanged?: () => void,
+    onLive?: (subscription: LiveSubscription) => void) {
     this.onEvent = onEvent;
     this.onLive = onLive ?? null;
     this.onBoardsChanged = onBoardsChanged ?? null;
     this.boardId = boardId;
 
     if (this.client) {
-      this.unsubscribe();
+      this.unsubscribeFromBoard();
       this.subscribe();
       return;
     }
@@ -46,9 +49,16 @@ export default class BoardEvents {
     if (!this.client || !this.client.connected || this.boardId == null) {
       return;
     }
-    this.boardsSubscription = this.client.subscribe('/user/queue/boards', () => {
-      this.onBoardsChanged?.();
-    });
+    if (!this.boardsSubscription) {
+      const notices = this.client.subscribe('/user/queue/boards', () => {
+        this.onBoardsChanged?.();
+      }, confirmedBy(this.client, () => {
+        if (this.boardsSubscription === notices) {
+          this.onLive?.('boards');
+        }
+      }));
+      this.boardsSubscription = notices;
+    }
     const topic = this.client.subscribe(`/topic/boards.${this.boardId}`, (frame) => {
       if (!this.onEvent) {
         return;
@@ -60,23 +70,25 @@ export default class BoardEvents {
       }
     }, confirmedBy(this.client, () => {
       if (this.subscription === topic) {
-        this.onLive?.();
+        this.onLive?.('board');
       }
     }));
     this.subscription = topic;
   }
 
-  private unsubscribe() {
+  private unsubscribeFromBoard() {
     if (this.client?.connected) {
       this.subscription?.unsubscribe();
-      this.boardsSubscription?.unsubscribe();
     }
     this.subscription = null;
-    this.boardsSubscription = null;
   }
 
   stop() {
-    this.unsubscribe();
+    this.unsubscribeFromBoard();
+    if (this.client?.connected) {
+      this.boardsSubscription?.unsubscribe();
+    }
+    this.boardsSubscription = null;
     this.onBoardsChanged = null;
     if (this.client) {
       leaveLiveSocket(this.socketUser);
