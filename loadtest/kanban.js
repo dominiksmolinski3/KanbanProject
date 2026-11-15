@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import exec from 'k6/execution';
-import { Counter } from 'k6/metrics';
+import { Counter, Rate } from 'k6/metrics';
 import { SharedArray } from 'k6/data';
 
 const BASE = __ENV.LOAD_BASE_URL || 'http://web:8080/api';
@@ -12,6 +12,18 @@ const users = new SharedArray('users', () => seeded.users);
 const board = `?boardId=${seeded.boardId}`;
 
 const serverErrors = new Counter('server_errors');
+
+// These address a card or a column another user may have just deleted, so a 404 or a 409 is an answer.
+const RACED = [
+  'PATCH /tasks/{id}',
+  'PATCH /tasks/{id}/complete',
+  'PATCH /tasks/positions',
+  'PATCH /columns/positions',
+  'PATCH /rows/positions',
+  'DELETE /columns/{id}',
+];
+const landedName = (name) => `landed_${name.toLowerCase().replace(/[^a-z]+/g, '_')}`;
+const landed = Object.fromEntries(RACED.map((name) => [name, new Rate(landedName(name))]));
 const SCRATCH = 'Load scratch ';
 
 // Rates are iterations per second per scenario; each iteration is one user action of one to three requests.
@@ -49,10 +61,13 @@ export const options = {
     server_errors: ['count==0'],
     http_req_failed: ['rate<0.01'],
     http_req_duration: [`p(95)<${Number(__ENV.LOAD_P95_MS || profile.p95)}`],
+    // A route that is gone answers 404 to every call, which the races alone would accept.
+    ...Object.fromEntries(RACED.map((name) => [landedName(name), ['rate>0']])),
   },
   summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],
 };
 
+const OK = http.expectedStatuses({ min: 200, max: 299 });
 const RACES = http.expectedStatuses({ min: 200, max: 299 }, 404, 409);
 const CELL_RACES = http.expectedStatuses({ min: 200, max: 299 }, 400, 404, 409);
 
@@ -61,7 +76,16 @@ function user() {
 }
 
 // A body k6 keeps is memory per VU, and a board of 300 cards is megabytes; only keep the ones a scenario reads.
-function request(method, path, name, body, expected = RACES, responseType = 'none') {
+function record(res, name) {
+  if (res.status === 0 || res.status >= 500) {
+    serverErrors.add(1, { name });
+  }
+  if (landed[name]) {
+    landed[name].add(res.status >= 200 && res.status < 300);
+  }
+}
+
+function request(method, path, name, body, expected = landed[name] ? RACES : OK, responseType = 'none') {
   const { token, address } = user();
   const res = http.request(method, BASE + path, body === undefined ? null : JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Forwarded-For': address },
@@ -69,14 +93,12 @@ function request(method, path, name, body, expected = RACES, responseType = 'non
     responseCallback: expected,
     responseType,
   });
-  if (res.status === 0 || res.status >= 500) {
-    serverErrors.add(1, { name });
-  }
+  record(res, name);
   return res;
 }
 
 function list(path, name) {
-  const res = request('GET', path, name, undefined, RACES, 'text');
+  const res = request('GET', path, name, undefined, OK, 'text');
   return res.status === 200 ? res.json() : [];
 }
 
@@ -146,16 +168,14 @@ function race(requests) {
       responseType: 'none',
     },
   ]));
-  responses.forEach((res, i) => {
-    if (res.status === 0 || res.status >= 500) serverErrors.add(1, { name: requests[i][2] });
-  });
+  responses.forEach((res, i) => record(res, requests[i][2]));
   return responses;
 }
 
 function deleteColumnUnderAMove() {
   const tasks = list(`/tasks${board}`, 'GET /tasks');
   const [inside, mover] = [pick(tasks), pick(tasks)];
-  const created = request('POST', `/columns${board}`, 'POST /columns', { name: `${SCRATCH}${exec.vu.idInTest}` }, RACES, 'text');
+  const created = request('POST', `/columns${board}`, 'POST /columns', { name: `${SCRATCH}${exec.vu.idInTest}` }, OK, 'text');
   if (!inside || !mover || inside.id === mover.id || created.status !== 201) return;
   const column = created.json().id;
   const placed = request('PATCH', `/tasks/${inside.id}`, 'PATCH /tasks/{id}', { column: { id: column }, version: inside.version });
