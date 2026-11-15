@@ -61,7 +61,16 @@ export function useLiveBoardSync(activeBoardId: Id | null, refreshers: LiveRefre
       if (!onBoardsChanged || await onBoardsChanged()) {
         latest.current.refreshBoard();
       }
-    }, () => refreshSoon('board'));
+    }, (subscription) => {
+      if (subscription === 'boards') {
+        latest.current.onBoardsChanged?.();
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: taskKeys.anyComments });
+      queryClient.invalidateQueries({ queryKey: taskKeys.anyAttachments });
+      queryClient.invalidateQueries({ queryKey: taskKeys.anySubtasks });
+      refreshSoon('board');
+    });
 
     return () => {
       if (pending) {
