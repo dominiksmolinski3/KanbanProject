@@ -54,7 +54,10 @@ describe('ChatContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     chatApiInstance = {
-      connect: jest.fn(() => Promise.resolve()),
+      connect: jest.fn(() => {
+        ChatApi.mock.calls.at(-1)[3](true);
+        return Promise.resolve();
+      }),
       joinBoard: jest.fn(() => true),
       disconnect: jest.fn(() => true),
       sendMessage: jest.fn(() => true),
@@ -77,6 +80,52 @@ describe('ChatContext', () => {
     expect(chatApiInstance.connect).toHaveBeenCalledTimes(1);
     expect(chatApiInstance.joinBoard).toHaveBeenCalledWith(1);
     expect(fetchBoardChatHistory).toHaveBeenCalled();
+  });
+
+  test('stays disconnected until the chat says its subscriptions are live', async () => {
+    chatApiInstance.connect.mockImplementation(() => Promise.resolve());
+    renderChat();
+
+    fireEvent.click(screen.getByText('Toggle'));
+    await waitFor(() => expect(chatApiInstance.joinBoard).toHaveBeenCalledWith(1));
+    expect(screen.getByText('Connected: false')).toBeInTheDocument();
+
+    act(() => { ChatApi.mock.calls[0][3](true); });
+    expect(screen.getByText('Connected: true')).toBeInTheDocument();
+  });
+
+  test('reads the conversation again once live, for what was said before that', async () => {
+    chatApiInstance.connect.mockImplementation(() => Promise.resolve());
+    renderChat();
+    fireEvent.click(screen.getByText('Toggle'));
+    await waitFor(() => expect(fetchBoardChatHistory).toHaveBeenCalledTimes(1));
+    fetchBoardChatHistory.mockResolvedValue({
+      messages: [{ id: 5, content: 'missed', timestamp: '2026-01-01T00:00:00Z' }],
+      page: 0,
+      totalPages: 1,
+    });
+
+    act(() => { ChatApi.mock.calls[0][3](true); });
+
+    await waitFor(() => expect(screen.getByText('Messages: missed(true)')).toBeInTheDocument());
+    expect(fetchBoardChatHistory).toHaveBeenCalledTimes(2);
+  });
+
+  test('a message that history already brought is not shown twice', async () => {
+    fetchBoardChatHistory.mockResolvedValue({
+      messages: [{ id: 5, content: 'once', timestamp: '2026-01-01T00:00:00Z' }],
+      page: 0,
+      totalPages: 1,
+    });
+    renderChat();
+    fireEvent.click(screen.getByText('Toggle'));
+    await waitFor(() => expect(screen.getByText('Messages: once(true)')).toBeInTheDocument());
+
+    act(() => {
+      ChatApi.mock.calls[0][0]({ body: JSON.stringify({ id: 5, content: 'once', timestamp: '2026-01-01T00:00:00Z' }) });
+    });
+
+    expect(screen.getByText('Messages: once(true)')).toBeInTheDocument();
   });
 
   test('with no signed-in user, opening the panel does not connect', async () => {
@@ -131,12 +180,12 @@ describe('ChatContext', () => {
     renderChat();
     fireEvent.click(screen.getByText('Toggle'));
     await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
-    const [, onError, , onConnected] = ChatApi.mock.calls[0];
+    const [, onError, , onReady] = ChatApi.mock.calls[0];
 
     act(() => { onError(new Error('socket closed')); });
     await waitFor(() => expect(screen.getByText('Connected: false')).toBeInTheDocument());
 
-    act(() => { onConnected(); });
+    act(() => { onReady(true); });
     await waitFor(() => expect(screen.getByText('Connected: true')).toBeInTheDocument());
   });
 
