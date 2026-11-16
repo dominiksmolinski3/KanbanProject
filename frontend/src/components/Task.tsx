@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, type MouseEvent } from 'react';
+import { memo, useContext, useState, useEffect, useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKanban } from '../context/KanbanContext';
+import { CardActionsContext, type CardActions } from '../context/kanban/cardActions';
 import TaskDetails from './TaskDetails';
 import EditableText from './EditableText';
 import AvatarStack from './AvatarStack';
@@ -10,15 +11,16 @@ import TaskActions from './task/TaskActions';
 import DeleteConfirmation from './task/DeleteConfirmation';
 import TaskLinks from './task/TaskLinks';
 import { handleGripKey } from './task/gripKeys';
-import { linkRoleOf } from './task/linkRole';
+import { linkRoleOf, type LinkRole } from './task/linkRole';
 import { useTaskDragSource } from './task/useTaskDragSource';
 import { useTaskDropTarget } from './task/useTaskDropTarget';
 import { deadlineState } from '../board/cardModel';
-import type { Id, Task as TaskModel } from '../types/api';
+import type { BoardMember, Id, Task as TaskModel } from '../types/api';
 import '../styles/components/Task.css';
 
 const TITLE_OPEN_DELAY_MS = 250;
 const DELETE_FADE_MS = 200;
+const NO_MEMBERS: BoardMember[] = [];
 
 interface TaskProps {
   task: TaskModel;
@@ -26,31 +28,47 @@ interface TaskProps {
   rowId?: Id | null;
 }
 
+interface TaskCardProps extends TaskProps {
+  actions: CardActions;
+  readOnly: boolean;
+  members: BoardMember[];
+  heldByKeyboard: boolean;
+  linkRole: LinkRole;
+}
+
+// The board's context changes on every drag and every edit; the card itself is drawn again only when these props do.
 function Task({ task, columnId, rowId }: TaskProps) {
-  const {
-    deleteTask,
-    keyboardMove,
-    refreshTasks,
-    updateTaskName,
-    updateTaskCompletion,
-    setDailyFocus,
-    readOnly,
-    activeBoard,
-    tasks = [],
-    linkFocusId = null,
-  } = useKanban();
+  const kanban = useKanban();
+  const actions = useContext(CardActionsContext) ?? kanban;
+
+  return (
+    <TaskCard
+      task={task}
+      columnId={columnId}
+      rowId={rowId}
+      actions={actions}
+      readOnly={kanban.readOnly}
+      members={kanban.activeBoard?.members || NO_MEMBERS}
+      heldByKeyboard={kanban.keyboardMove.isHeld(task.id)}
+      linkRole={linkRoleOf(task, kanban.tasks ?? [], kanban.linkFocusId ?? null)}
+    />
+  );
+}
+
+const TaskCard = memo(function TaskCard({
+  task, columnId, rowId, actions, readOnly, members, heldByKeyboard, linkRole,
+}: TaskCardProps) {
+  const { deleteTask, keyboardMove, refreshTasks, updateTaskName, updateTaskCompletion, setDailyFocus } = actions;
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const taskRef = useRef<HTMLElement>(null);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const drag = useTaskDragSource(task, columnId, taskRef);
-  const drop = useTaskDropTarget(task, drag.dismissWarning);
+  const drag = useTaskDragSource(task, columnId, taskRef, readOnly, actions);
+  const drop = useTaskDropTarget(task, drag.dismissWarning, readOnly, actions);
 
   const dueState = deadlineState(task.deadline);
-  const heldByKeyboard = keyboardMove.isHeld(task.id);
-  const linkRole = linkRoleOf(task, tasks, linkFocusId);
   const titleId = `task-title-${task.id}`;
   const title = task.title || t('board.keyboardMove.untitled');
 
@@ -188,7 +206,7 @@ function Task({ task, columnId, rowId }: TaskProps) {
         </div>
 
         <TaskCardMeta task={task} dueState={dueState}>
-          <AvatarStack userIds={task.userIds || []} members={activeBoard?.members || []} />
+          <AvatarStack userIds={task.userIds || []} members={members} />
         </TaskCardMeta>
 
         <TaskActions
@@ -245,6 +263,6 @@ function Task({ task, columnId, rowId }: TaskProps) {
       )}
     </>
   );
-}
+});
 
 export default Task;
