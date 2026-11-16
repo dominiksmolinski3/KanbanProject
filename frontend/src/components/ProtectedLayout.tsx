@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useMatch } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ import Chat from './Chat';
 function ProtectedLayout() {
   const { token, isLoading } = useAuth();
   const { t } = useTranslation();
+  const onBoard = useMatch('/board') !== null;
 
   if (isLoading) {
     return <div>{t('auth.checkingSession')}</div>;
@@ -23,7 +24,7 @@ function ProtectedLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <KanbanProvider>
+      <KanbanProvider boardContents={onBoard}>
         <ChatProvider>
           <div className="app-container">
             <Header />
