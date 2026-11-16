@@ -569,6 +569,12 @@ identity, so the apps can't use theirs. Two setups work:
 
 A private package with neither set fails with `ImagePullBackOff`.
 
+The broker, the backup jobs and `db_roles` pull `ghcr.io/<owner>/kanbanproject-{rabbitmq,curl,postgres}`
+by digest, with no credentials, so those packages must be public. They are wrappers under
+[images/](../images/) that `base-images.yml` rebuilds daily. It publishes a rebuild only when it
+fixes a finding or Dependabot moved its base, and then opens an `ops(terraform)` PR that moves the
+pins. Apply after it merges.
+
 ### Key Vault network access
 
 The vault denies public traffic (`key_vault_network_default_action = "Deny"`). It admits the
@@ -811,13 +817,12 @@ The decisions behind it:
   RabbitMQ is a much bigger job, and I don't think this project needs it at its size. If the broker
   goes down, in-flight board and chat frames are lost, not data: nothing here is durable, and a
   reconnecting client re-subscribes and reloads.
-- **The stock `rabbitmq:4-alpine` image, pinned by digest, with the STOMP plugin enabled at start.**
-  A bare tag would let a restart pull a different image. Dependabot bumps the digest in
-  `docker-compose.yml`, and `PinnedImagesTest` fails the build until this module names the same
-  digest, so local and deployed stay in step. The container's `command` runs
-  `rabbitmq-plugins enable --offline rabbitmq_stomp` and then hands over to the image's entrypoint.
-  There is no custom image: one line isn't worth a third image in the CD build, scan and promote
-  steps.
+- **`rabbitmq:4-alpine` through its `images/rabbitmq` wrapper, pinned by digest, with the STOMP
+  plugin enabled at start.** A bare tag would let a restart pull a different image. The wrapper's
+  `FROM` has to match `docker-compose.yml` (`PinnedImagesTest`), so local and deployed stay in
+  step, and `base-images.yml` moves this pin (see [The container images](#the-container-images)).
+  The container's `command` runs `rabbitmq-plugins enable --offline rabbitmq_stomp` and then hands
+  over to the image's entrypoint.
 - **One account, `kanban`, for both the client and system logins.** RabbitMQ can't tell callers
   apart beyond the TCP connection, so separate credentials wouldn't buy anything. The password is
   generated and stored as the `RABBITMQ-PASSWORD` secret, and the broker's identity can read that one

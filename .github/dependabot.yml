@@ -27,6 +27,9 @@ updates:
       - /backend
       - /frontend
       - /observability/grafana
+      - /images/curl
+      - /images/postgres
+      - /images/rabbitmq
     registries:
       - dhi
     schedule:

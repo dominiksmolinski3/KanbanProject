@@ -8,6 +8,7 @@ on:
       - 'backend/Dockerfile'
       - 'frontend/Dockerfile'
       - 'observability/grafana/Dockerfile'
+      - 'images/*/Dockerfile'
       - '.github/workflows/**'
       - '.checkov.yaml'
       - '.checkov/**'
@@ -30,7 +31,7 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/pr-changes.yml
     with:
-      paths: '^(terraform/|ansible/|\.checkov/|\.checkov\.yaml$|\.github/workflows/|(backend|frontend|observability/grafana)/Dockerfile$)'
+      paths: '^(terraform/|ansible/|\.checkov/|\.checkov\.yaml$|\.github/workflows/|(backend|frontend|observability/grafana|images/[^/]+)/Dockerfile$)'
 
   validate:
     needs: changes
@@ -81,7 +82,7 @@ jobs:
       with:
         python-version: '3.13'
 
-    # Checkov covers terraform/, both Dockerfiles and the workflows; its scope is
+    # Checkov covers terraform/, every Dockerfile and the workflows; its scope is
     # .checkov.yaml, so the push paths and the changes regex have to stay as wide as that file.
     - name: Scan with Checkov
       working-directory: .
