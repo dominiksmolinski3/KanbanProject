@@ -818,9 +818,9 @@ The decisions behind it:
   goes down, in-flight board and chat frames are lost, not data: nothing here is durable, and a
   reconnecting client re-subscribes and reloads.
 - **`rabbitmq:4-alpine` through its `images/rabbitmq` wrapper, pinned by digest, with the STOMP
-  plugin enabled at start.** A bare tag would let a restart pull a different image. The wrapper's
-  `FROM` has to match `docker-compose.yml` (`PinnedImagesTest`), so local and deployed stay in
-  step, and `base-images.yml` moves this pin (see [The container images](#the-container-images)).
+  plugin enabled at start.** A bare tag would let a restart pull a different image.
+  `docker-compose.yml` builds its broker from the same wrapper (`PinnedImagesTest`), so one
+  Dependabot bump moves local and deployed together, and `base-images.yml` moves this pin (see [The container images](#the-container-images)).
   The container's `command` runs `rabbitmq-plugins enable --offline rabbitmq_stomp` and then hands
   over to the image's entrypoint.
 - **One account, `kanban`, for both the client and system logins.** RabbitMQ can't tell callers
