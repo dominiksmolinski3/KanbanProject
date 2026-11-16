@@ -853,6 +853,12 @@ answers with the `notifications.changedBySomeoneElse` toast and a refresh rather
 nothing was applied, so nothing is broken. New board behavior belongs here rather than in
 components.
 
+**A change redraws the cards it touches, not the board.** The context value is new on every render,
+so a card that read it was drawn again on each drag and each edit. `Task` reads the context and hands
+a memoised `TaskCard` only what that card shows, with its actions from
+[cardActions.ts](../frontend/src/context/kanban/cardActions.ts), whose functions keep one identity
+and call the latest render's. A component drawn per card must not call `useKanban` itself.
+
 **The service layer is TypeScript, and every request goes through one of a few helpers.**
 [http.ts](../frontend/src/services/http.ts) holds `getJson`, `postJson`, `patchJson`, `putJson`,
 `deleteJson`, `postVoid`, `patchVoid`, `deleteChecked` and `deleteQuietly`; each takes the path as its

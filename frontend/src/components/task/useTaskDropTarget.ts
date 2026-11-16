@@ -1,14 +1,18 @@
 import { useEffect, useState, type DragEvent } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { useKanban } from '../../context/KanbanContext';
+import type { CardActions } from '../../context/kanban/cardActions';
 import { assignUserToTask, WipLimitExceededError } from '../../services/api';
 import type { Task } from '../../types/api';
 
 const ASSIGNMENT_ERROR_VISIBLE_MS = 5000;
 
-export function useTaskDropTarget(task: Task, dismissWarning: () => void) {
-  const { dragAndDrop, readOnly, refreshTasks } = useKanban();
+export function useTaskDropTarget(
+  task: Task,
+  dismissWarning: () => void,
+  readOnly: boolean,
+  { dragAndDrop, refreshTasks }: Pick<CardActions, 'dragAndDrop' | 'refreshTasks'>
+) {
   const { t } = useTranslation();
   const [isDragOver, setIsDragOver] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
