@@ -18,8 +18,11 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|scheduler)[\\/]/.test(id)) {
+            if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
               return 'vendor-react';
+            }
+            if (/[\/]node_modules[\/](react-hook-form|i18next[^\/]*|react-i18next|react-toastify|clsx)[\/]/.test(id)) {
+              return 'vendor-app';
             }
           },
         },
