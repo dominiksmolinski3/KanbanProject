@@ -45,17 +45,16 @@ class PinnedImagesTest {
     }
 
     @Test
-    @DisplayName("the deployed broker runs the same pinned RabbitMQ image as the local stack")
+    @DisplayName("the deployed broker runs the same RabbitMQ wrapper as the local stack")
     void theBrokerMatchesCompose() throws IOException {
-        String composeBroker = imagesIn(COMPOSE, COMPOSE_IMAGE).stream()
-                .filter(image -> image.startsWith("rabbitmq:"))
-                .findFirst()
-                .orElseThrow();
+        String compose = Files.readString(COMPOSE);
+        assertThat(compose)
+                .as("the local broker builds images/rabbitmq, so Dependabot moves one FROM and CI runs the "
+                        + "broker the deployment pins; a pinned rabbitmq image here is a second copy that drifts")
+                .containsPattern("(?m)^  rabbitmq:\\R    build:\\R      context: \\./images/rabbitmq\\R")
+                .doesNotContainPattern("(?m)^\\s+image:\\s*rabbitmq:");
 
-        assertThat(imagesIn(RABBITMQ_DOCKERFILE, DOCKERFILE_FROM))
-                .as("Dependabot bumps docker-compose.yml and images/rabbitmq one at a time; move the other "
-                        + "with it, or the deployment runs a broker no CI run has used")
-                .containsExactly(composeBroker);
+        String composeBroker = imagesIn(RABBITMQ_DOCKERFILE, DOCKERFILE_FROM).getFirst();
         assertThat(imagesIn(BROKER, TERRAFORM_IMAGE))
                 .as("modules/broker runs the rebuild of images/rabbitmq, or the upstream image it wraps")
                 .singleElement()
