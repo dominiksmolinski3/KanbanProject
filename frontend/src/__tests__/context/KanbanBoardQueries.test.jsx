@@ -64,6 +64,33 @@ describe('the board read through queries', () => {
     api.getActiveBoardId.mockReturnValue(null);
   });
 
+  it('reads the boards but none of their contents on a page that shows no board', async () => {
+    await act(async () => {
+      render(<KanbanProvider boardContents={false}><Probe /></KanbanProvider>);
+    });
+    await waitFor(() => expect(kanban.activeBoardId).toBe(1));
+
+    expect(kanban.loading).toBe(false);
+    expect(api.fetchColumns).not.toHaveBeenCalled();
+    expect(api.fetchRows).not.toHaveBeenCalled();
+    expect(api.fetchTasks).not.toHaveBeenCalled();
+  });
+
+  it('reads the contents once the page turns into the board', async () => {
+    let view;
+    await act(async () => {
+      view = render(<KanbanProvider boardContents={false}><Probe /></KanbanProvider>);
+    });
+    await waitFor(() => expect(kanban.activeBoardId).toBe(1));
+
+    await act(async () => {
+      view.rerender(<KanbanProvider boardContents><Probe /></KanbanProvider>);
+    });
+
+    await waitFor(() => expect(kanban.tasks).toHaveLength(1));
+    expect(api.fetchColumns).toHaveBeenCalledTimes(1);
+  });
+
   it('reads columns, rows and tasks in order of position', async () => {
     api.fetchColumns.mockResolvedValue([column(11, 2), column(10, 1)]);
     api.fetchRows.mockResolvedValue([{ id: 21, name: 'B', position: 5 }, { id: 20, name: 'A', position: 1 }]);
