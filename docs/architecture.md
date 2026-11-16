@@ -2167,8 +2167,8 @@ and reasons in `local.refusal_alerts`.
   broker, Grafana and the monitoring VM's Prometheus on what Dependabot bumps in
   `docker-compose.yml`. The backup and `db_roles` jobs' `postgres` and `curl` images were tied to
   neither, and the curl one was fourteen months old, with two critical OpenSSL findings, when the
-  scan was added. Nothing bumps those pins, so this sweep is what says when one has to move. Its
-  first job lists every literal `image = "..."` under `terraform/` and fails when it finds none.
+  scan was added. Those pins now move through `base-images.yml` (below); this sweep is the check
+  that they did. Its first job lists every literal `image = "..."` under `terraform/` and fails when it finds none.
   The scan skips `usr/local/bin/gosu` and nothing else: `govulncheck` finds one of gosu's findings
   reachable, a denial of service through parsing `/etc/passwd` and `/etc/group`, and in these jobs
   those are the image's own files.
@@ -2181,7 +2181,23 @@ and reasons in `local.refusal_alerts`.
   executable the role installs is missing from what it unpacked. A red result means moving a
   pin: to a new release, or to a newer revision of the package. Prometheus and
   `blackbox_exporter` also move with `docker-compose.yml`, through `PinnedImagesTest`.
-- `terraform-ci.yml` ("Infrastructure CI") — on changes under `terraform/`, to either
+- `base-images.yml` ("Base images") — **every image Terraform pins is a thin wrapper under
+  [images/](../images/)**: `FROM` the upstream image by digest, then `apk upgrade`. Upstream images
+  lag their distro: `curlimages/curl:8.23.0` carried sixteen krb5 CVEs for weeks after Alpine had
+  shipped the fix, and the only remedy was waiting. Dependabot bumps each `FROM` like any Dockerfile.
+  Daily, the workflow rebuilds each wrapper and scans it against the image Terraform pins. **It
+  publishes only when the rebuild resolves a finding or the `FROM` has moved** (read from the
+  `org.opencontainers.image.base.name` label), so an image changes only when that buys something.
+  A rebuild with a finding the pin lacks fails the run. Published images are signed, checked to
+  pull anonymously (the Azure jobs have no ghcr credentials), and one `ops(terraform)` PR on
+  `ops/base-image-pins` moves every pin. It needs the `BASE_IMAGES_PR_TOKEN` secret, a PAT with
+  contents and pull-request write: GitHub Actions may not open PRs here, and a PR pushed with
+  `GITHUB_TOKEN` runs no CI, so without it the run pushes the branch and fails with the compare
+  link. A rebuild fixes OS packages only; a finding in a compiled binary (gosu, a Go module) still
+  waits for upstream. On a PR that touches `images/` the same job builds and compares without
+  publishing. `BaseImagesCoverageTest` keeps every wrapper in the matrix, in hadolint and in
+  Dependabot, and refuses a Terraform image with no wrapper.
+- `terraform-ci.yml` ("Infrastructure CI") — on changes under `terraform/`, to any
   Dockerfile, to any workflow or to `.checkov.yaml`: `fmt -check`, `init -backend=false`,
   `validate`, then **a blocking Checkov scan**. It used to scan `terraform/` alone —
   `.checkov.yaml` pinned both `directory` and `framework` to it — so Checkov's `dockerfile`

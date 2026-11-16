@@ -318,6 +318,9 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
   job without its own `name:`, blocks every PR until the ruleset is changed to match.
 - A new scheduled workflow calls `sweep-alarm.yml` and is listed in `SweepAlarmCoverageTest`. A
   sweep that did not do its work must fail, never skip.
+- An image Terraform pins is a wrapper under `images/`, in `base-images.yml`'s matrix, hadolint and
+  Dependabot (`BaseImagesCoverageTest`). Its pin moves through the PR that workflow opens, not by
+  hand; the PR needs the `BASE_IMAGES_PR_TOKEN` secret to run CI.
 - An alert on a `kanban_*` metric must name a meter the code registers and the agent exports
   (`MetricAlertsMatchTheMetersTest`).
 - `tf.sh apply` refuses a stale `app_image_tag`; `--allow-stale-image` is for a deliberate rollback

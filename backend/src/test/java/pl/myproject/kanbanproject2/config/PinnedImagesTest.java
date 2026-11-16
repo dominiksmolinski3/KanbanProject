@@ -28,6 +28,9 @@ class PinnedImagesTest {
     private static final Pattern DOCKERFILE_FROM = Pattern.compile("(?m)^FROM\\s+(\\S+)");
     private static final Path MONITORING_VARS = REPO.resolve(Path.of("ansible", "group_vars", "all.yml"));
     private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
+    private static final Path DB_ROLES = REPO.resolve(Path.of("terraform", "modules", "db_roles", "main.tf"));
+    private static final Path RABBITMQ_DOCKERFILE = REPO.resolve(Path.of("images", "rabbitmq", "Dockerfile"));
+    private static final Path POSTGRES_DOCKERFILE = REPO.resolve(Path.of("images", "postgres", "Dockerfile"));
 
     @Test
     @DisplayName("every image docker-compose pulls names a tag and the digest it resolved to")
@@ -49,10 +52,14 @@ class PinnedImagesTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(imagesIn(BROKER, TERRAFORM_IMAGE))
-                .as("Dependabot bumps the digest in docker-compose.yml only; move modules/broker with it, "
-                        + "or the deployment runs a broker no CI run has used")
+        assertThat(imagesIn(RABBITMQ_DOCKERFILE, DOCKERFILE_FROM))
+                .as("Dependabot bumps docker-compose.yml and images/rabbitmq one at a time; move the other "
+                        + "with it, or the deployment runs a broker no CI run has used")
                 .containsExactly(composeBroker);
+        assertThat(imagesIn(BROKER, TERRAFORM_IMAGE))
+                .as("modules/broker runs the rebuild of images/rabbitmq, or the upstream image it wraps")
+                .singleElement()
+                .matches(image -> wraps(image, composeBroker, "kanbanproject-rabbitmq"));
     }
 
     @Test
@@ -101,14 +108,23 @@ class PinnedImagesTest {
     @DisplayName("the backup job pins its images and dumps with the server's major version")
     void theBackupJobMatchesTheServer() throws IOException {
         List<String> images = imagesIn(BACKUP, TERRAFORM_IMAGE);
-        String dumper = images.stream().filter(image -> image.startsWith("postgres:")).findFirst().orElseThrow();
-        String dumperMajor = dumper.substring("postgres:".length()).split("[.@-]")[0];
+        String base = imagesIn(POSTGRES_DOCKERFILE, DOCKERFILE_FROM).getFirst();
+        String dumperMajor = base.substring("postgres:".length()).split("[.@-]")[0];
+        List<String> dumpers = images.stream()
+                .filter(image -> wraps(image, base, "kanbanproject-postgres"))
+                .toList();
 
         assertThat(images).allMatch(image -> PINNED.matcher(image).matches());
-        assertThat(images.stream().filter(image -> image.startsWith("postgres:")))
+        assertThat(dumpers)
+                .as("the backup job dumps with the rebuild of images/postgres, or the upstream image it wraps")
+                .isNotEmpty();
+        assertThat(images.stream().filter(image -> image.contains("postgres")))
                 .as("the restore drill must restore with the image that dumped, or it tests a pairing "
                         + "no real restore would use")
-                .containsOnly(dumper);
+                .containsOnly(dumpers.getFirst());
+        assertThat(imagesIn(DB_ROLES, TERRAFORM_IMAGE))
+                .as("modules/db_roles runs psql from the same image, so the daily rebuild moves one pin, not two")
+                .containsOnly(dumpers.getFirst());
         assertThat(imagesIn(POSTGRES, SERVER_VERSION))
                 .as("pg_dump refuses a server newer than itself, so a server upgrade without this is a "
                         + "nightly backup that fails from that night on")
@@ -127,6 +143,13 @@ class PinnedImagesTest {
                 .as("Dependabot bumps docker-compose.yml only, and CI checks the VM's rules and probes "
                         + "with those images; move the version and sha256 in ansible/group_vars/all.yml with it")
                 .allSatisfy((name, version) -> assertThat(installed).containsEntry(name, version));
+    }
+
+    private static boolean wraps(String pinned, String base, String wrapper) {
+        String reference = base.split("@")[0];
+        String baseTag = reference.substring(reference.lastIndexOf(':') + 1);
+        return pinned.equals(base) || pinned.matches(
+                "ghcr\\.io/[^/]+/" + wrapper + ":" + Pattern.quote(baseTag) + "-\\d{8}@sha256:[0-9a-f]{64}");
     }
 
     private static String tagOf(List<String> images, String repository) {

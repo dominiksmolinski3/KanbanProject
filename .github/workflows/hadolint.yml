@@ -7,6 +7,7 @@ on:
       - 'backend/Dockerfile'
       - 'frontend/Dockerfile'
       - 'observability/grafana/Dockerfile'
+      - 'images/*/Dockerfile'
       - '.github/workflows/hadolint.yml'
   pull_request:
     branches: [ main ]
@@ -25,7 +26,7 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/pr-changes.yml
     with:
-      paths: '^((backend|frontend|observability/grafana)/Dockerfile|\.github/workflows/(hadolint|pr-changes)\.yml)$'
+      paths: '^((backend|frontend|observability/grafana|images/[^/]+)/Dockerfile|\.github/workflows/(hadolint|pr-changes)\.yml)$'
 
   hadolint:
     needs: changes
@@ -39,6 +40,9 @@ jobs:
           - backend/Dockerfile
           - frontend/Dockerfile
           - observability/grafana/Dockerfile
+          - images/curl/Dockerfile
+          - images/postgres/Dockerfile
+          - images/rabbitmq/Dockerfile
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
