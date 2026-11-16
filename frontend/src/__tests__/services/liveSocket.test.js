@@ -1,8 +1,6 @@
-import SockJS from 'sockjs-client';
 import { joinLiveSocket, leaveLiveSocket } from '../../services/liveSocket';
 import { clientInstances } from '../../test-utils/stompMock';
 
-jest.mock('sockjs-client', () => jest.fn().mockImplementation((url) => ({ url })));
 jest.mock('@stomp/stompjs', () => require('../../test-utils/stompMock'));
 
 const mockRenewOrSignOut = jest.fn(() => Promise.resolve(null));
@@ -56,12 +54,11 @@ describe('the live socket', () => {
     expect(first.activate).toHaveBeenCalledTimes(1);
   });
 
-  it('connects to /ws on the page origin rather than a hardcoded host', () => {
+  it('opens a plain WebSocket on the page origin rather than a hardcoded host', () => {
     const client = joinLiveSocket(user());
 
-    client.webSocketFactory();
-
-    expect(SockJS).toHaveBeenCalledWith(`${window.location.origin}/ws`);
+    expect(client.brokerURL).toBe(`${window.location.origin.replace(/^http/, 'ws')}/ws/websocket`);
+    expect(client.webSocketFactory).toBeUndefined();
   });
 
   it('tells every user when the connection is up, and again after a reconnect', async () => {
