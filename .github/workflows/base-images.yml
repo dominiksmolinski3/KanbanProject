@@ -313,7 +313,7 @@ jobs:
         else
           gh pr create --base main --head "$BRANCH" \
             --title 'ops(terraform): pin the rebuilt base images' --body-file pr-body.md \
-            --assignee "$OWNER" --label dependencies --label terraform --label docker
+            --assignee "$OWNER" --label techdebt --label dependencies --label terraform --label docker
         fi
 
   base-images-alarm:
