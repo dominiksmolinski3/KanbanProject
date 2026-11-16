@@ -145,15 +145,22 @@ jobs:
           exit 1
         fi
 
-        if [ "$pinned_base" != "$BASE" ]; then
-          reason="builds on $BASE (was ${pinned_base:-$PINNED})"
-        elif [ -n "$resolved" ]; then
-          reason="resolves $(cut -d' ' -f1 <<<"$resolved" | sort -u | paste -sd' ')"
-        else
+        reasons=()
+        if [ -z "$pinned_base" ]; then
+          reasons+=("replaces the upstream pin")
+        elif [ "$pinned_base" != "$BASE" ]; then
+          reasons+=("builds on $BASE (was $pinned_base)")
+        fi
+        if [ -n "$resolved" ]; then
+          reasons+=("resolves $(cut -d' ' -f1 <<<"$resolved" | sort -u | paste -sd' ')")
+        fi
+        if [ ${#reasons[@]} -eq 0 ]; then
           echo "publish=false" >> "$GITHUB_OUTPUT"
           echo "::notice::$IMAGE: the rebuild resolves nothing and the base has not moved; the pin stays"
           exit 0
         fi
+        reason=$(printf '%s; ' "${reasons[@]}")
+        reason=${reason%; }
         echo "publish=true" >> "$GITHUB_OUTPUT"
         echo "reason=$reason" >> "$GITHUB_OUTPUT"
         echo "::notice::$IMAGE $reason"
