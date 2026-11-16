@@ -9,6 +9,7 @@ import { useLayoutActions } from './kanban/useLayoutActions';
 import { useTaskActions } from './kanban/useTaskActions';
 import { useDragAndDrop } from './kanban/useDragAndDrop';
 import type { LooseId } from './kanban/types';
+import { CardActionsContext, useCardActions } from './kanban/cardActions';
 
 function useKanbanValue(boardContents: boolean) {
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
@@ -102,8 +103,13 @@ const KanbanContext = createContext<KanbanValue | undefined>(undefined);
 
 export function KanbanProvider({ children, boardContents = true }: { children: ReactNode; boardContents?: boolean }) {
   const value = useKanbanValue(boardContents);
+  const cardActions = useCardActions(value);
 
-  return <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>;
+  return (
+    <KanbanContext.Provider value={value}>
+      <CardActionsContext.Provider value={cardActions}>{children}</CardActionsContext.Provider>
+    </KanbanContext.Provider>
+  );
 }
 
 export const useKanban = (): KanbanValue => {
