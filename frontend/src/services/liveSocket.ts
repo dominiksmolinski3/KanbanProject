@@ -1,4 +1,3 @@
-import SockJS from 'sockjs-client';
 import { Client, type StompHeaders } from '@stomp/stompjs';
 import { getAccessToken, isAccessTokenExpired, refreshSession } from './session';
 import { renewOrSignOut } from './apiInterceptor';
@@ -32,7 +31,7 @@ export function joinLiveSocket(user: LiveSocketUser): Client {
   }
 
   const created = new Client({
-    webSocketFactory: () => new SockJS(`${socketOrigin()}/ws`),
+    brokerURL: `${socketOrigin().replace(/^http/, 'ws')}/ws/websocket`,
     debug: () => {},
     reconnectDelay: 5000,
     heartbeatIncoming: 10000,

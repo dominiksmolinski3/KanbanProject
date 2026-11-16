@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState, type DragEvent, type MouseEvent, type RefObject } from 'react';
-import { useKanban } from '../../context/KanbanContext';
+import type { CardActions } from '../../context/kanban/cardActions';
 import type { Id, Task } from '../../types/api';
 import { setTiltedDragImage } from './dragImage';
 
 const WARNING_VISIBLE_MS = 5000;
 
-export function useTaskDragSource(task: Task, columnId: Id, taskRef: RefObject<HTMLElement | null>) {
-  const { readOnly, setDraggedTaskId } = useKanban();
+export function useTaskDragSource(
+  task: Task,
+  columnId: Id,
+  taskRef: RefObject<HTMLElement | null>,
+  readOnly: boolean,
+  { setDraggedTaskId }: Pick<CardActions, 'setDraggedTaskId'>
+) {
   const [isDragging, setIsDragging] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
