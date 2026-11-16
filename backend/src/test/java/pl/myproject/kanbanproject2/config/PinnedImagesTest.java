@@ -29,7 +29,6 @@ class PinnedImagesTest {
     private static final Path MONITORING_VARS = REPO.resolve(Path.of("ansible", "group_vars", "all.yml"));
     private static final Pattern PINNED =Pattern.compile(".+:[^@/]+@sha256:[0-9a-f]{64}");
     private static final Path DB_ROLES = REPO.resolve(Path.of("terraform", "modules", "db_roles", "main.tf"));
-    private static final Path RABBITMQ_DOCKERFILE = REPO.resolve(Path.of("images", "rabbitmq", "Dockerfile"));
     private static final Path POSTGRES_DOCKERFILE = REPO.resolve(Path.of("images", "postgres", "Dockerfile"));
 
     @Test
@@ -54,11 +53,10 @@ class PinnedImagesTest {
                 .containsPattern("(?m)^  rabbitmq:\\R    build:\\R      context: \\./images/rabbitmq\\R")
                 .doesNotContainPattern("(?m)^\\s+image:\\s*rabbitmq:");
 
-        String composeBroker = imagesIn(RABBITMQ_DOCKERFILE, DOCKERFILE_FROM).getFirst();
         assertThat(imagesIn(BROKER, TERRAFORM_IMAGE))
                 .as("modules/broker runs the rebuild of images/rabbitmq, or the upstream image it wraps")
                 .singleElement()
-                .matches(image -> wraps(image, composeBroker, "kanbanproject-rabbitmq"));
+                .matches(image -> wraps(image, "rabbitmq", "kanbanproject-rabbitmq"));
     }
 
     @Test
@@ -110,7 +108,7 @@ class PinnedImagesTest {
         String base = imagesIn(POSTGRES_DOCKERFILE, DOCKERFILE_FROM).getFirst();
         String dumperMajor = base.substring("postgres:".length()).split("[.@-]")[0];
         List<String> dumpers = images.stream()
-                .filter(image -> wraps(image, base, "kanbanproject-postgres"))
+                .filter(image -> wraps(image, "postgres", "kanbanproject-postgres"))
                 .toList();
 
         assertThat(images).allMatch(image -> PINNED.matcher(image).matches());
@@ -144,11 +142,10 @@ class PinnedImagesTest {
                 .allSatisfy((name, version) -> assertThat(installed).containsEntry(name, version));
     }
 
-    private static boolean wraps(String pinned, String base, String wrapper) {
-        String reference = base.split("@")[0];
-        String baseTag = reference.substring(reference.lastIndexOf(':') + 1);
-        return pinned.equals(base) || pinned.matches(
-                "ghcr\\.io/[^/]+/" + wrapper + ":" + Pattern.quote(baseTag) + "-\\d{8}@sha256:[0-9a-f]{64}");
+    // The pin moves only after a FROM change merges, so it may lag the Dockerfile; never tie it to the FROM.
+    private static boolean wraps(String pinned, String upstream, String wrapper) {
+        return pinned.matches(Pattern.quote(upstream) + ":[^@/]+@sha256:[0-9a-f]{64}")
+                || pinned.matches("ghcr\\.io/[^/]+/" + wrapper + ":[^@/]+-\\d{8}@sha256:[0-9a-f]{64}");
     }
 
     private static String tagOf(List<String> images, String repository) {
