@@ -12,14 +12,15 @@ const NONE: never[] = [];
 
 interface BoardDataDeps {
   activeBoardId: Id | null;
+  wanted?: boolean;
   onBoardsChanged?: () => Promise<boolean>;
 }
 
 export type BoardRead = BoardData & { loading: boolean; error: string | null };
 
-export function useBoardData({ activeBoardId, onBoardsChanged }: BoardDataDeps): BoardRead {
+export function useBoardData({ activeBoardId, wanted = true, onBoardsChanged }: BoardDataDeps): BoardRead {
   const queryClient = useQueryClient();
-  const enabled = activeBoardId !== null;
+  const enabled = wanted && activeBoardId !== null;
   const localChanges = useRef(0);
   const keys = {
     columns: boardKeys.columns(activeBoardId),
