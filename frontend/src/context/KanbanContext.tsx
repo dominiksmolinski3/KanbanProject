@@ -10,12 +10,16 @@ import { useTaskActions } from './kanban/useTaskActions';
 import { useDragAndDrop } from './kanban/useDragAndDrop';
 import type { LooseId } from './kanban/types';
 
-function useKanbanValue() {
+function useKanbanValue(boardContents: boolean) {
   const [dailyFocusOnly, setDailyFocusOnly] = useState(false);
   const { t } = useTranslation();
 
   const boards = useBoards({ t });
-  const data = useBoardData({ activeBoardId: boards.activeBoardId, onBoardsChanged: boards.handleBoardsChanged });
+  const data = useBoardData({
+    activeBoardId: boards.activeBoardId,
+    wanted: boardContents,
+    onBoardsChanged: boards.handleBoardsChanged,
+  });
   const error = boards.error ?? data.error;
   const loading = error === null && (boards.activeBoardId === null || data.loading);
   const guard = readOnlyGuard(boards.isViewer, t);
@@ -96,8 +100,8 @@ export type KanbanValue = ReturnType<typeof useKanbanValue>;
 
 const KanbanContext = createContext<KanbanValue | undefined>(undefined);
 
-export function KanbanProvider({ children }: { children: ReactNode }) {
-  const value = useKanbanValue();
+export function KanbanProvider({ children, boardContents = true }: { children: ReactNode; boardContents?: boolean }) {
+  const value = useKanbanValue(boardContents);
 
   return <KanbanContext.Provider value={value}>{children}</KanbanContext.Provider>;
 }
