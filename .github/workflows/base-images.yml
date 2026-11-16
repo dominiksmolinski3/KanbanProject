@@ -223,14 +223,14 @@ jobs:
         REASON: ${{ steps.decide.outputs.reason }}
       run: |
         jq -n --arg image "$IMAGE" --arg from "$PINNED" --arg to "$TAG@$DIGEST" --arg reason "$REASON" \
-          '{image: $image, from: $from, to: $to, reason: $reason}' > pin.json
+          '{image: $image, from: $from, to: $to, reason: $reason}' > "pin-$IMAGE.json"
 
     - name: Upload the new pin
       if: steps.push.outcome == 'success'
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: pin-${{ matrix.image }}
-        path: pin.json
+        path: pin-${{ matrix.image }}.json
         if-no-files-found: error
         retention-days: 7
 
@@ -254,14 +254,14 @@ jobs:
       with:
         pattern: pin-*
         path: pins
-        merge-multiple: false
+        merge-multiple: true
 
     - name: Move the Terraform pins
       id: move
       run: |
         set -euo pipefail
         shopt -s nullglob
-        files=(pins/*/pin.json)
+        files=(pins/pin-*.json)
         if [ ${#files[@]} -eq 0 ]; then
           echo "changed=false" >> "$GITHUB_OUTPUT"
           echo "::notice::no image was published, so no pin moves"
