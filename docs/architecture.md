@@ -260,7 +260,7 @@ asserts the absence from both sides, and `JwtAuthenticationFilterSkipTest` asser
 used to be the bundle now reads a token like any other — so putting any of it back is a deliberate
 act rather than a merge artifact.
 
-In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](../frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (SockJS) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
+In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](../frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (the socket) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
 
 **Every REST route is served under `/api`.** [WebConfig](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix `ChatController` too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
 
@@ -1375,7 +1375,8 @@ is checked by reading the header instead.
 
 ## Chat
 
-STOMP over SockJS at `/ws`, relayed to a real broker (RabbitMQ, via its STOMP plugin — see
+STOMP at `/ws` (the server registers it with SockJS; the client opens the plain WebSocket at
+`/ws/websocket` and ships no SockJS code), relayed to a real broker (RabbitMQ, via its STOMP plugin — see
 [StompRelayProperties](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/StompRelayProperties.java)
 and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`;
 `WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not
