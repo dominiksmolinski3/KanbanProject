@@ -2,7 +2,6 @@ import BoardEvents from '../../services/boardEvents';
 import { joinLiveSocket, leaveLiveSocket } from '../../services/liveSocket';
 import { clientInstances } from '../../test-utils/stompMock';
 
-jest.mock('sockjs-client', () => jest.fn().mockImplementation((url) => ({ url })));
 jest.mock('@stomp/stompjs', () => require('../../test-utils/stompMock'));
 
 jest.mock('../../services/apiInterceptor', () => ({

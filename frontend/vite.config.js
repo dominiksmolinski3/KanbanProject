@@ -8,9 +8,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    define: {
-      global: 'window',
-    },
     build: {
       outDir: 'dist',
       emptyOutDir: true,
