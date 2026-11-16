@@ -100,22 +100,25 @@ describe('a board event crosses from one API replica to another', () => {
     );
   });
 
-  const openBoard = ({ live }) => {
-    if (live) {
-      cy.intercept('GET', '**/ws/info*').as('sockjsHandshake');
-    } else {
-      cy.intercept('**/ws/**', { forceNetworkError: true });
-    }
+  // A WebSocket is not a request cy.intercept can fail, so the page gets one that never opens.
+  const neverOpens = (win) => {
+    win.WebSocket = class {
+      constructor() {
+        this.readyState = 3;
+        setTimeout(() => this.onclose && this.onclose({ code: 1006, reason: '', wasClean: false }));
+      }
 
-    cy.visit('/board');
+      send() {}
+
+      close() {}
+    };
+  };
+
+  const openBoard = ({ live }) => {
+    cy.visit('/board', live ? {} : { onBeforeLoad: neverOpens });
 
     cy.contains('th', COLUMN_NAME).should('exist');
     cy.contains('.grid-row-header', ROW_NAME).should('exist');
-
-    if (live) {
-      cy.wait('@sockjsHandshake');
-      cy.wait(1500);
-    }
 
     cy.window().then((win) => {
       win.__documentStamp = 'same document';
