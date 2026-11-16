@@ -5,11 +5,12 @@ import { setupApiInterceptors } from './services/apiInterceptor';
 import HomePage from './components/HomePage';
 import NotFound from './components/NotFound';
 import PageLoading from './components/PageLoading';
+import { loadBoardPage, loadProtectedLayout, startBoardCodeWhenSignedIn } from './boardCode';
 import './styles/App.css';
 import './styles/pages.css';
 
-const ProtectedLayout = lazy(() => import('./components/ProtectedLayout'));
-const BoardPage = lazy(() => import('./components/BoardPage'));
+const ProtectedLayout = lazy(loadProtectedLayout);
+const BoardPage = lazy(loadBoardPage);
 const UsersManagement = lazy(() => import('./components/UsersManagement'));
 const ActivityFeed = lazy(() => import('./components/ActivityFeed'));
 const FlowMetrics = lazy(() => import('./components/FlowMetrics'));
@@ -17,6 +18,7 @@ const Devices = lazy(() => import('./components/Devices'));
 const Account = lazy(() => import('./components/Account'));
 
 setupApiInterceptors();
+startBoardCodeWhenSignedIn();
 
 function App() {
   return (
