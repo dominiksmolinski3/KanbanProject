@@ -15,7 +15,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Scorecard flags the Gradle wrapper jar unless gradle-wrapper.yml has already succeeded on this commit.
+  wrapper-validated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    steps:
+    - name: Wait for the Gradle wrapper run on this commit to finish
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+      run: |
+        for _ in $(seq 18); do
+          run_id=$(gh run list --workflow gradle-wrapper.yml --commit "$SHA" --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          [ -n "$run_id" ] && break
+          sleep 10
+        done
+        if [ -z "$run_id" ]; then
+          echo "::error::no Gradle wrapper run for $SHA"
+          exit 1
+        fi
+        gh run watch "$run_id" --interval 5 > /dev/null
+        gh run view "$run_id" --json conclusion --jq '"Gradle wrapper run \(.conclusion)"'
+
   analysis:
+    needs: [ wrapper-validated ]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -43,12 +70,12 @@ jobs:
 
   scorecard-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ analysis ]
+    needs: [ wrapper-validated, analysis ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.analysis.result }}"
+      results: "${{ needs.wrapper-validated.result }} ${{ needs.analysis.result }}"
       subject: the Scorecard sweep failed
       label: scan-red
