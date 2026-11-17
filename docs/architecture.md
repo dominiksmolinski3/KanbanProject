@@ -2234,6 +2234,9 @@ and reasons in `local.refusal_alerts`.
   everything but its private endpoint and passes one left open. `CKV2_KANBAN_2` replaces it
   on the same terms as `CKV2_KANBAN_1`. The trigger names `.checkov/**` for the same reason
   it names `.checkov.yaml`.
+  Checkov's lock is compiled with `--override overrides.txt`, and a Dependabot re-lock can
+  drop the override (#705 put asteval back below its sandbox-escape fix), so the job fails
+  when a pin in `overrides.txt` is missing from `requirements.txt`.
   The monitoring VM adds two: `CKV_AZURE_50`, because Run Command is an extension
   operation and it is the only way anyone configures that VM, which has no public IP and
   no inbound SSH; and `CKV_AZURE_93`, customer-managed disk keys, the trade `CKV2_AZURE_1`

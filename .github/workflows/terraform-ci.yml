@@ -82,6 +82,16 @@ jobs:
       with:
         python-version: '3.13'
 
+    - name: Checkov's lock keeps every override
+      working-directory: .
+      run: |
+        grep -vE '^[[:space:]]*(#|$)' .checkov/overrides.txt | while read -r pin; do
+          grep -q "^${pin}[ ;]" .checkov/requirements.txt || {
+            echo "::error file=.checkov/requirements.txt::${pin} from overrides.txt is missing; re-lock with the command in the file's header"
+            exit 1
+          }
+        done
+
     # Checkov covers terraform/, every Dockerfile and the workflows; its scope is
     # .checkov.yaml, so the push paths and the changes regex have to stay as wide as that file.
     - name: Scan with Checkov
