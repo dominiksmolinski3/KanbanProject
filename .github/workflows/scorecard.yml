@@ -70,12 +70,12 @@ jobs:
 
   scorecard-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ analysis ]
+    needs: [ wrapper-validated, analysis ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.analysis.result }}"
+      results: "${{ needs.wrapper-validated.result }} ${{ needs.analysis.result }}"
       subject: the Scorecard sweep failed
       label: scan-red
