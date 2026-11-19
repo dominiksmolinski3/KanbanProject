@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ActiveDevice } from '../../types/api';
+import { keyFingerprint } from '../../crypto/fingerprint';
 import Icon from '../Icon';
 
 // Stand-ins drawn under a blur when the server withholds the real values; never real data.
@@ -21,10 +22,11 @@ interface DeviceItemProps {
   session: ActiveDevice;
   isCurrent: boolean;
   ending: boolean;
+  messagingKey?: string | null;
   onEnd: (session: ActiveDevice) => void;
 }
 
-export default function DeviceItem({ session, isCurrent, ending, onEnd }: DeviceItemProps) {
+export default function DeviceItem({ session, isCurrent, ending, messagingKey, onEnd }: DeviceItemProps) {
   const { t, i18n } = useTranslation();
 
   const formatMoment = (value: string | null | undefined) => {
@@ -67,6 +69,14 @@ export default function DeviceItem({ session, isCurrent, ending, onEnd }: Device
             <span className="device-field-label">{t('devices.fields.lastSeen')}</span>
             <span className="device-moment">{formatMoment(session.lastSeenAt)}</span>
           </span>
+          {messagingKey !== undefined && (
+            <span className="device-field">
+              <span className="device-field-label">{t('devices.fields.messagingKey')}</span>
+              {messagingKey
+                ? <code className="device-messaging-key" dir="ltr">{keyFingerprint(messagingKey)}</code>
+                : <span className="device-moment">{t('devices.fields.noMessagingKey')}</span>}
+            </span>
+          )}
         </span>
       </div>
       <button

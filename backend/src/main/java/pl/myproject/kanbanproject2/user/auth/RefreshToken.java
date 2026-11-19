@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -49,17 +50,21 @@ public class RefreshToken {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    @Column(name = "chain_id", nullable = false)
+    private UUID chainId;
+
     protected RefreshToken() {
     }
 
     public RefreshToken(String tokenHash, User user, Instant issuedAt, Instant expiresAt,
-                        Instant absoluteExpiresAt, Instant chainStartedAt, DeviceContext device) {
+                        Instant absoluteExpiresAt, Instant chainStartedAt, UUID chainId, DeviceContext device) {
         this.tokenHash = tokenHash;
         this.user = user;
         this.issuedAt = issuedAt;
         this.expiresAt = expiresAt;
         this.absoluteExpiresAt = absoluteExpiresAt;
         this.chainStartedAt = chainStartedAt;
+        this.chainId = chainId;
         this.ipAddress = device.ipAddress();
         this.userAgent = device.userAgent();
     }
@@ -86,6 +91,10 @@ public class RefreshToken {
 
     public Instant getChainStartedAt() {
         return chainStartedAt;
+    }
+
+    public UUID getChainId() {
+        return chainId;
     }
 
     public String getIpAddress() {

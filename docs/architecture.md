@@ -1498,6 +1498,40 @@ topics the server had no opinion about. The board comes from `KanbanContext`, so
 switches the conversation and there is no second control to find; opening the panel loads page 0 of
 the history and "load older" pages back through it.
 
+## Encrypted messaging
+
+Phase 1 of the end-to-end encrypted messenger: keys and devices, behind `app.messaging.enabled`
+(`MESSAGING_ENABLED`, off by default). Nothing sends a message yet; the board chat above is untouched.
+
+- **The server holds public keys and opaque bytes.** The Ed25519 identity key is generated in the
+  browser and reaches the server only sealed: under the PIN exchange below (`identity_pins`), and
+  optionally under a 48-character recovery key (`identity_keys.wrapped_private`). The recovery key
+  carries 240 random bits, so no slow KDF is needed, and the server never sees it.
+- **The PIN is protected by an attempt limit, not by hardware.** The browser hashes the PIN onto
+  P-256 and blinds it; `PinEvaluator` answers with an ECDH under a secret derived from
+  `MESSAGING_PIN_KEY` (a Key Vault secret, never in the database); the browser unblinds, derives the
+  wrapping key and a proof, and the server releases the PIN-wrapped key only for the right proof.
+  Every evaluation of a set PIN is charged; ten without a correct unlock lock it
+  (`identity_pins.failed_attempts`, an atomic update). A leaked database or backup cannot be
+  brute-forced; whoever runs the server can. That is weaker than the HSM vaults Messenger and
+  WhatsApp use, and the setup screen says so. Replacing `MESSAGING_PIN_KEY` invalidates every PIN.
+- **A device belongs to a browser, not to a sign-in.** Signing out, session expiry and a password
+  change keep it. `refresh_tokens.chain_id` (set at sign-in, copied by every rotation) records which
+  sign-in it is attached to, and the browser re-attaches its device after each sign-in and refresh
+  (`crypto/attach.ts`). Ending a session from Signed-in devices publishes `SessionEnded`, and
+  `CryptoDeviceSessions` revokes that chain's device in the same transaction. "Forget this browser",
+  starting over, and 180 days unused also revoke it. `MessagingKeysDatabaseTest` is the specification.
+- **The server checks the identity's signature** over every device, PIN wrap and recovery wrap
+  (`IdentitySignatures`, one label each, the bytes `crypto/keys.ts` signs), and that a device
+  credential names the caller's account.
+- **Key packages:** 100 one-time and one last-resort per device, topped up below 20 and capped at
+  200, each valid for 90 days.
+- **MLS is ts-mls, in a Web Worker.** `crypto/worker.ts` is the only code holding private keys;
+  IndexedDB keeps the device's MLS secrets and the identity key sealed under a non-extractable AES
+  key, and the page reads only `device-info`. The design named OpenMLS, but nobody publishes a
+  maintained WASM build of it; the worker's RPC is the seam a switch would replace. ts-mls imports
+  `@noble/hashes` without declaring it and pins `@noble/curves` at 2.0.1, hence both dependencies.
+
 ## Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'

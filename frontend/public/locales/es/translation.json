@@ -499,6 +499,104 @@
       "title": "Dispositivos con sesión iniciada",
       "intro": "Todas las sesiones que aún pueden renovarse en esta cuenta. Cerrar una desconecta ese navegador; no cambia la contraseña.",
       "demoNotice": "Esta es una cuenta de demostración compartida, por lo que se oculta desde dónde inicia sesión cada sesión.",
+      "messaging": {
+        "title": "Mensajes cifrados",
+        "loading": "Comprobando la clave de mensajes de este navegador…",
+        "notSetUp": "Los mensajes estarán cifrados de extremo a extremo. Configúralos en este navegador para crear tus claves.",
+        "elsewhere": "Los mensajes cifrados están configurados en tu cuenta, pero no en este navegador. Desbloquéalo con tu PIN o tu clave de recuperación.",
+        "ready": "Este navegador está configurado para los mensajes cifrados.",
+        "removed": "La clave de mensajes de este navegador se eliminó por un cambio en otro dispositivo, y sus claves se borraron aquí. Vuelve a configurarlo.",
+        "thisKey": "Clave de este navegador",
+        "buttons": {
+          "setUp": "Configurar en este navegador",
+          "useRecoveryKey": "Usar mi clave de recuperación",
+          "startOver": "Empezar de nuevo",
+          "cancel": "Cancelar",
+          "enterPin": "Introducir mi PIN",
+          "changePin": "Cambiar PIN",
+          "setPin": "Establecer un PIN",
+          "addRecoveryKey": "Crear una clave de recuperación",
+          "forget": "Olvidar este navegador",
+          "remove": "Quitar",
+          "continue": "Continuar",
+          "save": "Guardar"
+        },
+        "setup": {
+          "introTitle": "Los mensajes están cifrados de extremo a extremo",
+          "introBody": "Solo las personas de una conversación pueden leerla. KanbanProject guarda tus mensajes cifrados y no puede leerlos, igual que nadie que entre en nuestros servidores.",
+          "pointBrowser": "Este navegador recibe su propia clave, que nunca sale de él",
+          "pointRecovery": "Recibes una clave de recuperación por si pierdes todos tus dispositivos",
+          "pointEverywhere": "Los mensajes directos, los grupos y los canales de los tableros usarán estas claves",
+          "keyTitle": "Guarda tu clave de recuperación",
+          "keyBody": "Si olvidas tu PIN o se bloquea, esta clave es la única otra forma de volver a tu historial. No guardamos ninguna copia y no podemos restablecerla.",
+          "keyLabel": "Clave de recuperación",
+          "download": "Descargar como archivo",
+          "copy": "Copiar",
+          "copied": "Clave de recuperación copiada",
+          "copyFailed": "No se pudo copiar la clave de recuperación. Anótala a mano.",
+          "fileHeading": "Clave de recuperación de KanbanProject para los mensajes cifrados",
+          "keepIt": "Guárdala en un gestor de contraseñas o en papel. Cualquiera que tenga esta clave y tu contraseña puede leer tu historial.",
+          "saved": "He guardado mi clave de recuperación en un lugar donde puedo encontrarla sin este navegador",
+          "checkLabel": "Escribe el último grupo para comprobarlo",
+          "finish": "Terminar la configuración",
+          "finishing": "Configurando…",
+          "cannotSkip": "Este paso no se puede omitir. Los mensajes se abren una vez guardada la clave.",
+          "done": "Los mensajes cifrados están configurados en este navegador",
+          "pointPin": "Eliges un PIN de 6 dígitos para desbloquear tus otros navegadores y dispositivos"
+        },
+        "reset": {
+          "title": "¿Empezar de nuevo con una clave nueva?",
+          "body": "Tu historial de mensajes no se podrá leer en ningún dispositivo nuevo, y todas las personas con las que hablas verán que tu número de seguridad ha cambiado. Todos los demás navegadores perderán su clave de mensajes, y tu PIN y tu clave de recuperación dejarán de funcionar."
+        },
+        "recover": {
+          "title": "Usa tu clave de recuperación",
+          "body": "Introduce la clave de recuperación de 48 caracteres que guardaste al configurar los mensajes cifrados. Los espacios y guiones no importan.",
+          "label": "Clave de recuperación",
+          "submit": "Configurar este navegador"
+        },
+        "errors": {
+          "malformedKey": "Una clave de recuperación tiene 48 letras y cifras. Revisa lo que has escrito.",
+          "wrongKey": "Esa clave de recuperación no corresponde a esta cuenta.",
+          "noSession": "No se pudo identificar esta sesión. Cierra sesión y vuelve a iniciarla.",
+          "generic": "No se pudieron configurar los mensajes cifrados. Inténtalo de nuevo.",
+          "wrongPin": "Ese PIN no es correcto.",
+          "pinLocked": "Tu PIN está bloqueado tras demasiados intentos fallidos. Usa tu clave de recuperación o empieza de nuevo."
+        },
+        "keepsKey": "Este navegador conserva su clave al cerrar sesión. En un ordenador compartido o público, olvídalo antes de irte.",
+        "noRecoveryKey": "No tienes clave de recuperación. Si olvidas tu PIN y pierdes todos tus navegadores, tu historial no se podrá recuperar.",
+        "forgetConfirm": "¿Olvidar este navegador? Su clave de mensajes se borrará aquí y se quitará de tu cuenta. Para volver a leer mensajes aquí necesitarás tu PIN o tu clave de recuperación.",
+        "forgotten": "Este navegador ya no tiene clave de mensajes",
+        "signedOut": {
+          "title": "Sin sesión, pero con clave",
+          "lastUsed": "Último uso {{date}}",
+          "removeConfirm": "¿Quitar la clave de mensajes de este navegador? Necesitará tu PIN o tu clave de recuperación para volver a leer mensajes.",
+          "removed": "Se ha quitado la clave de mensajes de ese navegador"
+        },
+        "pin": {
+          "title": "Elige un PIN de 6 dígitos",
+          "body": "Lo introducirás para leer tus mensajes en un navegador o dispositivo nuevo.",
+          "label": "PIN",
+          "repeat": "Repite el PIN",
+          "limits": "Nuestro servidor comprueba el PIN y lo bloquea tras 10 intentos fallidos. Un PIN protege tus mensajes si se filtra nuestra base de datos, pero no frente a quien controle nuestros servidores. Una clave de recuperación los protege de ambos.",
+          "addRecovery": "Crear también una clave de recuperación",
+          "addRecoveryHint": "Te permite volver a entrar si olvidas tu PIN o se bloquea. Sin ella, un PIN olvidado obliga a empezar de nuevo.",
+          "invalid": "Un PIN tiene 6 dígitos.",
+          "mismatch": "Los dos PIN no coinciden."
+        },
+        "unlock": {
+          "title": "Introduce tu PIN",
+          "body": "Introduce el PIN de 6 dígitos que elegiste al configurar los mensajes cifrados.",
+          "submit": "Desbloquear",
+          "attemptsLeft": "Intentos restantes antes del bloqueo: {{count}}"
+        },
+        "changePin": {
+          "title": "Elige un PIN nuevo",
+          "done": "Se ha cambiado tu PIN"
+        },
+        "addRecovery": {
+          "done": "Tu clave de recuperación está lista"
+        }
+      },
       "fields": {
         "device": "Dispositivo",
         "address": "Dirección",
@@ -507,6 +605,8 @@
         "actions": "Acciones",
         "thisDevice": "Este dispositivo",
         "unknownDevice": "Dispositivo desconocido",
+        "messagingKey": "Clave de mensajes",
+        "noMessagingKey": "Ninguna",
         "hidden": "Oculto en la cuenta de demostración"
       },
       "buttons": {
@@ -759,6 +859,15 @@
             "TASK_NOT_FOUND": "Esa tarea ya no existe.",
             "TOO_MANY_REQUESTS": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
             "UNSUPPORTED_LOCALE": "Ese idioma no es compatible.",
+            "MESSAGING_UNAVAILABLE": "Los mensajes cifrados no están disponibles.",
+            "IDENTITY_KEY_EXISTS": "Los mensajes cifrados ya están configurados en esta cuenta.",
+            "IDENTITY_KEY_NOT_FOUND": "Los mensajes cifrados aún no están configurados en esta cuenta.",
+            "INVALID_CRYPTO_KEY": "La clave de cifrado no superó la comprobación. Vuelve a configurar este navegador.",
+            "CRYPTO_DEVICE_NOT_FOUND": "Este navegador ya no está configurado para los mensajes cifrados.",
+            "INVALID_KEY_PACKAGES": "No se pudieron guardar las claves de cifrado.",
+            "PIN_NOT_SET": "Esta cuenta no tiene PIN para los mensajes cifrados.",
+            "PIN_INCORRECT": "Ese PIN no es correcto.",
+            "PIN_LOCKED": "El PIN está bloqueado tras demasiados intentos fallidos. Usa tu clave de recuperación.",
             "UNSUPPORTED_MEDIA_TYPE": "Ese tipo de archivo no se acepta aquí.",
             "USER_NOT_FOUND": "No se encontró a esa persona.",
             "USER_WIP_LIMIT_EXCEEDED": "Esa persona ya alcanzó su límite WIP.",

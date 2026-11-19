@@ -13,6 +13,7 @@ import pl.myproject.kanbanproject2.user.User;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
@@ -23,6 +24,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     List<RefreshToken> findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(
             User user, Instant now);
+
+    boolean existsByChainIdAndRevokedAtIsNullAndExpiresAtAfter(UUID chainId, Instant now);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE RefreshToken token SET token.revokedAt = :when "

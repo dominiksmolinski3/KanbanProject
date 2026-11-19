@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -14,6 +15,7 @@ import pl.myproject.kanbanproject2.user.auth.ActiveDeviceMapper;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RefreshToken;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
+import pl.myproject.kanbanproject2.user.auth.SessionEnded;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -25,6 +27,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -40,20 +43,23 @@ public class RefreshTokenService {
     private final Duration refreshExpiration;
     private final Duration absoluteExpiration;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     @Autowired
     public RefreshTokenService(
             RefreshTokenRepository refreshTokens,
             ActiveDeviceMapper deviceMapper,
             @Value("${security.jwt.refresh-expiration-time}") long refreshExpirationMillis,
-            @Value("${security.jwt.refresh-absolute-expiration-time}") long absoluteExpirationMillis
+            @Value("${security.jwt.refresh-absolute-expiration-time}") long absoluteExpirationMillis,
+            ApplicationEventPublisher events
     ) {
         this(refreshTokens, deviceMapper, refreshExpirationMillis, absoluteExpirationMillis,
-                Clock.systemUTC());
+                Clock.systemUTC(), events);
     }
 
     RefreshTokenService(RefreshTokenRepository refreshTokens, ActiveDeviceMapper deviceMapper,
-                        long refreshExpirationMillis, long absoluteExpirationMillis, Clock clock) {
+                        long refreshExpirationMillis, long absoluteExpirationMillis, Clock clock,
+                        ApplicationEventPublisher events) {
         if (refreshExpirationMillis < 1) {
             throw new IllegalArgumentException("security.jwt.refresh-expiration-time must be positive");
         }
@@ -67,6 +73,7 @@ public class RefreshTokenService {
         this.refreshExpiration = Duration.ofMillis(refreshExpirationMillis);
         this.absoluteExpiration = Duration.ofMillis(absoluteExpirationMillis);
         this.clock = clock;
+        this.events = events;
     }
 
     public long getExpirationTime() {
@@ -85,7 +92,7 @@ public class RefreshTokenService {
                 log.info("Replaced {} session(s) from the same device for user {}", replaced, user.getId());
             }
         }
-        return issueWithin(user, now.plus(absoluteExpiration), now, now, device);
+        return issueWithin(user, now.plus(absoluteExpiration), now, UUID.randomUUID(), now, device);
     }
 
     @Transactional
@@ -108,16 +115,17 @@ public class RefreshTokenService {
 
         session.revokeAt(now);
         refreshTokens.save(session);
+        events.publishEvent(new SessionEnded(session.getChainId()));
         log.info("Withdrew session {} for user {} on request", sessionId, user.getId());
     }
 
-    private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, Instant now,
-                               DeviceContext device) {
+    private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, UUID chainId,
+                               Instant now, DeviceContext device) {
         String token = ENCODER.encodeToString(randomBytes());
         Instant slidingDeadline = now.plus(refreshExpiration);
         Instant expiresAt = slidingDeadline.isBefore(chainDeadline) ? slidingDeadline : chainDeadline;
         RefreshToken saved = refreshTokens.save(new RefreshToken(
-                hash(token), user, now, expiresAt, chainDeadline, chainStartedAt, device));
+                hash(token), user, now, expiresAt, chainDeadline, chainStartedAt, chainId, device));
         return new Issued(token, saved.getId());
     }
 
@@ -143,7 +151,7 @@ public class RefreshTokenService {
 
         User user = stored.getUser();
         Issued issued = issueWithin(
-                user, stored.getAbsoluteExpiresAt(), stored.getChainStartedAt(), now, device);
+                user, stored.getAbsoluteExpiresAt(), stored.getChainStartedAt(), stored.getChainId(), now, device);
         return new Rotation(user, issued.token(), issued.sessionId());
     }
 

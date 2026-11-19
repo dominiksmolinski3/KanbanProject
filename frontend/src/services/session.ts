@@ -1,5 +1,6 @@
 import { authService } from './authService';
 import { ApiError } from './apiError';
+import { attachThisBrowser } from '../crypto/attach';
 import type { LoginResponse } from '../types/api';
 
 export const TOKEN_KEY = 'token';
@@ -86,6 +87,7 @@ async function renew(presented: string): Promise<string | null> {
   try {
     const session = await authService.refresh(current);
     storeSession(session);
+    void attachThisBrowser(session.sessionId ?? null);
     return session.token;
   } catch (error) {
     if (isRefreshRejected(error)) {
