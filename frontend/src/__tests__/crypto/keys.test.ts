@@ -11,8 +11,13 @@ import {
   deviceSignaturePayload,
   open,
   newStorageKey,
-  restoreIdentity,
+  openIdentity,
+  pinSignaturePayload,
+  recoverySignaturePayload,
+  recoveryWrappingKey,
   seal,
+  signWithIdentity,
+  wrapIdentity,
   RecoveryKeyMismatchError,
 } from '../../crypto/keys';
 import { generateRecoveryKey, normalizeRecoveryKey, recoveryKeyGroups, RECOVERY_KEY_LENGTH } from '../../crypto/recoveryKey';
@@ -52,38 +57,47 @@ describe('recovery keys', () => {
 describe('the identity key', () => {
   test('is wrapped so that only the same recovery key opens it', async () => {
     const recoveryKey = generateRecoveryKey();
-    const created = await createIdentity(recoveryKey);
+    const created = await createIdentity();
+    const wrappedPrivate = await wrapIdentity(await recoveryWrappingKey(recoveryKey), created.publicKey, created.pkcs8);
 
     expect(created.publicKey).toHaveLength(32);
-    const restored = await restoreIdentity(recoveryKey, created);
+    const opened = await openIdentity(await recoveryWrappingKey(recoveryKey), { publicKey: created.publicKey, wrappedPrivate });
     const payload = utf8('proof');
-    const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', restored, buffer(payload)));
-    expect(await verifyWith(created.publicKey, signature, payload)).toBe(true);
+    expect(await verifyWith(created.publicKey, await signWithIdentity(opened, payload), payload)).toBe(true);
 
-    await expect(restoreIdentity(generateRecoveryKey(), created)).rejects.toBeInstanceOf(RecoveryKeyMismatchError);
-  });
-
-  test('is bound to its own public key, so a wrapped key moved under another public key does not open', async () => {
-    const recoveryKey = generateRecoveryKey();
-    const first = await createIdentity(recoveryKey);
-    const second = await createIdentity(recoveryKey);
-
-    await expect(restoreIdentity(recoveryKey, { publicKey: second.publicKey, wrappedPrivate: first.wrappedPrivate }))
+    await expect(openIdentity(await recoveryWrappingKey(generateRecoveryKey()), { publicKey: created.publicKey, wrappedPrivate }))
       .rejects.toBeInstanceOf(RecoveryKeyMismatchError);
   });
 
-  test('cannot be read back out of the browser once imported', async () => {
-    const created = await createIdentity(generateRecoveryKey());
+  test('is bound to its own public key, so a wrapped key moved under another public key does not open', async () => {
+    const wrappingKey = await recoveryWrappingKey(generateRecoveryKey());
+    const first = await createIdentity();
+    const second = await createIdentity();
+    const wrappedPrivate = await wrapIdentity(wrappingKey, first.publicKey, first.pkcs8);
 
-    expect(created.privateKey.extractable).toBe(false);
-    await expect(crypto.subtle.exportKey('pkcs8', created.privateKey)).rejects.toThrow();
+    await expect(openIdentity(wrappingKey, { publicKey: second.publicKey, wrappedPrivate }))
+      .rejects.toBeInstanceOf(RecoveryKeyMismatchError);
+  });
+
+  test('signs PIN and recovery uploads under labels of their own', async () => {
+    const created = await createIdentity();
+    const wrapped = new Uint8Array([1, 2]);
+    const verifier = new Uint8Array(32).fill(7);
+
+    const pinSignature = await signWithIdentity(created.pkcs8, pinSignaturePayload(wrapped, verifier));
+    const recoverySignature = await signWithIdentity(created.pkcs8, recoverySignaturePayload(wrapped));
+
+    expect(new TextDecoder().decode(pinSignaturePayload(wrapped, verifier).subarray(0, 30))).toBe('KanbanProject messaging PIN v1');
+    expect(new TextDecoder().decode(recoverySignaturePayload(wrapped).subarray(0, 35))).toBe('KanbanProject messaging recovery v1');
+    expect(await verifyWith(created.publicKey, pinSignature, pinSignaturePayload(wrapped, verifier))).toBe(true);
+    expect(await verifyWith(created.publicKey, recoverySignature, pinSignaturePayload(wrapped, verifier))).toBe(false);
   });
 });
 
 describe('a device', () => {
   test('carries a credential naming its account and a signature from the identity key', async () => {
-    const identity = await createIdentity(generateRecoveryKey());
-    const { secrets, identitySignature } = await createDevice(42, identity.privateKey);
+    const identity = await createIdentity();
+    const { secrets, identitySignature } = await createDevice(42, identity.pkcs8);
 
     expect(new TextDecoder().decode(secrets.credential)).toMatch(/^u42\.[0-9a-f]{32}$/);
     expect(secrets.signatureKey).toHaveLength(32);
@@ -103,8 +117,8 @@ describe('a device', () => {
 
 describe('key packages', () => {
   test('are RFC 9420 key packages signed by the device key, with the reference the server indexes', async () => {
-    const identity = await createIdentity(generateRecoveryKey());
-    const { secrets } = await createDevice(7, identity.privateKey);
+    const identity = await createIdentity();
+    const { secrets } = await createDevice(7, identity.pkcs8);
     const now = Date.UTC(2026, 10, 19);
     const [generated] = await createKeyPackages(secrets, 1, false, now);
 
@@ -122,8 +136,8 @@ describe('key packages', () => {
   });
 
   test('each have their own reference', async () => {
-    const identity = await createIdentity(generateRecoveryKey());
-    const { secrets } = await createDevice(7, identity.privateKey);
+    const identity = await createIdentity();
+    const { secrets } = await createDevice(7, identity.pkcs8);
     const packages = await createKeyPackages(secrets, 3, true);
 
     expect(new Set(packages.map(({ upload }) => toBase64(upload.ref))).size).toBe(3);

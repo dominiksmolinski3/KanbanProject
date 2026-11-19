@@ -17,15 +17,15 @@ class FakeWorker {
 describe('the vault client', () => {
   test('starts the worker on first use and hands each call its own answer', async () => {
     const vault = {
-      createIdentity: jest.fn(async (key: string) => ({ publicKey: new Uint8Array([key.length]), wrappedPrivate: new Uint8Array() })),
-      commitDevice: jest.fn(async (deviceId: number) => ({ userId: 1, deviceId, signatureKey: new Uint8Array() })),
+      createIdentity: jest.fn(async () => ({ publicKey: new Uint8Array([3]) })),
+      commitDevice: jest.fn(async (deviceId: number, boundSessionId: number) => ({ userId: 1, deviceId, signatureKey: new Uint8Array(), boundSessionId })),
     };
     const worker = new FakeWorker(vault);
     const spawn = jest.fn(() => worker as unknown as Worker);
     const client = createVaultClient(spawn);
 
     expect(spawn).not.toHaveBeenCalled();
-    const [identity, device] = await Promise.all([client.createIdentity('abc'), client.commitDevice(8)]);
+    const [identity, device] = await Promise.all([client.createIdentity(), client.commitDevice(8, 12)]);
 
     expect(spawn).toHaveBeenCalledTimes(1);
     expect(identity.publicKey).toEqual(new Uint8Array([3]));
@@ -37,10 +37,10 @@ describe('the vault client', () => {
     const failure = new Error('RecoveryKeyMismatch');
     failure.name = 'RecoveryKeyMismatchError';
     const client = createVaultClient(() => new FakeWorker({
-      restoreIdentity: jest.fn(async () => { throw failure; }),
+      restoreWithRecoveryKey: jest.fn(async () => { throw failure; }),
     }) as unknown as Worker);
 
-    const outcome = client.restoreIdentity('key', { publicKey: new Uint8Array(), wrappedPrivate: new Uint8Array() });
+    const outcome = client.restoreWithRecoveryKey('key', { publicKey: new Uint8Array(), wrappedPrivate: new Uint8Array() });
 
     await expect(outcome).rejects.toBeInstanceOf(VaultError);
     await expect(outcome).rejects.toMatchObject({ name: 'RecoveryKeyMismatchError' });

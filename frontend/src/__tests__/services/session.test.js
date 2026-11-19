@@ -13,6 +13,7 @@ import {
 } from '../../services/session';
 import { authService } from '../../services/authService';
 import { ApiError } from '../../services/apiError';
+import { attachThisBrowser } from '../../crypto/attach';
 
 jest.mock('../../services/authService', () => ({
   authService: {
@@ -20,6 +21,8 @@ jest.mock('../../services/authService', () => ({
     logout: jest.fn()
   }
 }));
+
+jest.mock('../../crypto/attach', () => ({ attachThisBrowser: jest.fn(() => Promise.resolve()) }));
 
 describe('session', () => {
   const session = { token: 'access', expiresIn: 900_000, refreshToken: 'rotated' };
@@ -63,7 +66,7 @@ describe('session', () => {
     expect(getSessionId()).toBe('12');
   });
 
-  test('clearing a session deletes the messaging keys this browser holds', () => {
+  test('signing out keeps the messaging keys this browser holds', () => {
     const deleteDatabase = jest.fn();
     globalThis.indexedDB = { deleteDatabase };
     try {
@@ -72,7 +75,7 @@ describe('session', () => {
       delete globalThis.indexedDB;
     }
 
-    expect(deleteDatabase).toHaveBeenCalledWith('kanban-messaging-keys');
+    expect(deleteDatabase).not.toHaveBeenCalled();
   });
 
   test('clearing a session forgets the id with everything else', () => {
@@ -122,6 +125,15 @@ describe('session', () => {
 
     expect(authService.refresh).toHaveBeenCalledWith('held');
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe('rotated');
+  });
+
+  test('a renewed session carries the messaging key of this browser along', async () => {
+    localStorage.setItem(REFRESH_TOKEN_KEY, 'held');
+    authService.refresh.mockResolvedValue({ ...session, sessionId: 31 });
+
+    await refreshSession();
+
+    expect(attachThisBrowser).toHaveBeenCalledWith(31);
   });
 
   test('ten simultaneous callers make one refresh call between them', async () => {

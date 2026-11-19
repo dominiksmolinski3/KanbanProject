@@ -1,7 +1,7 @@
-import { getJson, postJson, putJson } from './http';
+import { deleteChecked, getJson, postJson, putJson } from './http';
 import { toBase64 } from '../crypto/bytes';
-import type { KeyPackageUpload, WrappedIdentity } from '../crypto/keys';
-import type { PreparedDevice } from '../crypto/deviceVault';
+import type { KeyPackageUpload } from '../crypto/keys';
+import type { PinWrap, PreparedDevice, SignedWrap } from '../crypto/deviceVault';
 
 const API_BASE_URL = '/api';
 
@@ -9,13 +9,28 @@ export interface MessagingDevice {
   id: number;
   sessionId: number | null;
   signatureKey: string;
+  label: string | null;
   createdAt: string;
+  lastSeenAt: string;
   keyPackages: number;
+}
+
+export interface MessagingIdentity {
+  publicKey: string;
+  createdAt: string;
+  recoveryKey: boolean;
+}
+
+export interface PinStatus {
+  available: boolean;
+  set: boolean;
+  attemptsLeft: number;
 }
 
 export interface MessagingStatus {
   enabled: boolean;
-  identity: { publicKey: string; createdAt: string } | null;
+  identity: MessagingIdentity | null;
+  pin: PinStatus | null;
   devices: MessagingDevice[];
 }
 
@@ -24,27 +39,46 @@ export interface IdentityBackup {
   wrappedPrivate: string;
 }
 
-const identityBody = (identity: WrappedIdentity) => ({
-  publicKey: toBase64(identity.publicKey),
-  wrappedPrivate: toBase64(identity.wrappedPrivate),
-});
-
 const packageBody = (packages: KeyPackageUpload[]) => packages.map((keyPackage) => ({
   ref: toBase64(keyPackage.ref),
   data: toBase64(keyPackage.data),
   lastResort: keyPackage.lastResort,
 }));
 
+const identityBody = (publicKey: Uint8Array, recoveryWrap: Uint8Array | null) => ({
+  publicKey: toBase64(publicKey),
+  wrappedPrivate: recoveryWrap ? toBase64(recoveryWrap) : null,
+});
+
 export const cryptoApi = {
   status: () => getJson<MessagingStatus>(`${API_BASE_URL}/crypto/status`),
 
-  createIdentity: (identity: WrappedIdentity) =>
-    postJson<{ publicKey: string; createdAt: string }>(`${API_BASE_URL}/crypto/identity`, identityBody(identity)),
+  createIdentity: (publicKey: Uint8Array, recoveryWrap: Uint8Array | null) =>
+    postJson<MessagingIdentity>(`${API_BASE_URL}/crypto/identity`, identityBody(publicKey, recoveryWrap)),
 
-  replaceIdentity: (identity: WrappedIdentity) =>
-    putJson<{ publicKey: string; createdAt: string }>(`${API_BASE_URL}/crypto/identity`, identityBody(identity)),
+  replaceIdentity: (publicKey: Uint8Array, recoveryWrap: Uint8Array | null) =>
+    putJson<MessagingIdentity>(`${API_BASE_URL}/crypto/identity`, identityBody(publicKey, recoveryWrap)),
 
   identityBackup: () => getJson<IdentityBackup>(`${API_BASE_URL}/crypto/identity/backup`),
+
+  setRecoveryKey: (wrap: SignedWrap) =>
+    putJson<MessagingIdentity>(`${API_BASE_URL}/crypto/identity/backup`, {
+      wrappedPrivate: toBase64(wrap.wrappedPrivate),
+      signature: toBase64(wrap.signature),
+    }),
+
+  evaluatePin: (blinded: Uint8Array) =>
+    postJson<{ evaluated: string }>(`${API_BASE_URL}/crypto/pin/evaluate`, { blinded: toBase64(blinded) }),
+
+  setPin: (wrap: PinWrap) =>
+    putJson<PinStatus>(`${API_BASE_URL}/crypto/pin`, {
+      wrappedPrivate: toBase64(wrap.wrappedPrivate),
+      verifier: toBase64(wrap.verifier),
+      signature: toBase64(wrap.signature),
+    }),
+
+  unlockWithPin: (proof: Uint8Array) =>
+    postJson<IdentityBackup>(`${API_BASE_URL}/crypto/pin/unlock`, { proof: toBase64(proof) }),
 
   registerDevice: (sessionId: number, device: PreparedDevice) =>
     postJson<MessagingDevice>(`${API_BASE_URL}/crypto/devices`, {
@@ -54,6 +88,11 @@ export const cryptoApi = {
       identitySignature: toBase64(device.identitySignature),
       keyPackages: packageBody(device.keyPackages),
     }),
+
+  attachSession: (deviceId: number, sessionId: number) =>
+    postJson<MessagingDevice>(`${API_BASE_URL}/crypto/devices/${deviceId}/session`, { sessionId }),
+
+  forgetDevice: (deviceId: number) => deleteChecked(`${API_BASE_URL}/crypto/devices/${deviceId}`),
 
   uploadKeyPackages: (deviceId: number, packages: KeyPackageUpload[]) =>
     postJson<{ available: number }>(`${API_BASE_URL}/crypto/devices/${deviceId}/key-packages`, {

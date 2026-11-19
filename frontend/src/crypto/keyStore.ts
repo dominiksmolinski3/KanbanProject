@@ -7,6 +7,7 @@ export interface LocalDevice {
   userId: number;
   deviceId: number;
   signatureKey: Uint8Array;
+  boundSessionId: number;
 }
 
 export interface KeyStore {
@@ -71,9 +72,16 @@ export function indexedDbKeyStore(factory: IDBFactory = indexedDB): KeyStore {
 
 let pageStore: KeyStore | null = null;
 
+const pageKeyStore = (store?: KeyStore): KeyStore | null =>
+  store ?? (globalThis.indexedDB ? (pageStore ??= indexedDbKeyStore()) : null);
+
 export async function readLocalDevice(store?: KeyStore): Promise<LocalDevice | null> {
-  const source = store ?? (globalThis.indexedDB ? (pageStore ??= indexedDbKeyStore()) : null);
+  const source = pageKeyStore(store);
   return source ? (await source.get<LocalDevice>(DEVICE_INFO)) ?? null : null;
+}
+
+export async function saveLocalDevice(device: LocalDevice, store?: KeyStore): Promise<void> {
+  await pageKeyStore(store)?.put(DEVICE_INFO, device);
 }
 
 export function wipeLocalKeys(factory: IDBFactory | undefined = globalThis.indexedDB): void {

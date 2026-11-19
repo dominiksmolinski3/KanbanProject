@@ -1503,27 +1503,34 @@ the history and "load older" pages back through it.
 Phase 1 of the end-to-end encrypted messenger: keys and devices, behind `app.messaging.enabled`
 (`MESSAGING_ENABLED`, off by default). Nothing sends a message yet; the board chat above is untouched.
 
-- **The server holds public keys and opaque bytes.** `identity_keys.wrapped_private` is the Ed25519
-  identity key sealed with AES-GCM under a key HKDF derives from the 48-character recovery key, which
-  never leaves the browser. The recovery key carries 240 random bits, so no slow KDF is needed.
-- **A device belongs to a sign-in, not to a token row.** A refresh rotates the `refresh_tokens` row,
-  so each row carries `chain_id`, set at sign-in and copied by every rotation. A crypto device is
-  live while its chain has a live token, and every read checks that: ending a session, signing out,
-  a password change, reuse detection and expiry all end the device in the same transaction, and the
-  auth code does not know messaging exists. `CryptoDeviceSweep` stamps `revoked_at` and drops the key
-  packages of dead devices nightly. `MessagingKeysDatabaseTest` is the specification.
-- **The server checks the identity's signature over every device** (`DeviceSignatures`: a label,
-  the device key and the credential, the bytes `crypto/keys.ts` signs) and that the credential names
-  the caller's account.
+- **The server holds public keys and opaque bytes.** The Ed25519 identity key is generated in the
+  browser and reaches the server only sealed: under the PIN exchange below (`identity_pins`), and
+  optionally under a 48-character recovery key (`identity_keys.wrapped_private`). The recovery key
+  carries 240 random bits, so no slow KDF is needed, and the server never sees it.
+- **The PIN is protected by an attempt limit, not by hardware.** The browser hashes the PIN onto
+  P-256 and blinds it; `PinEvaluator` answers with an ECDH under a secret derived from
+  `MESSAGING_PIN_KEY` (a Key Vault secret, never in the database); the browser unblinds, derives the
+  wrapping key and a proof, and the server releases the PIN-wrapped key only for the right proof.
+  Every evaluation of a set PIN is charged; ten without a correct unlock lock it
+  (`identity_pins.failed_attempts`, an atomic update). A leaked database or backup cannot be
+  brute-forced; whoever runs the server can. That is weaker than the HSM vaults Messenger and
+  WhatsApp use, and the setup screen says so. Replacing `MESSAGING_PIN_KEY` invalidates every PIN.
+- **A device belongs to a browser, not to a sign-in.** Signing out, session expiry and a password
+  change keep it. `refresh_tokens.chain_id` (set at sign-in, copied by every rotation) records which
+  sign-in it is attached to, and the browser re-attaches its device after each sign-in and refresh
+  (`crypto/attach.ts`). Ending a session from Signed-in devices publishes `SessionEnded`, and
+  `CryptoDeviceSessions` revokes that chain's device in the same transaction. "Forget this browser",
+  starting over, and 180 days unused also revoke it. `MessagingKeysDatabaseTest` is the specification.
+- **The server checks the identity's signature** over every device, PIN wrap and recovery wrap
+  (`IdentitySignatures`, one label each, the bytes `crypto/keys.ts` signs), and that a device
+  credential names the caller's account.
 - **Key packages:** 100 one-time and one last-resort per device, topped up below 20 and capped at
-  200, each valid for 90 days, the absolute session lifetime.
-- **MLS is ts-mls, in a Web Worker.** `crypto/worker.ts` is the only code holding private keys.
-  IndexedDB keeps the identity key as a non-extractable `CryptoKey` and the device's MLS secrets
-  sealed under a non-extractable AES key; the page reads only `device-info`. The design named
-  OpenMLS, but nobody publishes a maintained WASM build of it; the worker's RPC is the seam a switch
-  would replace. ts-mls imports `@noble/hashes` without declaring it, hence the direct dependency.
-- **Signing out deletes the key database** (`clearSession` calls `wipeLocalKeys`), and the Devices
-  page forgets keys whose device the server no longer lists.
+  200, each valid for 90 days.
+- **MLS is ts-mls, in a Web Worker.** `crypto/worker.ts` is the only code holding private keys;
+  IndexedDB keeps the device's MLS secrets and the identity key sealed under a non-extractable AES
+  key, and the page reads only `device-info`. The design named OpenMLS, but nobody publishes a
+  maintained WASM build of it; the worker's RPC is the seam a switch would replace. ts-mls imports
+  `@noble/hashes` without declaring it and pins `@noble/curves` at 2.0.1, hence both dependencies.
 
 ## Live board sync
 

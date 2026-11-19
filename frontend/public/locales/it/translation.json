@@ -502,8 +502,8 @@
       "messaging": {
         "title": "Messaggi cifrati",
         "loading": "Controllo della chiave dei messaggi di questo browser…",
-        "notSetUp": "I messaggi saranno cifrati end-to-end. Configurali su questo browser per creare le tue chiavi e la tua chiave di recupero.",
-        "elsewhere": "I messaggi cifrati sono configurati sul tuo account, ma non su questo browser. Usa la tua chiave di recupero per aggiungerlo.",
+        "notSetUp": "I messaggi saranno cifrati end-to-end. Configurali su questo browser per creare le tue chiavi.",
+        "elsewhere": "I messaggi cifrati sono configurati sul tuo account, ma non su questo browser. Sbloccalo con il tuo PIN o la tua chiave di recupero.",
         "ready": "Questo browser è configurato per i messaggi cifrati.",
         "removed": "La chiave dei messaggi di questo browser è stata rimossa da una modifica su un altro dispositivo e le sue chiavi sono state cancellate qui. Configuralo di nuovo.",
         "thisKey": "Chiave di questo browser",
@@ -511,7 +511,15 @@
           "setUp": "Configura su questo browser",
           "useRecoveryKey": "Usa la mia chiave di recupero",
           "startOver": "Ricomincia",
-          "cancel": "Annulla"
+          "cancel": "Annulla",
+          "enterPin": "Inserisci il PIN",
+          "changePin": "Cambia PIN",
+          "setPin": "Imposta un PIN",
+          "addRecoveryKey": "Crea una chiave di recupero",
+          "forget": "Dimentica questo browser",
+          "remove": "Rimuovi",
+          "continue": "Continua",
+          "save": "Salva"
         },
         "setup": {
           "introTitle": "I messaggi sono cifrati end-to-end",
@@ -520,7 +528,7 @@
           "pointRecovery": "Ricevi una chiave di recupero per quando perdi tutti i dispositivi",
           "pointEverywhere": "Messaggi diretti, gruppi e canali delle bacheche useranno tutti queste chiavi",
           "keyTitle": "Salva la tua chiave di recupero",
-          "keyBody": "Se perdi tutti i dispositivi che usi, questa chiave è l'unico modo per recuperare la cronologia dei messaggi. Non ne conserviamo una copia e non possiamo reimpostarla.",
+          "keyBody": "Se dimentichi il PIN o viene bloccato, questa chiave è l'unica altra via per la tua cronologia. Non ne conserviamo una copia e non possiamo reimpostarla.",
           "keyLabel": "Chiave di recupero",
           "download": "Scarica come file",
           "copy": "Copia",
@@ -533,11 +541,12 @@
           "finish": "Completa la configurazione",
           "finishing": "Configurazione in corso…",
           "cannotSkip": "Questo passaggio non può essere saltato. I messaggi si aprono una volta salvata la chiave.",
-          "done": "I messaggi cifrati sono configurati su questo browser"
+          "done": "I messaggi cifrati sono configurati su questo browser",
+          "pointPin": "Scegli un PIN di 6 cifre per sbloccare gli altri browser e dispositivi"
         },
         "reset": {
           "title": "Ricominciare con una nuova chiave?",
-          "body": "La cronologia dei messaggi non potrà essere letta su nessun nuovo dispositivo e tutte le persone con cui parli vedranno che il tuo numero di sicurezza è cambiato. Ogni altro browser perde la sua chiave dei messaggi e va configurato di nuovo."
+          "body": "La cronologia dei messaggi non potrà essere letta su nessun nuovo dispositivo e tutte le persone con cui parli vedranno che il tuo numero di sicurezza è cambiato. Ogni altro browser perde la sua chiave dei messaggi, e PIN e chiave di recupero smettono di funzionare."
         },
         "recover": {
           "title": "Usa la tua chiave di recupero",
@@ -549,7 +558,43 @@
           "malformedKey": "Una chiave di recupero ha 48 lettere e cifre. Controlla cosa hai digitato.",
           "wrongKey": "Questa chiave di recupero non corrisponde a questo account.",
           "noSession": "Non è stato possibile identificare questa sessione. Esci e accedi di nuovo.",
-          "generic": "Non è stato possibile configurare i messaggi cifrati. Riprova."
+          "generic": "Non è stato possibile configurare i messaggi cifrati. Riprova.",
+          "wrongPin": "Questo PIN non è corretto.",
+          "pinLocked": "Il PIN è bloccato dopo troppi tentativi sbagliati. Usa la chiave di recupero o ricomincia da capo."
+        },
+        "keepsKey": "Questo browser conserva la sua chiave quando esci. Su un computer condiviso o pubblico, fallo dimenticare prima di andartene.",
+        "noRecoveryKey": "Non hai una chiave di recupero. Se dimentichi il PIN e perdi tutti i browser, la cronologia non potrà essere recuperata.",
+        "forgetConfirm": "Dimenticare questo browser? La sua chiave dei messaggi viene cancellata qui e rimossa dal tuo account. Per leggere di nuovo i messaggi qui ti serviranno il PIN o la chiave di recupero.",
+        "forgotten": "Questo browser non ha più una chiave dei messaggi",
+        "signedOut": {
+          "title": "Disconnesso, ma con la chiave",
+          "lastUsed": "Ultimo uso {{date}}",
+          "removeConfirm": "Rimuovere la chiave dei messaggi di questo browser? Gli serviranno il PIN o la chiave di recupero per leggere di nuovo i messaggi.",
+          "removed": "La chiave dei messaggi di quel browser è stata rimossa"
+        },
+        "pin": {
+          "title": "Scegli un PIN di 6 cifre",
+          "body": "Lo inserirai per leggere i messaggi su un nuovo browser o dispositivo.",
+          "label": "PIN",
+          "repeat": "Ripeti il PIN",
+          "limits": "Il nostro server controlla il PIN e lo blocca dopo 10 tentativi sbagliati. Un PIN protegge i messaggi se il nostro database viene sottratto, ma non da chi controlla i nostri server. Una chiave di recupero li protegge da entrambi.",
+          "addRecovery": "Crea anche una chiave di recupero",
+          "addRecoveryHint": "Ti fa rientrare se dimentichi il PIN o viene bloccato. Senza, un PIN dimenticato significa ricominciare da capo.",
+          "invalid": "Un PIN ha 6 cifre.",
+          "mismatch": "I due PIN non coincidono."
+        },
+        "unlock": {
+          "title": "Inserisci il PIN",
+          "body": "Inserisci il PIN di 6 cifre scelto quando hai configurato i messaggi cifrati.",
+          "submit": "Sblocca",
+          "attemptsLeft": "Tentativi rimasti prima del blocco: {{count}}"
+        },
+        "changePin": {
+          "title": "Scegli un nuovo PIN",
+          "done": "Il PIN è stato cambiato"
+        },
+        "addRecovery": {
+          "done": "La chiave di recupero è pronta"
         }
       },
       "fields": {
@@ -820,6 +865,9 @@
             "INVALID_CRYPTO_KEY": "La chiave di cifratura non ha superato il controllo. Configura di nuovo questo browser.",
             "CRYPTO_DEVICE_NOT_FOUND": "Questo browser non è più configurato per i messaggi cifrati.",
             "INVALID_KEY_PACKAGES": "Non è stato possibile salvare le chiavi di cifratura.",
+            "PIN_NOT_SET": "Questo account non ha un PIN per i messaggi cifrati.",
+            "PIN_INCORRECT": "Questo PIN non è corretto.",
+            "PIN_LOCKED": "Il PIN è bloccato dopo troppi tentativi sbagliati. Usa la chiave di recupero.",
             "UNSUPPORTED_MEDIA_TYPE": "Questo tipo di file non è accettato qui.",
             "USER_NOT_FOUND": "Impossibile trovare questa persona.",
             "USER_WIP_LIMIT_EXCEEDED": "Questa persona ha già raggiunto il suo limite WIP.",

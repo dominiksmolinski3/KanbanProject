@@ -12,8 +12,10 @@ import { buffer, concat, randomBytes, toHex, utf8 } from './bytes';
 
 export const CIPHERSUITE = 'MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519';
 
-// Must match DeviceSignatures.LABEL on the server, byte for byte.
+// These three must match IdentitySignatures on the server, byte for byte.
 export const DEVICE_SIGNATURE_LABEL = 'KanbanProject messaging device v1';
+export const PIN_SIGNATURE_LABEL = 'KanbanProject messaging PIN v1';
+export const RECOVERY_SIGNATURE_LABEL = 'KanbanProject messaging recovery v1';
 
 const RECOVERY_SALT = utf8('KanbanProject recovery key v1');
 const IDENTITY_WRAP_INFO = utf8('identity key');
@@ -76,54 +78,58 @@ export async function open(key: CryptoKey, sealed: Uint8Array, associated: Uint8
 export const newStorageKey = (): Promise<CryptoKey> =>
   crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 
-async function recoveryWrappingKey(recoveryKey: string): Promise<CryptoKey> {
+export async function recoveryWrappingKey(recoveryKey: string): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey('raw', buffer(utf8(recoveryKey)), 'HKDF', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'HKDF', hash: 'SHA-256', salt: buffer(RECOVERY_SALT), info: buffer(IDENTITY_WRAP_INFO) },
     material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
-const importIdentity = (pkcs8: Uint8Array): Promise<CryptoKey> =>
+export const importIdentity = (pkcs8: Uint8Array): Promise<CryptoKey> =>
   crypto.subtle.importKey('pkcs8', buffer(pkcs8), 'Ed25519', false, ['sign']);
 
-export async function createIdentity(recoveryKey: string): Promise<WrappedIdentity & { privateKey: CryptoKey }> {
+export async function createIdentity(): Promise<{ publicKey: Uint8Array; pkcs8: Uint8Array }> {
   const pair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']) as CryptoKeyPair;
-  const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
-  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', pair.privateKey));
-  try {
-    const wrappedPrivate = await seal(await recoveryWrappingKey(recoveryKey), pkcs8, publicKey);
-    return { publicKey, wrappedPrivate, privateKey: await importIdentity(pkcs8) };
-  } finally {
-    pkcs8.fill(0);
-  }
+  return {
+    publicKey: new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)),
+    pkcs8: new Uint8Array(await crypto.subtle.exportKey('pkcs8', pair.privateKey)),
+  };
 }
 
-export async function restoreIdentity(recoveryKey: string, identity: WrappedIdentity): Promise<CryptoKey> {
-  let pkcs8: Uint8Array;
+export const wrapIdentity = (wrappingKey: CryptoKey, publicKey: Uint8Array, pkcs8: Uint8Array): Promise<Uint8Array> =>
+  seal(wrappingKey, pkcs8, publicKey);
+
+export async function openIdentity(wrappingKey: CryptoKey, identity: WrappedIdentity): Promise<Uint8Array> {
   try {
-    pkcs8 = await open(await recoveryWrappingKey(recoveryKey), identity.wrappedPrivate, identity.publicKey);
+    const pkcs8 = await open(wrappingKey, identity.wrappedPrivate, identity.publicKey);
+    await importIdentity(pkcs8);
+    return pkcs8;
   } catch {
     throw new RecoveryKeyMismatchError();
   }
-  try {
-    return await importIdentity(pkcs8);
-  } finally {
-    pkcs8.fill(0);
-  }
 }
+
+export async function signWithIdentity(pkcs8: Uint8Array, payload: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.sign('Ed25519', await importIdentity(pkcs8), buffer(payload)));
+}
+
+export const pinSignaturePayload = (wrappedPrivate: Uint8Array, verifier: Uint8Array): Uint8Array =>
+  concat(utf8(PIN_SIGNATURE_LABEL), wrappedPrivate, verifier);
+
+export const recoverySignaturePayload = (wrappedPrivate: Uint8Array): Uint8Array =>
+  concat(utf8(RECOVERY_SIGNATURE_LABEL), wrappedPrivate);
 
 export const deviceSignaturePayload = (signatureKey: Uint8Array, credential: Uint8Array): Uint8Array =>
   concat(utf8(DEVICE_SIGNATURE_LABEL), signatureKey, credential);
 
-export async function createDevice(userId: number, identity: CryptoKey):
+export async function createDevice(userId: number, identity: Uint8Array):
   Promise<{ secrets: DeviceSecrets; identitySignature: Uint8Array }> {
   const impl = await ciphersuite();
   const { signKey, publicKey } = await impl.signature.keygen();
   const credential = utf8(`u${userId}.${toHex(randomBytes(16))}`);
-  const signature = await crypto.subtle.sign('Ed25519', identity, buffer(deviceSignaturePayload(publicKey, credential)));
   return {
     secrets: { signKey, signatureKey: publicKey, credential },
-    identitySignature: new Uint8Array(signature),
+    identitySignature: await signWithIdentity(identity, deviceSignaturePayload(publicKey, credential)),
   };
 }
 

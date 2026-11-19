@@ -280,6 +280,57 @@
   font-size: 13px;
 }
 
+.messaging-pin-input {
+  max-width: 200px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3em;
+}
+
+.messaging-check-hint {
+  display: block;
+  margin-top: var(--space-4);
+}
+
+.messaging-signed-out {
+  display: grid;
+  gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--kb-line);
+}
+
+.messaging-subtitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.messaging-device-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.messaging-device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.messaging-device-main {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.messaging-device-label {
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 640px) {
   .device-item {
     grid-template-columns: 40px minmax(0, 1fr);

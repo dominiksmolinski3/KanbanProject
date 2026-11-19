@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import Devices from '../../components/Devices';
 
-const translation = { t: (key) => key, i18n: { language: 'en' } };
+const translation = { t: (key, options) => (options?.count !== undefined ? `${key}:${options.count}` : key), i18n: { language: 'en' } };
 jest.mock('react-i18next', () => ({
   useTranslation: () => translation
 }));
@@ -33,14 +33,25 @@ jest.mock('../../services/cryptoApi', () => ({
     createIdentity: jest.fn(),
     replaceIdentity: jest.fn(),
     identityBackup: jest.fn(),
+    setRecoveryKey: jest.fn(),
+    evaluatePin: jest.fn(),
+    setPin: jest.fn(),
+    unlockWithPin: jest.fn(),
     registerDevice: jest.fn(),
+    attachSession: jest.fn(),
+    forgetDevice: jest.fn(),
     uploadKeyPackages: jest.fn()
   }
 }));
 
 const mockVault = {
   createIdentity: jest.fn(),
-  restoreIdentity: jest.fn(),
+  wrapForRecovery: jest.fn(),
+  restoreWithRecoveryKey: jest.fn(),
+  blindPin: jest.fn(),
+  wrapForPin: jest.fn(),
+  pinProof: jest.fn(),
+  restoreWithPin: jest.fn(),
   prepareDevice: jest.fn(),
   commitDevice: jest.fn(),
   prepareKeyPackages: jest.fn(),
@@ -57,15 +68,20 @@ jest.mock('../../crypto/keyStore', () => ({
   wipeLocalKeys: jest.fn()
 }));
 
+jest.mock('../../crypto/attach', () => ({ attachThisBrowser: jest.fn(() => Promise.resolve()) }));
+
 const { authService } = require('../../services/authService');
 const { cryptoApi } = require('../../services/cryptoApi');
 const { readLocalDevice, wipeLocalKeys } = require('../../crypto/keyStore');
+const { attachThisBrowser } = require('../../crypto/attach');
 const { VaultError } = require('../../crypto/client');
+const { ApiError } = require('../../services/apiError');
 const { toast } = require('react-toastify');
 
 const KEY = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, index) => index)));
 const FINGERPRINT = '0001 0203 0405 0607 0809 0a0b 0c0d 0e0f';
 const RECOVERY_KEY = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789ABCDEFGHJKLMNPQR';
+const EVALUATED = btoa('evaluated');
 
 const session = (overrides = {}) => ({
   id: 12,
@@ -78,21 +94,33 @@ const session = (overrides = {}) => ({
 });
 
 const device = (overrides = {}) => ({
-  id: 3, sessionId: 12, signatureKey: KEY, createdAt: '2026-11-18T10:00:00Z', keyPackages: 100, ...overrides
+  id: 3, sessionId: 12, signatureKey: KEY, label: 'Firefox', createdAt: '2026-11-18T10:00:00Z',
+  lastSeenAt: '2026-11-18T10:00:00Z', keyPackages: 100, ...overrides
 });
 
-const identity = { publicKey: KEY, createdAt: '2026-11-18T09:00:00Z' };
+const identity = (overrides = {}) => ({ publicKey: KEY, createdAt: '2026-11-18T09:00:00Z', recoveryKey: true, ...overrides });
+const pin = (overrides = {}) => ({ available: true, set: true, attemptsLeft: 10, ...overrides });
+const status = (overrides = {}) => ({ enabled: true, identity: null, pin: pin({ set: false }), devices: [], ...overrides });
 const prepared = { signatureKey: new Uint8Array(32), credential: new Uint8Array(4), identitySignature: new Uint8Array(64), keyPackages: [] };
+const local = { userId: 5, deviceId: 3, signatureKey: new Uint8Array(32), boundSessionId: 12 };
 
 const renderPage = () => render(<MemoryRouter><Devices /></MemoryRouter>);
 const panel = () => screen.getByRole('region', { name: 'devices.messaging.title' });
+const dialog = () => screen.getByRole('dialog');
+const click = (container, name) => fireEvent.click(within(container).getByRole('button', { name }));
+const type = (container, label, value) => fireEvent.change(within(container).getByLabelText(label), { target: { value } });
 
-const confirmSaved = (dialog) => {
-  const groups = within(dialog).getByRole('group', { name: 'devices.messaging.setup.keyLabel' });
+const confirmSaved = (container) => {
+  const groups = within(container).getByRole('group', { name: 'devices.messaging.setup.keyLabel' });
   const last = Array.from(groups.children).at(-1).textContent;
-  fireEvent.click(within(dialog).getByRole('checkbox'));
-  fireEvent.change(within(dialog).getByLabelText('devices.messaging.setup.checkLabel'), { target: { value: last.toLowerCase() } });
+  fireEvent.click(within(container).getByRole('checkbox'));
+  type(container, 'devices.messaging.setup.checkLabel', last.toLowerCase());
   return groups;
+};
+
+const choosePin = (value = '135790', repeat = value) => {
+  type(dialog(), 'devices.messaging.pin.label', value);
+  type(dialog(), 'devices.messaging.pin.repeat', repeat);
 };
 
 describe('Devices: encrypted messaging keys', () => {
@@ -102,18 +130,27 @@ describe('Devices: encrypted messaging keys', () => {
     window.confirm = jest.fn(() => true);
     authService.listDevices.mockResolvedValue([session(), session({ id: 13, userAgent: 'Firefox/1' })]);
     authService.endDevice.mockResolvedValue(undefined);
-    cryptoApi.status.mockResolvedValue({ enabled: true, identity: null, devices: [] });
+    cryptoApi.status.mockResolvedValue(status());
     readLocalDevice.mockResolvedValue(null);
-    mockVault.createIdentity.mockResolvedValue({ publicKey: new Uint8Array(32), wrappedPrivate: new Uint8Array(60) });
+    mockVault.createIdentity.mockResolvedValue({ publicKey: new Uint8Array(32) });
+    mockVault.wrapForRecovery.mockResolvedValue({ wrappedPrivate: new Uint8Array([7]), signature: new Uint8Array(64) });
+    mockVault.blindPin.mockResolvedValue(new Uint8Array(65));
+    mockVault.wrapForPin.mockResolvedValue({ wrappedPrivate: new Uint8Array(1), verifier: new Uint8Array(32), signature: new Uint8Array(64) });
+    mockVault.pinProof.mockResolvedValue(new Uint8Array(32));
     mockVault.prepareDevice.mockResolvedValue(prepared);
-    mockVault.commitDevice.mockResolvedValue({ userId: 5, deviceId: 3, signatureKey: new Uint8Array(32) });
-    cryptoApi.createIdentity.mockResolvedValue(identity);
-    cryptoApi.replaceIdentity.mockResolvedValue(identity);
+    mockVault.commitDevice.mockResolvedValue(local);
+    cryptoApi.createIdentity.mockResolvedValue(identity());
+    cryptoApi.replaceIdentity.mockResolvedValue(identity());
+    cryptoApi.evaluatePin.mockResolvedValue({ evaluated: EVALUATED });
+    cryptoApi.setPin.mockResolvedValue(pin());
+    cryptoApi.unlockWithPin.mockResolvedValue({ publicKey: KEY, wrappedPrivate: btoa('pin-wrapped') });
+    cryptoApi.identityBackup.mockResolvedValue({ publicKey: KEY, wrappedPrivate: btoa('wrapped') });
     cryptoApi.registerDevice.mockResolvedValue(device());
+    cryptoApi.forgetDevice.mockResolvedValue(true);
   });
 
   test('shows nothing about messaging while the feature is off', async () => {
-    cryptoApi.status.mockResolvedValue({ enabled: false, identity: null, devices: [] });
+    cryptoApi.status.mockResolvedValue({ enabled: false, identity: null, pin: null, devices: [] });
 
     renderPage();
 
@@ -129,140 +166,153 @@ describe('Devices: encrypted messaging keys', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Firefox/1')).toBeInTheDocument());
     await waitFor(() => expect(cryptoApi.status).toHaveBeenCalled());
     expect(screen.queryByRole('region', { name: 'devices.messaging.title' })).not.toBeInTheDocument();
   });
 
-  test('sets up a new account: saving the recovery key comes first, then the identity, then this browser', async () => {
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    expect(screen.getAllByText('devices.fields.noMessagingKey')).toHaveLength(2);
+  describe('setting up a new account', () => {
+    const openSetup = async () => {
+      renderPage();
+      await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
+      click(panel(), 'devices.messaging.buttons.setUp');
+      click(dialog(), 'devices.messaging.buttons.setUp');
+    };
 
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('devices.messaging.setup.introTitle')).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
+    test('with a PIN alone: identity, then PIN, then this browser', async () => {
+      await openSetup();
+      expect(within(dialog()).getByText('devices.messaging.pin.limits')).toBeInTheDocument();
+      choosePin();
+      cryptoApi.status.mockResolvedValue(status({ identity: identity({ recoveryKey: false }), pin: pin(), devices: [device()] }));
+      readLocalDevice.mockResolvedValue(local);
 
-    const finish = within(dialog).getByRole('button', { name: 'devices.messaging.setup.finish' });
-    expect(finish).toBeDisabled();
-    const groups = confirmSaved(dialog);
-    expect(groups.children).toHaveLength(12);
-    const shown = Array.from(groups.children).map((group) => group.textContent).join('');
+      click(dialog(), 'devices.messaging.setup.finish');
 
-    cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device()] });
-    readLocalDevice.mockResolvedValue({ userId: 5, deviceId: 3, signatureKey: new Uint8Array(32) });
-    fireEvent.click(finish);
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.done'));
+      expect(cryptoApi.createIdentity).toHaveBeenCalledWith(expect.any(Uint8Array), null);
+      expect(mockVault.wrapForRecovery).not.toHaveBeenCalled();
+      expect(mockVault.blindPin).toHaveBeenCalledWith(5, '135790');
+      expect(mockVault.wrapForPin).toHaveBeenCalledWith(expect.any(Uint8Array));
+      expect(cryptoApi.setPin).toHaveBeenCalled();
+      expect(cryptoApi.registerDevice).toHaveBeenCalledWith(12, prepared);
+      expect(mockVault.commitDevice).toHaveBeenCalledWith(3, 12);
+      expect(cryptoApi.createIdentity.mock.invocationCallOrder[0]).toBeLessThan(cryptoApi.setPin.mock.invocationCallOrder[0]);
+      expect(cryptoApi.setPin.mock.invocationCallOrder[0]).toBeLessThan(cryptoApi.registerDevice.mock.invocationCallOrder[0]);
+      await waitFor(() => expect(within(panel()).getByText('devices.messaging.ready')).toBeInTheDocument());
+      expect(within(panel()).getByText('devices.messaging.noRecoveryKey')).toBeInTheDocument();
+    });
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.done'));
-    expect(mockVault.createIdentity).toHaveBeenCalledWith(shown);
-    expect(cryptoApi.createIdentity).toHaveBeenCalled();
-    expect(cryptoApi.replaceIdentity).not.toHaveBeenCalled();
-    expect(mockVault.prepareDevice).toHaveBeenCalledWith(5);
-    expect(cryptoApi.registerDevice).toHaveBeenCalledWith(12, prepared);
-    expect(mockVault.commitDevice).toHaveBeenCalledWith(3);
-    expect(cryptoApi.createIdentity.mock.invocationCallOrder[0])
-      .toBeLessThan(cryptoApi.registerDevice.mock.invocationCallOrder[0]);
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.ready')).toBeInTheDocument());
-    expect(within(panel()).getByText(FINGERPRINT)).toBeInTheDocument();
-  });
+    test('refuses a PIN that is not six digits, or that does not match its repeat', async () => {
+      await openSetup();
 
-  test('will not finish until the box is ticked and the last group is typed correctly', async () => {
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const dialog = screen.getByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const finish = within(dialog).getByRole('button', { name: 'devices.messaging.setup.finish' });
+      choosePin('1234');
+      click(dialog(), 'devices.messaging.setup.finish');
+      expect(within(dialog()).getByRole('alert')).toHaveTextContent('devices.messaging.pin.invalid');
 
-    fireEvent.change(within(dialog).getByLabelText('devices.messaging.setup.checkLabel'), { target: { value: 'ZZZZ' } });
-    fireEvent.click(within(dialog).getByRole('checkbox'));
-    expect(finish).toBeDisabled();
-    fireEvent.submit(finish.closest('form'));
+      choosePin('135790', '135791');
+      click(dialog(), 'devices.messaging.setup.finish');
+      expect(within(dialog()).getByRole('alert')).toHaveTextContent('devices.messaging.pin.mismatch');
+      expect(mockVault.createIdentity).not.toHaveBeenCalled();
+    });
 
-    expect(mockVault.createIdentity).not.toHaveBeenCalled();
-  });
+    test('with a recovery key as well: the key must be saved and checked before anything is created', async () => {
+      await openSetup();
+      choosePin();
+      fireEvent.click(within(dialog()).getByRole('checkbox'));
+      click(dialog(), 'devices.messaging.buttons.continue');
 
-  test('keeps the dialog open and says why when the server refuses', async () => {
-    cryptoApi.createIdentity.mockRejectedValue(new Error('errors.codes.IDENTITY_KEY_EXISTS'));
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const dialog = screen.getByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    confirmSaved(dialog);
+      const finish = within(dialog()).getByRole('button', { name: 'devices.messaging.setup.finish' });
+      expect(finish).toBeDisabled();
+      const groups = confirmSaved(dialog());
+      const shown = Array.from(groups.children).map((group) => group.textContent).join('');
+      fireEvent.click(finish);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.finish' }));
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.done'));
+      expect(mockVault.wrapForRecovery).toHaveBeenCalledWith(shown);
+      expect(cryptoApi.createIdentity).toHaveBeenCalledWith(expect.any(Uint8Array), new Uint8Array([7]));
+      expect(cryptoApi.setPin).toHaveBeenCalled();
+    });
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('errors.codes.IDENTITY_KEY_EXISTS');
-    expect(mockVault.prepareDevice).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
+    test('without a PIN on this server, the recovery key is required and no PIN is sent', async () => {
+      cryptoApi.status.mockResolvedValue(status({ pin: pin({ available: false, set: false }) }));
+      await openSetup();
 
-  test('refuses to register a browser whose session it cannot name', async () => {
-    mockSessionId = null;
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const dialog = screen.getByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    confirmSaved(dialog);
+      expect(within(dialog()).getByText('devices.messaging.setup.cannotSkip')).toBeInTheDocument();
+      confirmSaved(dialog());
+      click(dialog(), 'devices.messaging.setup.finish');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.finish' }));
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      expect(mockVault.blindPin).not.toHaveBeenCalled();
+      expect(cryptoApi.setPin).not.toHaveBeenCalled();
+      expect(cryptoApi.createIdentity).toHaveBeenCalledWith(expect.any(Uint8Array), new Uint8Array([7]));
+    });
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('devices.messaging.errors.noSession');
-    expect(cryptoApi.registerDevice).not.toHaveBeenCalled();
-  });
+    test('keeps the dialog open and says why when the server refuses', async () => {
+      cryptoApi.createIdentity.mockRejectedValue(new Error('errors.codes.IDENTITY_KEY_EXISTS'));
+      await openSetup();
+      choosePin();
 
-  test('copies and downloads the recovery key, and says so when copying fails', async () => {
-    const writeText = jest.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('denied'));
-    Object.assign(navigator, { clipboard: { writeText } });
-    URL.createObjectURL = jest.fn(() => 'blob:key');
-    URL.revokeObjectURL = jest.fn();
-    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
-    const dialog = screen.getByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
+      click(dialog(), 'devices.messaging.setup.finish');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.copy' }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.copied'));
-    expect(writeText.mock.calls[0][0]).toMatch(/^([A-Z2-9]{4} ){11}[A-Z2-9]{4}$/);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.copy' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('devices.messaging.setup.copyFailed'));
+      expect(await within(dialog()).findByRole('alert')).toHaveTextContent('errors.codes.IDENTITY_KEY_EXISTS');
+      expect(mockVault.prepareDevice).not.toHaveBeenCalled();
+    });
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.download' }));
-    expect(click).toHaveBeenCalled();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:key');
-    click.mockRestore();
-  });
+    test('refuses to register a browser whose session it cannot name', async () => {
+      mockSessionId = null;
+      await openSetup();
+      choosePin();
 
-  test('a cancelled setup creates nothing', async () => {
-    renderPage();
-    await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
-    fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setUp' }));
+      click(dialog(), 'devices.messaging.setup.finish');
 
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'devices.messaging.buttons.cancel' }));
+      expect(await within(dialog()).findByRole('alert')).toHaveTextContent('devices.messaging.errors.noSession');
+      expect(cryptoApi.createIdentity).not.toHaveBeenCalled();
+    });
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(mockVault.createIdentity).not.toHaveBeenCalled();
-    expect(cryptoApi.createIdentity).not.toHaveBeenCalled();
+    test('copies and downloads the recovery key, and says so when copying fails', async () => {
+      const writeText = jest.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('denied'));
+      Object.assign(navigator, { clipboard: { writeText } });
+      URL.createObjectURL = jest.fn(() => 'blob:key');
+      URL.revokeObjectURL = jest.fn();
+      const anchorClick = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      await openSetup();
+      choosePin();
+      fireEvent.click(within(dialog()).getByRole('checkbox'));
+      click(dialog(), 'devices.messaging.buttons.continue');
+
+      click(dialog(), 'devices.messaging.setup.copy');
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.copied'));
+      expect(writeText.mock.calls[0][0]).toMatch(/^([A-Z2-9]{4} ){11}[A-Z2-9]{4}$/);
+      click(dialog(), 'devices.messaging.setup.copy');
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('devices.messaging.setup.copyFailed'));
+
+      click(dialog(), 'devices.messaging.setup.download');
+      expect(anchorClick).toHaveBeenCalled();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:key');
+      anchorClick.mockRestore();
+    });
+
+    test('a cancelled setup creates nothing', async () => {
+      renderPage();
+      await waitFor(() => expect(within(panel()).getByText('devices.messaging.notSetUp')).toBeInTheDocument());
+      click(panel(), 'devices.messaging.buttons.setUp');
+
+      click(dialog(), 'devices.messaging.buttons.cancel');
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(mockVault.createIdentity).not.toHaveBeenCalled();
+    });
   });
 
   describe('an account set up elsewhere', () => {
     beforeEach(() => {
-      cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device({ id: 8, sessionId: 13 })] });
-      cryptoApi.identityBackup.mockResolvedValue({ publicKey: KEY, wrappedPrivate: btoa('wrapped') });
-      mockVault.restoreIdentity.mockResolvedValue(undefined);
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [device({ id: 8, sessionId: 13 })] }));
     });
 
-    const openRecover = async () => {
+    const openUnlock = async (button) => {
       renderPage();
       await waitFor(() => expect(within(panel()).getByText('devices.messaging.elsewhere')).toBeInTheDocument());
-      fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.useRecoveryKey' }));
-      return screen.getByRole('dialog');
+      click(panel(), button);
+      return dialog();
     };
 
     test('shows which other session holds a key', async () => {
@@ -273,56 +323,104 @@ describe('Devices: encrypted messaging keys', () => {
       expect(screen.getAllByText('devices.fields.noMessagingKey')).toHaveLength(1);
     });
 
-    test('adds this browser with the recovery key, however it was typed', async () => {
-      const dialog = await openRecover();
-      const typed = RECOVERY_KEY.toLowerCase().match(/.{4}/g).join('-');
+    test('unlocks this browser with the PIN and registers it', async () => {
+      const unlock = await openUnlock('devices.messaging.buttons.enterPin');
 
-      fireEvent.change(within(dialog).getByLabelText('devices.messaging.recover.label'), { target: { value: typed } });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.recover.submit' }));
+      type(unlock, 'devices.messaging.pin.label', '135790');
+      click(unlock, 'devices.messaging.unlock.submit');
 
       await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.done'));
-      expect(mockVault.restoreIdentity).toHaveBeenCalledWith(RECOVERY_KEY, {
-        publicKey: expect.any(Uint8Array), wrappedPrivate: expect.any(Uint8Array)
-      });
+      expect(mockVault.blindPin).toHaveBeenCalledWith(5, '135790');
+      expect(cryptoApi.unlockWithPin).toHaveBeenCalledWith(expect.any(Uint8Array));
+      expect(mockVault.restoreWithPin).toHaveBeenCalledWith({ publicKey: expect.any(Uint8Array), wrappedPrivate: expect.any(Uint8Array) });
       expect(cryptoApi.registerDevice).toHaveBeenCalledWith(12, prepared);
       expect(cryptoApi.createIdentity).not.toHaveBeenCalled();
     });
 
-    test('refuses a key that cannot be one without asking the server', async () => {
-      const dialog = await openRecover();
+    test('a wrong PIN says so and how many tries are left', async () => {
+      cryptoApi.unlockWithPin.mockRejectedValue(new ApiError('wrong', { status: 400, code: 'PIN_INCORRECT' }));
+      const unlock = await openUnlock('devices.messaging.buttons.enterPin');
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin({ attemptsLeft: 9 }), devices: [] }));
 
-      fireEvent.change(within(dialog).getByLabelText('devices.messaging.recover.label'), { target: { value: 'ABCD' } });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.recover.submit' }));
+      type(unlock, 'devices.messaging.pin.label', '000000');
+      click(unlock, 'devices.messaging.unlock.submit');
 
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('devices.messaging.errors.malformedKey');
-      expect(cryptoApi.identityBackup).not.toHaveBeenCalled();
-    });
-
-    test('says plainly when the key belongs to another account', async () => {
-      mockVault.restoreIdentity.mockRejectedValue(new VaultError('RecoveryKeyMismatchError', 'RecoveryKeyMismatch'));
-      const dialog = await openRecover();
-
-      fireEvent.change(within(dialog).getByLabelText('devices.messaging.recover.label'), { target: { value: RECOVERY_KEY } });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.recover.submit' }));
-
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('devices.messaging.errors.wrongKey');
+      expect(await within(unlock).findByRole('alert')).toHaveTextContent('devices.messaging.errors.wrongPin');
+      await waitFor(() => expect(within(unlock).getByText('devices.messaging.unlock.attemptsLeft:9')).toBeInTheDocument());
       expect(cryptoApi.registerDevice).not.toHaveBeenCalled();
     });
 
-    test('passes any other failure through', async () => {
-      mockVault.restoreIdentity.mockRejectedValue(new VaultError('OperationError', 'broken'));
-      const dialog = await openRecover();
+    test('a PIN locked by the server says to use the recovery key', async () => {
+      cryptoApi.evaluatePin.mockRejectedValue(new ApiError('locked', { status: 423, code: 'PIN_LOCKED' }));
+      const unlock = await openUnlock('devices.messaging.buttons.enterPin');
 
-      fireEvent.change(within(dialog).getByLabelText('devices.messaging.recover.label'), { target: { value: RECOVERY_KEY } });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.recover.submit' }));
+      type(unlock, 'devices.messaging.pin.label', '000000');
+      click(unlock, 'devices.messaging.unlock.submit');
 
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('broken');
+      expect(await within(unlock).findByRole('alert')).toHaveTextContent('devices.messaging.errors.pinLocked');
+    });
+
+    test('a PIN that is not six digits never reaches the server', async () => {
+      const unlock = await openUnlock('devices.messaging.buttons.enterPin');
+
+      type(unlock, 'devices.messaging.pin.label', '12');
+      click(unlock, 'devices.messaging.unlock.submit');
+
+      expect(within(unlock).getByRole('alert')).toHaveTextContent('devices.messaging.pin.invalid');
+      expect(mockVault.blindPin).not.toHaveBeenCalled();
+    });
+
+    test('a locked PIN is not offered, and an account without a recovery key does not offer one', async () => {
+      cryptoApi.status.mockResolvedValue(status({ identity: identity({ recoveryKey: false }), pin: pin({ attemptsLeft: 0 }), devices: [] }));
+      renderPage();
+
+      await waitFor(() => expect(within(panel()).getByText('devices.messaging.errors.pinLocked')).toBeInTheDocument());
+      expect(within(panel()).queryByRole('button', { name: 'devices.messaging.buttons.enterPin' })).not.toBeInTheDocument();
+      expect(within(panel()).queryByRole('button', { name: 'devices.messaging.buttons.useRecoveryKey' })).not.toBeInTheDocument();
+      expect(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.startOver' })).toBeInTheDocument();
+    });
+
+    test('adds this browser with the recovery key, however it was typed', async () => {
+      const unlock = await openUnlock('devices.messaging.buttons.useRecoveryKey');
+
+      type(unlock, 'devices.messaging.recover.label', RECOVERY_KEY.toLowerCase().match(/.{4}/g).join('-'));
+      click(unlock, 'devices.messaging.recover.submit');
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.setup.done'));
+      expect(mockVault.restoreWithRecoveryKey).toHaveBeenCalledWith(RECOVERY_KEY, {
+        publicKey: expect.any(Uint8Array), wrappedPrivate: expect.any(Uint8Array)
+      });
+      expect(cryptoApi.registerDevice).toHaveBeenCalled();
+    });
+
+    test('refuses a recovery key that cannot be one without asking the server', async () => {
+      const unlock = await openUnlock('devices.messaging.buttons.useRecoveryKey');
+
+      type(unlock, 'devices.messaging.recover.label', 'ABCD');
+      click(unlock, 'devices.messaging.recover.submit');
+
+      expect(within(unlock).getByRole('alert')).toHaveTextContent('devices.messaging.errors.malformedKey');
+      expect(cryptoApi.identityBackup).not.toHaveBeenCalled();
+    });
+
+    test('says plainly when the recovery key belongs to another account, and passes other failures through', async () => {
+      mockVault.restoreWithRecoveryKey.mockRejectedValueOnce(new VaultError('RecoveryKeyMismatchError', 'RecoveryKeyMismatch'));
+      mockVault.restoreWithRecoveryKey.mockRejectedValueOnce(new VaultError('OperationError', 'broken'));
+      const unlock = await openUnlock('devices.messaging.buttons.useRecoveryKey');
+      type(unlock, 'devices.messaging.recover.label', RECOVERY_KEY);
+
+      click(unlock, 'devices.messaging.recover.submit');
+      expect(await within(unlock).findByRole('alert')).toHaveTextContent('devices.messaging.errors.wrongKey');
+
+      click(unlock, 'devices.messaging.recover.submit');
+      await waitFor(() => expect(within(unlock).getByRole('alert')).toHaveTextContent('broken'));
+      expect(cryptoApi.registerDevice).not.toHaveBeenCalled();
     });
 
     test('can be closed without changing anything', async () => {
-      const dialog = await openRecover();
+      const unlock = await openUnlock('devices.messaging.buttons.useRecoveryKey');
 
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.cancel' }));
+      click(unlock, 'devices.messaging.buttons.cancel');
 
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
       expect(cryptoApi.identityBackup).not.toHaveBeenCalled();
@@ -331,15 +429,14 @@ describe('Devices: encrypted messaging keys', () => {
     test('starting over warns first, then replaces the identity rather than adding one', async () => {
       renderPage();
       await waitFor(() => expect(within(panel()).getByText('devices.messaging.elsewhere')).toBeInTheDocument());
-      fireEvent.click(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.startOver' }));
-      const dialog = screen.getByRole('dialog');
-      expect(within(dialog).getByText('devices.messaging.reset.body')).toBeInTheDocument();
+      click(panel(), 'devices.messaging.buttons.startOver');
+      expect(within(dialog()).getByText('devices.messaging.reset.body')).toBeInTheDocument();
 
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.buttons.startOver' }));
-      confirmSaved(dialog);
-      fireEvent.click(within(dialog).getByRole('button', { name: 'devices.messaging.setup.finish' }));
+      click(dialog(), 'devices.messaging.buttons.startOver');
+      choosePin();
+      click(dialog(), 'devices.messaging.setup.finish');
 
-      await waitFor(() => expect(cryptoApi.replaceIdentity).toHaveBeenCalled());
+      await waitFor(() => expect(cryptoApi.replaceIdentity).toHaveBeenCalledWith(expect.any(Uint8Array), null));
       expect(cryptoApi.createIdentity).not.toHaveBeenCalled();
       await waitFor(() => expect(cryptoApi.registerDevice).toHaveBeenCalled());
     });
@@ -347,62 +444,175 @@ describe('Devices: encrypted messaging keys', () => {
 
   describe('a browser that is set up', () => {
     beforeEach(() => {
-      readLocalDevice.mockResolvedValue({ userId: 5, deviceId: 3, signatureKey: new Uint8Array(32) });
-      cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device()] });
+      readLocalDevice.mockResolvedValue(local);
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [device()] }));
     });
 
-    test('shows its key on the panel and on its own session only', async () => {
+    const ready = async () => {
       renderPage();
-
       await waitFor(() => expect(within(panel()).getByText('devices.messaging.ready')).toBeInTheDocument());
+    };
+
+    test('shows its key on the panel and its own session, and says it survives sign-out', async () => {
+      await ready();
+
       expect(screen.getAllByText(FINGERPRINT)).toHaveLength(2);
       expect(screen.getAllByText('devices.fields.noMessagingKey')).toHaveLength(1);
+      expect(within(panel()).getByText('devices.messaging.keepsKey')).toBeInTheDocument();
+      expect(within(panel()).queryByText('devices.messaging.noRecoveryKey')).not.toBeInTheDocument();
+      expect(within(panel()).queryByRole('button', { name: 'devices.messaging.buttons.addRecoveryKey' })).not.toBeInTheDocument();
       expect(mockVault.prepareKeyPackages).not.toHaveBeenCalled();
+      expect(attachThisBrowser).not.toHaveBeenCalled();
     });
 
-    test('tops up its key packages when they run low', async () => {
-      cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device({ keyPackages: 5 })] });
-      const packages = [{ ref: new Uint8Array([1]), data: new Uint8Array([2]), lastResort: false }];
-      mockVault.prepareKeyPackages.mockResolvedValue(packages);
-      cryptoApi.uploadKeyPackages.mockResolvedValue({ available: 100 });
+    test('changes the PIN', async () => {
+      await ready();
+      click(panel(), 'devices.messaging.buttons.changePin');
 
-      renderPage();
+      choosePin('246810');
+      click(dialog(), 'devices.messaging.buttons.save');
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.changePin.done'));
+      expect(mockVault.blindPin).toHaveBeenCalledWith(5, '246810');
+      expect(cryptoApi.setPin).toHaveBeenCalled();
+    });
+
+    test('a new PIN must be six digits and typed twice the same', async () => {
+      await ready();
+      click(panel(), 'devices.messaging.buttons.changePin');
+
+      choosePin('24681');
+      click(dialog(), 'devices.messaging.buttons.save');
+      expect(within(dialog()).getByRole('alert')).toHaveTextContent('devices.messaging.pin.invalid');
+      choosePin('246810', '246811');
+      click(dialog(), 'devices.messaging.buttons.save');
+      expect(within(dialog()).getByRole('alert')).toHaveTextContent('devices.messaging.pin.mismatch');
+      expect(cryptoApi.setPin).not.toHaveBeenCalled();
+    });
+
+    test('an account without a PIN or a recovery key is offered both', async () => {
+      cryptoApi.status.mockResolvedValue(status({ identity: identity({ recoveryKey: false }), pin: pin({ set: false }), devices: [device()] }));
+      await ready();
+
+      expect(within(panel()).getByText('devices.messaging.noRecoveryKey')).toBeInTheDocument();
+      expect(within(panel()).getByRole('button', { name: 'devices.messaging.buttons.setPin' })).toBeInTheDocument();
+      click(panel(), 'devices.messaging.buttons.addRecoveryKey');
+
+      const save = within(dialog()).getByRole('button', { name: 'devices.messaging.buttons.save' });
+      expect(save).toBeDisabled();
+      confirmSaved(dialog());
+      fireEvent.click(save);
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.addRecovery.done'));
+      expect(cryptoApi.setRecoveryKey).toHaveBeenCalledWith({ wrappedPrivate: new Uint8Array([7]), signature: new Uint8Array(64) });
+    });
+
+    test('forgetting this browser removes its key from the account and from here', async () => {
+      await ready();
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [] }));
+
+      click(panel(), 'devices.messaging.buttons.forget');
+
+      await waitFor(() => expect(cryptoApi.forgetDevice).toHaveBeenCalledWith(3));
+      expect(wipeLocalKeys).toHaveBeenCalled();
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.forgotten'));
+      await waitFor(() => expect(within(panel()).getByText('devices.messaging.elsewhere')).toBeInTheDocument());
+    });
+
+    test('nothing is forgotten when the question is declined', async () => {
+      window.confirm = jest.fn(() => false);
+      await ready();
+
+      click(panel(), 'devices.messaging.buttons.forget');
+
+      expect(cryptoApi.forgetDevice).not.toHaveBeenCalled();
+      expect(wipeLocalKeys).not.toHaveBeenCalled();
+    });
+
+    test('tops up its key packages when they run low, and carries on when that fails', async () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [device({ keyPackages: 5 })] }));
+      const packages = [{ ref: new Uint8Array([1]), data: new Uint8Array([2]), lastResort: false }];
+      mockVault.prepareKeyPackages.mockResolvedValueOnce(packages);
+      cryptoApi.uploadKeyPackages.mockRejectedValueOnce(new Error('offline'));
+
+      await ready();
 
       await waitFor(() => expect(cryptoApi.uploadKeyPackages).toHaveBeenCalledWith(3, packages));
       expect(mockVault.prepareKeyPackages).toHaveBeenCalledWith(95);
-    });
-
-    test('carries on when a top-up fails', async () => {
-      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device({ keyPackages: 0 })] });
-      mockVault.prepareKeyPackages.mockRejectedValue(new Error('no device'));
-
-      renderPage();
-
-      await waitFor(() => expect(warn).toHaveBeenCalledWith('[Messaging] Could not top up key packages:', 'no device'));
-      expect(within(panel()).getByText('devices.messaging.ready')).toBeInTheDocument();
+      await waitFor(() => expect(warn).toHaveBeenCalledWith('[Messaging] Could not top up key packages:', 'offline'));
       warn.mockRestore();
     });
 
+    test('a device still attached to an earlier sign-in is moved onto this one', async () => {
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [device({ sessionId: null })] }));
+
+      await ready();
+
+      await waitFor(() => expect(attachThisBrowser).toHaveBeenCalledWith(12, 5));
+    });
+
     test('forgets its keys and says so once the server no longer lists its device', async () => {
-      cryptoApi.status.mockResolvedValue({ enabled: true, identity, devices: [device({ id: 4, sessionId: 13 })] });
+      cryptoApi.status.mockResolvedValue(status({ identity: identity(), pin: pin(), devices: [device({ id: 4, sessionId: 13 })] }));
 
       renderPage();
 
       await waitFor(() => expect(within(panel()).getByText('devices.messaging.removed')).toBeInTheDocument());
       expect(wipeLocalKeys).toHaveBeenCalled();
-      expect(within(panel()).getByText('devices.messaging.elsewhere')).toBeInTheDocument();
+    });
+
+    test('keys another account left on this browser are not treated as this browser\'s', async () => {
+      readLocalDevice.mockResolvedValue({ ...local, userId: 6 });
+
+      renderPage();
+
+      await waitFor(() => expect(wipeLocalKeys).toHaveBeenCalled());
+      expect(within(panel()).queryByText('devices.messaging.ready')).not.toBeInTheDocument();
     });
 
     test('ending another session reads the messaging keys again', async () => {
-      renderPage();
-      await waitFor(() => expect(within(panel()).getByText('devices.messaging.ready')).toBeInTheDocument());
+      await ready();
       const before = cryptoApi.status.mock.calls.length;
 
       const other = screen.getByText('Firefox/1').closest('.device-item');
       fireEvent.click(within(other).getByRole('button', { name: 'devices.buttons.end' }));
 
       await waitFor(() => expect(cryptoApi.status.mock.calls.length).toBeGreaterThan(before));
+    });
+  });
+
+  describe('browsers that are signed out but keep a key', () => {
+    beforeEach(() => {
+      cryptoApi.status.mockResolvedValue(status({
+        identity: identity(), pin: pin(),
+        devices: [device({ id: 9, sessionId: null, label: 'Old laptop' }), device({ id: 10, sessionId: null, label: null })]
+      }));
+    });
+
+    test('are listed and can be removed', async () => {
+      renderPage();
+      await waitFor(() => expect(within(panel()).getByText('Old laptop')).toBeInTheDocument());
+      expect(within(panel()).getByText('devices.fields.unknownDevice')).toBeInTheDocument();
+
+      const laptop = within(panel()).getByText('Old laptop').closest('li');
+      fireEvent.click(within(laptop).getByRole('button', { name: 'devices.messaging.buttons.remove' }));
+
+      await waitFor(() => expect(cryptoApi.forgetDevice).toHaveBeenCalledWith(9));
+      expect(wipeLocalKeys).not.toHaveBeenCalled();
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('devices.messaging.signedOut.removed'));
+    });
+
+    test('a removal the server refuses says so', async () => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+      cryptoApi.forgetDevice.mockRejectedValue(new Error('down'));
+      renderPage();
+      await waitFor(() => expect(within(panel()).getByText('Old laptop')).toBeInTheDocument());
+
+      const laptop = within(panel()).getByText('Old laptop').closest('li');
+      fireEvent.click(within(laptop).getByRole('button', { name: 'devices.messaging.buttons.remove' }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('devices.messaging.errors.generic'));
+      error.mockRestore();
     });
   });
 });

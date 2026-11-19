@@ -1,4 +1,4 @@
-import { KEY_DATABASE, memoryKeyStore, readLocalDevice, wipeLocalKeys, DEVICE_INFO } from '../../crypto/keyStore';
+import { KEY_DATABASE, memoryKeyStore, readLocalDevice, saveLocalDevice, wipeLocalKeys, DEVICE_INFO } from '../../crypto/keyStore';
 
 describe('the local key store', () => {
   test('reads nothing when this browser has no IndexedDB', async () => {
@@ -8,10 +8,13 @@ describe('the local key store', () => {
 
   test('reads the device this browser registered', async () => {
     const store = memoryKeyStore();
-    const device = { userId: 1, deviceId: 2, signatureKey: new Uint8Array([3]) };
+    const device = { userId: 1, deviceId: 2, signatureKey: new Uint8Array([3]), boundSessionId: 4 };
     await store.put(DEVICE_INFO, device);
 
     await expect(readLocalDevice(store)).resolves.toEqual(device);
+    await saveLocalDevice({ ...device, boundSessionId: 5 }, store);
+    await expect(readLocalDevice(store)).resolves.toEqual({ ...device, boundSessionId: 5 });
+    await expect(saveLocalDevice(device)).resolves.toBeUndefined();
     await store.clear();
     await expect(readLocalDevice(store)).resolves.toBeNull();
   });

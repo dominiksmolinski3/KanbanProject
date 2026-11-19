@@ -42,7 +42,12 @@ export function createVaultClient(spawn: () => Worker = spawnCryptoWorker): Remo
 
   return {
     createIdentity: call('createIdentity'),
-    restoreIdentity: call('restoreIdentity'),
+    wrapForRecovery: call('wrapForRecovery'),
+    restoreWithRecoveryKey: call('restoreWithRecoveryKey'),
+    blindPin: call('blindPin'),
+    wrapForPin: call('wrapForPin'),
+    pinProof: call('pinProof'),
+    restoreWithPin: call('restoreWithPin'),
     prepareDevice: call('prepareDevice'),
     commitDevice: call('commitDevice'),
     prepareKeyPackages: call('prepareKeyPackages'),

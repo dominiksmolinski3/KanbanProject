@@ -502,8 +502,8 @@
     "messaging": {
       "title": "Verschlüsselte Nachrichten",
       "loading": "Der Nachrichtenschlüssel dieses Browsers wird geprüft…",
-      "notSetUp": "Nachrichten werden Ende-zu-Ende-verschlüsselt. Richte sie in diesem Browser ein, um deine Schlüssel und deinen Wiederherstellungsschlüssel zu erstellen.",
-      "elsewhere": "Verschlüsselte Nachrichten sind für dein Konto eingerichtet, aber nicht in diesem Browser. Füge ihn mit deinem Wiederherstellungsschlüssel hinzu.",
+      "notSetUp": "Nachrichten werden Ende-zu-Ende-verschlüsselt. Richte sie in diesem Browser ein, um deine Schlüssel zu erstellen.",
+      "elsewhere": "Verschlüsselte Nachrichten sind für dein Konto eingerichtet, aber nicht in diesem Browser. Entsperre ihn mit deiner PIN oder deinem Wiederherstellungsschlüssel.",
       "ready": "Dieser Browser ist für verschlüsselte Nachrichten eingerichtet.",
       "removed": "Der Nachrichtenschlüssel dieses Browsers wurde durch eine Änderung auf einem anderen Gerät entfernt, und seine Schlüssel wurden hier gelöscht. Richte ihn erneut ein.",
       "thisKey": "Schlüssel dieses Browsers",
@@ -511,7 +511,15 @@
         "setUp": "In diesem Browser einrichten",
         "useRecoveryKey": "Wiederherstellungsschlüssel verwenden",
         "startOver": "Neu beginnen",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "enterPin": "PIN eingeben",
+        "changePin": "PIN ändern",
+        "setPin": "PIN festlegen",
+        "addRecoveryKey": "Wiederherstellungsschlüssel erstellen",
+        "forget": "Diesen Browser vergessen",
+        "remove": "Entfernen",
+        "continue": "Weiter",
+        "save": "Speichern"
       },
       "setup": {
         "introTitle": "Nachrichten sind Ende-zu-Ende-verschlüsselt",
@@ -520,7 +528,7 @@
         "pointRecovery": "Du erhältst einen Wiederherstellungsschlüssel für den Fall, dass du alle Geräte verlierst",
         "pointEverywhere": "Direktnachrichten, Gruppen und Board-Kanäle werden alle diese Schlüssel verwenden",
         "keyTitle": "Wiederherstellungsschlüssel sichern",
-        "keyBody": "Wenn du alle deine Geräte verlierst, ist dieser Schlüssel der einzige Weg, deinen Nachrichtenverlauf zurückzubekommen. Wir haben keine Kopie und können ihn nicht zurücksetzen.",
+        "keyBody": "Wenn du deine PIN vergisst oder sie gesperrt wird, ist dieser Schlüssel der einzige andere Weg zurück zu deinem Verlauf. Wir haben keine Kopie und können ihn nicht zurücksetzen.",
         "keyLabel": "Wiederherstellungsschlüssel",
         "download": "Als Datei herunterladen",
         "copy": "Kopieren",
@@ -533,11 +541,12 @@
         "finish": "Einrichtung abschließen",
         "finishing": "Wird eingerichtet…",
         "cannotSkip": "Dieser Schritt kann nicht übersprungen werden. Nachrichten öffnen sich, sobald der Schlüssel gesichert ist.",
-        "done": "Verschlüsselte Nachrichten sind in diesem Browser eingerichtet"
+        "done": "Verschlüsselte Nachrichten sind in diesem Browser eingerichtet",
+        "pointPin": "Du wählst eine 6-stellige PIN, um deine anderen Browser und Geräte zu entsperren"
       },
       "reset": {
         "title": "Mit einem neuen Schlüssel neu beginnen?",
-        "body": "Dein Nachrichtenverlauf ist auf keinem neuen Gerät lesbar, und alle, mit denen du schreibst, sehen, dass sich deine Sicherheitsnummer geändert hat. Jeder andere Browser verliert seinen Nachrichtenschlüssel und muss neu eingerichtet werden."
+        "body": "Dein Nachrichtenverlauf ist auf keinem neuen Gerät lesbar, und alle, mit denen du schreibst, sehen, dass sich deine Sicherheitsnummer geändert hat. Jeder andere Browser verliert seinen Nachrichtenschlüssel, und deine PIN und dein Wiederherstellungsschlüssel funktionieren nicht mehr."
       },
       "recover": {
         "title": "Wiederherstellungsschlüssel verwenden",
@@ -549,7 +558,43 @@
         "malformedKey": "Ein Wiederherstellungsschlüssel hat 48 Buchstaben und Ziffern. Prüfe deine Eingabe.",
         "wrongKey": "Dieser Wiederherstellungsschlüssel passt nicht zu diesem Konto.",
         "noSession": "Diese Sitzung konnte nicht erkannt werden. Melde dich ab und wieder an.",
-        "generic": "Verschlüsselte Nachrichten konnten nicht eingerichtet werden. Versuche es erneut."
+        "generic": "Verschlüsselte Nachrichten konnten nicht eingerichtet werden. Versuche es erneut.",
+        "wrongPin": "Diese PIN ist falsch.",
+        "pinLocked": "Deine PIN ist nach zu vielen falschen Versuchen gesperrt. Verwende deinen Wiederherstellungsschlüssel oder beginne neu."
+      },
+      "keepsKey": "Dieser Browser behält seinen Schlüssel, wenn du dich abmeldest. Auf einem gemeinsam genutzten oder öffentlichen Computer solltest du ihn vorher vergessen lassen.",
+      "noRecoveryKey": "Du hast keinen Wiederherstellungsschlüssel. Wenn du deine PIN vergisst und alle Browser verlierst, ist dein Verlauf nicht wiederherstellbar.",
+      "forgetConfirm": "Diesen Browser vergessen? Sein Nachrichtenschlüssel wird hier gelöscht und aus deinem Konto entfernt. Um hier wieder Nachrichten zu lesen, brauchst du deine PIN oder deinen Wiederherstellungsschlüssel.",
+      "forgotten": "Dieser Browser hat keinen Nachrichtenschlüssel mehr",
+      "signedOut": {
+        "title": "Abgemeldet, mit Schlüssel",
+        "lastUsed": "Zuletzt verwendet {{date}}",
+        "removeConfirm": "Den Nachrichtenschlüssel dieses Browsers entfernen? Er braucht dann deine PIN oder deinen Wiederherstellungsschlüssel, um wieder Nachrichten zu lesen.",
+        "removed": "Der Nachrichtenschlüssel dieses Browsers wurde entfernt"
+      },
+      "pin": {
+        "title": "Wähle eine 6-stellige PIN",
+        "body": "Du gibst sie ein, um deine Nachrichten in einem neuen Browser oder auf einem neuen Gerät zu lesen.",
+        "label": "PIN",
+        "repeat": "PIN wiederholen",
+        "limits": "Unser Server prüft die PIN und sperrt sie nach 10 falschen Versuchen. Eine PIN schützt deine Nachrichten, wenn unsere Datenbank abfließt, aber nicht vor jemandem, der unsere Server kontrolliert. Ein Wiederherstellungsschlüssel schützt vor beidem.",
+        "addRecovery": "Auch einen Wiederherstellungsschlüssel erstellen",
+        "addRecoveryHint": "Damit kommst du wieder hinein, wenn du deine PIN vergisst oder sie gesperrt wird. Ohne ihn heißt eine vergessene PIN neu beginnen.",
+        "invalid": "Eine PIN hat 6 Ziffern.",
+        "mismatch": "Die beiden PINs stimmen nicht überein."
+      },
+      "unlock": {
+        "title": "PIN eingeben",
+        "body": "Gib die 6-stellige PIN ein, die du beim Einrichten der verschlüsselten Nachrichten gewählt hast.",
+        "submit": "Entsperren",
+        "attemptsLeft": "Verbleibende Versuche bis zur Sperre: {{count}}"
+      },
+      "changePin": {
+        "title": "Neue PIN wählen",
+        "done": "Deine PIN wurde geändert"
+      },
+      "addRecovery": {
+        "done": "Dein Wiederherstellungsschlüssel ist bereit"
       }
     },
     "fields": {
@@ -820,6 +865,9 @@
       "INVALID_CRYPTO_KEY": "Der Schlüssel hat die Prüfung nicht bestanden. Richte diesen Browser erneut ein.",
       "CRYPTO_DEVICE_NOT_FOUND": "Dieser Browser ist nicht mehr für verschlüsselte Nachrichten eingerichtet.",
       "INVALID_KEY_PACKAGES": "Die Schlüssel konnten nicht gespeichert werden.",
+      "PIN_NOT_SET": "Für dieses Konto gibt es keine PIN für verschlüsselte Nachrichten.",
+      "PIN_INCORRECT": "Diese PIN ist falsch.",
+      "PIN_LOCKED": "Die PIN ist nach zu vielen falschen Versuchen gesperrt. Verwende deinen Wiederherstellungsschlüssel.",
       "UNSUPPORTED_MEDIA_TYPE": "Dieser Dateityp wird hier nicht akzeptiert.",
       "USER_NOT_FOUND": "Diese Person wurde nicht gefunden.",
       "USER_WIP_LIMIT_EXCEEDED": "Diese Person hat ihr WIP-Limit bereits erreicht.",

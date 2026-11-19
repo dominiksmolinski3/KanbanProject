@@ -502,8 +502,8 @@
       "messaging": {
         "title": "Messages chiffrés",
         "loading": "Vérification de la clé de messagerie de ce navigateur…",
-        "notSetUp": "Les messages seront chiffrés de bout en bout. Configurez-les sur ce navigateur pour créer vos clés et votre clé de récupération.",
-        "elsewhere": "Les messages chiffrés sont configurés sur votre compte, mais pas sur ce navigateur. Utilisez votre clé de récupération pour l'ajouter.",
+        "notSetUp": "Les messages seront chiffrés de bout en bout. Configurez-les sur ce navigateur pour créer vos clés.",
+        "elsewhere": "Les messages chiffrés sont configurés sur votre compte, mais pas sur ce navigateur. Déverrouillez-le avec votre code PIN ou votre clé de récupération.",
         "ready": "Ce navigateur est configuré pour les messages chiffrés.",
         "removed": "La clé de messagerie de ce navigateur a été supprimée par une modification sur un autre appareil, et ses clés ont été effacées ici. Configurez-le à nouveau.",
         "thisKey": "Clé de ce navigateur",
@@ -511,7 +511,15 @@
           "setUp": "Configurer sur ce navigateur",
           "useRecoveryKey": "Utiliser ma clé de récupération",
           "startOver": "Recommencer",
-          "cancel": "Annuler"
+          "cancel": "Annuler",
+          "enterPin": "Saisir mon code PIN",
+          "changePin": "Modifier le code PIN",
+          "setPin": "Définir un code PIN",
+          "addRecoveryKey": "Créer une clé de récupération",
+          "forget": "Oublier ce navigateur",
+          "remove": "Retirer",
+          "continue": "Continuer",
+          "save": "Enregistrer"
         },
         "setup": {
           "introTitle": "Les messages sont chiffrés de bout en bout",
@@ -520,7 +528,7 @@
           "pointRecovery": "Vous recevez une clé de récupération pour le cas où vous perdriez tous vos appareils",
           "pointEverywhere": "Les messages directs, les groupes et les canaux des tableaux utiliseront tous ces clés",
           "keyTitle": "Enregistrez votre clé de récupération",
-          "keyBody": "Si vous perdez tous vos appareils, cette clé est le seul moyen de récupérer l'historique de vos messages. Nous n'en gardons aucune copie et ne pouvons pas la réinitialiser.",
+          "keyBody": "Si vous oubliez votre code PIN ou s'il est bloqué, cette clé est le seul autre moyen de retrouver votre historique. Nous n'en gardons aucune copie et ne pouvons pas la réinitialiser.",
           "keyLabel": "Clé de récupération",
           "download": "Télécharger en fichier",
           "copy": "Copier",
@@ -533,11 +541,12 @@
           "finish": "Terminer la configuration",
           "finishing": "Configuration…",
           "cannotSkip": "Cette étape ne peut pas être ignorée. Les messages s'ouvrent une fois la clé enregistrée.",
-          "done": "Les messages chiffrés sont configurés sur ce navigateur"
+          "done": "Les messages chiffrés sont configurés sur ce navigateur",
+          "pointPin": "Vous choisissez un code PIN à 6 chiffres pour déverrouiller vos autres navigateurs et appareils"
         },
         "reset": {
           "title": "Recommencer avec une nouvelle clé ?",
-          "body": "L'historique de vos messages ne pourra être lu sur aucun nouvel appareil, et toutes les personnes avec qui vous échangez verront que votre numéro de sécurité a changé. Tous les autres navigateurs perdent leur clé de messagerie et devront être configurés à nouveau."
+          "body": "L'historique de vos messages ne pourra être lu sur aucun nouvel appareil, et toutes les personnes avec qui vous échangez verront que votre numéro de sécurité a changé. Tous les autres navigateurs perdent leur clé de messagerie, et votre code PIN et votre clé de récupération cessent de fonctionner."
         },
         "recover": {
           "title": "Utiliser votre clé de récupération",
@@ -549,7 +558,43 @@
           "malformedKey": "Une clé de récupération comporte 48 lettres et chiffres. Vérifiez votre saisie.",
           "wrongKey": "Cette clé de récupération ne correspond pas à ce compte.",
           "noSession": "Cette session n'a pas pu être identifiée. Déconnectez-vous puis reconnectez-vous.",
-          "generic": "Les messages chiffrés n'ont pas pu être configurés. Réessayez."
+          "generic": "Les messages chiffrés n'ont pas pu être configurés. Réessayez.",
+          "wrongPin": "Ce code PIN est incorrect.",
+          "pinLocked": "Votre code PIN est bloqué après trop d'essais erronés. Utilisez votre clé de récupération ou recommencez."
+        },
+        "keepsKey": "Ce navigateur garde sa clé quand vous vous déconnectez. Sur un ordinateur partagé ou public, oubliez-le avant de partir.",
+        "noRecoveryKey": "Vous n'avez pas de clé de récupération. Si vous oubliez votre code PIN et perdez tous vos navigateurs, votre historique sera irrécupérable.",
+        "forgetConfirm": "Oublier ce navigateur ? Sa clé de messagerie est supprimée ici et retirée de votre compte. Pour lire à nouveau vos messages ici, il vous faudra votre code PIN ou votre clé de récupération.",
+        "forgotten": "Ce navigateur n'a plus de clé de messagerie",
+        "signedOut": {
+          "title": "Déconnecté, mais avec sa clé",
+          "lastUsed": "Dernière utilisation {{date}}",
+          "removeConfirm": "Retirer la clé de messagerie de ce navigateur ? Il lui faudra votre code PIN ou votre clé de récupération pour relire vos messages.",
+          "removed": "La clé de messagerie de ce navigateur a été retirée"
+        },
+        "pin": {
+          "title": "Choisissez un code PIN à 6 chiffres",
+          "body": "Vous le saisirez pour lire vos messages sur un nouveau navigateur ou appareil.",
+          "label": "Code PIN",
+          "repeat": "Répétez le code PIN",
+          "limits": "Notre serveur vérifie le code PIN et le bloque après 10 essais erronés. Un code PIN protège vos messages en cas de fuite de notre base de données, mais pas contre quelqu'un qui contrôle nos serveurs. Une clé de récupération les protège des deux.",
+          "addRecovery": "Créer aussi une clé de récupération",
+          "addRecoveryHint": "Elle vous permet de revenir si vous oubliez votre code PIN ou s'il est bloqué. Sans elle, un code PIN oublié oblige à tout recommencer.",
+          "invalid": "Un code PIN comporte 6 chiffres.",
+          "mismatch": "Les deux codes PIN ne correspondent pas."
+        },
+        "unlock": {
+          "title": "Saisissez votre code PIN",
+          "body": "Saisissez le code PIN à 6 chiffres choisi lors de la configuration des messages chiffrés.",
+          "submit": "Déverrouiller",
+          "attemptsLeft": "Essais restants avant le blocage : {{count}}"
+        },
+        "changePin": {
+          "title": "Choisissez un nouveau code PIN",
+          "done": "Votre code PIN a été modifié"
+        },
+        "addRecovery": {
+          "done": "Votre clé de récupération est prête"
         }
       },
       "fields": {
@@ -820,6 +865,9 @@
             "INVALID_CRYPTO_KEY": "La clé de chiffrement n'a pas passé la vérification. Configurez à nouveau ce navigateur.",
             "CRYPTO_DEVICE_NOT_FOUND": "Ce navigateur n'est plus configuré pour les messages chiffrés.",
             "INVALID_KEY_PACKAGES": "Les clés de chiffrement n'ont pas pu être enregistrées.",
+            "PIN_NOT_SET": "Ce compte n'a pas de code PIN pour les messages chiffrés.",
+            "PIN_INCORRECT": "Ce code PIN est incorrect.",
+            "PIN_LOCKED": "Le code PIN est bloqué après trop d'essais erronés. Utilisez votre clé de récupération.",
             "UNSUPPORTED_MEDIA_TYPE": "Ce type de fichier n'est pas accepté ici.",
             "USER_NOT_FOUND": "Cette personne est introuvable.",
             "USER_WIP_LIMIT_EXCEEDED": "Cette personne a déjà atteint sa limite WIP.",

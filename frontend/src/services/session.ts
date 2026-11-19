@@ -1,6 +1,6 @@
 import { authService } from './authService';
 import { ApiError } from './apiError';
-import { wipeLocalKeys } from '../crypto/keyStore';
+import { attachThisBrowser } from '../crypto/attach';
 import type { LoginResponse } from '../types/api';
 
 export const TOKEN_KEY = 'token';
@@ -36,7 +36,6 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(SESSION_ID_KEY);
-  wipeLocalKeys();
   clearListeners.forEach(listener => listener());
 }
 
@@ -88,6 +87,7 @@ async function renew(presented: string): Promise<string | null> {
   try {
     const session = await authService.refresh(current);
     storeSession(session);
+    void attachThisBrowser(session.sessionId ?? null);
     return session.token;
   } catch (error) {
     if (isRefreshRejected(error)) {

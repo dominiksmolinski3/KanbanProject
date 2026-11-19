@@ -24,3 +24,6 @@ export function normalizeRecoveryKey(input: string): string | null {
   }
   return [...key].every((symbol) => ALPHABET.includes(symbol)) ? key : null;
 }
+
+export const recoveryKeyConfirmed = (recoveryKey: string, saved: boolean, check: string): boolean =>
+  saved && check.trim().toUpperCase() === recoveryKeyGroups(recoveryKey).at(-1);

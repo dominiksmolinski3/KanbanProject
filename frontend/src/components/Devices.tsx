@@ -25,12 +25,7 @@ function Devices() {
         </p>
       )}
 
-      <MessagingPanel
-        state={messaging.state}
-        removed={messaging.removed}
-        thisDevice={messaging.thisDevice}
-        onRegister={messaging.registerThisBrowser}
-      />
+      <MessagingPanel messaging={messaging} />
 
       <section className="page-panel devices-list" aria-label={t('devices.title')}>
         {isLoading && <div className="page-empty devices-empty">{t('devices.messages.loading')}</div>}

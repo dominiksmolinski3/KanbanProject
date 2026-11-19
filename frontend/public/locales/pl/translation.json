@@ -502,8 +502,8 @@
     "messaging": {
       "title": "Szyfrowane wiadomości",
       "loading": "Sprawdzanie klucza wiadomości tej przeglądarki…",
-      "notSetUp": "Wiadomości będą szyfrowane end-to-end. Skonfiguruj je w tej przeglądarce, aby utworzyć swoje klucze i klucz odzyskiwania.",
-      "elsewhere": "Szyfrowane wiadomości są skonfigurowane na Twoim koncie, ale nie w tej przeglądarce. Użyj klucza odzyskiwania, aby ją dodać.",
+      "notSetUp": "Wiadomości będą szyfrowane end-to-end. Skonfiguruj je w tej przeglądarce, aby utworzyć swoje klucze.",
+      "elsewhere": "Szyfrowane wiadomości są skonfigurowane na Twoim koncie, ale nie w tej przeglądarce. Odblokuj ją PIN-em lub kluczem odzyskiwania.",
       "ready": "Ta przeglądarka jest skonfigurowana do szyfrowanych wiadomości.",
       "removed": "Klucz wiadomości tej przeglądarki został usunięty przez zmianę na innym urządzeniu, a jej klucze zostały tu skasowane. Skonfiguruj ją ponownie.",
       "thisKey": "Klucz tej przeglądarki",
@@ -511,7 +511,15 @@
         "setUp": "Skonfiguruj w tej przeglądarce",
         "useRecoveryKey": "Użyj klucza odzyskiwania",
         "startOver": "Zacznij od nowa",
-        "cancel": "Anuluj"
+        "cancel": "Anuluj",
+        "enterPin": "Wpisz PIN",
+        "changePin": "Zmień PIN",
+        "setPin": "Ustaw PIN",
+        "addRecoveryKey": "Utwórz klucz odzyskiwania",
+        "forget": "Zapomnij tę przeglądarkę",
+        "remove": "Usuń",
+        "continue": "Dalej",
+        "save": "Zapisz"
       },
       "setup": {
         "introTitle": "Wiadomości są szyfrowane end-to-end",
@@ -520,7 +528,7 @@
         "pointRecovery": "Dostajesz klucz odzyskiwania na wypadek utraty wszystkich urządzeń",
         "pointEverywhere": "Wiadomości prywatne, grupy i kanały tablic będą korzystać z tych kluczy",
         "keyTitle": "Zapisz klucz odzyskiwania",
-        "keyBody": "Jeśli stracisz wszystkie swoje urządzenia, ten klucz to jedyny sposób na odzyskanie historii wiadomości. Nie przechowujemy jego kopii i nie możemy go zresetować.",
+        "keyBody": "Jeśli zapomnisz PIN albo zostanie zablokowany, ten klucz jest jedyną inną drogą do historii. Nie przechowujemy jego kopii i nie możemy go zresetować.",
         "keyLabel": "Klucz odzyskiwania",
         "download": "Pobierz jako plik",
         "copy": "Kopiuj",
@@ -533,11 +541,12 @@
         "finish": "Zakończ konfigurację",
         "finishing": "Konfigurowanie…",
         "cannotSkip": "Tego kroku nie można pominąć. Wiadomości otworzą się po zapisaniu klucza.",
-        "done": "Szyfrowane wiadomości są skonfigurowane w tej przeglądarce"
+        "done": "Szyfrowane wiadomości są skonfigurowane w tej przeglądarce",
+        "pointPin": "Wybierasz 6-cyfrowy PIN do odblokowywania innych przeglądarek i urządzeń"
       },
       "reset": {
         "title": "Zacząć od nowa z nowym kluczem?",
-        "body": "Historii wiadomości nie da się odczytać na żadnym nowym urządzeniu, a wszyscy Twoi rozmówcy zobaczą, że Twój numer bezpieczeństwa się zmienił. Każda inna przeglądarka straci klucz wiadomości i trzeba będzie ją skonfigurować ponownie."
+        "body": "Historii wiadomości nie da się odczytać na żadnym nowym urządzeniu, a wszyscy Twoi rozmówcy zobaczą, że Twój numer bezpieczeństwa się zmienił. Każda inna przeglądarka straci klucz wiadomości, a PIN i klucz odzyskiwania przestaną działać."
       },
       "recover": {
         "title": "Użyj klucza odzyskiwania",
@@ -549,7 +558,43 @@
         "malformedKey": "Klucz odzyskiwania ma 48 liter i cyfr. Sprawdź, co wpisano.",
         "wrongKey": "Ten klucz odzyskiwania nie pasuje do tego konta.",
         "noSession": "Nie udało się rozpoznać tej sesji. Wyloguj się i zaloguj ponownie.",
-        "generic": "Nie udało się skonfigurować szyfrowanych wiadomości. Spróbuj ponownie."
+        "generic": "Nie udało się skonfigurować szyfrowanych wiadomości. Spróbuj ponownie.",
+        "wrongPin": "Ten PIN jest nieprawidłowy.",
+        "pinLocked": "PIN jest zablokowany po zbyt wielu błędnych próbach. Użyj klucza odzyskiwania albo zacznij od nowa."
+      },
+      "keepsKey": "Ta przeglądarka zachowuje klucz po wylogowaniu. Na wspólnym lub publicznym komputerze zapomnij ją przed wyjściem.",
+      "noRecoveryKey": "Nie masz klucza odzyskiwania. Jeśli zapomnisz PIN i stracisz wszystkie przeglądarki, historii nie da się odzyskać.",
+      "forgetConfirm": "Zapomnieć tę przeglądarkę? Jej klucz wiadomości zostanie tu usunięty i odłączony od konta. Aby znów czytać tu wiadomości, potrzebny będzie PIN lub klucz odzyskiwania.",
+      "forgotten": "Ta przeglądarka nie ma już klucza wiadomości",
+      "signedOut": {
+        "title": "Wylogowane, ale z kluczem",
+        "lastUsed": "Ostatnio użyte {{date}}",
+        "removeConfirm": "Usunąć klucz wiadomości tej przeglądarki? Aby znów czytać wiadomości, będzie potrzebny PIN lub klucz odzyskiwania.",
+        "removed": "Klucz wiadomości tej przeglądarki został usunięty"
+      },
+      "pin": {
+        "title": "Wybierz 6-cyfrowy PIN",
+        "body": "Wpiszesz go, aby czytać wiadomości w nowej przeglądarce lub na nowym urządzeniu.",
+        "label": "PIN",
+        "repeat": "Powtórz PIN",
+        "limits": "Nasz serwer sprawdza PIN i blokuje go po 10 błędnych próbach. PIN chroni wiadomości przy wycieku naszej bazy danych, ale nie przed kimś, kto kontroluje nasze serwery. Klucz odzyskiwania chroni przed jednym i drugim.",
+        "addRecovery": "Utwórz też klucz odzyskiwania",
+        "addRecoveryHint": "Pozwoli wrócić, jeśli zapomnisz PIN albo zostanie zablokowany. Bez niego zapomniany PIN oznacza zaczynanie od nowa.",
+        "invalid": "PIN ma 6 cyfr.",
+        "mismatch": "Wpisane PIN-y się różnią."
+      },
+      "unlock": {
+        "title": "Wpisz PIN",
+        "body": "Wpisz 6-cyfrowy PIN wybrany podczas konfigurowania szyfrowanych wiadomości.",
+        "submit": "Odblokuj",
+        "attemptsLeft": "Pozostałe próby przed blokadą PIN-u: {{count}}"
+      },
+      "changePin": {
+        "title": "Wybierz nowy PIN",
+        "done": "PIN został zmieniony"
+      },
+      "addRecovery": {
+        "done": "Klucz odzyskiwania jest gotowy"
       }
     },
     "fields": {
@@ -820,6 +865,9 @@
       "INVALID_CRYPTO_KEY": "Klucz szyfrowania nie przeszedł sprawdzenia. Skonfiguruj tę przeglądarkę ponownie.",
       "CRYPTO_DEVICE_NOT_FOUND": "Ta przeglądarka nie jest już skonfigurowana do szyfrowanych wiadomości.",
       "INVALID_KEY_PACKAGES": "Nie udało się zapisać kluczy szyfrowania.",
+      "PIN_NOT_SET": "To konto nie ma PIN-u do szyfrowanych wiadomości.",
+      "PIN_INCORRECT": "Ten PIN jest nieprawidłowy.",
+      "PIN_LOCKED": "PIN jest zablokowany po zbyt wielu błędnych próbach. Użyj klucza odzyskiwania.",
       "UNSUPPORTED_MEDIA_TYPE": "Ten typ pliku nie jest tu akceptowany.",
       "USER_NOT_FOUND": "Nie znaleziono tej osoby.",
       "USER_WIP_LIMIT_EXCEEDED": "Ta osoba osiągnęła już swój limit WIP.",

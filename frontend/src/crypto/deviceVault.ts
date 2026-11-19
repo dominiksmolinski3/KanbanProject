@@ -1,28 +1,41 @@
 import { fromBase64, toBase64, utf8 } from './bytes';
+import { ONE_TIME_PACKAGES } from './constants';
 import {
   createDevice,
   createIdentity,
   createKeyPackages,
   newStorageKey,
   open,
-  restoreIdentity,
+  openIdentity,
+  pinSignaturePayload,
+  recoverySignaturePayload,
+  recoveryWrappingKey,
   seal,
+  signWithIdentity,
+  wrapIdentity,
   type DeviceSecrets,
   type GeneratedKeyPackage,
   type KeyPackageUpload,
   type WrappedIdentity,
 } from './keys';
-import { ONE_TIME_PACKAGES } from './constants';
 import { DEVICE_INFO, type KeyStore, type LocalDevice } from './keyStore';
+import { blindPin, pinKeys, proofVerifier, unblindPin, type PinKeys } from './pin';
 
 const DEVICE_SECRETS = 'device-secrets';
 const SECRETS_LABEL = utf8('device secrets');
+const IDENTITY_LABEL = utf8('identity key');
 const PACKAGE_LABEL = utf8('key package');
 
 interface StoredSecrets {
-  identity: CryptoKey;
   storageKey: CryptoKey;
   sealed: Uint8Array;
+  identityPublic: Uint8Array;
+  sealedIdentity: Uint8Array;
+}
+
+interface Identity {
+  publicKey: Uint8Array;
+  pkcs8: Uint8Array;
 }
 
 export interface PreparedDevice {
@@ -30,6 +43,15 @@ export interface PreparedDevice {
   credential: Uint8Array;
   identitySignature: Uint8Array;
   keyPackages: KeyPackageUpload[];
+}
+
+export interface SignedWrap {
+  wrappedPrivate: Uint8Array;
+  signature: Uint8Array;
+}
+
+export interface PinWrap extends SignedWrap {
+  verifier: Uint8Array;
 }
 
 export class NoIdentityError extends Error {
@@ -46,15 +68,18 @@ export class NoDeviceError extends Error {
   }
 }
 
-export function createDeviceVault(store: KeyStore) {
-  let identity: CryptoKey | null = null;
-  let pending: { userId: number; secrets: DeviceSecrets; packages: GeneratedKeyPackage[] } | null = null;
+export class NoPinError extends Error {
+  constructor() {
+    super('NoPin');
+    this.name = 'NoPinError';
+  }
+}
 
-  const sealSecrets = async (storageKey: CryptoKey, secrets: DeviceSecrets) => seal(storageKey, utf8(JSON.stringify({
-    signKey: toBase64(secrets.signKey),
-    signatureKey: toBase64(secrets.signatureKey),
-    credential: toBase64(secrets.credential),
-  })), SECRETS_LABEL);
+export function createDeviceVault(store: KeyStore) {
+  let identity: Identity | null = null;
+  let pending: { userId: number; secrets: DeviceSecrets; packages: GeneratedKeyPackage[] } | null = null;
+  let blind: bigint | null = null;
+  let unlockKeys: PinKeys | null = null;
 
   const keepPackages = async (storageKey: CryptoKey, packages: GeneratedKeyPackage[]) => {
     for (const { upload, secret } of packages) {
@@ -82,22 +107,85 @@ export function createDeviceVault(store: KeyStore) {
     };
   };
 
+  const heldIdentity = async (): Promise<Identity> => {
+    if (identity) {
+      return identity;
+    }
+    const stored = await store.get<StoredSecrets>(DEVICE_SECRETS);
+    if (!stored) {
+      throw new NoIdentityError();
+    }
+    identity = {
+      publicKey: stored.identityPublic,
+      pkcs8: await open(stored.storageKey, stored.sealedIdentity, IDENTITY_LABEL),
+    };
+    return identity;
+  };
+
+  const takeBlind = (): bigint => {
+    if (blind === null) {
+      throw new NoPinError();
+    }
+    const value = blind;
+    blind = null;
+    return value;
+  };
+
   return {
-    async createIdentity(recoveryKey: string): Promise<WrappedIdentity> {
-      const created = await createIdentity(recoveryKey);
-      identity = created.privateKey;
-      return { publicKey: created.publicKey, wrappedPrivate: created.wrappedPrivate };
+    async createIdentity(): Promise<{ publicKey: Uint8Array }> {
+      identity = await createIdentity();
+      return { publicKey: identity.publicKey };
     },
 
-    async restoreIdentity(recoveryKey: string, wrapped: WrappedIdentity): Promise<void> {
-      identity = await restoreIdentity(recoveryKey, wrapped);
+    async wrapForRecovery(recoveryKey: string): Promise<SignedWrap> {
+      const held = await heldIdentity();
+      const wrappedPrivate = await wrapIdentity(await recoveryWrappingKey(recoveryKey), held.publicKey, held.pkcs8);
+      return { wrappedPrivate, signature: await signWithIdentity(held.pkcs8, recoverySignaturePayload(wrappedPrivate)) };
+    },
+
+    async restoreWithRecoveryKey(recoveryKey: string, wrapped: WrappedIdentity): Promise<void> {
+      identity = {
+        publicKey: wrapped.publicKey,
+        pkcs8: await openIdentity(await recoveryWrappingKey(recoveryKey), wrapped),
+      };
+    },
+
+    async blindPin(userId: number, pin: string): Promise<Uint8Array> {
+      const blinded = blindPin(userId, pin);
+      blind = blinded.blind;
+      return blinded.blinded;
+    },
+
+    async wrapForPin(evaluated: Uint8Array): Promise<PinWrap> {
+      const held = await heldIdentity();
+      const keys = await pinKeys(unblindPin(evaluated, takeBlind()));
+      const wrappedPrivate = await wrapIdentity(keys.wrappingKey, held.publicKey, held.pkcs8);
+      const verifier = await proofVerifier(keys.proof);
+      return {
+        wrappedPrivate,
+        verifier,
+        signature: await signWithIdentity(held.pkcs8, pinSignaturePayload(wrappedPrivate, verifier)),
+      };
+    },
+
+    async pinProof(evaluated: Uint8Array): Promise<Uint8Array> {
+      unlockKeys = await pinKeys(unblindPin(evaluated, takeBlind()));
+      return unlockKeys.proof;
+    },
+
+    async restoreWithPin(wrapped: WrappedIdentity): Promise<void> {
+      if (!unlockKeys) {
+        throw new NoPinError();
+      }
+      identity = { publicKey: wrapped.publicKey, pkcs8: await openIdentity(unlockKeys.wrappingKey, wrapped) };
+      unlockKeys = null;
     },
 
     async prepareDevice(userId: number, oneTime = ONE_TIME_PACKAGES): Promise<PreparedDevice> {
       if (!identity) {
         throw new NoIdentityError();
       }
-      const { secrets, identitySignature } = await createDevice(userId, identity);
+      const { secrets, identitySignature } = await createDevice(userId, identity.pkcs8);
       const packages = [
         ...await createKeyPackages(secrets, oneTime, false),
         ...await createKeyPackages(secrets, 1, true),
@@ -111,19 +199,27 @@ export function createDeviceVault(store: KeyStore) {
       };
     },
 
-    async commitDevice(deviceId: number): Promise<LocalDevice> {
+    async commitDevice(deviceId: number, sessionId: number): Promise<LocalDevice> {
       if (!identity || !pending) {
         throw new NoIdentityError();
       }
       const storageKey = await newStorageKey();
+      const secrets = pending.secrets;
       await store.clear();
       await store.put(DEVICE_SECRETS, {
-        identity,
         storageKey,
-        sealed: await sealSecrets(storageKey, pending.secrets),
+        sealed: await seal(storageKey, utf8(JSON.stringify({
+          signKey: toBase64(secrets.signKey),
+          signatureKey: toBase64(secrets.signatureKey),
+          credential: toBase64(secrets.credential),
+        })), SECRETS_LABEL),
+        identityPublic: identity.publicKey,
+        sealedIdentity: await seal(storageKey, identity.pkcs8, IDENTITY_LABEL),
       } satisfies StoredSecrets);
       await keepPackages(storageKey, pending.packages);
-      const device: LocalDevice = { userId: pending.userId, deviceId, signatureKey: pending.secrets.signatureKey };
+      const device: LocalDevice = {
+        userId: pending.userId, deviceId, signatureKey: secrets.signatureKey, boundSessionId: sessionId,
+      };
       await store.put(DEVICE_INFO, device);
       pending = null;
       return device;
@@ -139,6 +235,8 @@ export function createDeviceVault(store: KeyStore) {
     async forget(): Promise<void> {
       identity = null;
       pending = null;
+      blind = null;
+      unlockKeys = null;
       await store.clear();
     },
   };
