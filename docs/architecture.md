@@ -1498,6 +1498,33 @@ topics the server had no opinion about. The board comes from `KanbanContext`, so
 switches the conversation and there is no second control to find; opening the panel loads page 0 of
 the history and "load older" pages back through it.
 
+## Encrypted messaging
+
+Phase 1 of the end-to-end encrypted messenger: keys and devices, behind `app.messaging.enabled`
+(`MESSAGING_ENABLED`, off by default). Nothing sends a message yet; the board chat above is untouched.
+
+- **The server holds public keys and opaque bytes.** `identity_keys.wrapped_private` is the Ed25519
+  identity key sealed with AES-GCM under a key HKDF derives from the 48-character recovery key, which
+  never leaves the browser. The recovery key carries 240 random bits, so no slow KDF is needed.
+- **A device belongs to a sign-in, not to a token row.** A refresh rotates the `refresh_tokens` row,
+  so each row carries `chain_id`, set at sign-in and copied by every rotation. A crypto device is
+  live while its chain has a live token, and every read checks that: ending a session, signing out,
+  a password change, reuse detection and expiry all end the device in the same transaction, and the
+  auth code does not know messaging exists. `CryptoDeviceSweep` stamps `revoked_at` and drops the key
+  packages of dead devices nightly. `MessagingKeysDatabaseTest` is the specification.
+- **The server checks the identity's signature over every device** (`DeviceSignatures`: a label,
+  the device key and the credential, the bytes `crypto/keys.ts` signs) and that the credential names
+  the caller's account.
+- **Key packages:** 100 one-time and one last-resort per device, topped up below 20 and capped at
+  200, each valid for 90 days, the absolute session lifetime.
+- **MLS is ts-mls, in a Web Worker.** `crypto/worker.ts` is the only code holding private keys.
+  IndexedDB keeps the identity key as a non-extractable `CryptoKey` and the device's MLS secrets
+  sealed under a non-extractable AES key; the page reads only `device-info`. The design named
+  OpenMLS, but nobody publishes a maintained WASM build of it; the worker's RPC is the seam a switch
+  would replace. ts-mls imports `@noble/hashes` without declaring it, hence the direct dependency.
+- **Signing out deletes the key database** (`clearSession` calls `wipeLocalKeys`), and the Devices
+  page forgets keys whose device the server no longer lists.
+
 ## Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'

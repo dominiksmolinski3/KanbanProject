@@ -94,6 +94,7 @@ You supply these:
 - `acs`: the resource group, Communication Services resource and email service that carry mail
   (see [Mail](#mail)). `null`, the default, turns mail off.
 - `captcha_enabled` and `captcha_secret`.
+- `messaging_enabled`, `false` by default, turns on encrypted messaging while it is being built.
 
 `jwt_secret_key` is **not** an input. Terraform generates it (see [Secrets](#secrets)).
 
