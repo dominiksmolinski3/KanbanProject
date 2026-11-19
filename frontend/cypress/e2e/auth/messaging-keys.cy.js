@@ -17,13 +17,18 @@ const enterPin = (value) => {
   dialog().contains('button', 'Unlock').click();
 };
 
-describe('Encrypted messaging keys', () => {
-  after(() => {
-    Cypress.session.clearAllSavedSessions();
-  });
+// Signs in through the form, not cy.session: a cached session may already have been signed out by another spec.
+const signIn = () => cy.fixture('test-account').then((account) => {
+  cy.visit('/');
+  cy.get('input[type="email"]').first().type(account.email);
+  cy.get('input[type="password"]').first().type(account.password);
+  cy.contains('button', 'Sign In').click();
+  cy.url().should('include', '/board');
+});
 
+describe('Encrypted messaging keys', () => {
   beforeEach(() => {
-    cy.loginAsTestUser();
+    signIn();
     cy.visit('/sessions');
     forgetThisBrowser();
     cy.reload();
@@ -55,12 +60,7 @@ describe('Encrypted messaging keys', () => {
 
     cy.get('[data-testid="header-menu-toggle"]').click();
     cy.get('.logout-btn').click();
-    cy.fixture('test-account').then((account) => {
-      cy.get('input[type="email"]').first().type(account.email);
-      cy.get('input[type="password"]').first().type(account.password);
-      cy.contains('button', 'Sign In').click();
-    });
-    cy.url().should('include', '/board');
+    signIn();
     cy.visit('/sessions');
     ready();
     cy.get('.device-current .device-messaging-key').should('exist');
