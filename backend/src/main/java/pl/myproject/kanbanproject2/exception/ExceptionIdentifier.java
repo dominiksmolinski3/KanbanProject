@@ -88,6 +88,12 @@ public enum ExceptionIdentifier {
     PIN_NOT_SET(NOT_FOUND, "This account has no messaging PIN"),
     PIN_INCORRECT(BAD_REQUEST, "That PIN is not correct"),
     PIN_LOCKED(LOCKED, "The PIN is locked after too many wrong attempts"),
+    CONVERSATION_NOT_FOUND(NOT_FOUND, "Conversation not found"),
+    NOT_CONVERSATION_ADMIN(FORBIDDEN, "Only an admin of this conversation can do that"),
+    INVALID_CONVERSATION_REQUEST(BAD_REQUEST, "That change to the conversation is not allowed"),
+    RECIPIENT_NOT_SET_UP(CONFLICT, "That person has not set up encrypted messages yet"),
+    STALE_EPOCH(CONFLICT, "The conversation has moved on - fetch what is new and try again"),
+    MESSAGE_TOO_LARGE(PAYLOAD_TOO_LARGE, "The message is too large"),
 
     CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
     DATA_CONFLICT(CONFLICT, "That value conflicts with data that is already stored"),

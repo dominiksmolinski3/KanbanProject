@@ -1,3 +1,5 @@
+import { ARCHIVE_DATABASE } from './archive';
+
 export const KEY_DATABASE = 'kanban-messaging-keys';
 const STORE = 'keys';
 
@@ -86,4 +88,5 @@ export async function saveLocalDevice(device: LocalDevice, store?: KeyStore): Pr
 
 export function wipeLocalKeys(factory: IDBFactory | undefined = globalThis.indexedDB): void {
   factory?.deleteDatabase(KEY_DATABASE);
+  factory?.deleteDatabase(ARCHIVE_DATABASE);
 }

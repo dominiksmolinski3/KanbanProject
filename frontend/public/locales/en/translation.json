@@ -282,7 +282,8 @@
     "logout": "Logout",
     "activity": "Activity",
     "flow": "Flow",
-    "logoAlt": "Kanban logo"
+    "logoAlt": "Kanban logo",
+    "messages": "Messages"
   },
   "forms": {
     "textLimit": {
@@ -874,7 +875,155 @@
       "VALIDATION_ERROR": "Check the fields and try again.",
       "VERIFICATION_CODE_EXPIRED": "That code has expired. Ask for a new one.",
       "VIEWER_READ_ONLY": "You can view this board but not change it.",
-      "WRONG_PASSWORD": "The current password is not correct."
+      "WRONG_PASSWORD": "The current password is not correct.",
+      "CONVERSATION_NOT_FOUND": "That conversation does not exist or you are no longer in it.",
+      "NOT_CONVERSATION_ADMIN": "Only an admin of this conversation can do that.",
+      "INVALID_CONVERSATION_REQUEST": "That change to the conversation is not allowed.",
+      "RECIPIENT_NOT_SET_UP": "That person has not set up encrypted messages yet.",
+      "STALE_EPOCH": "The conversation changed in the meantime. Try again.",
+      "MESSAGE_TOO_LARGE": "The message is too long."
+    }
+  },
+  "messages": {
+    "status": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read"
+    },
+    "title": "Messages",
+    "back": "Back to conversations",
+    "cancel": "Cancel",
+    "close": "Close",
+    "unknownPerson": "Someone",
+    "formerMember": "Former member",
+    "untitledGroup": "New group",
+    "gate": {
+      "off": "Encrypted messages are not available on this server.",
+      "setUp": "Set up encrypted messages on this device first. Your keys stay on your devices and the server never sees what you write.",
+      "unlock": "This browser is not one of your messaging devices yet. Unlock it with your PIN or recovery key to read and send messages here.",
+      "open": "Go to Signed-in devices"
+    },
+    "empty": {
+      "title": "Your messages are end-to-end encrypted",
+      "body": "Choose a conversation, or start a new one. Only the people in a conversation can read it."
+    },
+    "list": {
+      "label": "Conversations",
+      "new": "New",
+      "search": "Search conversations",
+      "none": "No conversations yet.",
+      "requests": "Message requests",
+      "request": "Wants to send you messages",
+      "archived": "Archived ({{count}})",
+      "unread": "Unread: {{count}}",
+      "muted": "Muted"
+    },
+    "thread": {
+      "encrypted": "End-to-end encrypted",
+      "members": "Members: {{count}}",
+      "log": "Messages",
+      "none": "No messages yet. Say hello.",
+      "waiting": "Waiting for another member's device to add this one. Messages appear as soon as it does.",
+      "removed": "You are no longer in this conversation.",
+      "failed": "This conversation could not be brought up to date. Try again in a moment.",
+      "typingOne": "{{name}} is typing…",
+      "typingMany": "Several people are typing…"
+    },
+    "request": {
+      "title": "Message request",
+      "direct": "{{name}} wants to send you messages. They cannot see whether you have read this until you accept.",
+      "group": "{{name}} added you to this group. Accept to take part.",
+      "accept": "Accept",
+      "decline": "Decline",
+      "block": "Block"
+    },
+    "composer": {
+      "label": "Message",
+      "placeholder": "Write a message",
+      "send": "Send",
+      "replying": "Replying to {{name}}",
+      "editing": "Editing your message",
+      "cancelDraft": "Cancel"
+    },
+    "message": {
+      "actions": "Message actions",
+      "reply": "Reply",
+      "edit": "Edit",
+      "delete": "Delete",
+      "react": "React with {{emoji}}",
+      "reaction": "{{emoji}}: {{count}}",
+      "edited": "edited",
+      "deleted": "This message was deleted",
+      "replyMissing": "The original message is not on this device"
+    },
+    "notice": {
+      "undecryptable": "A message from {{name}} could not be decrypted on this device.",
+      "joined": "{{name}} joined.",
+      "left": "{{name}} left.",
+      "identity-changed": "The security code of {{name}} changed. They may have set up messages again, or someone may be trying to read their messages. Verify it before you share anything sensitive.",
+      "device-added": "{{name}} added a device.",
+      "log-rewritten": "The key history the server shows for {{name}} no longer matches what this device saw earlier."
+    },
+    "details": {
+      "title": "Details",
+      "open": "Conversation details",
+      "name": "Group name",
+      "rename": "Rename",
+      "members": "People",
+      "you": "You",
+      "admin": "Admin",
+      "invited": "Invited",
+      "verify": "Verify",
+      "makeAdmin": "Make admin",
+      "unmakeAdmin": "Remove as admin",
+      "remove": "Remove",
+      "addPeople": "Add people",
+      "add": "Add",
+      "preferences": "For you",
+      "muted": "Mute notifications",
+      "pinned": "Pin to the top",
+      "archived": "Archive",
+      "leave": "Leave group",
+      "block": "Block {{name}}"
+    },
+    "settings": {
+      "title": "Group settings",
+      "history": "History for people who join later",
+      "historyJoined": "Only messages after they join",
+      "historyDays": "The last 30 days",
+      "historyAll": "Everything",
+      "whoCanAdd": "Who can add people",
+      "admins": "Only admins",
+      "members": "All members"
+    },
+    "new": {
+      "title": "New conversation",
+      "direct": "One person",
+      "group": "Group",
+      "name": "Group name (optional)",
+      "filter": "Search people",
+      "noContacts": "Nobody to show. People you share a board with appear here.",
+      "notSetUp": "Has not set up encrypted messages",
+      "byEmail": "Someone else? Enter their full email address",
+      "byEmailHint": "People outside your boards receive your first message as a request, which they can decline or block.",
+      "find": "Find",
+      "notFound": "Nobody with encrypted messages uses that address.",
+      "pickSomeone": "Choose at least one person.",
+      "start": "Start"
+    },
+    "verify": {
+      "title": "Verify {{name}}",
+      "body": "Compare these numbers with {{name}} in person or on a call. If they match on both devices, nobody is reading your messages in between.",
+      "number": "Security code",
+      "verified": "You have verified this security code.",
+      "notVerified": "Not verified yet.",
+      "mark": "Mark as verified",
+      "unmark": "Clear verification",
+      "unavailable": "The security code cannot be shown until both of you have set up encrypted messages."
+    },
+    "errors": {
+      "generic": "That did not work. Try again.",
+      "send": "The message was not sent. Try again."
     }
   }
 }

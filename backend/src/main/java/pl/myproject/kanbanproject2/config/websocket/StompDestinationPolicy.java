@@ -13,6 +13,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
 import pl.myproject.kanbanproject2.chat.ChatService;
+import pl.myproject.kanbanproject2.messaging.ConversationNotifier;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -31,7 +32,8 @@ public class StompDestinationPolicy implements ChannelInterceptor {
             Pattern.quote(BoardEventPublisher.DESTINATION_PREFIX) + "\\d+(?:" + Pattern.quote(ChatService.CHAT_SUFFIX) + ")?"
                     + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.DIRECT_QUEUE)
                     + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.ERROR_QUEUE)
-                    + "|" + Pattern.quote(OWN_USER_PREFIX + BoardEventPublisher.BOARDS_QUEUE));
+                    + "|" + Pattern.quote(OWN_USER_PREFIX + BoardEventPublisher.BOARDS_QUEUE)
+                    + "|" + Pattern.quote(OWN_USER_PREFIX + ConversationNotifier.QUEUE));
 
     private static final Set<StompCommand> SERVER_COMMANDS = EnumSet.of(
             StompCommand.CONNECTED, StompCommand.MESSAGE, StompCommand.RECEIPT, StompCommand.ERROR);

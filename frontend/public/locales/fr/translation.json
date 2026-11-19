@@ -265,6 +265,7 @@
       "add": "Ajouter une ligne"
     },
     "header": {
+        "messages": "Messages",
       "board": "Tableau",
       "settings": "Paramètres",
       "language": "Langue",
@@ -801,6 +802,12 @@
             "server": "Le serveur n'a pas répondu. Réessayez dans un instant."
         },
         "codes": {
+            "CONVERSATION_NOT_FOUND": "Cette conversation n'existe pas ou vous n'en faites plus partie.",
+            "NOT_CONVERSATION_ADMIN": "Seul un admin de cette conversation peut faire cela.",
+            "INVALID_CONVERSATION_REQUEST": "Cette modification de la conversation n'est pas autorisée.",
+            "RECIPIENT_NOT_SET_UP": "Cette personne n'a pas encore configuré les messages chiffrés.",
+            "STALE_EPOCH": "La conversation a changé entre-temps. Réessayez.",
+            "MESSAGE_TOO_LARGE": "Le message est trop long.",
             "ACCESS_DENIED": "Vous n'avez pas l'autorisation de faire cela.",
             "ALREADY_BOARD_MEMBER": "Cette personne est déjà sur ce tableau.",
             "ATTACHMENT_NOT_FOUND": "Cette pièce jointe n'existe plus.",
@@ -875,6 +882,148 @@
             "VERIFICATION_CODE_EXPIRED": "Ce code a expiré. Demandez-en un nouveau.",
             "VIEWER_READ_ONLY": "Vous pouvez consulter ce tableau, mais pas le modifier.",
             "WRONG_PASSWORD": "Le mot de passe actuel n'est pas correct."
+        }
+    },
+    "messages": {
+        "status": {
+            "sent": "Envoyé",
+            "delivered": "Distribué",
+            "read": "Lu"
+        },
+        "title": "Messages",
+        "back": "Retour aux conversations",
+        "cancel": "Annuler",
+        "close": "Fermer",
+        "unknownPerson": "Quelqu'un",
+        "formerMember": "Ancien membre",
+        "untitledGroup": "Nouveau groupe",
+        "gate": {
+            "off": "Les messages chiffrés ne sont pas disponibles sur ce serveur.",
+            "setUp": "Configurez d'abord les messages chiffrés sur cet appareil. Vos clés restent sur vos appareils et le serveur ne voit jamais ce que vous écrivez.",
+            "unlock": "Ce navigateur n'est pas encore l'un de vos appareils de messagerie. Déverrouillez-le avec votre code PIN ou votre clé de récupération pour lire et envoyer des messages ici.",
+            "open": "Aller aux appareils connectés"
+        },
+        "empty": {
+            "title": "Vos messages sont chiffrés de bout en bout",
+            "body": "Choisissez une conversation ou commencez-en une nouvelle. Seules les personnes qui y participent peuvent la lire."
+        },
+        "list": {
+            "label": "Conversations",
+            "new": "Nouvelle",
+            "search": "Rechercher des conversations",
+            "none": "Aucune conversation pour l'instant.",
+            "requests": "Demandes de message",
+            "request": "Souhaite vous envoyer des messages",
+            "archived": "Archivées ({{count}})",
+            "unread": "Non lus : {{count}}",
+            "muted": "En sourdine"
+        },
+        "thread": {
+            "encrypted": "Chiffré de bout en bout",
+            "members": "Membres : {{count}}",
+            "log": "Messages",
+            "none": "Aucun message pour l'instant. Dites bonjour.",
+            "waiting": "En attente qu'un appareil d'un autre membre ajoute celui-ci. Les messages apparaîtront dès que ce sera fait.",
+            "removed": "Vous ne faites plus partie de cette conversation.",
+            "failed": "Cette conversation n'a pas pu être mise à jour. Réessayez dans un instant.",
+            "typingOne": "{{name}} écrit…",
+            "typingMany": "Plusieurs personnes écrivent…"
+        },
+        "request": {
+            "title": "Demande de message",
+            "direct": "{{name}} souhaite vous envoyer des messages. Cette personne ne saura pas si vous l'avez lu tant que vous n'acceptez pas.",
+            "group": "{{name}} vous a ajouté à ce groupe. Acceptez pour y participer.",
+            "accept": "Accepter",
+            "decline": "Refuser",
+            "block": "Bloquer"
+        },
+        "composer": {
+            "label": "Message",
+            "placeholder": "Écrire un message",
+            "send": "Envoyer",
+            "replying": "Réponse à {{name}}",
+            "editing": "Modification de votre message",
+            "cancelDraft": "Annuler"
+        },
+        "message": {
+            "actions": "Actions sur le message",
+            "reply": "Répondre",
+            "edit": "Modifier",
+            "delete": "Supprimer",
+            "react": "Réagir avec {{emoji}}",
+            "reaction": "{{emoji}} : {{count}}",
+            "edited": "modifié",
+            "deleted": "Ce message a été supprimé",
+            "replyMissing": "Le message d'origine n'est pas sur cet appareil"
+        },
+        "notice": {
+            "undecryptable": "Un message de {{name}} n'a pas pu être déchiffré sur cet appareil.",
+            "joined": "{{name}} a rejoint la conversation.",
+            "left": "{{name}} a quitté la conversation.",
+            "identity-changed": "Le code de sécurité de {{name}} a changé. Cette personne a peut-être reconfiguré ses messages, ou quelqu'un essaie de lire ses messages. Vérifiez-le avant de partager quoi que ce soit de sensible.",
+            "device-added": "{{name}} a ajouté un appareil.",
+            "log-rewritten": "L'historique des clés que le serveur affiche pour {{name}} ne correspond plus à ce que cet appareil avait vu."
+        },
+        "details": {
+            "title": "Détails",
+            "open": "Détails de la conversation",
+            "name": "Nom du groupe",
+            "rename": "Renommer",
+            "members": "Personnes",
+            "you": "Vous",
+            "admin": "Admin",
+            "invited": "Invité",
+            "verify": "Vérifier",
+            "makeAdmin": "Nommer admin",
+            "unmakeAdmin": "Retirer des admins",
+            "remove": "Retirer",
+            "addPeople": "Ajouter des personnes",
+            "add": "Ajouter",
+            "preferences": "Pour vous",
+            "muted": "Mettre les notifications en sourdine",
+            "pinned": "Épingler en haut",
+            "archived": "Archiver",
+            "leave": "Quitter le groupe",
+            "block": "Bloquer {{name}}"
+        },
+        "settings": {
+            "title": "Paramètres du groupe",
+            "history": "Historique pour les personnes qui rejoignent plus tard",
+            "historyJoined": "Seulement les messages après leur arrivée",
+            "historyDays": "Les 30 derniers jours",
+            "historyAll": "Tout",
+            "whoCanAdd": "Qui peut ajouter des personnes",
+            "admins": "Seulement les admins",
+            "members": "Tous les membres"
+        },
+        "new": {
+            "title": "Nouvelle conversation",
+            "direct": "Une personne",
+            "group": "Groupe",
+            "name": "Nom du groupe (facultatif)",
+            "filter": "Rechercher des personnes",
+            "noContacts": "Personne à afficher. Les personnes avec qui vous partagez un tableau apparaissent ici.",
+            "notSetUp": "N'a pas configuré les messages chiffrés",
+            "byEmail": "Quelqu'un d'autre ? Saisissez son adresse e-mail complète",
+            "byEmailHint": "Les personnes extérieures à vos tableaux reçoivent votre premier message sous forme de demande, qu'elles peuvent refuser ou bloquer.",
+            "find": "Rechercher",
+            "notFound": "Personne utilisant les messages chiffrés n'a cette adresse.",
+            "pickSomeone": "Choisissez au moins une personne.",
+            "start": "Commencer"
+        },
+        "verify": {
+            "title": "Vérifier {{name}}",
+            "body": "Comparez ces chiffres avec {{name}} en personne ou lors d'un appel. S'ils sont identiques sur les deux appareils, personne ne lit vos messages entre vous.",
+            "number": "Code de sécurité",
+            "verified": "Vous avez vérifié ce code de sécurité.",
+            "notVerified": "Pas encore vérifié.",
+            "mark": "Marquer comme vérifié",
+            "unmark": "Annuler la vérification",
+            "unavailable": "Le code de sécurité ne peut pas s'afficher tant que vous n'avez pas tous les deux configuré les messages chiffrés."
+        },
+        "errors": {
+            "generic": "Cela n'a pas fonctionné. Réessayez.",
+            "send": "Le message n'a pas été envoyé. Réessayez."
         }
     }
 }

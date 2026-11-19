@@ -13,7 +13,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import pl.myproject.kanbanproject2.config.security.RefreshTokenService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import pl.myproject.kanbanproject2.messaging.AttachSessionRequest;
+import pl.myproject.kanbanproject2.messaging.ConversationDeviceRepository;
+import pl.myproject.kanbanproject2.messaging.ConversationLocks;
+import pl.myproject.kanbanproject2.messaging.ConversationMemberRepository;
+import pl.myproject.kanbanproject2.messaging.ConversationNotifier;
+import pl.myproject.kanbanproject2.messaging.ConversationRepository;
 import pl.myproject.kanbanproject2.messaging.CryptoDeviceDto;
 import pl.myproject.kanbanproject2.messaging.CryptoDeviceMapper;
 import pl.myproject.kanbanproject2.messaging.CryptoDeviceRepository;
@@ -26,10 +32,14 @@ import pl.myproject.kanbanproject2.messaging.IdentityKeyMapper;
 import pl.myproject.kanbanproject2.messaging.IdentityKeyRepository;
 import pl.myproject.kanbanproject2.messaging.IdentityKeyRequest;
 import pl.myproject.kanbanproject2.messaging.IdentityPinRepository;
+import pl.myproject.kanbanproject2.messaging.GroupRestarts;
+import pl.myproject.kanbanproject2.messaging.KeyDirectory;
+import pl.myproject.kanbanproject2.messaging.KeyLogRepository;
 import pl.myproject.kanbanproject2.messaging.KeyPackageRepository;
 import pl.myproject.kanbanproject2.messaging.KeyPackageUpload;
 import pl.myproject.kanbanproject2.messaging.KeyPackagesRequest;
 import pl.myproject.kanbanproject2.messaging.MessagingProperties;
+import pl.myproject.kanbanproject2.messaging.MlsWelcomeRepository;
 import pl.myproject.kanbanproject2.messaging.PinEvaluationRequest;
 import pl.myproject.kanbanproject2.messaging.PinEvaluator;
 import pl.myproject.kanbanproject2.messaging.PinRequest;
@@ -91,22 +101,49 @@ class MessagingKeysDatabaseTest {
         }
 
         @Bean
+        ConversationNotifier conversationNotifier() {
+            return new ConversationNotifier(org.mockito.Mockito.mock(SimpMessagingTemplate.class));
+        }
+
+        @Bean
+        ConversationLocks conversationLocks() {
+            return new ConversationLocks();
+        }
+
+        @Bean
+        GroupRestarts groupRestarts(ConversationRepository conversations, ConversationDeviceRepository holders,
+                                    ConversationMemberRepository members, ConversationLocks locks,
+                                    ConversationNotifier notifier) {
+            return new GroupRestarts(conversations, holders, members, locks, notifier);
+        }
+
+        @Bean
+        KeyDirectory keyDirectory(KeyLogRepository log, IdentityKeyRepository identities,
+                                  MlsWelcomeRepository welcomes, ConversationRepository conversations,
+                                  ConversationMemberRepository members, ConversationNotifier notifier,
+                                  GroupRestarts restarts) {
+            return new KeyDirectory(log, identities, welcomes, conversations, members, notifier, restarts);
+        }
+
+        @Bean
         CryptoKeyService cryptoKeyService(MessagingProperties properties, IdentityKeyRepository identities,
                                           IdentityPinRepository pins, CryptoDeviceRepository devices,
                                           KeyPackageRepository keyPackages, RefreshTokenRepository sessions,
-                                          PinService pinService) {
+                                          PinService pinService, KeyDirectory keyDirectory) {
             return new CryptoKeyService(properties, identities, pins, devices, keyPackages, sessions, pinService,
-                    new IdentityKeyMapper(), new IdentityBackupMapper(), new CryptoDeviceMapper());
+                    new IdentityKeyMapper(), new IdentityBackupMapper(), new CryptoDeviceMapper(), keyDirectory);
         }
 
         @Bean
-        CryptoDeviceSessions cryptoDeviceSessions(CryptoDeviceRepository devices, KeyPackageRepository keyPackages) {
-            return new CryptoDeviceSessions(devices, keyPackages);
+        CryptoDeviceSessions cryptoDeviceSessions(CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
+                                                  KeyDirectory keyDirectory) {
+            return new CryptoDeviceSessions(devices, keyPackages, keyDirectory);
         }
 
         @Bean
-        CryptoDeviceSweep cryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages) {
-            return new CryptoDeviceSweep(devices, keyPackages);
+        CryptoDeviceSweep cryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
+                                            KeyDirectory keyDirectory) {
+            return new CryptoDeviceSweep(devices, keyPackages, keyDirectory);
         }
     }
 

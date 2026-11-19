@@ -1,5 +1,4 @@
-import type { DeviceVault } from './deviceVault';
-import type { VaultOperation, VaultResponse } from './rpc';
+import type { VaultOperation, VaultResponse, WorkerOperations } from './rpc';
 import { spawnCryptoWorker } from './spawnWorker';
 
 export class VaultError extends Error {
@@ -11,7 +10,18 @@ export class VaultError extends Error {
 
 type Remote<T> = { [K in keyof T]: T[K] extends (...args: infer A) => Promise<infer R> ? (...args: A) => Promise<R> : never };
 
-export function createVaultClient(spawn: () => Worker = spawnCryptoWorker): Remote<DeviceVault> {
+const OPERATIONS: Record<VaultOperation, true> = {
+  createIdentity: true, wrapForRecovery: true, restoreWithRecoveryKey: true, blindPin: true, wrapForPin: true,
+  pinProof: true, restoreWithPin: true, prepareDevice: true, commitDevice: true, prepareKeyPackages: true,
+  forget: true, groupStatus: true, planChanges: true, liveDeviceIds: true, prepareCommit: true, confirmCommit: true,
+  discardCommit: true, acceptWelcome: true, receiveMessages: true, encryptPayload: true, recordSent: true,
+  readArchive: true, historyFor: true, credentialsOf: true, addNotices: true, dropConversation: true, pins: true,
+  checkContacts: true, setVerified: true, wipeMessages: true,
+};
+
+export type WorkerClient = Remote<WorkerOperations>;
+
+export function createVaultClient(spawn: () => Worker = spawnCryptoWorker): WorkerClient {
   let worker: Worker | null = null;
   let nextId = 1;
   const waiting = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
@@ -40,21 +50,9 @@ export function createVaultClient(spawn: () => Worker = spawnCryptoWorker): Remo
     connect().postMessage({ id, operation, args });
   });
 
-  return {
-    createIdentity: call('createIdentity'),
-    wrapForRecovery: call('wrapForRecovery'),
-    restoreWithRecoveryKey: call('restoreWithRecoveryKey'),
-    blindPin: call('blindPin'),
-    wrapForPin: call('wrapForPin'),
-    pinProof: call('pinProof'),
-    restoreWithPin: call('restoreWithPin'),
-    prepareDevice: call('prepareDevice'),
-    commitDevice: call('commitDevice'),
-    prepareKeyPackages: call('prepareKeyPackages'),
-    forget: call('forget'),
-  } as Remote<DeviceVault>;
+  return Object.fromEntries((Object.keys(OPERATIONS) as VaultOperation[]).map((operation) => [operation, call(operation)])) as WorkerClient;
 }
 
-let shared: Remote<DeviceVault> | null = null;
+let shared: WorkerClient | null = null;
 
-export const deviceVault = (): Remote<DeviceVault> => (shared ??= createVaultClient());
+export const deviceVault = (): WorkerClient => (shared ??= createVaultClient());

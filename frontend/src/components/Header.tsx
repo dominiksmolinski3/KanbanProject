@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -8,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { useOutsideClick } from '../hooks/useOutsideClick';
 import BrandMark from './BrandMark';
 import Icon from './Icon';
+import { cryptoApi } from '../services/cryptoApi';
+import { MESSAGING_STATUS } from './devices/useMessagingKeys';
 
 const PAGES = [
   { to: '/board', key: 'header.board', icon: 'board' },
@@ -16,11 +19,15 @@ const PAGES = [
   { to: '/flow', key: 'header.flow', icon: 'flow' },
 ];
 
+const MESSAGES_PAGE = { to: '/messages', key: 'header.messages', icon: 'comment' };
+
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { logout } = useAuth();
   const { t } = useTranslation();
+  const messaging = useQuery({ queryKey: MESSAGING_STATUS, queryFn: cryptoApi.status, staleTime: 60_000 });
+  const pages = messaging.data?.enabled ? [...PAGES, MESSAGES_PAGE] : PAGES;
 
   const handleLogout = () => {
     logout();
@@ -52,7 +59,7 @@ function Header() {
       <BoardSwitcher />
 
       <nav className="header-nav" aria-label={t('header.navigation')}>
-        {PAGES.map(page => (
+        {pages.map(page => (
           <NavLink key={page.to} to={page.to} className="nav-link" title={t(page.key)}>
             <Icon name={page.icon} />
             <span className="nav-label">{t(page.key)}</span>

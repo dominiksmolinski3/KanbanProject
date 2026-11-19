@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.myproject.kanbanproject2.user.User;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/crypto")
@@ -24,6 +27,7 @@ public class CryptoController {
 
     private final CryptoKeyService cryptoKeyService;
     private final PinService pinService;
+    private final MessageDeliveryService delivery;
 
     @GetMapping("/status")
     public ResponseEntity<CryptoStatusDto> status(@AuthenticationPrincipal User currentUser) {
@@ -100,5 +104,24 @@ public class CryptoController {
                                                                 @Valid @RequestBody KeyPackagesRequest request,
                                                                 @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(cryptoKeyService.uploadKeyPackages(currentUser, id, request));
+    }
+
+    @GetMapping("/devices/{id}/welcomes")
+    public ResponseEntity<List<WelcomeDto>> welcomes(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(delivery.welcomes(currentUser, id));
+    }
+
+    @DeleteMapping("/devices/{id}/welcomes/{welcomeId}")
+    public ResponseEntity<Void> dropWelcome(@PathVariable Long id, @PathVariable Long welcomeId,
+                                            @AuthenticationPrincipal User currentUser) {
+        delivery.dropWelcome(currentUser, id, welcomeId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/users/{userId}/key-log")
+    public ResponseEntity<List<KeyLogEntryDto>> keyLog(@PathVariable Integer userId,
+                                                       @RequestParam(required = false) Long after,
+                                                       @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(delivery.keyLog(currentUser, userId, after));
     }
 }

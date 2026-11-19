@@ -32,7 +32,7 @@ class UserServiceWipStatusTest {
         caller.setId(USER_ID);
         taskRepository = mock(TaskRepository.class);
         userService = new UserService(userRepository, new UserMapper(), taskRepository,
-                tenant.boardService(), mock(ChatRepository.class));
+                tenant.boardService(), mock(ChatRepository.class), event -> { });
     }
 
     @Test
