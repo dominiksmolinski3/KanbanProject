@@ -16,6 +16,7 @@ const ActivityFeed = lazy(() => import('./components/ActivityFeed'));
 const FlowMetrics = lazy(() => import('./components/FlowMetrics'));
 const Devices = lazy(() => import('./components/Devices'));
 const Account = lazy(() => import('./components/Account'));
+const Messages = lazy(() => import('./components/Messages'));
 
 setupApiInterceptors();
 startBoardCodeWhenSignedIn();
@@ -39,6 +40,7 @@ function App() {
             <Route path="/flow" element={<Suspense fallback={<PageLoading />}><FlowMetrics /></Suspense>} />
             <Route path="/sessions" element={<Suspense fallback={<PageLoading />}><Devices /></Suspense>} />
             <Route path="/account" element={<Suspense fallback={<PageLoading />}><Account /></Suspense>} />
+            <Route path="/messages" element={<Suspense fallback={<PageLoading />}><Messages /></Suspense>} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

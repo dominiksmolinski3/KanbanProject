@@ -103,7 +103,7 @@ class TenantIsolationTest {
 
         var taskMapper = new TaskMapper();
         userService = new UserService(userRepository, new UserMapper(), taskRepository, boardService,
-                mock(ChatRepository.class));
+                mock(ChatRepository.class), event -> { });
         taskService = new TaskService(taskRepository, userRepository, taskMapper, userService,
                 historyRepository, mock(TaskColumnHistoryMapper.class), columnRepository,
                 rowRepository, boardService, mock(pl.myproject.kanbanproject2.task.DeadlineNotifier.class),

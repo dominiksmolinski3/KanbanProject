@@ -41,6 +41,7 @@ class CryptoControllerHttpTest {
 
     private CryptoKeyService service;
     private PinService pins;
+    private MessageDeliveryService delivery;
     private MockMvc mvc;
     private ObjectMapper json;
     private User caller;
@@ -49,11 +50,12 @@ class CryptoControllerHttpTest {
     void setUp() {
         service = mock(CryptoKeyService.class);
         pins = mock(PinService.class);
+        delivery = mock(MessageDeliveryService.class);
         caller = new User();
         caller.setId(7);
         json = new ObjectMapper().registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mvc = MockMvcBuilders.standaloneSetup(new CryptoController(service, pins))
+        mvc = MockMvcBuilders.standaloneSetup(new CryptoController(service, pins, delivery))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new FixedPrincipalResolver(caller))
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(json))

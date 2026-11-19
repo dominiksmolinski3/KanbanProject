@@ -1500,8 +1500,9 @@ the history and "load older" pages back through it.
 
 ## Encrypted messaging
 
-Phase 1 of the end-to-end encrypted messenger: keys and devices, behind `app.messaging.enabled`
-(`MESSAGING_ENABLED`, off by default). Nothing sends a message yet; the board chat above is untouched.
+The end-to-end encrypted messenger, behind `app.messaging.enabled` (`MESSAGING_ENABLED`, off by
+default). Phase 1 is keys and devices; phase 2 is direct messages and groups on `/messages`. The
+board chat above is untouched until board channels replace it.
 
 - **The server holds public keys and opaque bytes.** The Ed25519 identity key is generated in the
   browser and reaches the server only sealed: under the PIN exchange below (`identity_pins`), and
@@ -1531,6 +1532,46 @@ Phase 1 of the end-to-end encrypted messenger: keys and devices, behind `app.mes
   key, and the page reads only `device-info`. The design named OpenMLS, but nobody publishes a
   maintained WASM build of it; the worker's RPC is the seam a switch would replace. ts-mls imports
   `@noble/hashes` without declaring it and pins `@noble/curves` at 2.0.1, hence both dependencies.
+
+### Conversations (phase 2)
+
+- **The server orders, the clients encrypt.** `conversations.epoch` admits one commit per epoch:
+  `ConversationLocks` refreshes the row under `PESSIMISTIC_WRITE` (a locking query would return the
+  copy the membership check already loaded, so two commits could both pass), and application
+  messages must name the current epoch. Racing clients get `STALE_EPOCH`, catch up and retry
+  (`ConversationsDatabaseTest`). Bodies are opaque; the server keeps them 180 days, as long as an
+  unused device lives.
+- **Clients keep the MLS roster equal to the membership.** A member change, a new device or a
+  revoked one raises `needs_commit`, and messages wait until some member's device commits: it adds
+  each live device it is missing (claiming key packages with `FOR UPDATE SKIP LOCKED`) and removes
+  every leaf that is not a live device of a member. Epoch 0 means no group yet, and any member's
+  device may found it. A committer keeps its next state as pending until the commit is accepted, so
+  a second tab adopts it instead of failing to process its own commit.
+- **A group nobody can reach again restarts.** `conversation_devices` records the committer and every
+  welcomed device. When no live device of a current member is left in it (everyone started over, or
+  the last holder left), `GroupRestarts` sets the conversation back to epoch 0 under a new group id,
+  and the next member's device founds it again. Earlier messages stay unreadable to the new devices.
+- **Who sent what is signed inside the message.** ts-mls does not say which leaf sent an
+  application message, so each payload carries the sending device's credential and a signature
+  under its MLS key, checked against the directory (`GET /conversations/{id}/devices`), where each
+  device is signed by its account's identity key.
+- **History for newcomers is re-sent by a member's device**, from its local archive, as encrypted
+  `history` messages addressed to the new devices: everything since the owner joined for another
+  device of a member, and for a new member what the group's setting allows. The server never holds
+  history it could read.
+- **Strangers arrive as requests.** Anyone reachable by exact email (`/conversations/lookup`, rate
+  limited like sign-in) can be messaged; non-peers join as `REQUEST`, and a blocked person gets the
+  answer an unknown account gets. Blocking removes the direct conversation.
+- **Trust.** `key_log` appends every identity and device change per account, each entry hashing the
+  previous one. Clients pin the last hash they saw and turn changes into notices: a changed
+  security code (60 digits, the same on both sides) is a warning, a new device a calm note.
+- **Receipts are always on.** Each member has a delivered and a read position (`POST
+  /conversations/{id}/delivered` and `/read`, both only moving forward), shared with the other
+  members. A device syncs conversations with news in the background and reports what it decrypted.
+  Your message shows sent, delivered or read by the lowest position among the people who were there
+  when it was sent.
+- **Typing goes over REST**, `POST /conversations/{id}/typing`, relayed as a frame and never stored.
+  Every frame on `/user/queue/conversations` is `{type, conversationId, seq, userId}`.
 
 ## Live board sync
 

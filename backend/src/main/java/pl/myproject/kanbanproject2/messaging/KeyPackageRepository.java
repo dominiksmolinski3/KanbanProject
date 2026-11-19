@@ -9,6 +9,7 @@ import pl.myproject.kanbanproject2.user.User;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -42,6 +43,19 @@ public interface KeyPackageRepository extends JpaRepository<KeyPackage, Long> {
     @Query("DELETE FROM KeyPackage keyPackage WHERE keyPackage.device.id IN "
             + "(SELECT device.id FROM CryptoDevice device WHERE device.revokedAt IS NOT NULL)")
     int deleteOfRevokedDevices();
+
+    @Query(value = """
+            SELECT * FROM key_packages
+            WHERE device_id = :deviceId AND last_resort = false
+            ORDER BY id
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    Optional<KeyPackage> lockOneTime(@Param("deviceId") Long deviceId);
+
+    @Query("SELECT keyPackage FROM KeyPackage keyPackage WHERE keyPackage.device.id = :deviceId "
+            + "AND keyPackage.lastResort = true")
+    Optional<KeyPackage> findLastResort(@Param("deviceId") Long deviceId);
 
     interface DeviceKeyPackageCount {
         Long getDeviceId();

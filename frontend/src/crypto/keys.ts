@@ -4,6 +4,7 @@ import {
   generateKeyPackageWithKey,
   getCiphersuiteFromName,
   getCiphersuiteImpl,
+  type Capabilities,
   type CiphersuiteImpl,
   type Credential,
 } from 'ts-mls';
@@ -11,6 +12,8 @@ import { makeKeyPackageRef } from 'ts-mls/keyPackage.js';
 import { buffer, concat, randomBytes, toHex, utf8 } from './bytes';
 
 export const CIPHERSUITE = 'MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519';
+
+export const GROUP_NAME_EXTENSION = 0xf0a1;
 
 // These three must match IdentitySignatures on the server, byte for byte.
 export const DEVICE_SIGNATURE_LABEL = 'KanbanProject messaging device v1';
@@ -60,6 +63,11 @@ let suite: Promise<CiphersuiteImpl> | null = null;
 
 export const ciphersuite = (): Promise<CiphersuiteImpl> =>
   (suite ??= getCiphersuiteImpl(getCiphersuiteFromName(CIPHERSUITE)));
+
+export const messagingCapabilities = (): Capabilities => {
+  const capabilities = defaultCapabilities();
+  return { ...capabilities, extensions: [...capabilities.extensions, GROUP_NAME_EXTENSION] };
+};
 
 export async function seal(key: CryptoKey, plaintext: Uint8Array, associated: Uint8Array): Promise<Uint8Array> {
   const iv = randomBytes(IV_BYTES);
@@ -142,7 +150,7 @@ export async function createKeyPackages(device: DeviceSecrets, count: number, la
   const generated: GeneratedKeyPackage[] = [];
   for (let i = 0; i < count; i++) {
     const { publicPackage, privatePackage } = await generateKeyPackageWithKey(
-      credential, defaultCapabilities(), lifetime, [], { signKey: device.signKey, publicKey: device.signatureKey }, impl);
+      credential, messagingCapabilities(), lifetime, [], { signKey: device.signKey, publicKey: device.signatureKey }, impl);
     generated.push({
       upload: {
         ref: await makeKeyPackageRef(publicPackage, impl.hash),

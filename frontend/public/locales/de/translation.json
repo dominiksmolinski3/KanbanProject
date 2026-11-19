@@ -282,7 +282,8 @@
     "logout": "Abmelden",
     "activity": "Aktivität",
     "flow": "Fluss",
-    "logoAlt": "Kanban-Logo"
+    "logoAlt": "Kanban-Logo",
+    "messages": "Nachrichten"
   },
   "forms": {
     "textLimit": {
@@ -874,7 +875,155 @@
       "VALIDATION_ERROR": "Prüfe die Felder und versuche es erneut.",
       "VERIFICATION_CODE_EXPIRED": "Dieser Code ist abgelaufen. Fordere einen neuen an.",
       "VIEWER_READ_ONLY": "Du kannst dieses Board ansehen, aber nicht ändern.",
-      "WRONG_PASSWORD": "Das aktuelle Passwort ist falsch."
+      "WRONG_PASSWORD": "Das aktuelle Passwort ist falsch.",
+      "CONVERSATION_NOT_FOUND": "Diese Unterhaltung gibt es nicht, oder du bist nicht mehr darin.",
+      "NOT_CONVERSATION_ADMIN": "Das kann nur ein Admin dieser Unterhaltung.",
+      "INVALID_CONVERSATION_REQUEST": "Diese Änderung an der Unterhaltung ist nicht erlaubt.",
+      "RECIPIENT_NOT_SET_UP": "Diese Person hat verschlüsselte Nachrichten noch nicht eingerichtet.",
+      "STALE_EPOCH": "Die Unterhaltung hat sich inzwischen geändert. Versuche es noch einmal.",
+      "MESSAGE_TOO_LARGE": "Die Nachricht ist zu lang."
+    }
+  },
+  "messages": {
+    "status": {
+      "sent": "Gesendet",
+      "delivered": "Zugestellt",
+      "read": "Gelesen"
+    },
+    "title": "Nachrichten",
+    "back": "Zurück zu den Unterhaltungen",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "unknownPerson": "Jemand",
+    "formerMember": "Ehemaliges Mitglied",
+    "untitledGroup": "Neue Gruppe",
+    "gate": {
+      "off": "Verschlüsselte Nachrichten sind auf diesem Server nicht verfügbar.",
+      "setUp": "Richte verschlüsselte Nachrichten zuerst auf diesem Gerät ein. Deine Schlüssel bleiben auf deinen Geräten, und der Server sieht nie, was du schreibst.",
+      "unlock": "Dieser Browser ist noch keines deiner Nachrichtengeräte. Entsperre ihn mit deiner PIN oder deinem Wiederherstellungsschlüssel, um hier Nachrichten zu lesen und zu senden.",
+      "open": "Zu den angemeldeten Geräten"
+    },
+    "empty": {
+      "title": "Deine Nachrichten sind Ende-zu-Ende-verschlüsselt",
+      "body": "Wähle eine Unterhaltung oder beginne eine neue. Nur die Personen in einer Unterhaltung können sie lesen."
+    },
+    "list": {
+      "label": "Unterhaltungen",
+      "new": "Neu",
+      "search": "Unterhaltungen durchsuchen",
+      "none": "Noch keine Unterhaltungen.",
+      "requests": "Nachrichtenanfragen",
+      "request": "Möchte dir Nachrichten senden",
+      "archived": "Archiviert ({{count}})",
+      "unread": "Ungelesen: {{count}}",
+      "muted": "Stummgeschaltet"
+    },
+    "thread": {
+      "encrypted": "Ende-zu-Ende-verschlüsselt",
+      "members": "Mitglieder: {{count}}",
+      "log": "Nachrichten",
+      "none": "Noch keine Nachrichten. Sag Hallo.",
+      "waiting": "Warte darauf, dass das Gerät eines anderen Mitglieds dieses Gerät hinzufügt. Die Nachrichten erscheinen, sobald das geschieht.",
+      "removed": "Du bist nicht mehr in dieser Unterhaltung.",
+      "failed": "Diese Unterhaltung konnte nicht aktualisiert werden. Versuche es gleich noch einmal.",
+      "typingOne": "{{name}} schreibt…",
+      "typingMany": "Mehrere Personen schreiben…"
+    },
+    "request": {
+      "title": "Nachrichtenanfrage",
+      "direct": "{{name}} möchte dir Nachrichten senden. Bis du annimmst, sieht die Person nicht, ob du sie gelesen hast.",
+      "group": "{{name}} hat dich zu dieser Gruppe hinzugefügt. Nimm an, um mitzumachen.",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "block": "Blockieren"
+    },
+    "composer": {
+      "label": "Nachricht",
+      "placeholder": "Nachricht schreiben",
+      "send": "Senden",
+      "replying": "Antwort an {{name}}",
+      "editing": "Du bearbeitest deine Nachricht",
+      "cancelDraft": "Abbrechen"
+    },
+    "message": {
+      "actions": "Aktionen für die Nachricht",
+      "reply": "Antworten",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "react": "Mit {{emoji}} reagieren",
+      "reaction": "{{emoji}}: {{count}}",
+      "edited": "bearbeitet",
+      "deleted": "Diese Nachricht wurde gelöscht",
+      "replyMissing": "Die ursprüngliche Nachricht ist nicht auf diesem Gerät"
+    },
+    "notice": {
+      "undecryptable": "Eine Nachricht von {{name}} konnte auf diesem Gerät nicht entschlüsselt werden.",
+      "joined": "{{name}} ist beigetreten.",
+      "left": "{{name}} hat die Unterhaltung verlassen.",
+      "identity-changed": "Der Sicherheitscode von {{name}} hat sich geändert. Die Person hat Nachrichten vielleicht neu eingerichtet, oder jemand versucht, ihre Nachrichten zu lesen. Überprüfe ihn, bevor du etwas Vertrauliches teilst.",
+      "device-added": "{{name}} hat ein Gerät hinzugefügt.",
+      "log-rewritten": "Der Schlüsselverlauf, den der Server für {{name}} anzeigt, stimmt nicht mehr mit dem überein, was dieses Gerät früher gesehen hat."
+    },
+    "details": {
+      "title": "Details",
+      "open": "Details der Unterhaltung",
+      "name": "Gruppenname",
+      "rename": "Umbenennen",
+      "members": "Personen",
+      "you": "Du",
+      "admin": "Admin",
+      "invited": "Eingeladen",
+      "verify": "Überprüfen",
+      "makeAdmin": "Zum Admin machen",
+      "unmakeAdmin": "Als Admin entfernen",
+      "remove": "Entfernen",
+      "addPeople": "Personen hinzufügen",
+      "add": "Hinzufügen",
+      "preferences": "Nur für dich",
+      "muted": "Benachrichtigungen stummschalten",
+      "pinned": "Oben anheften",
+      "archived": "Archivieren",
+      "leave": "Gruppe verlassen",
+      "block": "{{name}} blockieren"
+    },
+    "settings": {
+      "title": "Gruppeneinstellungen",
+      "history": "Verlauf für Personen, die später beitreten",
+      "historyJoined": "Nur Nachrichten nach dem Beitritt",
+      "historyDays": "Die letzten 30 Tage",
+      "historyAll": "Alles",
+      "whoCanAdd": "Wer Personen hinzufügen darf",
+      "admins": "Nur Admins",
+      "members": "Alle Mitglieder"
+    },
+    "new": {
+      "title": "Neue Unterhaltung",
+      "direct": "Eine Person",
+      "group": "Gruppe",
+      "name": "Gruppenname (optional)",
+      "filter": "Personen suchen",
+      "noContacts": "Niemand anzuzeigen. Hier erscheinen Personen, mit denen du ein Board teilst.",
+      "notSetUp": "Hat verschlüsselte Nachrichten nicht eingerichtet",
+      "byEmail": "Jemand anderes? Gib die vollständige E-Mail-Adresse ein",
+      "byEmailHint": "Personen außerhalb deiner Boards erhalten deine erste Nachricht als Anfrage, die sie ablehnen oder blockieren können.",
+      "find": "Suchen",
+      "notFound": "Niemand mit verschlüsselten Nachrichten verwendet diese Adresse.",
+      "pickSomeone": "Wähle mindestens eine Person.",
+      "start": "Starten"
+    },
+    "verify": {
+      "title": "{{name}} überprüfen",
+      "body": "Vergleiche diese Zahlen mit {{name}} persönlich oder in einem Anruf. Stimmen sie auf beiden Geräten überein, liest niemand dazwischen mit.",
+      "number": "Sicherheitscode",
+      "verified": "Du hast diesen Sicherheitscode überprüft.",
+      "notVerified": "Noch nicht überprüft.",
+      "mark": "Als überprüft markieren",
+      "unmark": "Überprüfung aufheben",
+      "unavailable": "Der Sicherheitscode kann erst angezeigt werden, wenn ihr beide verschlüsselte Nachrichten eingerichtet habt."
+    },
+    "errors": {
+      "generic": "Das hat nicht geklappt. Versuche es noch einmal.",
+      "send": "Die Nachricht wurde nicht gesendet. Versuche es noch einmal."
     }
   }
 }

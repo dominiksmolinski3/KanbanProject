@@ -26,7 +26,7 @@ const SECRETS_LABEL = utf8('device secrets');
 const IDENTITY_LABEL = utf8('identity key');
 const PACKAGE_LABEL = utf8('key package');
 
-interface StoredSecrets {
+export interface StoredSecrets {
   storageKey: CryptoKey;
   sealed: Uint8Array;
   identityPublic: Uint8Array;
@@ -75,6 +75,54 @@ export class NoPinError extends Error {
   }
 }
 
+export interface OpenedDevice {
+  stored: StoredSecrets;
+  secrets: DeviceSecrets;
+}
+
+export interface StoredKeyPackage {
+  initPrivateKey: Uint8Array;
+  hpkePrivateKey: Uint8Array;
+  data: Uint8Array;
+  lastResort: boolean;
+}
+
+export const keyPackageKey = (ref: Uint8Array): string => `key-package:${toBase64(ref)}`;
+
+export async function openStoredDevice(store: KeyStore): Promise<OpenedDevice> {
+  const stored = await store.get<StoredSecrets>(DEVICE_SECRETS);
+  if (!stored) {
+    throw new NoDeviceError();
+  }
+  const plain = JSON.parse(new TextDecoder().decode(await open(stored.storageKey, stored.sealed, SECRETS_LABEL)));
+  return {
+    stored,
+    secrets: {
+      signKey: fromBase64(plain.signKey),
+      signatureKey: fromBase64(plain.signatureKey),
+      credential: fromBase64(plain.credential),
+    },
+  };
+}
+
+export async function openKeyPackage(store: KeyStore, storageKey: CryptoKey, ref: Uint8Array):
+  Promise<StoredKeyPackage | null> {
+  const sealed = await store.get<Uint8Array>(keyPackageKey(ref));
+  if (!sealed) {
+    return null;
+  }
+  const plain = JSON.parse(new TextDecoder().decode(await open(storageKey, sealed, PACKAGE_LABEL)));
+  if (!plain.data) {
+    return null;
+  }
+  return {
+    initPrivateKey: fromBase64(plain.initPrivateKey),
+    hpkePrivateKey: fromBase64(plain.hpkePrivateKey),
+    data: fromBase64(plain.data),
+    lastResort: Boolean(plain.lastResort),
+  };
+}
+
 export function createDeviceVault(store: KeyStore) {
   let identity: Identity | null = null;
   let pending: { userId: number; secrets: DeviceSecrets; packages: GeneratedKeyPackage[] } | null = null;
@@ -86,26 +134,14 @@ export function createDeviceVault(store: KeyStore) {
       const sealed = await seal(storageKey, utf8(JSON.stringify({
         initPrivateKey: toBase64(secret.initPrivateKey),
         hpkePrivateKey: toBase64(secret.hpkePrivateKey),
+        data: toBase64(upload.data),
+        lastResort: upload.lastResort,
       })), PACKAGE_LABEL);
-      await store.put(`key-package:${toBase64(upload.ref)}`, sealed);
+      await store.put(keyPackageKey(upload.ref), sealed);
     }
   };
 
-  const storedDevice = async (): Promise<{ stored: StoredSecrets; secrets: DeviceSecrets }> => {
-    const stored = await store.get<StoredSecrets>(DEVICE_SECRETS);
-    if (!stored) {
-      throw new NoDeviceError();
-    }
-    const plain = JSON.parse(new TextDecoder().decode(await open(stored.storageKey, stored.sealed, SECRETS_LABEL)));
-    return {
-      stored,
-      secrets: {
-        signKey: fromBase64(plain.signKey),
-        signatureKey: fromBase64(plain.signatureKey),
-        credential: fromBase64(plain.credential),
-      },
-    };
-  };
+  const storedDevice = () => openStoredDevice(store);
 
   const heldIdentity = async (): Promise<Identity> => {
     if (identity) {

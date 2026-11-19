@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -18,16 +19,20 @@ public class CryptoDeviceSweep {
 
     private final CryptoDeviceRepository devices;
     private final KeyPackageRepository keyPackages;
+    private final KeyDirectory keyDirectory;
     private final Clock clock;
 
     @Autowired
-    public CryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages) {
-        this(devices, keyPackages, Clock.systemUTC());
+    public CryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
+                             KeyDirectory keyDirectory) {
+        this(devices, keyPackages, keyDirectory, Clock.systemUTC());
     }
 
-    CryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages, Clock clock) {
+    CryptoDeviceSweep(CryptoDeviceRepository devices, KeyPackageRepository keyPackages, KeyDirectory keyDirectory,
+                      Clock clock) {
         this.devices = devices;
         this.keyPackages = keyPackages;
+        this.keyDirectory = keyDirectory;
         this.clock = clock;
     }
 
@@ -35,7 +40,9 @@ public class CryptoDeviceSweep {
     @Transactional
     public void sweep() {
         Instant now = clock.instant();
+        List<CryptoDevice> unused = devices.findUnusedSince(now.minus(UNUSED));
         int revoked = devices.revokeUnusedSince(now.minus(UNUSED), now);
+        keyDirectory.devicesRevoked(unused, now);
         int deleted = keyPackages.deleteOfRevokedDevices();
         if (revoked > 0 || deleted > 0) {
             log.info("Revoked {} unused messaging device(s) and deleted {} key package(s)", revoked, deleted);

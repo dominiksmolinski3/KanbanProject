@@ -2,6 +2,7 @@ package pl.myproject.kanbanproject2.user;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.chat.ChatRepository;
@@ -24,6 +25,7 @@ public class UserService {
     private final TaskRepository taskRepository;
     private final BoardService boardService;
     private final ChatRepository chatRepository;
+    private final ApplicationEventPublisher events;
 
     public List<UserDto> getVisibleUsers(User caller) {
         var visible = new LinkedHashMap<Integer, User>();
@@ -66,6 +68,7 @@ public class UserService {
         user.getTasks().clear();
 
         boardService.forgetAccount(user);
+        events.publishEvent(new AccountDeleting(user));
         chatRepository.deleteDirectMessagesOf(EmailAddresses.normalise(user.getEmail()));
         userRepository.delete(user);
     }

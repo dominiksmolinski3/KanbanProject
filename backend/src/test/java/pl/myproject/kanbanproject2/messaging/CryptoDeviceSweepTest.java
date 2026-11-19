@@ -25,7 +25,7 @@ class CryptoDeviceSweepTest {
         when(devices.revokeUnusedSince(now.minus(Duration.ofDays(180)), now)).thenReturn(2);
         when(keyPackages.deleteOfRevokedDevices()).thenReturn(150);
 
-        new CryptoDeviceSweep(devices, keyPackages, Clock.fixed(now, ZoneOffset.UTC)).sweep();
+        new CryptoDeviceSweep(devices, keyPackages, mock(KeyDirectory.class), Clock.fixed(now, ZoneOffset.UTC)).sweep();
 
         InOrder order = inOrder(devices, keyPackages);
         order.verify(devices).revokeUnusedSince(now.minus(Duration.ofDays(180)), now);
@@ -38,7 +38,7 @@ class CryptoDeviceSweepTest {
         CryptoDeviceRepository devices = mock(CryptoDeviceRepository.class);
         KeyPackageRepository keyPackages = mock(KeyPackageRepository.class);
 
-        new CryptoDeviceSweep(devices, keyPackages).sweep();
+        new CryptoDeviceSweep(devices, keyPackages, mock(KeyDirectory.class)).sweep();
 
         InOrder order = inOrder(devices, keyPackages);
         order.verify(devices).revokeUnusedSince(any(), any());

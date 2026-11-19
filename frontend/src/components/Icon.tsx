@@ -15,6 +15,7 @@ const PATHS: Record<string, ReactNode> = {
   'star': <path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.6l-5.1 2.7 1-5.7-4.1-4 5.7-.8z" />,
   'calendar': <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   'check': <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  'check-double': <path d="M2.5 12.5L7 17l9.5-9.5M11 16l1 1 9.5-9.5" />,
   'checklist': <path d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M4 18.5l1.5 1.5L8 17.5M11.5 7h8.5M11.5 13h8.5M11.5 19h8.5" />,
   'paperclip': <path d="M19.5 11.5l-7.6 7.6a5 5 0 0 1-7.1-7.1l8.3-8.3a3.3 3.3 0 0 1 4.7 4.7l-8.3 8.3a1.7 1.7 0 0 1-2.4-2.4l7.6-7.6" />,
   'comment': <path d="M4 5h16v11H9.5L5 20V16H4z" />,

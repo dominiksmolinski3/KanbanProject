@@ -1,8 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../../components/Header';
+import { cryptoApi } from '../../services/cryptoApi';
+
+jest.mock('../../services/cryptoApi', () => ({ cryptoApi: { status: jest.fn() } }));
 
 const mockLogout = jest.fn();
 
@@ -43,6 +46,18 @@ describe('Header Component', () => {
   beforeEach(() => {
     global.window.scrollY = 0;
     mockLogout.mockClear();
+    cryptoApi.status.mockResolvedValue({ enabled: false, identity: null, pin: null, devices: [] });
+  });
+
+  test('links to the messages only where encrypted messaging is switched on', async () => {
+    renderHeader();
+    await waitFor(() => expect(cryptoApi.status).toHaveBeenCalled());
+    expect(screen.queryByText('header.messages')).not.toBeInTheDocument();
+
+    cryptoApi.status.mockResolvedValue({ enabled: true, identity: null, pin: null, devices: [] });
+    renderHeader();
+
+    expect((await screen.findByText('header.messages')).closest('a')).toHaveAttribute('href', '/messages');
   });
 
   test('renders the brand, the board switcher and the page links', () => {

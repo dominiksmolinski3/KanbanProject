@@ -247,7 +247,7 @@ class DeleteDetachesReferencesTest {
         private final TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
         private final UserService userService =
                 new UserService(userRepository, new UserMapper(), taskRepository, TENANT.boardService(),
-                        mock(ChatRepository.class));
+                        mock(ChatRepository.class), event -> { });
 
         @Test
         @DisplayName("clears the user_task join rows from the owning side before removing the account")
