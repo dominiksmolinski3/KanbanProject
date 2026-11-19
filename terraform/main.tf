@@ -259,6 +259,7 @@ module "api_app" {
   acs_email_connection_string      = try(module.mail[0].connection_string, "")
   acs_email_sender_address         = try(module.mail[0].sender_address, "")
   captcha_enabled                  = var.captcha_enabled
+  messaging_enabled                = var.messaging_enabled
   captcha_secret                   = var.captcha_secret
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint

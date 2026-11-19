@@ -79,6 +79,13 @@ public enum ExceptionIdentifier {
 
     UNSUPPORTED_LOCALE(BAD_REQUEST, "That language is not one this application can write mail in"),
 
+    MESSAGING_UNAVAILABLE(NOT_FOUND, "Encrypted messaging is not available"),
+    IDENTITY_KEY_EXISTS(CONFLICT, "This account already has a messaging identity key"),
+    IDENTITY_KEY_NOT_FOUND(NOT_FOUND, "This account has no messaging identity key yet"),
+    INVALID_CRYPTO_KEY(BAD_REQUEST, "The key is malformed or its signature does not verify"),
+    CRYPTO_DEVICE_NOT_FOUND(NOT_FOUND, "Messaging device not found"),
+    INVALID_KEY_PACKAGES(BAD_REQUEST, "Those key packages cannot be stored"),
+
     CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
     DATA_CONFLICT(CONFLICT, "That value conflicts with data that is already stored"),
 

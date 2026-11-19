@@ -25,6 +25,7 @@ import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,7 +72,7 @@ class RefreshTokenServiceTest {
 
     private RefreshToken stored(String token, Instant issuedAt, Instant expiresAt, Instant absoluteExpiresAt) {
         return new RefreshToken(digestOf(token), user, issuedAt, expiresAt, absoluteExpiresAt,
-                issuedAt, DeviceContext.unknown());
+                issuedAt, UUID.randomUUID(), DeviceContext.unknown());
     }
 
     private RefreshToken lastSaved() {
@@ -129,6 +130,17 @@ class RefreshTokenServiceTest {
         }
 
         @Test
+        @DisplayName("every sign-in starts a chain of its own")
+        void eachSignInStartsAChain() {
+            service.issue(user, DeviceContext.unknown());
+            var first = lastSaved().getChainId();
+            service.issue(user, DeviceContext.unknown());
+
+            assertThat(first).isNotNull();
+            assertThat(lastSaved().getChainId()).isNotNull().isNotEqualTo(first);
+        }
+
+        @Test
         @DisplayName("a non-positive lifetime is refused at construction rather than at midnight")
         void refusesANonPositiveLifetime() {
             assertThatThrownBy(() ->
@@ -164,6 +176,17 @@ class RefreshTokenServiceTest {
             assertThat(rotation.refreshToken()).isNotEqualTo("presented");
             assertThat(live.isRevoked()).as("the presented token must not survive its own use").isTrue();
             assertThat(live.getRevokedAt()).isEqualTo(NOW);
+        }
+
+        @Test
+        @DisplayName("the new token carries the chain of the one it replaces, so a messaging device stays live")
+        void rotationKeepsTheChain() {
+            RefreshToken live = stored("presented", NOW.minus(Duration.ofDays(1)), NOW.plus(TTL));
+            when(repository.findByTokenHash(digestOf("presented"))).thenReturn(Optional.of(live));
+
+            service.rotate("presented", DeviceContext.unknown());
+
+            assertThat(lastSaved().getChainId()).isEqualTo(live.getChainId());
         }
 
         @Test
@@ -348,7 +371,7 @@ class RefreshTokenServiceTest {
 
         private RefreshToken saved(long id, Instant issuedAt, Instant expiresAt, DeviceContext device) {
             var row = new RefreshToken(digestOf("t" + id), user, issuedAt, expiresAt,
-                    issuedAt.plus(ABSOLUTE_TTL), issuedAt, device);
+                    issuedAt.plus(ABSOLUTE_TTL), issuedAt, UUID.randomUUID(), device);
             setId(row, id);
             return row;
         }
@@ -424,7 +447,7 @@ class RefreshTokenServiceTest {
         void rotationKeepsTheSignInAndUpdatesTheDevice() {
             Instant signedIn = NOW.minus(Duration.ofDays(3));
             var live = new RefreshToken(digestOf("live"), user, signedIn, NOW.plus(TTL),
-                    signedIn.plus(ABSOLUTE_TTL), signedIn,
+                    signedIn.plus(ABSOLUTE_TTL), signedIn, UUID.randomUUID(),
                     new DeviceContext("198.51.100.4", "Firefox/1"));
             when(repository.findByTokenHash(digestOf("live"))).thenReturn(Optional.of(live));
 
@@ -475,7 +498,7 @@ class RefreshTokenServiceTest {
             var other = new User("other", "other@example.test", "hashed");
             other.setId(9);
             var theirs = new RefreshToken(digestOf("theirs"), other, NOW, NOW.plus(TTL),
-                    NOW.plus(ABSOLUTE_TTL), NOW, DeviceContext.unknown());
+                    NOW.plus(ABSOLUTE_TTL), NOW, UUID.randomUUID(), DeviceContext.unknown());
             setId(theirs, 5L);
             when(repository.findById(5L)).thenReturn(Optional.of(theirs));
 

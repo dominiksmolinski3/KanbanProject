@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -85,7 +86,7 @@ public class RefreshTokenService {
                 log.info("Replaced {} session(s) from the same device for user {}", replaced, user.getId());
             }
         }
-        return issueWithin(user, now.plus(absoluteExpiration), now, now, device);
+        return issueWithin(user, now.plus(absoluteExpiration), now, UUID.randomUUID(), now, device);
     }
 
     @Transactional
@@ -111,13 +112,13 @@ public class RefreshTokenService {
         log.info("Withdrew session {} for user {} on request", sessionId, user.getId());
     }
 
-    private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, Instant now,
-                               DeviceContext device) {
+    private Issued issueWithin(User user, Instant chainDeadline, Instant chainStartedAt, UUID chainId,
+                               Instant now, DeviceContext device) {
         String token = ENCODER.encodeToString(randomBytes());
         Instant slidingDeadline = now.plus(refreshExpiration);
         Instant expiresAt = slidingDeadline.isBefore(chainDeadline) ? slidingDeadline : chainDeadline;
         RefreshToken saved = refreshTokens.save(new RefreshToken(
-                hash(token), user, now, expiresAt, chainDeadline, chainStartedAt, device));
+                hash(token), user, now, expiresAt, chainDeadline, chainStartedAt, chainId, device));
         return new Issued(token, saved.getId());
     }
 
@@ -143,7 +144,7 @@ public class RefreshTokenService {
 
         User user = stored.getUser();
         Issued issued = issueWithin(
-                user, stored.getAbsoluteExpiresAt(), stored.getChainStartedAt(), now, device);
+                user, stored.getAbsoluteExpiresAt(), stored.getChainStartedAt(), stored.getChainId(), now, device);
         return new Rotation(user, issued.token(), issued.sessionId());
     }
 

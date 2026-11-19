@@ -157,6 +157,10 @@ resource "azurerm_container_app" "main" {
         name  = "CAPTCHA_ENABLED"
         value = tostring(var.captcha_enabled)
       }
+      env {
+        name  = "MESSAGING_ENABLED"
+        value = tostring(var.messaging_enabled)
+      }
       dynamic "env" {
         for_each = local.captcha_secret_configured ? [1] : []
         content {

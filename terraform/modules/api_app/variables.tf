@@ -144,6 +144,10 @@ variable "captcha_enabled" {
   type = bool
 }
 
+variable "messaging_enabled" {
+  type = bool
+}
+
 variable "captcha_secret" {
   type      = string
   sensitive = true
