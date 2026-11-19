@@ -282,7 +282,8 @@
     "logout": "Wyloguj",
     "activity": "Aktywność",
     "flow": "Przepływ",
-    "logoAlt": "Logo Kanban"
+    "logoAlt": "Logo Kanban",
+    "messages": "Wiadomości"
   },
   "forms": {
     "textLimit": {
@@ -874,7 +875,150 @@
       "VALIDATION_ERROR": "Sprawdź pola i spróbuj ponownie.",
       "VERIFICATION_CODE_EXPIRED": "Ten kod wygasł. Poproś o nowy.",
       "VIEWER_READ_ONLY": "Możesz przeglądać tę tablicę, ale nie możesz jej zmieniać.",
-      "WRONG_PASSWORD": "Obecne hasło jest nieprawidłowe."
+      "WRONG_PASSWORD": "Obecne hasło jest nieprawidłowe.",
+      "CONVERSATION_NOT_FOUND": "Ta rozmowa nie istnieje albo już do niej nie należysz.",
+      "NOT_CONVERSATION_ADMIN": "Tylko administrator tej rozmowy może to zrobić.",
+      "INVALID_CONVERSATION_REQUEST": "Taka zmiana w rozmowie jest niedozwolona.",
+      "RECIPIENT_NOT_SET_UP": "Ta osoba nie skonfigurowała jeszcze szyfrowanych wiadomości.",
+      "STALE_EPOCH": "Rozmowa zmieniła się w międzyczasie. Spróbuj ponownie.",
+      "MESSAGE_TOO_LARGE": "Wiadomość jest za długa."
+    }
+  },
+  "messages": {
+    "title": "Wiadomości",
+    "back": "Wróć do rozmów",
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "unknownPerson": "Ktoś",
+    "formerMember": "Były uczestnik",
+    "untitledGroup": "Nowa grupa",
+    "gate": {
+      "off": "Szyfrowane wiadomości nie są dostępne na tym serwerze.",
+      "setUp": "Najpierw skonfiguruj szyfrowane wiadomości na tym urządzeniu. Klucze zostają na Twoich urządzeniach, a serwer nigdy nie widzi, co piszesz.",
+      "unlock": "Ta przeglądarka nie jest jeszcze jednym z Twoich urządzeń do wiadomości. Odblokuj ją kodem PIN albo kluczem odzyskiwania, żeby czytać i wysyłać tu wiadomości.",
+      "open": "Przejdź do zalogowanych urządzeń"
+    },
+    "empty": {
+      "title": "Twoje wiadomości są szyfrowane end-to-end",
+      "body": "Wybierz rozmowę albo zacznij nową. Czytać ją mogą tylko osoby, które w niej są."
+    },
+    "list": {
+      "label": "Rozmowy",
+      "new": "Nowa",
+      "search": "Szukaj rozmów",
+      "none": "Nie masz jeszcze żadnych rozmów.",
+      "requests": "Prośby o rozmowę",
+      "request": "Chce wysyłać Ci wiadomości",
+      "archived": "Zarchiwizowane ({{count}})",
+      "unread": "Nieprzeczytane: {{count}}",
+      "muted": "Wyciszona"
+    },
+    "thread": {
+      "encrypted": "Szyfrowanie end-to-end",
+      "members": "Uczestnicy: {{count}}",
+      "log": "Wiadomości",
+      "none": "Nie ma jeszcze wiadomości. Przywitaj się.",
+      "waiting": "Czekamy, aż urządzenie innego uczestnika doda to urządzenie. Wiadomości pojawią się, gdy tylko to zrobi.",
+      "removed": "Nie należysz już do tej rozmowy.",
+      "failed": "Nie udało się zaktualizować tej rozmowy. Spróbuj ponownie za chwilę.",
+      "typingOne": "{{name}} pisze…",
+      "typingMany": "Kilka osób pisze…"
+    },
+    "request": {
+      "title": "Prośba o rozmowę",
+      "direct": "{{name}} chce wysyłać Ci wiadomości. Dopóki nie zaakceptujesz, nie zobaczy, czy to przeczytano.",
+      "group": "{{name}} dodaje Cię do tej grupy. Zaakceptuj, żeby wziąć udział.",
+      "accept": "Akceptuj",
+      "decline": "Odrzuć",
+      "block": "Zablokuj"
+    },
+    "composer": {
+      "label": "Wiadomość",
+      "placeholder": "Napisz wiadomość",
+      "send": "Wyślij",
+      "replying": "Odpowiedź dla: {{name}}",
+      "editing": "Edytujesz swoją wiadomość",
+      "cancelDraft": "Anuluj"
+    },
+    "message": {
+      "actions": "Działania na wiadomości",
+      "reply": "Odpowiedz",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "react": "Zareaguj: {{emoji}}",
+      "reaction": "{{emoji}}: {{count}}",
+      "edited": "edytowano",
+      "deleted": "Ta wiadomość została usunięta",
+      "replyMissing": "Oryginalnej wiadomości nie ma na tym urządzeniu"
+    },
+    "notice": {
+      "undecryptable": "Nie udało się odszyfrować na tym urządzeniu wiadomości od: {{name}}.",
+      "joined": "Dołącza: {{name}}.",
+      "left": "Opuszcza rozmowę: {{name}}.",
+      "identity-changed": "Zmienił się kod bezpieczeństwa osoby {{name}}. Mogła ponownie skonfigurować wiadomości albo ktoś próbuje czytać jej wiadomości. Zweryfikuj go, zanim udostępnisz coś poufnego.",
+      "device-added": "Nowe urządzenie dodaje: {{name}}.",
+      "log-rewritten": "Historia kluczy, którą serwer pokazuje dla osoby {{name}}, nie zgadza się już z tym, co to urządzenie widziało wcześniej."
+    },
+    "details": {
+      "title": "Szczegóły",
+      "open": "Szczegóły rozmowy",
+      "name": "Nazwa grupy",
+      "rename": "Zmień nazwę",
+      "members": "Osoby",
+      "you": "Ty",
+      "admin": "Administrator",
+      "invited": "Zaproszenie",
+      "verify": "Zweryfikuj",
+      "makeAdmin": "Nadaj uprawnienia administratora",
+      "unmakeAdmin": "Odbierz uprawnienia administratora",
+      "remove": "Usuń",
+      "addPeople": "Dodaj osoby",
+      "add": "Dodaj",
+      "preferences": "Tylko dla Ciebie",
+      "muted": "Wycisz powiadomienia",
+      "pinned": "Przypnij na górze",
+      "archived": "Archiwizuj",
+      "leave": "Opuść grupę",
+      "block": "Zablokuj: {{name}}"
+    },
+    "settings": {
+      "title": "Ustawienia grupy",
+      "history": "Historia dla osób, które dołączą później",
+      "historyJoined": "Tylko wiadomości od dołączenia",
+      "historyDays": "Ostatnie 30 dni",
+      "historyAll": "Wszystko",
+      "whoCanAdd": "Kto może dodawać osoby",
+      "admins": "Tylko administratorzy",
+      "members": "Wszyscy uczestnicy"
+    },
+    "new": {
+      "title": "Nowa rozmowa",
+      "direct": "Jedna osoba",
+      "group": "Grupa",
+      "name": "Nazwa grupy (opcjonalnie)",
+      "filter": "Szukaj osób",
+      "noContacts": "Nie ma kogo pokazać. Pojawią się tu osoby, z którymi masz wspólną tablicę.",
+      "notSetUp": "Nie skonfigurowano szyfrowanych wiadomości",
+      "byEmail": "Ktoś inny? Wpisz pełny adres e-mail",
+      "byEmailHint": "Osoby spoza Twoich tablic dostaną pierwszą wiadomość jako prośbę, którą mogą odrzucić albo zablokować.",
+      "find": "Znajdź",
+      "notFound": "Nikt z szyfrowanymi wiadomościami nie używa tego adresu.",
+      "pickSomeone": "Wybierz co najmniej jedną osobę.",
+      "start": "Rozpocznij"
+    },
+    "verify": {
+      "title": "Weryfikacja: {{name}}",
+      "body": "Porównaj te liczby z osobą {{name}} na żywo albo podczas rozmowy. Jeśli zgadzają się na obu urządzeniach, nikt pośrodku nie czyta Waszych wiadomości.",
+      "number": "Kod bezpieczeństwa",
+      "verified": "Ten kod bezpieczeństwa został zweryfikowany.",
+      "notVerified": "Jeszcze nie zweryfikowano.",
+      "mark": "Oznacz jako zweryfikowany",
+      "unmark": "Usuń weryfikację",
+      "unavailable": "Kodu bezpieczeństwa nie da się pokazać, dopóki obie osoby nie skonfigurują szyfrowanych wiadomości."
+    },
+    "errors": {
+      "generic": "Nie udało się. Spróbuj ponownie.",
+      "send": "Wiadomość nie została wysłana. Spróbuj ponownie."
     }
   }
 }

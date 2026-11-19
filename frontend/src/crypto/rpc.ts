@@ -1,6 +1,9 @@
 import type { DeviceVault } from './deviceVault';
+import type { MessagingEngine } from './engine';
 
-export type VaultOperation = keyof DeviceVault;
+export type WorkerOperations = DeviceVault & MessagingEngine;
+
+export type VaultOperation = keyof WorkerOperations;
 
 export interface VaultRequest {
   id: number;
@@ -12,9 +15,9 @@ export type VaultResponse =
   | { id: number; ok: true; value: unknown }
   | { id: number; ok: false; error: { name: string; message: string } };
 
-export async function answer(vault: DeviceVault, request: VaultRequest): Promise<VaultResponse> {
+export async function answer(operations: Partial<WorkerOperations>, request: VaultRequest): Promise<VaultResponse> {
   try {
-    const operation = vault[request.operation] as (...args: unknown[]) => Promise<unknown>;
+    const operation = operations[request.operation] as ((...args: unknown[]) => Promise<unknown>) | undefined;
     if (typeof operation !== 'function') {
       throw new Error(`Unknown operation ${String(request.operation)}`);
     }

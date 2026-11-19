@@ -10,7 +10,8 @@ import { getSessionId } from '../../services/session';
 import { useAuth } from '../../context/AuthContext';
 
 export const MESSAGING_KEYS = ['messagingKeys'] as const;
-const STATUS = [...MESSAGING_KEYS, 'status'] as const;
+export const MESSAGING_STATUS = [...MESSAGING_KEYS, 'status'] as const;
+const STATUS = MESSAGING_STATUS;
 const THIS_BROWSER = [...MESSAGING_KEYS, 'thisBrowser'] as const;
 
 const NO_DEVICES: MessagingDevice[] = [];

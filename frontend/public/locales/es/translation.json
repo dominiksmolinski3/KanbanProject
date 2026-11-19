@@ -265,6 +265,7 @@
       "add": "Añadir fila"
     },
     "header": {
+        "messages": "Mensajes",
       "board": "Tablero",
       "settings": "Ajustes",
       "language": "Idioma",
@@ -801,6 +802,12 @@
             "server": "El servidor no respondió. Inténtalo de nuevo en un momento."
         },
         "codes": {
+            "CONVERSATION_NOT_FOUND": "Esa conversación no existe o ya no estás en ella.",
+            "NOT_CONVERSATION_ADMIN": "Solo un admin de esta conversación puede hacer eso.",
+            "INVALID_CONVERSATION_REQUEST": "Ese cambio en la conversación no está permitido.",
+            "RECIPIENT_NOT_SET_UP": "Esa persona aún no ha configurado los mensajes cifrados.",
+            "STALE_EPOCH": "La conversación cambió mientras tanto. Inténtalo de nuevo.",
+            "MESSAGE_TOO_LARGE": "El mensaje es demasiado largo.",
             "ACCESS_DENIED": "No tienes permiso para hacer eso.",
             "ALREADY_BOARD_MEMBER": "Esa persona ya está en este tablero.",
             "ATTACHMENT_NOT_FOUND": "Ese archivo adjunto ya no existe.",
@@ -875,6 +882,143 @@
             "VERIFICATION_CODE_EXPIRED": "Ese código ha caducado. Solicita uno nuevo.",
             "VIEWER_READ_ONLY": "Puedes ver este tablero, pero no cambiarlo.",
             "WRONG_PASSWORD": "La contraseña actual no es correcta."
+        }
+    },
+    "messages": {
+        "title": "Mensajes",
+        "back": "Volver a las conversaciones",
+        "cancel": "Cancelar",
+        "close": "Cerrar",
+        "unknownPerson": "Alguien",
+        "formerMember": "Antiguo miembro",
+        "untitledGroup": "Grupo nuevo",
+        "gate": {
+            "off": "Los mensajes cifrados no están disponibles en este servidor.",
+            "setUp": "Configura primero los mensajes cifrados en este dispositivo. Tus claves se quedan en tus dispositivos y el servidor nunca ve lo que escribes.",
+            "unlock": "Este navegador aún no es uno de tus dispositivos de mensajería. Desbloquéalo con tu PIN o tu clave de recuperación para leer y enviar mensajes aquí.",
+            "open": "Ir a Dispositivos con sesión iniciada"
+        },
+        "empty": {
+            "title": "Tus mensajes están cifrados de extremo a extremo",
+            "body": "Elige una conversación o empieza una nueva. Solo las personas que están en ella pueden leerla."
+        },
+        "list": {
+            "label": "Conversaciones",
+            "new": "Nueva",
+            "search": "Buscar conversaciones",
+            "none": "Aún no hay conversaciones.",
+            "requests": "Solicitudes de mensajes",
+            "request": "Quiere enviarte mensajes",
+            "archived": "Archivadas ({{count}})",
+            "unread": "Sin leer: {{count}}",
+            "muted": "Silenciada"
+        },
+        "thread": {
+            "encrypted": "Cifrado de extremo a extremo",
+            "members": "Miembros: {{count}}",
+            "log": "Mensajes",
+            "none": "Aún no hay mensajes. Saluda.",
+            "waiting": "Esperando a que el dispositivo de otro miembro añada este. Los mensajes aparecerán en cuanto lo haga.",
+            "removed": "Ya no estás en esta conversación.",
+            "failed": "No se pudo actualizar esta conversación. Inténtalo de nuevo en un momento.",
+            "typingOne": "{{name}} está escribiendo…",
+            "typingMany": "Varias personas están escribiendo…"
+        },
+        "request": {
+            "title": "Solicitud de mensajes",
+            "direct": "{{name}} quiere enviarte mensajes. No sabrá si lo has leído hasta que aceptes.",
+            "group": "{{name}} te ha añadido a este grupo. Acepta para participar.",
+            "accept": "Aceptar",
+            "decline": "Rechazar",
+            "block": "Bloquear"
+        },
+        "composer": {
+            "label": "Mensaje",
+            "placeholder": "Escribe un mensaje",
+            "send": "Enviar",
+            "replying": "Respondiendo a {{name}}",
+            "editing": "Editando tu mensaje",
+            "cancelDraft": "Cancelar"
+        },
+        "message": {
+            "actions": "Acciones del mensaje",
+            "reply": "Responder",
+            "edit": "Editar",
+            "delete": "Eliminar",
+            "react": "Reaccionar con {{emoji}}",
+            "reaction": "{{emoji}}: {{count}}",
+            "edited": "editado",
+            "deleted": "Este mensaje se eliminó",
+            "replyMissing": "El mensaje original no está en este dispositivo"
+        },
+        "notice": {
+            "undecryptable": "Un mensaje de {{name}} no se pudo descifrar en este dispositivo.",
+            "joined": "{{name}} se ha unido.",
+            "left": "{{name}} ha salido.",
+            "identity-changed": "El código de seguridad de {{name}} ha cambiado. Puede que haya vuelto a configurar los mensajes, o que alguien intente leer sus mensajes. Verifícalo antes de compartir nada delicado.",
+            "device-added": "{{name}} ha añadido un dispositivo.",
+            "log-rewritten": "El historial de claves que el servidor muestra para {{name}} ya no coincide con lo que este dispositivo vio antes."
+        },
+        "details": {
+            "title": "Detalles",
+            "open": "Detalles de la conversación",
+            "name": "Nombre del grupo",
+            "rename": "Cambiar nombre",
+            "members": "Personas",
+            "you": "Tú",
+            "admin": "Admin",
+            "invited": "Invitado",
+            "verify": "Verificar",
+            "makeAdmin": "Hacer admin",
+            "unmakeAdmin": "Quitar como admin",
+            "remove": "Quitar",
+            "addPeople": "Añadir personas",
+            "add": "Añadir",
+            "preferences": "Solo para ti",
+            "muted": "Silenciar notificaciones",
+            "pinned": "Fijar arriba",
+            "archived": "Archivar",
+            "leave": "Salir del grupo",
+            "block": "Bloquear a {{name}}"
+        },
+        "settings": {
+            "title": "Ajustes del grupo",
+            "history": "Historial para quienes se unan más tarde",
+            "historyJoined": "Solo los mensajes desde que se unen",
+            "historyDays": "Los últimos 30 días",
+            "historyAll": "Todo",
+            "whoCanAdd": "Quién puede añadir personas",
+            "admins": "Solo los admins",
+            "members": "Todos los miembros"
+        },
+        "new": {
+            "title": "Nueva conversación",
+            "direct": "Una persona",
+            "group": "Grupo",
+            "name": "Nombre del grupo (opcional)",
+            "filter": "Buscar personas",
+            "noContacts": "No hay nadie que mostrar. Aquí aparecen las personas con las que compartes un tablero.",
+            "notSetUp": "No ha configurado los mensajes cifrados",
+            "byEmail": "¿Otra persona? Escribe su dirección de correo completa",
+            "byEmailHint": "Las personas de fuera de tus tableros reciben tu primer mensaje como solicitud, que pueden rechazar o bloquear.",
+            "find": "Buscar",
+            "notFound": "Nadie con mensajes cifrados usa esa dirección.",
+            "pickSomeone": "Elige al menos una persona.",
+            "start": "Empezar"
+        },
+        "verify": {
+            "title": "Verificar a {{name}}",
+            "body": "Compara estos números con {{name}} en persona o en una llamada. Si coinciden en ambos dispositivos, nadie lee vuestros mensajes por el camino.",
+            "number": "Código de seguridad",
+            "verified": "Has verificado este código de seguridad.",
+            "notVerified": "Aún sin verificar.",
+            "mark": "Marcar como verificado",
+            "unmark": "Quitar la verificación",
+            "unavailable": "El código de seguridad no se puede mostrar hasta que ambos hayáis configurado los mensajes cifrados."
+        },
+        "errors": {
+            "generic": "No ha funcionado. Inténtalo de nuevo.",
+            "send": "El mensaje no se ha enviado. Inténtalo de nuevo."
         }
     }
 }
