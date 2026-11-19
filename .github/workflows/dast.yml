@@ -40,6 +40,8 @@ jobs:
           JWT_SECRET_KEY=Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==
           ACS_EMAIL_CONNECTION_STRING=
           ACS_EMAIL_SENDER_ADDRESS=
+          MESSAGING_ENABLED=true
+          MESSAGING_PIN_KEY=ci-only-messaging-pin-key
           CAPTCHA_ENABLED=false
           CAPTCHA_SECRET=
           VITE_RECAPTCHA_SITE_KEY=

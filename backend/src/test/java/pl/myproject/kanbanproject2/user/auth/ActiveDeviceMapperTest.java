@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,7 +20,7 @@ class ActiveDeviceMapperTest {
         user.setId(7);
         return new RefreshToken(
                 "a".repeat(64), user, RENEWED, RENEWED.plusSeconds(2_592_000),
-                SIGNED_IN.plusSeconds(7_776_000), SIGNED_IN,
+                SIGNED_IN.plusSeconds(7_776_000), SIGNED_IN, UUID.randomUUID(),
                 new DeviceContext("203.0.113.7", "Mozilla/5.0 (X11; Linux x86_64)"));
     }
 
@@ -51,7 +52,7 @@ class ActiveDeviceMapperTest {
         var user = new User("someone", "someone@example.test", "hashed");
         user.setId(7);
         var legacy = new RefreshToken("b".repeat(64), user, RENEWED, RENEWED.plusSeconds(60),
-                RENEWED.plusSeconds(120), RENEWED, DeviceContext.unknown());
+                RENEWED.plusSeconds(120), RENEWED, UUID.randomUUID(), DeviceContext.unknown());
 
         ActiveDeviceDto device = mapper.apply(legacy);
 

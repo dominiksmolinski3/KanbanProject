@@ -41,7 +41,7 @@ class RefreshTokenRotationDatabaseTest {
 
         @Bean
         RefreshTokenService refreshTokenService(RefreshTokenRepository tokens, ActiveDeviceMapper mapper) {
-            return new RefreshTokenService(tokens, mapper, 2_592_000_000L, 7_776_000_000L);
+            return new RefreshTokenService(tokens, mapper, 2_592_000_000L, 7_776_000_000L, event -> { });
         }
     }
 

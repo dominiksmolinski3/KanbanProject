@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { getSessionId } from '../../services/session';
 import type { ActiveDevice } from '../../types/api';
+import { MESSAGING_KEYS } from './useMessagingKeys';
 
 const DEVICES = ['devices'] as const;
 const NONE: ActiveDevice[] = [];
@@ -47,7 +48,10 @@ export function useDevices() {
         return;
       }
       toast.success(t('devices.messages.ended'));
-      await queryClient.invalidateQueries({ queryKey: DEVICES });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: DEVICES }),
+        queryClient.invalidateQueries({ queryKey: MESSAGING_KEYS }),
+      ]);
     } catch (error) {
       console.error('Error:', error);
       toast.error(t('devices.messages.endError'));

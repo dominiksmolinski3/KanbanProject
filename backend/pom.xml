@@ -462,6 +462,19 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
+                                        <include>pl.myproject.kanbanproject2.messaging</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.93</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
                                         <include>pl.myproject.kanbanproject2.storage</include>
                                     </includes>
                                     <limits>

@@ -168,6 +168,12 @@ variable "acs" {
   default = null
 }
 
+variable "messaging_enabled" {
+  description = "Enable end-to-end encrypted messaging in the backend while it is being built."
+  type        = bool
+  default     = false
+}
+
 variable "captcha_enabled" {
   description = "Enable captcha verification in backend."
   type        = bool

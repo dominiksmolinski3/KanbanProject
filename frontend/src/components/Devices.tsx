@@ -2,12 +2,15 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Icon from './Icon';
 import DeviceItem from './devices/DeviceItem';
+import MessagingPanel from './devices/MessagingPanel';
 import { useDevices } from './devices/useDevices';
+import { useMessagingKeys } from './devices/useMessagingKeys';
 import '../styles/components/Devices.css';
 
 function Devices() {
   const { t } = useTranslation();
   const { sessions, isLoading, endingId, isCurrentSession, endSession } = useDevices();
+  const messaging = useMessagingKeys();
 
   return (
     <div className="page-shell devices-page">
@@ -21,6 +24,8 @@ function Devices() {
           {t('devices.demoNotice')}
         </p>
       )}
+
+      <MessagingPanel messaging={messaging} />
 
       <section className="page-panel devices-list" aria-label={t('devices.title')}>
         {isLoading && <div className="page-empty devices-empty">{t('devices.messages.loading')}</div>}
@@ -38,6 +43,9 @@ function Devices() {
             session={session}
             isCurrent={isCurrentSession(session)}
             ending={endingId === session.id}
+            messagingKey={messaging.state === 'off' || messaging.state === 'loading'
+              ? undefined
+              : messaging.keyForSession(session.id)?.signatureKey ?? null}
             onEnd={endSession}
           />
         ))}
