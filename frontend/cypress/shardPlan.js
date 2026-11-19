@@ -7,6 +7,7 @@ export const SECONDS = {
   'cypress/e2e/board/rows.cy.js': 35,
   'cypress/e2e/chat/board-chat.cy.js': 22,
   'cypress/e2e/journeys/complete-workflow.cy.js': 29,
+  'cypress/e2e/messages/direct-messages.cy.js': 30,
   'cypress/e2e/security/csp.cy.js': 6,
   'cypress/e2e/tasks/keyboard-movement.cy.js': 16,
   'cypress/e2e/tasks/stale-edit.cy.js': 7,
