@@ -49,7 +49,7 @@ export default function MessagingRecover({ onRegister, onClose }: MessagingRecov
 
   return (
     <Modal onClose={pending ? () => undefined : onClose} overlayClassName="modal-overlay" contentClassName="form-modal messaging-setup" busy={pending}>
-      <form className="messaging-setup-step" onSubmit={submit}>
+      <form className="form-container messaging-setup-step" onSubmit={submit}>
         <ModalTitle className="messaging-setup-title">{t('devices.messaging.recover.title')}</ModalTitle>
         <p className="messaging-muted">{t('devices.messaging.recover.body')}</p>
         <label className="field-label" htmlFor="messaging-recovery-input">{t('devices.messaging.recover.label')}</label>

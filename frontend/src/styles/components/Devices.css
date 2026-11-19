@@ -212,7 +212,7 @@
   gap: var(--space-8);
 }
 
-.messaging-setup {
+.form-modal.messaging-setup {
   max-width: 520px;
 }
 

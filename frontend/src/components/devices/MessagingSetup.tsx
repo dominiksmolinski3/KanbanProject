@@ -66,7 +66,7 @@ export default function MessagingSetup({ mode, onRegister, onClose }: MessagingS
   return (
     <Modal onClose={pending ? () => undefined : onClose} overlayClassName="modal-overlay" contentClassName="form-modal messaging-setup" busy={pending}>
       {step === 'intro' ? (
-        <div className="messaging-setup-step">
+        <div className="form-container messaging-setup-step">
           <span className="messaging-setup-icon" aria-hidden="true"><Icon name="lock" /></span>
           <ModalTitle className="messaging-setup-title">
             {mode === 'create' ? t('devices.messaging.setup.introTitle') : t('devices.messaging.reset.title')}
@@ -97,7 +97,7 @@ export default function MessagingSetup({ mode, onRegister, onClose }: MessagingS
           </div>
         </div>
       ) : (
-        <form className="messaging-setup-step" onSubmit={finish}>
+        <form className="form-container messaging-setup-step" onSubmit={finish}>
           <ModalTitle className="messaging-setup-title">{t('devices.messaging.setup.keyTitle')}</ModalTitle>
           <p className="messaging-muted">{t('devices.messaging.setup.keyBody')}</p>
           <div className="messaging-recovery" dir="ltr" aria-label={t('devices.messaging.setup.keyLabel')} role="group">
