@@ -885,6 +885,11 @@
         }
     },
     "messages": {
+        "status": {
+            "sent": "Envoyé",
+            "delivered": "Distribué",
+            "read": "Lu"
+        },
         "title": "Messages",
         "back": "Retour aux conversations",
         "cancel": "Annuler",

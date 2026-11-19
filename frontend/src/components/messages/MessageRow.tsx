@@ -5,9 +5,12 @@ import { useOutsideClick } from '../../hooks/useOutsideClick';
 import Icon from '../Icon';
 import { REACTIONS } from './reactions';
 
+export type DeliveryStatus = 'sent' | 'delivered' | 'read';
+
 interface MessageRowProps {
   message: ArchivedMessage;
   mine: boolean;
+  status?: DeliveryStatus | null;
   senderName: string | null;
   nameOf: (userId: number | null) => string;
   replied: ArchivedMessage | null | undefined;
@@ -18,7 +21,7 @@ interface MessageRowProps {
   onReact: (message: ArchivedMessage, emoji: string, on: boolean) => void;
 }
 
-export default function MessageRow({ message, mine, senderName, nameOf, replied, userId, onReply, onEdit, onDelete, onReact }: MessageRowProps) {
+export default function MessageRow({ message, mine, status = null, senderName, nameOf, replied, userId, onReply, onEdit, onDelete, onReact }: MessageRowProps) {
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -56,6 +59,12 @@ export default function MessageRow({ message, mine, senderName, nameOf, replied,
         <span className="message-meta">
           <time dateTime={message.sentAt}>{time}</time>
           {message.editedAt && !message.deleted && <span>{t('messages.message.edited')}</span>}
+          {status && (
+            <span className={`message-status message-status--${status}`} role="img"
+              aria-label={t(`messages.status.${status}`)} title={t(`messages.status.${status}`)}>
+              <Icon name={status === 'sent' ? 'check' : 'check-double'} size="sm" />
+            </span>
+          )}
         </span>
         {Object.keys(message.reactions).length > 0 && (
           <div className="message-reactions">

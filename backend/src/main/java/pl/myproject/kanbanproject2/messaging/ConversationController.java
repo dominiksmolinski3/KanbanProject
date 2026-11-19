@@ -88,6 +88,13 @@ public class ConversationController {
         return ResponseEntity.ok(conversations.accept(currentUser, id));
     }
 
+    @PostMapping("/{id}/delivered")
+    public ResponseEntity<Void> markDelivered(@PathVariable Long id, @Valid @RequestBody ReadRequest request,
+                                              @AuthenticationPrincipal User currentUser) {
+        conversations.markDelivered(currentUser, id, request);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/read")
     public ResponseEntity<Void> markRead(@PathVariable Long id, @Valid @RequestBody ReadRequest request,
                                          @AuthenticationPrincipal User currentUser) {

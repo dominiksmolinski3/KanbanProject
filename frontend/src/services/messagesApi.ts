@@ -18,12 +18,16 @@ export interface ConversationMemberInfo {
   role: MemberRole;
   state: MemberState;
   joinedAt: string;
+  joinedSeq: number;
+  deliveredSeq: number;
+  readSeq: number;
 }
 
 export interface Membership {
   role: MemberRole;
   state: MemberState;
   joinedSeq: number;
+  deliveredSeq: number;
   readSeq: number;
   muted: boolean;
   pinned: boolean;
@@ -120,6 +124,8 @@ export const messagesApi = {
   removeMember: (id: number, userId: number) => deleteChecked(`${CONVERSATIONS}/${id}/members/${userId}`),
 
   accept: (id: number) => postJson<Conversation>(`${CONVERSATIONS}/${id}/accept`),
+
+  markDelivered: (id: number, seq: number) => postVoid(`${CONVERSATIONS}/${id}/delivered`, { seq }),
 
   markRead: (id: number, seq: number) => postVoid(`${CONVERSATIONS}/${id}/read`, { seq }),
 

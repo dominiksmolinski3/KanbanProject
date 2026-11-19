@@ -29,6 +29,7 @@ CREATE TABLE conversation_members (
     role            varchar(16) NOT NULL,
     state           varchar(16) NOT NULL,
     joined_seq      bigint      NOT NULL,
+    delivered_seq   bigint      NOT NULL,
     read_seq        bigint      NOT NULL,
     muted           boolean     NOT NULL,
     pinned          boolean     NOT NULL,

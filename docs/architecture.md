@@ -1565,6 +1565,11 @@ board chat above is untouched until board channels replace it.
 - **Trust.** `key_log` appends every identity and device change per account, each entry hashing the
   previous one. Clients pin the last hash they saw and turn changes into notices: a changed
   security code (60 digits, the same on both sides) is a warning, a new device a calm note.
+- **Receipts are always on.** Each member has a delivered and a read position (`POST
+  /conversations/{id}/delivered` and `/read`, both only moving forward), shared with the other
+  members. A device syncs conversations with news in the background and reports what it decrypted.
+  Your message shows sent, delivered or read by the lowest position among the people who were there
+  when it was sent.
 - **Typing goes over REST**, `POST /conversations/{id}/typing`, relayed as a frame and never stored.
   Every frame on `/user/queue/conversations` is `{type, conversationId, seq, userId}`.
 

@@ -5,6 +5,7 @@ public enum ConversationEventType {
     COMMIT,
     WELCOME,
     MEMBERS,
+    DELIVERED,
     READ,
     TYPING
 }

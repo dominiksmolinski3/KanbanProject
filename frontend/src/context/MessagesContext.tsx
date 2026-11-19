@@ -149,6 +149,31 @@ export function MessagesProvider({ children, messenger: given, initialConversati
     };
   }, [selectedKey, messenger, syncOne, markRead]);
 
+  const delivering = useRef(new Set<number>());
+  const behindKey = conversations
+    .filter((each) => each.id !== selectedId && each.lastSeq > each.me.deliveredSeq)
+    .map((each) => `${each.id}:${each.lastSeq}`)
+    .join(',');
+
+  useEffect(() => {
+    const behind = conversationsRef.current
+      .filter((each) => each.id !== selectedRef.current && each.lastSeq > each.me.deliveredSeq)
+      .filter((each) => !delivering.current.has(each.id));
+    behind.forEach((conversation) => {
+      delivering.current.add(conversation.id);
+      messenger.sync(conversation)
+        .then((result) => {
+          dispatch({ type: 'merge', conversationId: conversation.id, items: result.items });
+          if (result.outcome === 'synced' && result.cursor > conversation.me.deliveredSeq) {
+            return messagesApi.markDelivered(conversation.id, result.cursor).then(refreshList);
+          }
+          return undefined;
+        })
+        .catch(() => undefined)
+        .finally(() => delivering.current.delete(conversation.id));
+    });
+  }, [behindKey, messenger, refreshList]);
+
   const handle = useCallback((event: ConversationEvent) => {
     const conversationId = event.conversationId;
     if (event.type === 'TYPING' && conversationId !== null && event.userId !== null) {

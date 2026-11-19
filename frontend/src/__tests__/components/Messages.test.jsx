@@ -24,14 +24,16 @@ jest.mock('../../services/messagesApi', () => ({
   messagesApi: {
     list: jest.fn(), create: jest.fn(), contacts: jest.fn(), lookup: jest.fn(), update: jest.fn(),
     addMembers: jest.fn(), setRole: jest.fn(), removeMember: jest.fn(), accept: jest.fn(), markRead: jest.fn(),
-    typing: jest.fn(), block: jest.fn(),
+    typing: jest.fn(), block: jest.fn(), markDelivered: jest.fn(),
   },
 }));
 
 const member = (userId, name, extra = {}) => ({
-  userId, name, hasAvatar: false, role: 'MEMBER', state: 'ACTIVE', joinedAt: '2026-11-19T10:00:00Z', ...extra,
+  userId, name, hasAvatar: false, role: 'MEMBER', state: 'ACTIVE', joinedAt: '2026-11-19T10:00:00Z', joinedSeq: 1,
+  deliveredSeq: 3, readSeq: 3, ...extra,
 });
-const me = (extra = {}) => ({ role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, readSeq: 1, muted: false, pinned: false,
+const me = (extra = {}) => ({ role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deliveredSeq: 3, readSeq: 1, muted: false,
+  pinned: false,
   archived: false, ...extra });
 const conversation = (id, kind, members, extra = {}) => ({
   id, kind, groupId: 'AA==', epoch: 1, needsCommit: false, historyVisibility: 'JOINED', whoCanAdd: 'ADMINS', lastSeq: 3,
@@ -55,7 +57,7 @@ function fakeMessenger(overrides = {}) {
   return {
     device: jest.fn(async () => ({ userId: 1, deviceId: 10 })),
     acceptWelcomes: jest.fn(async () => []),
-    sync: jest.fn(async () => ({ outcome: 'synced', items: [] })),
+    sync: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 3 })),
     send: jest.fn(async (_conversation, payload) => (payload.t === 'text' ? [text(9, payload.id, 1, payload.text)] : [])),
     rename: jest.fn(async () => {}),
     checkTrust: jest.fn(async () => []),
@@ -89,6 +91,7 @@ beforeEach(() => {
   ]);
   messagesApi.markRead.mockResolvedValue();
   messagesApi.typing.mockResolvedValue();
+  messagesApi.markDelivered.mockResolvedValue();
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
 });
 
@@ -227,6 +230,70 @@ describe('a thread', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'messages.message.delete' }));
     await waitFor(() => expect(messenger.send).toHaveBeenLastCalledWith(expect.anything(),
       expect.objectContaining({ t: 'delete', target: 'mine' })));
+  });
+
+  test('own messages show sent, delivered and read, counting only people who were there', async () => {
+    const people = [ania, { ...bartek, deliveredSeq: 6, readSeq: 4 }, { ...celina, state: 'ACTIVE', joinedSeq: 6, deliveredSeq: 6, readSeq: 6 }];
+    messagesApi.list.mockResolvedValue([conversation(6, 'GROUP', people, { lastSeq: 7 })]);
+    renderMessages(fakeMessenger({
+      history: jest.fn(async () => [
+        text(4, 'r', 1, 'read by all'),
+        text(5, 'd', 1, 'delivered to all'),
+        text(7, 's', 1, 'only sent'),
+        text(8, 'theirs', 2, 'not mine'),
+        text(9, 'gone', 1, '', { deleted: true }),
+      ]),
+    }), 6);
+
+    const statusOf = async (words) => (await screen.findByText(words)).closest('.message-bubble')
+      .querySelector('.message-status')?.getAttribute('aria-label') ?? null;
+    expect(await statusOf('read by all')).toBe('messages.status.read');
+    expect(await statusOf('delivered to all')).toBe('messages.status.delivered');
+    expect(await statusOf('only sent')).toBe('messages.status.sent');
+    expect(await statusOf('not mine')).toBeNull();
+    expect(screen.getByText('messages.message.deleted').closest('.message-bubble').querySelector('.message-status')).toBeNull();
+  });
+
+  test('a message to nobody else stays sent', async () => {
+    messagesApi.list.mockResolvedValue([conversation(6, 'GROUP', [ania], { lastSeq: 2 })]);
+    renderMessages(fakeMessenger({ history: jest.fn(async () => [text(2, 'alone', 1, 'just me')]) }), 6);
+    expect((await screen.findByText('just me')).closest('.message-bubble').querySelector('.message-status'))
+      .toHaveAttribute('aria-label', 'messages.status.sent');
+  });
+
+  test('conversations with news are synced in the background and reported as delivered', async () => {
+    const behind = conversation(9, 'DIRECT', [ania, member(2, 'Bartek')], { lastSeq: 7, me: me({ deliveredSeq: 3 }) });
+    const waiting = conversation(10, 'DIRECT', [ania, member(4, 'Darek')], { lastSeq: 2, me: me({ deliveredSeq: 0 }) });
+    messagesApi.list.mockResolvedValue([direct, behind, waiting]);
+    const messenger = fakeMessenger({
+      sync: jest.fn(async (target) => (target.id === 9
+        ? { outcome: 'synced', items: [text(7, 'x', 2, 'arrived')], cursor: 7 }
+        : { outcome: 'waiting', items: [], cursor: 0 })),
+    });
+    renderMessages(messenger, 5);
+
+    await waitFor(() => expect(messagesApi.markDelivered).toHaveBeenCalledWith(9, 7));
+    expect(messenger.sync).toHaveBeenCalledWith(expect.objectContaining({ id: 10 }));
+    expect(messagesApi.markDelivered).not.toHaveBeenCalledWith(10, expect.anything());
+    expect(messagesApi.markDelivered).not.toHaveBeenCalledWith(5, expect.anything());
+  });
+
+  test('a background sync that fails reports nothing and is tried again on the next change', async () => {
+    const behind = conversation(9, 'DIRECT', [ania, member(2, 'Bartek')], { lastSeq: 7, me: me({ deliveredSeq: 3 }) });
+    messagesApi.list.mockResolvedValue([direct, behind]);
+    const sync = jest.fn(async (target) => {
+      if (target.id === 9) throw new Error('offline');
+      return { outcome: 'synced', items: [], cursor: 3 };
+    });
+    renderMessages(fakeMessenger({ sync }), 5);
+
+    await waitFor(() => expect(sync).toHaveBeenCalledWith(expect.objectContaining({ id: 9 })));
+    messagesApi.list.mockResolvedValue([direct, { ...behind, lastSeq: 8 }]);
+    const [handle] = watchConversations.mock.calls[0];
+    await act(async () => handle({ type: 'MESSAGE', conversationId: 9, seq: 8, userId: 2 }));
+
+    await waitFor(() => expect(sync.mock.calls.filter(([target]) => target.id === 9)).toHaveLength(2));
+    expect(messagesApi.markDelivered).not.toHaveBeenCalled();
   });
 
   test('a draft is dropped with Escape or its close button', async () => {

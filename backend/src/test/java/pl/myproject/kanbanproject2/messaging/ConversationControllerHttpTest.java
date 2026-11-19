@@ -44,8 +44,8 @@ class ConversationControllerHttpTest {
 
     private static final ConversationDto CONVERSATION = new ConversationDto(5L, ConversationKind.GROUP, new byte[]{1, 2},
             3, true, HistoryVisibility.DAYS_30, WhoCanAdd.ADMINS, 9, NOW, NOW, 2,
-            new MembershipDto(MemberRole.ADMIN, MemberState.ACTIVE, 1, 7, false, true, false),
-            List.of(new MemberDto(2, "Bartek", false, MemberRole.MEMBER, MemberState.REQUEST, NOW)));
+            new MembershipDto(MemberRole.ADMIN, MemberState.ACTIVE, 1, 8, 7, false, true, false),
+            List.of(new MemberDto(2, "Bartek", false, MemberRole.MEMBER, MemberState.REQUEST, NOW, 1, 6, 5)));
 
     @BeforeEach
     void setUp() {
@@ -79,7 +79,10 @@ class ConversationControllerHttpTest {
                 .andExpect(jsonPath("$.needsCommit").value(true))
                 .andExpect(jsonPath("$.historyVisibility").value("DAYS_30"))
                 .andExpect(jsonPath("$.me.pinned").value(true))
-                .andExpect(jsonPath("$.members[0].state").value("REQUEST"));
+                .andExpect(jsonPath("$.members[0].state").value("REQUEST"))
+                .andExpect(jsonPath("$.members[0].deliveredSeq").value(6))
+                .andExpect(jsonPath("$.members[0].readSeq").value(5))
+                .andExpect(jsonPath("$.me.deliveredSeq").value(8));
     }
 
     @Test
@@ -137,10 +140,13 @@ class ConversationControllerHttpTest {
         mvc.perform(post("/conversations/5/accept")).andExpect(status().isOk());
         mvc.perform(post("/conversations/5/read").contentType(MediaType.APPLICATION_JSON).content(body(Map.of("seq", 4))))
                 .andExpect(status().isNoContent());
+        mvc.perform(post("/conversations/5/delivered").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("seq", 6)))).andExpect(status().isNoContent());
         mvc.perform(post("/conversations/5/typing")).andExpect(status().isNoContent());
 
         verify(conversations).removeMember(caller, 5L, 2);
         verify(conversations).markRead(caller, 5L, new ReadRequest(4L));
+        verify(conversations).markDelivered(caller, 5L, new ReadRequest(6L));
         verify(conversations).typing(caller, 5L);
     }
 

@@ -885,6 +885,11 @@
     }
   },
   "messages": {
+    "status": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read"
+    },
     "title": "Messages",
     "back": "Back to conversations",
     "cancel": "Cancel",

@@ -15,12 +15,14 @@ public class ConversationMapper implements Function<ConversationView, Conversati
                 conversation.getEpoch(), conversation.isNeedsCommit(), conversation.getHistoryVisibility(),
                 conversation.getWhoCanAdd(), conversation.getLastSeq(), conversation.getCreatedAt(),
                 conversation.getLastActivityAt(), view.unread(),
-                new MembershipDto(me.getRole(), me.getState(), me.getJoinedSeq(), me.getReadSeq(), me.isMuted(),
+                new MembershipDto(me.getRole(), me.getState(), me.getJoinedSeq(), me.getDeliveredSeq(), me.getReadSeq(),
+                        me.isMuted(),
                         me.isPinned(), me.isArchived()),
                 view.members().stream()
                         .map(member -> new MemberDto(member.getUser().getId(), member.getUser().getName(),
                                 member.getUser().getAvatarBlobName() != null, member.getRole(), member.getState(),
-                                member.getJoinedAt()))
+                                member.getJoinedAt(), member.getJoinedSeq(), member.getDeliveredSeq(),
+                                member.getReadSeq()))
                         .toList());
     }
 }

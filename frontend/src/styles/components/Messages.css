@@ -400,6 +400,15 @@
   opacity: 0.8;
 }
 
+.message-status {
+  display: inline-flex;
+  align-items: center;
+}
+
+.message-status--read {
+  color: var(--kb-gold);
+}
+
 .message-reactions {
   display: flex;
   flex-wrap: wrap;

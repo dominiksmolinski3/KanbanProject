@@ -885,6 +885,11 @@
         }
     },
     "messages": {
+        "status": {
+            "sent": "送信済み",
+            "delivered": "配信済み",
+            "read": "既読"
+        },
         "title": "メッセージ",
         "back": "会話の一覧に戻る",
         "cancel": "キャンセル",

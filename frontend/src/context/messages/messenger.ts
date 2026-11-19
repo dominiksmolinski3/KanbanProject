@@ -14,6 +14,7 @@ export type SyncOutcome = 'synced' | 'waiting' | 'removed';
 export interface SyncResult {
   outcome: SyncOutcome;
   items: ArchivedMessage[];
+  cursor: number;
 }
 
 const isStale = (error: unknown) => error instanceof ApiError && error.code === 'STALE_EPOCH';
@@ -79,12 +80,12 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
     for (;;) {
       const status = await vault.groupStatus(conversation.id);
       const page = await messagesApi.messages(conversation.id, status.cursor);
-      if (!page.length) return { outcome: 'synced', items };
+      if (!page.length) return { outcome: 'synced', items, cursor: status.cursor };
       const received = await vault.receiveMessages(conversation.id, page, await directory(conversation.id),
         local.deviceId);
       items.push(...received.items);
-      if (received.removed) return { outcome: 'removed', items };
-      if (page.length < 100) return { outcome: 'synced', items };
+      if (received.removed) return { outcome: 'removed', items, cursor: received.cursor };
+      if (page.length < 100) return { outcome: 'synced', items, cursor: received.cursor };
     }
   }
 
@@ -173,10 +174,10 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
       status = await vault.groupStatus(conversation.id);
     }
     if (!status.hasGroup) {
-      if (conversation.epoch !== 0) return { outcome: 'waiting', items: [] };
+      if (conversation.epoch !== 0) return { outcome: 'waiting', items: [], cursor: 0 };
       await commit(conversation, local);
       status = await vault.groupStatus(conversation.id);
-      if (!status.hasGroup) return { outcome: 'waiting', items: [] };
+      if (!status.hasGroup) return { outcome: 'waiting', items: [], cursor: 0 };
     }
     return pull(conversation, local);
   }

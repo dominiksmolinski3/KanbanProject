@@ -387,7 +387,25 @@ class ConversationServiceTest {
             service.markRead(bartek, 5L, new ReadRequest(1L));
 
             assertThat(other.getReadSeq()).isEqualTo(2L);
-            verify(notifier).notify(List.of(bartek), new ConversationEvent(ConversationEventType.READ, 5L, 2L, 2));
+            assertThat(other.getDeliveredSeq()).isEqualTo(2L);
+            verify(notifier).notify(List.of(ania, bartek), new ConversationEvent(ConversationEventType.READ, 5L, 2L, 2));
+        }
+
+        @Test
+        @DisplayName("delivery only moves forward, never past the last message, tells everyone, and does not count as read")
+        void delivering() {
+            group.take(MlsMessageKind.COMMIT, NOW);
+            group.take(MlsMessageKind.APPLICATION, NOW);
+
+            assertThatThrownBy(() -> service.markDelivered(bartek, 5L, new ReadRequest(3L)))
+                    .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.INVALID_CONVERSATION_REQUEST);
+            service.markDelivered(bartek, 5L, new ReadRequest(2L));
+            service.markDelivered(bartek, 5L, new ReadRequest(1L));
+
+            assertThat(other.getDeliveredSeq()).isEqualTo(2L);
+            assertThat(other.getReadSeq()).isZero();
+            verify(notifier).notify(List.of(ania, bartek),
+                    new ConversationEvent(ConversationEventType.DELIVERED, 5L, 2L, 2));
         }
     }
 

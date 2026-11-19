@@ -45,6 +45,9 @@ public class ConversationMember {
     @Column(name = "joined_seq", nullable = false)
     private long joinedSeq;
 
+    @Column(name = "delivered_seq", nullable = false)
+    private long deliveredSeq;
+
     @Column(name = "read_seq", nullable = false)
     private long readSeq;
 
@@ -70,6 +73,7 @@ public class ConversationMember {
         this.role = role;
         this.state = state;
         this.joinedSeq = conversation.getNextSeq();
+        this.deliveredSeq = conversation.getLastSeq();
         this.readSeq = conversation.getLastSeq();
         this.joinedAt = joinedAt;
     }
@@ -79,7 +83,12 @@ public class ConversationMember {
         this.archived = false;
     }
 
+    public void deliveredUpTo(long seq) {
+        this.deliveredSeq = Math.max(this.deliveredSeq, seq);
+    }
+
     public void readUpTo(long seq) {
+        deliveredUpTo(seq);
         this.readSeq = Math.max(this.readSeq, seq);
     }
 
@@ -125,6 +134,10 @@ public class ConversationMember {
 
     public long getJoinedSeq() {
         return joinedSeq;
+    }
+
+    public long getDeliveredSeq() {
+        return deliveredSeq;
     }
 
     public long getReadSeq() {

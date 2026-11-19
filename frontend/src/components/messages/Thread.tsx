@@ -6,7 +6,7 @@ import type { ArchivedMessage } from '../../crypto/engine';
 import Icon from '../Icon';
 import Composer, { type Draft } from './Composer';
 import ConversationDetails from './ConversationDetails';
-import MessageRow from './MessageRow';
+import MessageRow, { type DeliveryStatus } from './MessageRow';
 import { conversationTitle, others } from './conversationTitle';
 
 export default function Thread() {
@@ -42,6 +42,14 @@ export default function Thread() {
     setDraft(null);
   };
 
+  const statusOf = (message: ArchivedMessage): DeliveryStatus | null => {
+    if (message.kind !== 'text' || message.senderId !== userId || message.deleted) return null;
+    const readers = conversation.members.filter((member) => member.userId !== userId && member.joinedSeq <= message.seq);
+    if (readers.length && readers.every((member) => member.readSeq >= message.seq)) return 'read';
+    if (readers.length && readers.every((member) => member.deliveredSeq >= message.seq)) return 'delivered';
+    return 'sent';
+  };
+
   let lastDay = '';
   const rows = messages.map((message: ArchivedMessage, index) => {
     const day = new Date(message.sentAt).toLocaleDateString(i18n.language, { dateStyle: 'medium' });
@@ -57,6 +65,7 @@ export default function Thread() {
         key={message.id}
         message={message}
         mine={mine}
+        status={statusOf(message)}
         userId={userId}
         senderName={showSender ? personName(message.senderId) : null}
         nameOf={personName}

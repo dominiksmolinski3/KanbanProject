@@ -35,6 +35,7 @@ describe('messagesApi', () => {
     await messagesApi.accept(5);
     await messagesApi.markRead(5, 9);
     await messagesApi.typing(5);
+    await messagesApi.markDelivered(5, 8);
 
     expect(sent(0)).toEqual({ path: '/api/conversations', method: 'POST',
       body: { kind: 'GROUP', userIds: [2, 3], historyVisibility: 'ALL' } });
@@ -45,6 +46,7 @@ describe('messagesApi', () => {
     expect(sent(5)).toEqual({ path: '/api/conversations/5/accept', method: 'POST', body: undefined });
     expect(sent(6)).toEqual({ path: '/api/conversations/5/read', method: 'POST', body: { seq: 9 } });
     expect(sent(7)).toEqual({ path: '/api/conversations/5/typing', method: 'POST', body: undefined });
+    expect(sent(8)).toEqual({ path: '/api/conversations/5/delivered', method: 'POST', body: { seq: 8 } });
   });
 
   test('carries the MLS traffic: directory, claims, commits, messages and welcomes', async () => {

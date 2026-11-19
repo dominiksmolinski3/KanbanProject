@@ -41,9 +41,11 @@ class FakeServer {
       id: 7, kind: 'GROUP', groupId: toBase64(new TextEncoder().encode('group-7')), epoch: this.epoch,
       needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS',
       lastSeq: this.messages.length, createdAt: '2026-11-19T10:00:00Z', lastActivityAt: '2026-11-19T10:00:00Z',
-      unread: 0, me: { role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, readSeq: 0, muted: false, pinned: false, archived: false },
+      unread: 0, me: { role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deliveredSeq: 0, readSeq: 0, muted: false, pinned: false,
+        archived: false },
       members: this.memberIds.map((userId) => ({ userId, name: `user ${userId}`, hasAvatar: false, role: 'MEMBER',
-        state: 'ACTIVE', joinedAt: this.joinedAt[userId] ?? '2026-11-19T10:00:00Z' })),
+        state: 'ACTIVE', joinedAt: this.joinedAt[userId] ?? '2026-11-19T10:00:00Z', joinedSeq: 1, deliveredSeq: 0,
+        readSeq: 0 })),
     };
   }
 
@@ -156,6 +158,7 @@ describe('the messenger', () => {
     await ania.messenger.send(mockServer.conversation(), textPayload('hello', null));
     const atBartek = await bartek.messenger.sync(mockServer.conversation());
     expect(atBartek.items.map((item) => item.text)).toEqual(['hello']);
+    expect(atBartek.cursor).toBe(mockServer.messages.length);
 
     const [hello] = atBartek.items;
     await bartek.messenger.send(mockServer.conversation(), textPayload('hi back', hello.id));
@@ -169,7 +172,7 @@ describe('the messenger', () => {
     await ania.messenger.sync(mockServer.conversation());
     const late = await addDevice(2);
 
-    expect((await late.messenger.sync(mockServer.conversation())).outcome).toBe('waiting');
+    expect(await late.messenger.sync(mockServer.conversation())).toEqual({ outcome: 'waiting', items: [], cursor: 0 });
   });
 
   test('sending into a group that changed adds the newcomer first and shares the history the setting allows', async () => {

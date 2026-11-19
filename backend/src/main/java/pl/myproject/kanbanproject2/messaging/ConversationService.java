@@ -257,18 +257,35 @@ public class ConversationService {
     }
 
     @Transactional
-    public void markRead(User caller, Long conversationId, ReadRequest request) {
-        ConversationMember me = access.requireMember(caller, conversationId);
-        if (request.seq() > me.getConversation().getLastSeq()) {
-            throw invalid("Nie ma jeszcze takiej wiadomości");
+    public void markDelivered(User caller, Long conversationId, ReadRequest request) {
+        ConversationMember me = requirePosition(caller, conversationId, request);
+        if (request.seq() <= me.getDeliveredSeq()) {
+            return;
         }
+        me.deliveredUpTo(request.seq());
+        members.save(me);
+        notifier.notify(everyone(me.getConversation()), new ConversationEvent(ConversationEventType.DELIVERED,
+                conversationId, request.seq(), caller.getId()));
+    }
+
+    @Transactional
+    public void markRead(User caller, Long conversationId, ReadRequest request) {
+        ConversationMember me = requirePosition(caller, conversationId, request);
         if (request.seq() <= me.getReadSeq()) {
             return;
         }
         me.readUpTo(request.seq());
         members.save(me);
-        notifier.notify(List.of(caller), new ConversationEvent(ConversationEventType.READ, conversationId,
-                request.seq(), caller.getId()));
+        notifier.notify(everyone(me.getConversation()), new ConversationEvent(ConversationEventType.READ,
+                conversationId, request.seq(), caller.getId()));
+    }
+
+    private ConversationMember requirePosition(User caller, Long conversationId, ReadRequest request) {
+        ConversationMember me = access.requireMember(caller, conversationId);
+        if (request.seq() > me.getConversation().getLastSeq()) {
+            throw invalid("Nie ma jeszcze takiej wiadomości");
+        }
+        return me;
     }
 
     @Transactional

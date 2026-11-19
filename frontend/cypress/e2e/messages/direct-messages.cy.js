@@ -91,7 +91,8 @@ describe('Encrypted direct messages', () => {
 
       openConversationWith(member.username);
       cy.contains('.message-text', 'Hi back', { timeout: 30000 });
-      cy.contains('.message-text', 'Hello from the owner');
+      cy.contains('.message-text', 'Hello from the owner').closest('.message-bubble')
+        .find('[aria-label="Read"]', { timeout: 30000 }).should('exist');
       cy.get('button[aria-label="Conversation details"]').click();
       cy.contains('button', 'Verify').click();
       cy.get('[aria-label="Security code"] span').should('have.length', 12);
