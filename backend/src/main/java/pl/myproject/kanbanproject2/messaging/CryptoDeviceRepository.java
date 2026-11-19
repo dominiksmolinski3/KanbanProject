@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,4 +38,22 @@ public interface CryptoDeviceRepository extends JpaRepository<CryptoDevice, Long
     @Query("UPDATE CryptoDevice device SET device.revokedAt = :when "
             + "WHERE device.revokedAt IS NULL AND device.lastSeenAt < :cutoff")
     int revokeUnusedSince(@Param("cutoff") Instant cutoff, @Param("when") Instant when);
+
+    @Query("SELECT device FROM CryptoDevice device WHERE device.sessionChain = :chain AND device.revokedAt IS NULL")
+    List<CryptoDevice> findLiveOnChain(@Param("chain") UUID chain);
+
+    @Query("SELECT device FROM CryptoDevice device JOIN FETCH device.user "
+            + "WHERE device.revokedAt IS NULL AND device.lastSeenAt < :cutoff")
+    List<CryptoDevice> findUnusedSince(@Param("cutoff") Instant cutoff);
+
+    @Query("SELECT device FROM CryptoDevice device WHERE device.user IN :users ORDER BY device.id")
+    List<CryptoDevice> findAllOf(@Param("users") Collection<User> users);
+
+    @Query("SELECT device FROM CryptoDevice device JOIN FETCH device.user "
+            + "WHERE device.id IN :ids AND device.revokedAt IS NULL")
+    List<CryptoDevice> findLiveByIds(@Param("ids") Collection<Long> ids);
+
+    @Query("SELECT DISTINCT device.user.id FROM CryptoDevice device "
+            + "WHERE device.user.id IN :userIds AND device.revokedAt IS NULL")
+    List<Integer> usersWithLiveDevices(@Param("userIds") Collection<Integer> userIds);
 }

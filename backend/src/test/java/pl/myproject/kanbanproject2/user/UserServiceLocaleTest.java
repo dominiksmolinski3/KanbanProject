@@ -34,7 +34,7 @@ class UserServiceLocaleTest {
         account.setId(USER_ID);
         account.setLocale("en");
         userService = new UserService(userRepository, new UserMapper(), mock(TaskRepository.class),
-                tenant.boardService(), mock(ChatRepository.class));
+                tenant.boardService(), mock(ChatRepository.class), event -> { });
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(account));
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));

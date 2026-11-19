@@ -37,6 +37,7 @@ public class CryptoKeyService {
     private final IdentityKeyMapper identityMapper;
     private final IdentityBackupMapper backupMapper;
     private final CryptoDeviceMapper deviceMapper;
+    private final KeyDirectory keyDirectory;
     private final Clock clock;
 
     @Autowired
@@ -44,15 +45,16 @@ public class CryptoKeyService {
                             IdentityPinRepository pins, CryptoDeviceRepository devices,
                             KeyPackageRepository keyPackages, RefreshTokenRepository sessions, PinService pinService,
                             IdentityKeyMapper identityMapper, IdentityBackupMapper backupMapper,
-                            CryptoDeviceMapper deviceMapper) {
+                            CryptoDeviceMapper deviceMapper, KeyDirectory keyDirectory) {
         this(properties, identities, pins, devices, keyPackages, sessions, pinService, identityMapper, backupMapper,
-                deviceMapper, Clock.systemUTC());
+                deviceMapper, keyDirectory, Clock.systemUTC());
     }
 
     CryptoKeyService(MessagingProperties properties, IdentityKeyRepository identities, IdentityPinRepository pins,
                      CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
                      RefreshTokenRepository sessions, PinService pinService, IdentityKeyMapper identityMapper,
-                     IdentityBackupMapper backupMapper, CryptoDeviceMapper deviceMapper, Clock clock) {
+                     IdentityBackupMapper backupMapper, CryptoDeviceMapper deviceMapper, KeyDirectory keyDirectory,
+                     Clock clock) {
         this.properties = properties;
         this.identities = identities;
         this.pins = pins;
@@ -63,6 +65,7 @@ public class CryptoKeyService {
         this.identityMapper = identityMapper;
         this.backupMapper = backupMapper;
         this.deviceMapper = deviceMapper;
+        this.keyDirectory = keyDirectory;
         this.clock = clock;
     }
 
@@ -83,8 +86,10 @@ public class CryptoKeyService {
             throw new GlobalException(ExceptionIdentifier.IDENTITY_KEY_EXISTS,
                     "To konto ma już klucz tożsamości do wiadomości");
         }
+        Instant now = clock.instant();
         IdentityKey saved = identities.save(
-                new IdentityKey(caller, request.publicKey(), request.wrappedPrivate(), clock.instant()));
+                new IdentityKey(caller, request.publicKey(), request.wrappedPrivate(), now));
+        keyDirectory.identityChanged(caller, saved.getPublicKey(), now);
         log.info("Created a messaging identity key for user {}", caller.getId());
         return identityMapper.apply(saved);
     }
@@ -95,11 +100,14 @@ public class CryptoKeyService {
         requirePublicKey(request.publicKey());
         IdentityKey identity = requireIdentity(caller);
         Instant now = clock.instant();
+        List<CryptoDevice> live = devices.findLiveFor(caller);
         keyPackages.deleteAllOf(caller);
         int revoked = devices.revokeAllFor(caller, now);
+        keyDirectory.devicesRevoked(live, now);
         pins.findById(caller.getId()).ifPresent(pins::delete);
         identity.replace(request.publicKey(), request.wrappedPrivate(), now);
         IdentityKey saved = identities.save(identity);
+        keyDirectory.identityChanged(caller, saved.getPublicKey(), now);
         log.info("Replaced the messaging identity key for user {} and revoked {} device(s)", caller.getId(), revoked);
         return identityMapper.apply(saved);
     }
@@ -143,11 +151,14 @@ public class CryptoKeyService {
         requireDistinct(request.keyPackages());
         requireAtMostOneLastResort(request.keyPackages());
 
+        List<CryptoDevice> onChain = devices.findLiveOnChain(chain);
         keyPackages.deleteAllOnChain(chain);
         int replaced = devices.revokeOnChain(chain, now);
+        keyDirectory.devicesRevoked(onChain, now);
         CryptoDevice device = devices.save(new CryptoDevice(caller, chain, request.signatureKey(),
                 request.credential(), request.identitySignature(), label(userAgent), now));
         store(device, request.keyPackages(), now);
+        keyDirectory.deviceAdded(device, now);
         log.info("Registered messaging device {} for user {} (replaced {})", device.getId(), caller.getId(), replaced);
         return deviceMapper.apply(new LiveCryptoDevice(device, request.sessionId(),
                 keyPackages.countByDeviceAndLastResortFalse(device)));
@@ -160,9 +171,14 @@ public class CryptoKeyService {
         CryptoDevice device = requireLiveDevice(caller, deviceId);
         UUID chain = liveChainOf(caller, request.sessionId(), now);
         if (!chain.equals(device.getSessionChain())) {
-            devices.findLiveFor(caller).stream()
+            List<CryptoDevice> displaced = devices.findLiveFor(caller).stream()
                     .filter(other -> !other.getId().equals(deviceId) && chain.equals(other.getSessionChain()))
-                    .forEach(other -> other.revokeAt(now));
+                    .toList();
+            displaced.forEach(other -> {
+                other.revokeAt(now);
+                keyPackages.deleteAllOfDevice(other);
+            });
+            keyDirectory.devicesRevoked(displaced, now);
         }
         device.attachTo(chain, label(userAgent), now);
         devices.save(device);
@@ -174,9 +190,11 @@ public class CryptoKeyService {
     public void forgetDevice(User caller, Long deviceId) {
         requireEnabled();
         CryptoDevice device = requireLiveDevice(caller, deviceId);
-        device.revokeAt(clock.instant());
+        Instant now = clock.instant();
+        device.revokeAt(now);
         devices.save(device);
         keyPackages.deleteAllOfDevice(device);
+        keyDirectory.devicesRevoked(List.of(device), now);
         log.info("Forgot messaging device {} for user {}", deviceId, caller.getId());
     }
 

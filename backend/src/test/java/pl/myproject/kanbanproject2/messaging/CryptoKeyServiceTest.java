@@ -42,6 +42,7 @@ class CryptoKeyServiceTest {
     private CryptoDeviceRepository devices;
     private KeyPackageRepository keyPackages;
     private RefreshTokenRepository sessions;
+    private KeyDirectory keyDirectory;
     private CryptoKeyService service;
     private User caller;
     private Ed25519TestKeys identityKeys;
@@ -51,13 +52,14 @@ class CryptoKeyServiceTest {
         var pinService = new PinService(properties, new PinEvaluator(properties), identities, pins,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         return new CryptoKeyService(properties, identities, pins, devices, keyPackages, sessions, pinService,
-                new IdentityKeyMapper(), new IdentityBackupMapper(), new CryptoDeviceMapper(),
+                new IdentityKeyMapper(), new IdentityBackupMapper(), new CryptoDeviceMapper(), keyDirectory,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @BeforeEach
     void setUp() {
         identities = mock(IdentityKeyRepository.class);
+        keyDirectory = mock(KeyDirectory.class);
         pins = mock(IdentityPinRepository.class);
         devices = mock(CryptoDeviceRepository.class);
         keyPackages = mock(KeyPackageRepository.class);
