@@ -1,6 +1,6 @@
 const KEY_DATABASE = 'kanban-messaging-keys';
 
-const panel = () => cy.contains('h2', 'Encrypted messages').closest('section');
+const panel = (options) => cy.contains('h2', 'Encrypted messages', options).closest('section', options);
 
 const saveTheRecoveryKey = () => {
   cy.get('[role="dialog"]').within(() => {
@@ -25,10 +25,12 @@ describe('Encrypted messaging keys', () => {
   beforeEach(() => {
     cy.loginAsTestUser();
     cy.visit('/sessions');
+    forgetThisBrowser();
+    cy.reload();
   });
 
   it('sets this browser up behind a recovery key, and that key alone brings it back', () => {
-    panel().should(($panel) => expect($panel.text()).to.match(/Set up on this browser|Start over/));
+    panel({ timeout: 10000 }).should(($panel) => expect($panel.text()).to.match(/Set up on this browser|Start over/));
     panel().then(($panel) => {
       const button = $panel.text().includes('Start over') ? 'Start over' : 'Set up on this browser';
       cy.wrap($panel).contains('button', button).click();

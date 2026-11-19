@@ -7,6 +7,7 @@ import { deviceVault } from '../../crypto/client';
 import { generateRecoveryKey, recoveryKeyGroups } from '../../crypto/recoveryKey';
 import { cryptoApi } from '../../services/cryptoApi';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import '../../styles/components/Forms.css';
 
 interface MessagingSetupProps {
   mode: 'create' | 'replace';

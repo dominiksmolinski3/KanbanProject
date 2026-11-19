@@ -7,6 +7,7 @@ import { fromBase64 } from '../../crypto/bytes';
 import { normalizeRecoveryKey } from '../../crypto/recoveryKey';
 import { cryptoApi } from '../../services/cryptoApi';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
+import '../../styles/components/Forms.css';
 
 interface MessagingRecoverProps {
   onRegister: () => Promise<void>;

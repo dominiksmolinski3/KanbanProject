@@ -9,5 +9,6 @@ import java.util.List;
 public record KeyPackagesRequest(
         @NotNull @Size(min = 1, max = MAX_UPLOAD) List<@Valid @NotNull KeyPackageUpload> keyPackages) {
 
-    public static final int MAX_UPLOAD = 100;
+    // ONE_TIME_PACKAGES in frontend/src/crypto/constants.ts, plus the last-resort package.
+    public static final int MAX_UPLOAD = 101;
 }

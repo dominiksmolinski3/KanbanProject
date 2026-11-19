@@ -131,7 +131,7 @@ class CryptoControllerHttpTest {
         String shortSignature = json.writeValueAsString(Map.of(
                 "sessionId", 12, "signatureKey", b64(32), "credential", b64(10), "identitySignature", b64(63),
                 "keyPackages", List.of()));
-        List<Map<String, Object>> tooMany = java.util.stream.IntStream.range(0, 101)
+        List<Map<String, Object>> tooMany = java.util.stream.IntStream.range(0, 102)
                 .mapToObj(i -> Map.<String, Object>of("ref", b64(32), "data", b64(10), "lastResort", false)).toList();
         String hoard = json.writeValueAsString(Map.of(
                 "sessionId", 12, "signatureKey", b64(32), "credential", b64(10), "identitySignature", b64(64),
@@ -142,6 +142,20 @@ class CryptoControllerHttpTest {
         mvc.perform(post("/crypto/devices").contentType(MediaType.APPLICATION_JSON).content(hoard))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("a new device may bring a full set of one-time packages and its last-resort package")
+    void registerDeviceWithAFullSet() throws Exception {
+        when(service.registerDevice(eq(caller), any())).thenReturn(new CryptoDeviceDto(31L, 12L, new byte[32], AT, 100));
+        List<Map<String, Object>> fullSet = java.util.stream.IntStream.range(0, 101)
+                .mapToObj(i -> Map.<String, Object>of("ref", b64(32), "data", b64(10), "lastResort", i == 100)).toList();
+        String body = json.writeValueAsString(Map.of(
+                "sessionId", 12, "signatureKey", b64(32), "credential", b64(10), "identitySignature", b64(64),
+                "keyPackages", fullSet));
+
+        mvc.perform(post("/crypto/devices").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
     }
 
     @Test
