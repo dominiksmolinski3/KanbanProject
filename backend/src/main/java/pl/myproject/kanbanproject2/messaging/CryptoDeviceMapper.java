@@ -10,7 +10,7 @@ public class CryptoDeviceMapper implements Function<LiveCryptoDevice, CryptoDevi
     @Override
     public CryptoDeviceDto apply(LiveCryptoDevice live) {
         CryptoDevice device = live.device();
-        return new CryptoDeviceDto(device.getId(), live.sessionId(), device.getSignatureKey(),
-                device.getCreatedAt(), live.keyPackages());
+        return new CryptoDeviceDto(device.getId(), live.sessionId(), device.getSignatureKey(), device.getLabel(),
+                device.getCreatedAt(), device.getLastSeenAt(), live.keyPackages());
     }
 }

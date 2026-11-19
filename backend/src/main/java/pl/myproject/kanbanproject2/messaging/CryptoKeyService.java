@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
 import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
+import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RefreshToken;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
 
@@ -28,9 +29,11 @@ public class CryptoKeyService {
 
     private final MessagingProperties properties;
     private final IdentityKeyRepository identities;
+    private final IdentityPinRepository pins;
     private final CryptoDeviceRepository devices;
     private final KeyPackageRepository keyPackages;
     private final RefreshTokenRepository sessions;
+    private final PinService pinService;
     private final IdentityKeyMapper identityMapper;
     private final IdentityBackupMapper backupMapper;
     private final CryptoDeviceMapper deviceMapper;
@@ -38,22 +41,25 @@ public class CryptoKeyService {
 
     @Autowired
     public CryptoKeyService(MessagingProperties properties, IdentityKeyRepository identities,
-                            CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
-                            RefreshTokenRepository sessions, IdentityKeyMapper identityMapper,
-                            IdentityBackupMapper backupMapper, CryptoDeviceMapper deviceMapper) {
-        this(properties, identities, devices, keyPackages, sessions, identityMapper, backupMapper, deviceMapper,
-                Clock.systemUTC());
+                            IdentityPinRepository pins, CryptoDeviceRepository devices,
+                            KeyPackageRepository keyPackages, RefreshTokenRepository sessions, PinService pinService,
+                            IdentityKeyMapper identityMapper, IdentityBackupMapper backupMapper,
+                            CryptoDeviceMapper deviceMapper) {
+        this(properties, identities, pins, devices, keyPackages, sessions, pinService, identityMapper, backupMapper,
+                deviceMapper, Clock.systemUTC());
     }
 
-    CryptoKeyService(MessagingProperties properties, IdentityKeyRepository identities,
+    CryptoKeyService(MessagingProperties properties, IdentityKeyRepository identities, IdentityPinRepository pins,
                      CryptoDeviceRepository devices, KeyPackageRepository keyPackages,
-                     RefreshTokenRepository sessions, IdentityKeyMapper identityMapper,
+                     RefreshTokenRepository sessions, PinService pinService, IdentityKeyMapper identityMapper,
                      IdentityBackupMapper backupMapper, CryptoDeviceMapper deviceMapper, Clock clock) {
         this.properties = properties;
         this.identities = identities;
+        this.pins = pins;
         this.devices = devices;
         this.keyPackages = keyPackages;
         this.sessions = sessions;
+        this.pinService = pinService;
         this.identityMapper = identityMapper;
         this.backupMapper = backupMapper;
         this.deviceMapper = deviceMapper;
@@ -63,11 +69,10 @@ public class CryptoKeyService {
     @Transactional
     public CryptoStatusDto status(User caller) {
         if (!properties.enabled()) {
-            return new CryptoStatusDto(false, null, List.of());
+            return new CryptoStatusDto(false, null, null, List.of());
         }
-        Instant now = clock.instant();
         IdentityKeyDto identity = identities.findById(caller.getId()).map(identityMapper).orElse(null);
-        return new CryptoStatusDto(true, identity, liveDevices(caller, now));
+        return new CryptoStatusDto(true, identity, pinService.status(caller), liveDevices(caller, clock.instant()));
     }
 
     @Transactional
@@ -92,6 +97,7 @@ public class CryptoKeyService {
         Instant now = clock.instant();
         keyPackages.deleteAllOf(caller);
         int revoked = devices.revokeAllFor(caller, now);
+        pins.findById(caller.getId()).ifPresent(pins::delete);
         identity.replace(request.publicKey(), request.wrappedPrivate(), now);
         IdentityKey saved = identities.save(identity);
         log.info("Replaced the messaging identity key for user {} and revoked {} device(s)", caller.getId(), revoked);
@@ -101,18 +107,36 @@ public class CryptoKeyService {
     @Transactional
     public IdentityBackupDto backup(User caller) {
         requireEnabled();
-        return backupMapper.apply(requireIdentity(caller));
+        IdentityKey identity = requireIdentity(caller);
+        if (!identity.hasRecoveryKey()) {
+            throw new GlobalException(ExceptionIdentifier.IDENTITY_KEY_NOT_FOUND,
+                    "To konto nie ma klucza odzyskiwania");
+        }
+        return backupMapper.apply(identity);
     }
 
     @Transactional
-    public CryptoDeviceDto registerDevice(User caller, RegisterDeviceRequest request) {
+    public IdentityKeyDto setRecoveryKey(User caller, RecoveryWrapRequest request) {
+        requireEnabled();
+        IdentityKey identity = requireIdentity(caller);
+        if (!IdentitySignatures.verify(identity.getPublicKey(), request.signature(), IdentitySignatures.RECOVERY,
+                request.wrappedPrivate())) {
+            throw new GlobalException(ExceptionIdentifier.INVALID_CRYPTO_KEY,
+                    "Klucz odzyskiwania nie został podpisany kluczem tożsamości");
+        }
+        identity.wrapForRecovery(request.wrappedPrivate());
+        return identityMapper.apply(identities.save(identity));
+    }
+
+    @Transactional
+    public CryptoDeviceDto registerDevice(User caller, RegisterDeviceRequest request, String userAgent) {
         requireEnabled();
         IdentityKey identity = requireIdentity(caller);
         Instant now = clock.instant();
         UUID chain = liveChainOf(caller, request.sessionId(), now);
-        if (!DeviceSignatures.isCredentialOf(caller.getId(), request.credential())
-                || !DeviceSignatures.verify(identity.getPublicKey(), request.signatureKey(), request.credential(),
-                request.identitySignature())) {
+        if (!IdentitySignatures.isCredentialOf(caller.getId(), request.credential())
+                || !IdentitySignatures.verify(identity.getPublicKey(), request.identitySignature(),
+                IdentitySignatures.DEVICE, request.signatureKey(), request.credential())) {
             throw new GlobalException(ExceptionIdentifier.INVALID_CRYPTO_KEY,
                     "Podpis urządzenia nie zgadza się z kluczem tożsamości");
         }
@@ -122,7 +146,7 @@ public class CryptoKeyService {
         keyPackages.deleteAllOnChain(chain);
         int replaced = devices.revokeOnChain(chain, now);
         CryptoDevice device = devices.save(new CryptoDevice(caller, chain, request.signatureKey(),
-                request.credential(), request.identitySignature(), now));
+                request.credential(), request.identitySignature(), label(userAgent), now));
         store(device, request.keyPackages(), now);
         log.info("Registered messaging device {} for user {} (replaced {})", device.getId(), caller.getId(), replaced);
         return deviceMapper.apply(new LiveCryptoDevice(device, request.sessionId(),
@@ -130,11 +154,36 @@ public class CryptoKeyService {
     }
 
     @Transactional
+    public CryptoDeviceDto attachSession(User caller, Long deviceId, AttachSessionRequest request, String userAgent) {
+        requireEnabled();
+        Instant now = clock.instant();
+        CryptoDevice device = requireLiveDevice(caller, deviceId);
+        UUID chain = liveChainOf(caller, request.sessionId(), now);
+        if (!chain.equals(device.getSessionChain())) {
+            devices.findLiveFor(caller).stream()
+                    .filter(other -> !other.getId().equals(deviceId) && chain.equals(other.getSessionChain()))
+                    .forEach(other -> other.revokeAt(now));
+        }
+        device.attachTo(chain, label(userAgent), now);
+        devices.save(device);
+        return deviceMapper.apply(new LiveCryptoDevice(device, request.sessionId(),
+                keyPackages.countByDeviceAndLastResortFalse(device)));
+    }
+
+    @Transactional
+    public void forgetDevice(User caller, Long deviceId) {
+        requireEnabled();
+        CryptoDevice device = requireLiveDevice(caller, deviceId);
+        device.revokeAt(clock.instant());
+        devices.save(device);
+        keyPackages.deleteAllOfDevice(device);
+        log.info("Forgot messaging device {} for user {}", deviceId, caller.getId());
+    }
+
+    @Transactional
     public KeyPackageCountDto uploadKeyPackages(User caller, Long deviceId, KeyPackagesRequest request) {
         requireEnabled();
-        CryptoDevice device = devices.findLive(caller, deviceId, clock.instant())
-                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND,
-                        "Nie znaleziono urządzenia do wiadomości"));
+        CryptoDevice device = requireLiveDevice(caller, deviceId);
         requireDistinct(request.keyPackages());
         requireAtMostOneLastResort(request.keyPackages());
         long oneTime = request.keyPackages().stream().filter(upload -> !upload.lastResort()).count();
@@ -142,12 +191,15 @@ public class CryptoKeyService {
             throw new GlobalException(ExceptionIdentifier.INVALID_KEY_PACKAGES,
                     "Urządzenie może mieć najwyżej " + MAX_ONE_TIME_PACKAGES + " pakietów kluczy");
         }
-        store(device, request.keyPackages(), clock.instant());
+        Instant now = clock.instant();
+        store(device, request.keyPackages(), now);
+        device.seenAt(now);
+        devices.save(device);
         return new KeyPackageCountDto(keyPackages.countByDeviceAndLastResortFalse(device));
     }
 
     private List<CryptoDeviceDto> liveDevices(User caller, Instant now) {
-        List<CryptoDevice> live = devices.findLiveFor(caller, now);
+        List<CryptoDevice> live = devices.findLiveFor(caller);
         if (live.isEmpty()) {
             return List.of();
         }
@@ -180,6 +232,12 @@ public class CryptoKeyService {
         return chain;
     }
 
+    private CryptoDevice requireLiveDevice(User caller, Long deviceId) {
+        return devices.findLive(caller, deviceId)
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND,
+                        "Nie znaleziono urządzenia do wiadomości"));
+    }
+
     private void store(CryptoDevice device, List<KeyPackageUpload> uploads, Instant now) {
         if (uploads.stream().anyMatch(KeyPackageUpload::lastResort)) {
             keyPackages.deleteLastResortOf(device);
@@ -202,8 +260,12 @@ public class CryptoKeyService {
         }
     }
 
+    private static String label(String userAgent) {
+        return new DeviceContext(null, userAgent).userAgent();
+    }
+
     private static void requirePublicKey(byte[] publicKey) {
-        if (!DeviceSignatures.isPublicKey(publicKey)) {
+        if (!IdentitySignatures.isPublicKey(publicKey)) {
             throw new GlobalException(ExceptionIdentifier.INVALID_CRYPTO_KEY,
                     "Klucz tożsamości nie jest poprawnym kluczem Ed25519");
         }

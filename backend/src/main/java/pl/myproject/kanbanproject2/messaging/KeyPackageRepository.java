@@ -29,6 +29,10 @@ public interface KeyPackageRepository extends JpaRepository<KeyPackage, Long> {
             + "(SELECT device.id FROM CryptoDevice device WHERE device.user = :user)")
     int deleteAllOf(@Param("user") User user);
 
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM KeyPackage keyPackage WHERE keyPackage.device = :device")
+    int deleteAllOfDevice(@Param("device") CryptoDevice device);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM KeyPackage keyPackage WHERE keyPackage.device.id IN "
             + "(SELECT device.id FROM CryptoDevice device WHERE device.sessionChain = :chain)")

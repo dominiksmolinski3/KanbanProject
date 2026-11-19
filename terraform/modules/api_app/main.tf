@@ -33,6 +33,7 @@ resource "azurerm_container_app" "main" {
     time_sleep.wait_for_secrets_user,
     time_sleep.wait_for_blob_contributor,
     azurerm_key_vault_secret.jwt_secret,
+    azurerm_key_vault_secret.messaging_pin_key,
     azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.mail_delivery_report_key,
     azurerm_key_vault_secret.captcha_secret,
@@ -42,6 +43,11 @@ resource "azurerm_container_app" "main" {
   secret {
     name                = "jwt-secret-key"
     key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "JWT-SECRET-KEY")
+    identity            = azurerm_user_assigned_identity.main.id
+  }
+  secret {
+    name                = "messaging-pin-key"
+    key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "MESSAGING-PIN-KEY")
     identity            = azurerm_user_assigned_identity.main.id
   }
   dynamic "secret" {
@@ -160,6 +166,10 @@ resource "azurerm_container_app" "main" {
       env {
         name  = "MESSAGING_ENABLED"
         value = tostring(var.messaging_enabled)
+      }
+      env {
+        name        = "MESSAGING_PIN_KEY"
+        secret_name = "messaging-pin-key"
       }
       dynamic "env" {
         for_each = local.captcha_secret_configured ? [1] : []
@@ -453,6 +463,20 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   value_wo         = base64encode(ephemeral.random_password.jwt_secret_key.result)
   value_wo_version = var.jwt_secret_version
   content_type     = "base64 HMAC signing key"
+  key_vault_id     = var.key_vault_id
+}
+
+ephemeral "random_password" "messaging_pin_key" {
+  length  = 64
+  special = false
+}
+
+resource "azurerm_key_vault_secret" "messaging_pin_key" {
+  tags             = var.tags
+  name             = "MESSAGING-PIN-KEY"
+  value_wo         = ephemeral.random_password.messaging_pin_key.result
+  value_wo_version = 1
+  content_type     = "messaging PIN secret; replacing it invalidates every PIN"
   key_vault_id     = var.key_vault_id
 }
 

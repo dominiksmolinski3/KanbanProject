@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.TransactionAttribute;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
@@ -14,6 +15,7 @@ import pl.myproject.kanbanproject2.user.auth.ActiveDeviceMapper;
 import pl.myproject.kanbanproject2.user.auth.DeviceContext;
 import pl.myproject.kanbanproject2.user.auth.RefreshToken;
 import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
+import pl.myproject.kanbanproject2.user.auth.SessionEnded;
 
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -44,13 +46,15 @@ class RefreshTokenServiceTest {
 
     private RefreshTokenRepository repository;
     private RefreshTokenService service;
+    private ApplicationEventPublisher events;
     private User user;
 
     @BeforeEach
     void setUp() {
         repository = mock(RefreshTokenRepository.class);
+        events = mock(ApplicationEventPublisher.class);
         service = new RefreshTokenService(repository, new ActiveDeviceMapper(),
-                TTL.toMillis(), ABSOLUTE_TTL.toMillis(), Clock.fixed(NOW, ZoneOffset.UTC));
+                TTL.toMillis(), ABSOLUTE_TTL.toMillis(), Clock.fixed(NOW, ZoneOffset.UTC), events);
         user = new User("someone", "someone@example.test", "hashed");
         user.setId(7);
 
@@ -145,7 +149,7 @@ class RefreshTokenServiceTest {
         void refusesANonPositiveLifetime() {
             assertThatThrownBy(() ->
                     new RefreshTokenService(repository, new ActiveDeviceMapper(), 0, ABSOLUTE_TTL.toMillis(),
-                            Clock.systemUTC()))
+                            Clock.systemUTC(), events))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("refresh-expiration-time");
         }
@@ -154,7 +158,7 @@ class RefreshTokenServiceTest {
         @DisplayName("a ceiling below the sliding window is refused - it would make the window dead config")
         void refusesACeilingBelowTheWindow() {
             assertThatThrownBy(() -> new RefreshTokenService(repository, new ActiveDeviceMapper(),
-                    TTL.toMillis(), TTL.toMillis() - 1, Clock.systemUTC()))
+                    TTL.toMillis(), TTL.toMillis() - 1, Clock.systemUTC(), events))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("refresh-absolute-expiration-time");
         }
@@ -490,6 +494,7 @@ class RefreshTokenServiceTest {
 
             assertThat(live.getRevokedAt()).isEqualTo(NOW);
             verify(repository).save(live);
+            verify(events).publishEvent(new SessionEnded(live.getChainId()));
         }
 
         @Test

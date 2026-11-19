@@ -38,8 +38,14 @@ public class CryptoDevice {
     @Column(name = "identity_signature", nullable = false)
     private byte[] identitySignature;
 
+    @Column(name = "label", length = 255)
+    private String label;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "last_seen_at", nullable = false)
+    private Instant lastSeenAt;
 
     @Column(name = "revoked_at")
     private Instant revokedAt;
@@ -48,13 +54,31 @@ public class CryptoDevice {
     }
 
     public CryptoDevice(User user, UUID sessionChain, byte[] signatureKey, byte[] credential,
-                        byte[] identitySignature, Instant createdAt) {
+                        byte[] identitySignature, String label, Instant createdAt) {
         this.user = user;
         this.sessionChain = sessionChain;
         this.signatureKey = signatureKey.clone();
         this.credential = credential.clone();
         this.identitySignature = identitySignature.clone();
+        this.label = label;
         this.createdAt = createdAt;
+        this.lastSeenAt = createdAt;
+    }
+
+    public void attachTo(UUID chain, String label, Instant at) {
+        this.sessionChain = chain;
+        if (label != null) {
+            this.label = label;
+        }
+        this.lastSeenAt = at;
+    }
+
+    public void seenAt(Instant at) {
+        this.lastSeenAt = at;
+    }
+
+    public void revokeAt(Instant at) {
+        this.revokedAt = at;
     }
 
     public Long getId() {
@@ -81,8 +105,16 @@ public class CryptoDevice {
         return identitySignature.clone();
     }
 
+    public String getLabel() {
+        return label;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
     }
 
     public Instant getRevokedAt() {

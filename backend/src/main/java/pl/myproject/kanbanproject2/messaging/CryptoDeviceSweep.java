@@ -7,10 +7,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 
 @Slf4j
 @Component
 public class CryptoDeviceSweep {
+
+    static final Duration UNUSED = Duration.ofDays(180);
 
     private final CryptoDeviceRepository devices;
     private final KeyPackageRepository keyPackages;
@@ -30,11 +34,11 @@ public class CryptoDeviceSweep {
     @Scheduled(cron = "0 15 4 * * *")
     @Transactional
     public void sweep() {
-        int revoked = devices.revokeWithoutLiveSession(clock.instant());
+        Instant now = clock.instant();
+        int revoked = devices.revokeUnusedSince(now.minus(UNUSED), now);
         int deleted = keyPackages.deleteOfRevokedDevices();
         if (revoked > 0 || deleted > 0) {
-            log.info("Revoked {} messaging device(s) whose session ended and deleted {} key package(s)",
-                    revoked, deleted);
+            log.info("Revoked {} unused messaging device(s) and deleted {} key package(s)", revoked, deleted);
         }
     }
 }

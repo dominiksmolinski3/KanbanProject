@@ -9,10 +9,12 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.HexFormat;
 import java.util.regex.Pattern;
 
-final class DeviceSignatures {
+final class IdentitySignatures {
 
-    // Must match DEVICE_SIGNATURE_LABEL in frontend/src/crypto/keys.ts, byte for byte.
-    static final byte[] LABEL = "KanbanProject messaging device v1".getBytes(StandardCharsets.US_ASCII);
+    // These three must match the labels in frontend/src/crypto/keys.ts, byte for byte.
+    static final byte[] DEVICE = label("KanbanProject messaging device v1");
+    static final byte[] PIN = label("KanbanProject messaging PIN v1");
+    static final byte[] RECOVERY = label("KanbanProject messaging recovery v1");
 
     static final int KEY_BYTES = 32;
     static final int SIGNATURE_BYTES = 64;
@@ -20,14 +22,14 @@ final class DeviceSignatures {
     private static final byte[] ED25519_SPKI_PREFIX = HexFormat.of().parseHex("302a300506032b6570032100");
     private static final Pattern DEVICE_HANDLE = Pattern.compile("[0-9a-f]{32}");
 
-    private DeviceSignatures() {
+    private IdentitySignatures() {
     }
 
     static boolean isPublicKey(byte[] raw) {
         return publicKey(raw) != null;
     }
 
-    static boolean verify(byte[] identityKey, byte[] signatureKey, byte[] credential, byte[] signature) {
+    static boolean verify(byte[] identityKey, byte[] signature, byte[] label, byte[]... parts) {
         PublicKey key = publicKey(identityKey);
         if (key == null || signature == null || signature.length != SIGNATURE_BYTES) {
             return false;
@@ -35,9 +37,10 @@ final class DeviceSignatures {
         try {
             Signature verifier = Signature.getInstance("Ed25519");
             verifier.initVerify(key);
-            verifier.update(LABEL);
-            verifier.update(signatureKey);
-            verifier.update(credential);
+            verifier.update(label);
+            for (byte[] part : parts) {
+                verifier.update(part);
+            }
             return verifier.verify(signature);
         } catch (GeneralSecurityException e) {
             return false;
@@ -48,6 +51,10 @@ final class DeviceSignatures {
         String text = new String(credential, StandardCharsets.US_ASCII);
         String prefix = "u" + userId + ".";
         return text.startsWith(prefix) && DEVICE_HANDLE.matcher(text.substring(prefix.length())).matches();
+    }
+
+    private static byte[] label(String text) {
+        return text.getBytes(StandardCharsets.US_ASCII);
     }
 
     private static PublicKey publicKey(byte[] raw) {

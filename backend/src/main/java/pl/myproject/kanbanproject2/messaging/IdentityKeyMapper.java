@@ -9,6 +9,6 @@ public class IdentityKeyMapper implements Function<IdentityKey, IdentityKeyDto> 
 
     @Override
     public IdentityKeyDto apply(IdentityKey key) {
-        return new IdentityKeyDto(key.getPublicKey(), key.getCreatedAt());
+        return new IdentityKeyDto(key.getPublicKey(), key.getCreatedAt(), key.hasRecoveryKey());
     }
 }

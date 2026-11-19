@@ -8,9 +8,9 @@ import java.util.List;
 
 public record RegisterDeviceRequest(
         @NotNull Long sessionId,
-        @NotNull @Size(min = DeviceSignatures.KEY_BYTES, max = DeviceSignatures.KEY_BYTES) byte[] signatureKey,
+        @NotNull @Size(min = IdentitySignatures.KEY_BYTES, max = IdentitySignatures.KEY_BYTES) byte[] signatureKey,
         @NotNull @Size(min = 1, max = 128) byte[] credential,
-        @NotNull @Size(min = DeviceSignatures.SIGNATURE_BYTES, max = DeviceSignatures.SIGNATURE_BYTES)
+        @NotNull @Size(min = IdentitySignatures.SIGNATURE_BYTES, max = IdentitySignatures.SIGNATURE_BYTES)
         byte[] identitySignature,
         @NotNull @Size(max = KeyPackagesRequest.MAX_UPLOAD) List<@Valid @NotNull KeyPackageUpload> keyPackages) {
 }

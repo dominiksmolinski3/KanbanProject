@@ -28,7 +28,7 @@ public class IdentityKey {
     @Column(name = "public_key", nullable = false)
     private byte[] publicKey;
 
-    @Column(name = "wrapped_private", nullable = false)
+    @Column(name = "wrapped_private")
     private byte[] wrappedPrivate;
 
     @Column(name = "created_at", nullable = false)
@@ -40,14 +40,26 @@ public class IdentityKey {
     public IdentityKey(User user, byte[] publicKey, byte[] wrappedPrivate, Instant createdAt) {
         this.user = user;
         this.publicKey = publicKey.clone();
-        this.wrappedPrivate = wrappedPrivate.clone();
+        this.wrappedPrivate = copy(wrappedPrivate);
         this.createdAt = createdAt;
     }
 
     public void replace(byte[] publicKey, byte[] wrappedPrivate, Instant createdAt) {
         this.publicKey = publicKey.clone();
-        this.wrappedPrivate = wrappedPrivate.clone();
+        this.wrappedPrivate = copy(wrappedPrivate);
         this.createdAt = createdAt;
+    }
+
+    public void wrapForRecovery(byte[] wrappedPrivate) {
+        this.wrappedPrivate = wrappedPrivate.clone();
+    }
+
+    public boolean hasRecoveryKey() {
+        return wrappedPrivate != null;
+    }
+
+    private static byte[] copy(byte[] bytes) {
+        return bytes == null ? null : bytes.clone();
     }
 
     public Integer getUserId() {
@@ -59,7 +71,7 @@ public class IdentityKey {
     }
 
     public byte[] getWrappedPrivate() {
-        return wrappedPrivate.clone();
+        return copy(wrappedPrivate);
     }
 
     public Instant getCreatedAt() {

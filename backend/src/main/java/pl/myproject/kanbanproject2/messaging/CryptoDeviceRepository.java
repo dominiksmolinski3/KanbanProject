@@ -16,15 +16,12 @@ import java.util.UUID;
 public interface CryptoDeviceRepository extends JpaRepository<CryptoDevice, Long> {
 
     @Query("SELECT device FROM CryptoDevice device WHERE device.user = :user AND device.revokedAt IS NULL "
-            + "AND EXISTS (SELECT token FROM RefreshToken token WHERE token.chainId = device.sessionChain "
-            + "AND token.revokedAt IS NULL AND token.expiresAt > :now) ORDER BY device.createdAt")
-    List<CryptoDevice> findLiveFor(@Param("user") User user, @Param("now") Instant now);
+            + "ORDER BY device.createdAt")
+    List<CryptoDevice> findLiveFor(@Param("user") User user);
 
     @Query("SELECT device FROM CryptoDevice device WHERE device.id = :id AND device.user = :user "
-            + "AND device.revokedAt IS NULL "
-            + "AND EXISTS (SELECT token FROM RefreshToken token WHERE token.chainId = device.sessionChain "
-            + "AND token.revokedAt IS NULL AND token.expiresAt > :now)")
-    Optional<CryptoDevice> findLive(@Param("user") User user, @Param("id") Long id, @Param("now") Instant now);
+            + "AND device.revokedAt IS NULL")
+    Optional<CryptoDevice> findLive(@Param("user") User user, @Param("id") Long id);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE CryptoDevice device SET device.revokedAt = :when "
@@ -37,8 +34,7 @@ public interface CryptoDeviceRepository extends JpaRepository<CryptoDevice, Long
     int revokeOnChain(@Param("chain") UUID chain, @Param("when") Instant when);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("UPDATE CryptoDevice device SET device.revokedAt = :when WHERE device.revokedAt IS NULL "
-            + "AND NOT EXISTS (SELECT token FROM RefreshToken token WHERE token.chainId = device.sessionChain "
-            + "AND token.revokedAt IS NULL AND token.expiresAt > :when)")
-    int revokeWithoutLiveSession(@Param("when") Instant when);
+    @Query("UPDATE CryptoDevice device SET device.revokedAt = :when "
+            + "WHERE device.revokedAt IS NULL AND device.lastSeenAt < :cutoff")
+    int revokeUnusedSince(@Param("cutoff") Instant cutoff, @Param("when") Instant when);
 }

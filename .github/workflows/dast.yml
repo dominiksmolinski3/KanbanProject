@@ -41,6 +41,7 @@ jobs:
           ACS_EMAIL_CONNECTION_STRING=
           ACS_EMAIL_SENDER_ADDRESS=
           MESSAGING_ENABLED=true
+          MESSAGING_PIN_KEY=ci-only-messaging-pin-key
           CAPTCHA_ENABLED=false
           CAPTCHA_SECRET=
           VITE_RECAPTCHA_SITE_KEY=

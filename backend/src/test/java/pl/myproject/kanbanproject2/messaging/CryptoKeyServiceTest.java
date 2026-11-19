@@ -1,5 +1,6 @@
 package pl.myproject.kanbanproject2.messaging;
 
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,8 +17,6 @@ import pl.myproject.kanbanproject2.user.auth.RefreshTokenRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,8 +35,10 @@ import static org.mockito.Mockito.when;
 class CryptoKeyServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-11-19T10:00:00Z");
+    private static final String AGENT = "Mozilla/5.0 (X11; Linux x86_64)";
 
     private IdentityKeyRepository identities;
+    private IdentityPinRepository pins;
     private CryptoDeviceRepository devices;
     private KeyPackageRepository keyPackages;
     private RefreshTokenRepository sessions;
@@ -46,7 +47,10 @@ class CryptoKeyServiceTest {
     private Ed25519TestKeys identityKeys;
 
     private CryptoKeyService serviceWith(boolean enabled) {
-        return new CryptoKeyService(new MessagingProperties(enabled), identities, devices, keyPackages, sessions,
+        var properties = new MessagingProperties(enabled, "test-pin-secret");
+        var pinService = new PinService(properties, new PinEvaluator(properties), identities, pins,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        return new CryptoKeyService(properties, identities, pins, devices, keyPackages, sessions, pinService,
                 new IdentityKeyMapper(), new IdentityBackupMapper(), new CryptoDeviceMapper(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -54,6 +58,7 @@ class CryptoKeyServiceTest {
     @BeforeEach
     void setUp() {
         identities = mock(IdentityKeyRepository.class);
+        pins = mock(IdentityPinRepository.class);
         devices = mock(CryptoDeviceRepository.class);
         keyPackages = mock(KeyPackageRepository.class);
         sessions = mock(RefreshTokenRepository.class);
@@ -64,7 +69,9 @@ class CryptoKeyServiceTest {
         when(identities.save(any(IdentityKey.class))).thenAnswer(call -> call.getArgument(0));
         when(devices.save(any(CryptoDevice.class))).thenAnswer(call -> {
             CryptoDevice device = call.getArgument(0);
-            ReflectionTestUtils.setField(device, "id", 31L);
+            if (device.getId() == null) {
+                ReflectionTestUtils.setField(device, "id", 31L);
+            }
             return device;
         });
     }
@@ -76,16 +83,24 @@ class CryptoKeyServiceTest {
         return token;
     }
 
-    private IdentityKey storedIdentity() {
-        return new IdentityKey(caller, identityKeys.publicKey(), new byte[]{9, 9}, NOW.minusSeconds(60));
+    private IdentityKey storedIdentity(byte[] recoveryWrap) {
+        return new IdentityKey(caller, identityKeys.publicKey(), recoveryWrap, NOW.minusSeconds(60));
+    }
+
+    private CryptoDevice device(Long id, UUID chain) {
+        CryptoDevice device = new CryptoDevice(caller, chain, new byte[32], new byte[4], new byte[64], "Old agent",
+                NOW.minusSeconds(3600));
+        ReflectionTestUtils.setField(device, "id", id);
+        return device;
     }
 
     private static KeyPackageUpload upload(int ref, boolean lastResort) {
         return new KeyPackageUpload(new byte[]{(byte) ref}, new byte[]{1, 2, 3}, lastResort);
     }
 
-    private IdentityKeyRequest identityRequest() {
-        return new IdentityKeyRequest(identityKeys.publicKey(), new byte[]{1, 2, 3});
+    private void liveSession(Long id, UUID chain) {
+        when(sessions.findById(id)).thenReturn(Optional.of(session(id, caller, chain)));
+        when(sessions.existsByChainIdAndRevokedAtIsNullAndExpiresAtAfter(chain, NOW)).thenReturn(true);
     }
 
     @Nested
@@ -99,19 +114,23 @@ class CryptoKeyServiceTest {
         @Test
         @DisplayName("the status says so without reading anything")
         void statusSaysOff() {
-            assertThat(service.status(caller)).isEqualTo(new CryptoStatusDto(false, null, List.of()));
-            verifyNoInteractions(identities, devices, keyPackages, sessions);
+            assertThat(service.status(caller)).isEqualTo(new CryptoStatusDto(false, null, null, List.of()));
+            verifyNoInteractions(identities, devices, keyPackages, sessions, pins);
         }
 
         @Test
         @DisplayName("every other call answers as if the routes did not exist")
         void everythingElseIsNotFound() {
+            var identity = new IdentityKeyRequest(identityKeys.publicKey(), null);
             List<Runnable> calls = List.of(
-                    () -> service.createIdentity(caller, identityRequest()),
-                    () -> service.replaceIdentity(caller, identityRequest()),
+                    () -> service.createIdentity(caller, identity),
+                    () -> service.replaceIdentity(caller, identity),
                     () -> service.backup(caller),
+                    () -> service.setRecoveryKey(caller, new RecoveryWrapRequest(new byte[1], new byte[64])),
                     () -> service.registerDevice(caller, new RegisterDeviceRequest(1L, new byte[32], new byte[4],
-                            new byte[64], List.of())),
+                            new byte[64], List.of()), AGENT),
+                    () -> service.attachSession(caller, 1L, new AttachSessionRequest(1L), AGENT),
+                    () -> service.forgetDevice(caller, 1L),
                     () -> service.uploadKeyPackages(caller, 1L, new KeyPackagesRequest(List.of(upload(1, false)))));
 
             for (Runnable call : calls) {
@@ -126,36 +145,38 @@ class CryptoKeyServiceTest {
     class Status {
 
         @Test
-        @DisplayName("lists only live devices, each with the session it lives on and its spare key packages")
+        @DisplayName("lists every live device, signed in or not, with its session, label and spare packages")
         void listsLiveDevices() {
             UUID chain = UUID.randomUUID();
-            CryptoDevice device = new CryptoDevice(caller, chain, new byte[32], new byte[4], new byte[64], NOW);
-            ReflectionTestUtils.setField(device, "id", 3L);
-            CryptoDevice orphan = new CryptoDevice(caller, UUID.randomUUID(), new byte[32], new byte[4], new byte[64], NOW);
-            ReflectionTestUtils.setField(orphan, "id", 4L);
-            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity()));
-            when(devices.findLiveFor(caller, NOW)).thenReturn(List.of(device, orphan));
+            CryptoDevice signedIn = device(3L, chain);
+            CryptoDevice signedOut = device(4L, UUID.randomUUID());
+            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity(null)));
+            when(pins.findById(7)).thenReturn(Optional.empty());
+            when(devices.findLiveFor(caller)).thenReturn(List.of(signedIn, signedOut));
             when(sessions.findByUserAndRevokedAtIsNullAndExpiresAtAfterOrderByIssuedAtDesc(caller, NOW))
                     .thenReturn(List.of(session(12L, caller, chain)));
             when(keyPackages.countOneTimeByDevice(anyList())).thenReturn(List.of(count(3L, 97)));
 
             CryptoStatusDto status = service.status(caller);
 
-            assertThat(status.enabled()).isTrue();
-            assertThat(status.identity().publicKey()).isEqualTo(identityKeys.publicKey());
+            assertThat(status.identity().recoveryKey()).isFalse();
+            assertThat(status.pin()).isEqualTo(new PinStatusDto(true, false, 10));
             assertThat(status.devices()).extracting(CryptoDeviceDto::id, CryptoDeviceDto::sessionId,
-                            CryptoDeviceDto::keyPackages)
-                    .containsExactly(org.assertj.core.groups.Tuple.tuple(3L, 12L, 97L),
-                            org.assertj.core.groups.Tuple.tuple(4L, null, 0L));
+                            CryptoDeviceDto::label, CryptoDeviceDto::keyPackages)
+                    .containsExactly(Tuple.tuple(3L, 12L, "Old agent", 97L), Tuple.tuple(4L, null, "Old agent", 0L));
         }
 
         @Test
         @DisplayName("an account with no identity and no devices reads as not set up")
         void notSetUp() {
             when(identities.findById(7)).thenReturn(Optional.empty());
-            when(devices.findLiveFor(caller, NOW)).thenReturn(List.of());
+            when(pins.findById(7)).thenReturn(Optional.empty());
+            when(devices.findLiveFor(caller)).thenReturn(List.of());
 
-            assertThat(service.status(caller)).isEqualTo(new CryptoStatusDto(true, null, List.of()));
+            CryptoStatusDto status = service.status(caller);
+
+            assertThat(status.identity()).isNull();
+            assertThat(status.devices()).isEmpty();
             verifyNoInteractions(keyPackages, sessions);
         }
 
@@ -178,14 +199,18 @@ class CryptoKeyServiceTest {
     class Identity {
 
         @Test
-        @DisplayName("is created once, from a valid Ed25519 public key")
+        @DisplayName("is created once, with or without a recovery key")
         void createdOnce() {
             when(identities.existsById(7)).thenReturn(false);
 
-            IdentityKeyDto created = service.createIdentity(caller, identityRequest());
+            IdentityKeyDto withoutRecovery = service.createIdentity(caller,
+                    new IdentityKeyRequest(identityKeys.publicKey(), null));
+            IdentityKeyDto withRecovery = service.createIdentity(caller,
+                    new IdentityKeyRequest(identityKeys.publicKey(), new byte[]{1}));
 
-            assertThat(created.publicKey()).isEqualTo(identityKeys.publicKey());
-            assertThat(created.createdAt()).isEqualTo(NOW);
+            assertThat(withoutRecovery.recoveryKey()).isFalse();
+            assertThat(withRecovery.recoveryKey()).isTrue();
+            assertThat(withRecovery.createdAt()).isEqualTo(NOW);
         }
 
         @Test
@@ -193,7 +218,8 @@ class CryptoKeyServiceTest {
         void secondIsRefused() {
             when(identities.existsById(7)).thenReturn(true);
 
-            assertThatThrownBy(() -> service.createIdentity(caller, identityRequest()))
+            assertThatThrownBy(() -> service.createIdentity(caller,
+                    new IdentityKeyRequest(identityKeys.publicKey(), null)))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.IDENTITY_KEY_EXISTS);
             verify(identities, never()).save(any());
         }
@@ -201,23 +227,26 @@ class CryptoKeyServiceTest {
         @Test
         @DisplayName("a public key that is not an Ed25519 point is refused")
         void malformedKeyIsRefused() {
-            assertThatThrownBy(() -> service.createIdentity(caller, new IdentityKeyRequest(new byte[31], new byte[1])))
+            assertThatThrownBy(() -> service.createIdentity(caller, new IdentityKeyRequest(new byte[31], null)))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_CRYPTO_KEY);
         }
 
         @Test
-        @DisplayName("starting over replaces the key and revokes every device, with their key packages")
-        void replacingRevokesEveryDevice() {
-            IdentityKey stored = storedIdentity();
+        @DisplayName("starting over replaces the key, revokes every device and drops the PIN")
+        void replacingRevokesEverything() {
+            IdentityKey stored = storedIdentity(new byte[]{9});
+            IdentityPin pin = new IdentityPin(caller, new byte[1], new byte[32], NOW);
             when(identities.findById(7)).thenReturn(Optional.of(stored));
+            when(pins.findById(7)).thenReturn(Optional.of(pin));
             byte[] newKey = Ed25519TestKeys.generate().publicKey();
 
-            IdentityKeyDto replaced = service.replaceIdentity(caller, new IdentityKeyRequest(newKey, new byte[]{4}));
+            IdentityKeyDto replaced = service.replaceIdentity(caller, new IdentityKeyRequest(newKey, null));
 
             assertThat(replaced.publicKey()).isEqualTo(newKey);
-            assertThat(stored.getWrappedPrivate()).containsExactly(4);
+            assertThat(replaced.recoveryKey()).isFalse();
             verify(keyPackages).deleteAllOf(caller);
             verify(devices).revokeAllFor(caller, NOW);
+            verify(pins).delete(pin);
         }
 
         @Test
@@ -225,7 +254,8 @@ class CryptoKeyServiceTest {
         void nothingToReplaceOrBackUp() {
             when(identities.findById(7)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.replaceIdentity(caller, identityRequest()))
+            assertThatThrownBy(() -> service.replaceIdentity(caller,
+                    new IdentityKeyRequest(identityKeys.publicKey(), null)))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.IDENTITY_KEY_NOT_FOUND);
             assertThatThrownBy(() -> service.backup(caller))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.IDENTITY_KEY_NOT_FOUND);
@@ -233,14 +263,33 @@ class CryptoKeyServiceTest {
         }
 
         @Test
-        @DisplayName("the backup hands back the wrapped private half for the recovery key to open")
-        void backupReturnsTheWrappedKey() {
-            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity()));
+        @DisplayName("the backup hands back the recovery-key wrap, and there is none when no recovery key was made")
+        void backup() {
+            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity(new byte[]{9, 9})));
+            assertThat(service.backup(caller).wrappedPrivate()).containsExactly(9, 9);
 
-            IdentityBackupDto backup = service.backup(caller);
+            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity(null)));
+            assertThatThrownBy(() -> service.backup(caller))
+                    .extracting("identifier").isEqualTo(ExceptionIdentifier.IDENTITY_KEY_NOT_FOUND);
+        }
 
-            assertThat(backup.publicKey()).isEqualTo(identityKeys.publicKey());
-            assertThat(backup.wrappedPrivate()).containsExactly(9, 9);
+        @Test
+        @DisplayName("a recovery key can be added later, only with the identity's signature over it")
+        void addingARecoveryKeyLater() {
+            IdentityKey stored = storedIdentity(null);
+            when(identities.findById(7)).thenReturn(Optional.of(stored));
+            byte[] wrapped = {4, 4};
+
+            assertThatThrownBy(() -> service.setRecoveryKey(caller,
+                    new RecoveryWrapRequest(wrapped, Ed25519TestKeys.generate().signRecovery(wrapped))))
+                    .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_CRYPTO_KEY);
+            assertThat(stored.hasRecoveryKey()).isFalse();
+
+            IdentityKeyDto updated = service.setRecoveryKey(caller,
+                    new RecoveryWrapRequest(wrapped, identityKeys.signRecovery(wrapped)));
+
+            assertThat(updated.recoveryKey()).isTrue();
+            assertThat(stored.getWrappedPrivate()).containsExactly(4, 4);
         }
     }
 
@@ -252,10 +301,9 @@ class CryptoKeyServiceTest {
         private final byte[] credential = Ed25519TestKeys.credential(7);
 
         @BeforeEach
-        void liveSession() {
-            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity()));
-            when(sessions.findById(12L)).thenReturn(Optional.of(session(12L, caller, chain)));
-            when(sessions.existsByChainIdAndRevokedAtIsNullAndExpiresAtAfter(chain, NOW)).thenReturn(true);
+        void identityAndSession() {
+            when(identities.findById(7)).thenReturn(Optional.of(storedIdentity(null)));
+            liveSession(12L, chain);
         }
 
         private RegisterDeviceRequest request(byte[] signature, List<KeyPackageUpload> uploads) {
@@ -263,16 +311,17 @@ class CryptoKeyServiceTest {
         }
 
         @Test
-        @DisplayName("binds the device to the caller's sign-in, replaces any earlier device there and stores its packages")
+        @DisplayName("attaches the device to the caller's sign-in, labels it, replaces any earlier device there")
         @SuppressWarnings("unchecked")
         void registers() {
             when(keyPackages.countByDeviceAndLastResortFalse(any())).thenReturn(1L);
 
             CryptoDeviceDto registered = service.registerDevice(caller,
-                    request(identityKeys.signDevice(deviceKey, credential), List.of(upload(1, false), upload(2, true))));
+                    request(identityKeys.signDevice(deviceKey, credential), List.of(upload(1, false), upload(2, true))),
+                    AGENT);
 
-            assertThat(registered).extracting(CryptoDeviceDto::id, CryptoDeviceDto::sessionId, CryptoDeviceDto::keyPackages)
-                    .containsExactly(31L, 12L, 1L);
+            assertThat(registered).extracting(CryptoDeviceDto::id, CryptoDeviceDto::sessionId, CryptoDeviceDto::label,
+                    CryptoDeviceDto::lastSeenAt).containsExactly(31L, 12L, AGENT, NOW);
             var saved = ArgumentCaptor.forClass(CryptoDevice.class);
             verify(devices).save(saved.capture());
             assertThat(saved.getValue().getSessionChain()).isEqualTo(chain);
@@ -290,7 +339,7 @@ class CryptoKeyServiceTest {
         void forgedSignatureIsRefused() {
             byte[] forged = Ed25519TestKeys.generate().signDevice(deviceKey, credential);
 
-            assertThatThrownBy(() -> service.registerDevice(caller, request(forged, List.of())))
+            assertThatThrownBy(() -> service.registerDevice(caller, request(forged, List.of()), AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_CRYPTO_KEY);
             verify(devices, never()).revokeOnChain(any(), any());
             verify(devices, never()).save(any());
@@ -303,7 +352,7 @@ class CryptoKeyServiceTest {
             var request = new RegisterDeviceRequest(12L, deviceKey, theirs, identityKeys.signDevice(deviceKey, theirs),
                     List.of());
 
-            assertThatThrownBy(() -> service.registerDevice(caller, request))
+            assertThatThrownBy(() -> service.registerDevice(caller, request, AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_CRYPTO_KEY);
         }
 
@@ -318,12 +367,12 @@ class CryptoKeyServiceTest {
 
             for (Long sessionId : List.of(13L, 14L)) {
                 var request = new RegisterDeviceRequest(sessionId, deviceKey, credential, signature, List.of());
-                assertThatThrownBy(() -> service.registerDevice(caller, request))
+                assertThatThrownBy(() -> service.registerDevice(caller, request, AGENT))
                         .extracting("identifier").isEqualTo(ExceptionIdentifier.SESSION_NOT_FOUND);
             }
 
             when(sessions.existsByChainIdAndRevokedAtIsNullAndExpiresAtAfter(chain, NOW)).thenReturn(false);
-            assertThatThrownBy(() -> service.registerDevice(caller, request(signature, List.of())))
+            assertThatThrownBy(() -> service.registerDevice(caller, request(signature, List.of()), AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.SESSION_NOT_FOUND);
             verify(devices, never()).save(any());
         }
@@ -333,7 +382,7 @@ class CryptoKeyServiceTest {
         void needsAnIdentity() {
             when(identities.findById(7)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.registerDevice(caller, request(new byte[64], List.of())))
+            assertThatThrownBy(() -> service.registerDevice(caller, request(new byte[64], List.of()), AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.IDENTITY_KEY_NOT_FOUND);
         }
 
@@ -343,12 +392,73 @@ class CryptoKeyServiceTest {
             byte[] signature = identityKeys.signDevice(deviceKey, credential);
 
             assertThatThrownBy(() -> service.registerDevice(caller,
-                    request(signature, List.of(upload(1, false), upload(1, false)))))
+                    request(signature, List.of(upload(1, false), upload(1, false))), AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_KEY_PACKAGES);
             assertThatThrownBy(() -> service.registerDevice(caller,
-                    request(signature, List.of(upload(1, true), upload(2, true)))))
+                    request(signature, List.of(upload(1, true), upload(2, true))), AGENT))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_KEY_PACKAGES);
             verify(devices, never()).revokeOnChain(any(), any());
+        }
+    }
+
+    @Nested
+    class AttachingAndForgetting {
+
+        private final UUID oldChain = UUID.randomUUID();
+        private final UUID newChain = UUID.randomUUID();
+
+        @Test
+        @DisplayName("a browser signing in again moves its device onto the new sign-in and is seen now")
+        void attaches() {
+            CryptoDevice device = device(3L, oldChain);
+            CryptoDevice squatter = device(5L, newChain);
+            when(devices.findLive(caller, 3L)).thenReturn(Optional.of(device));
+            when(devices.findLiveFor(caller)).thenReturn(List.of(device, squatter));
+            liveSession(20L, newChain);
+
+            CryptoDeviceDto attached = service.attachSession(caller, 3L, new AttachSessionRequest(20L), AGENT);
+
+            assertThat(attached.sessionId()).isEqualTo(20L);
+            assertThat(device.getSessionChain()).isEqualTo(newChain);
+            assertThat(device.getLabel()).isEqualTo(AGENT);
+            assertThat(device.getLastSeenAt()).isEqualTo(NOW);
+            assertThat(squatter.getRevokedAt()).as("one sign-in holds one device").isEqualTo(NOW);
+        }
+
+        @Test
+        @DisplayName("attaching to the sign-in it already has only refreshes when it was seen")
+        void reattachingIsQuiet() {
+            CryptoDevice device = device(3L, newChain);
+            when(devices.findLive(caller, 3L)).thenReturn(Optional.of(device));
+            liveSession(20L, newChain);
+
+            service.attachSession(caller, 3L, new AttachSessionRequest(20L), null);
+
+            assertThat(device.getLabel()).isEqualTo("Old agent");
+            verify(devices, never()).findLiveFor(any());
+        }
+
+        @Test
+        @DisplayName("a device that is not the caller's, or was revoked, answers 404")
+        void unknownDevice() {
+            when(devices.findLive(eq(caller), eq(9L))).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.attachSession(caller, 9L, new AttachSessionRequest(20L), AGENT))
+                    .extracting("identifier").isEqualTo(ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND);
+            assertThatThrownBy(() -> service.forgetDevice(caller, 9L))
+                    .extracting("identifier").isEqualTo(ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("forgetting a browser revokes its device and drops its key packages")
+        void forgets() {
+            CryptoDevice device = device(3L, oldChain);
+            when(devices.findLive(caller, 3L)).thenReturn(Optional.of(device));
+
+            service.forgetDevice(caller, 3L);
+
+            assertThat(device.getRevokedAt()).isEqualTo(NOW);
+            verify(keyPackages).deleteAllOfDevice(device);
         }
     }
 
@@ -359,12 +469,12 @@ class CryptoKeyServiceTest {
 
         @BeforeEach
         void liveDevice() {
-            device = new CryptoDevice(caller, UUID.randomUUID(), new byte[32], new byte[4], new byte[64], NOW);
-            when(devices.findLive(caller, 3L, NOW)).thenReturn(Optional.of(device));
+            device = device(3L, UUID.randomUUID());
+            when(devices.findLive(caller, 3L)).thenReturn(Optional.of(device));
         }
 
         @Test
-        @DisplayName("adds them to a live device of the caller's and answers with how many are spare")
+        @DisplayName("adds them to a live device of the caller's, marks it seen and answers with the spare count")
         void adds() {
             when(keyPackages.countByDeviceAndLastResortFalse(device)).thenReturn(10L, 12L);
 
@@ -372,8 +482,8 @@ class CryptoKeyServiceTest {
                     new KeyPackagesRequest(List.of(upload(1, false), upload(2, false))));
 
             assertThat(count.available()).isEqualTo(12L);
+            assertThat(device.getLastSeenAt()).isEqualTo(NOW);
             verify(keyPackages, never()).deleteLastResortOf(any());
-            verify(keyPackages).saveAll(anyList());
         }
 
         @Test
@@ -390,21 +500,11 @@ class CryptoKeyServiceTest {
         @DisplayName("stops a device hoarding more than the cap")
         void capsTheTotal() {
             when(keyPackages.countByDeviceAndLastResortFalse(device)).thenReturn(199L);
-            List<KeyPackageUpload> two = new ArrayList<>(List.of(upload(1, false), upload(2, false)));
 
-            assertThatThrownBy(() -> service.uploadKeyPackages(caller, 3L, new KeyPackagesRequest(two)))
+            assertThatThrownBy(() -> service.uploadKeyPackages(caller, 3L,
+                    new KeyPackagesRequest(List.of(upload(1, false), upload(2, false)))))
                     .extracting("identifier").isEqualTo(ExceptionIdentifier.INVALID_KEY_PACKAGES);
             verify(keyPackages, never()).saveAll(anyList());
-        }
-
-        @Test
-        @DisplayName("a device that is not the caller's, or no longer live, answers 404")
-        void unknownDevice() {
-            when(devices.findLive(eq(caller), eq(4L), any())).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.uploadKeyPackages(caller, 4L,
-                    new KeyPackagesRequest(Collections.singletonList(upload(1, false)))))
-                    .extracting("identifier").isEqualTo(ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND);
         }
     }
 }
