@@ -499,6 +499,59 @@
     "title": "Zalogowane urządzenia",
     "intro": "Każda sesja, którą można jeszcze odnowić na tym koncie. Zakończenie sesji wylogowuje tę przeglądarkę; nie zmienia hasła.",
     "demoNotice": "To wspólne konto demonstracyjne, więc miejsce logowania każdej sesji jest ukryte.",
+    "messaging": {
+      "title": "Szyfrowane wiadomości",
+      "loading": "Sprawdzanie klucza wiadomości tej przeglądarki…",
+      "notSetUp": "Wiadomości będą szyfrowane end-to-end. Skonfiguruj je w tej przeglądarce, aby utworzyć swoje klucze i klucz odzyskiwania.",
+      "elsewhere": "Szyfrowane wiadomości są skonfigurowane na Twoim koncie, ale nie w tej przeglądarce. Użyj klucza odzyskiwania, aby ją dodać.",
+      "ready": "Ta przeglądarka jest skonfigurowana do szyfrowanych wiadomości.",
+      "removed": "Klucz wiadomości tej przeglądarki został usunięty przez zmianę na innym urządzeniu, a jej klucze zostały tu skasowane. Skonfiguruj ją ponownie.",
+      "thisKey": "Klucz tej przeglądarki",
+      "buttons": {
+        "setUp": "Skonfiguruj w tej przeglądarce",
+        "useRecoveryKey": "Użyj klucza odzyskiwania",
+        "startOver": "Zacznij od nowa",
+        "cancel": "Anuluj"
+      },
+      "setup": {
+        "introTitle": "Wiadomości są szyfrowane end-to-end",
+        "introBody": "Tylko osoby w rozmowie mogą ją przeczytać. KanbanProject przechowuje Twoje wiadomości w zaszyfrowanej postaci i nie może ich odczytać, tak samo jak nikt, kto włamie się na nasze serwery.",
+        "pointBrowser": "Ta przeglądarka dostaje własny klucz, który nigdy jej nie opuszcza",
+        "pointRecovery": "Dostajesz klucz odzyskiwania na wypadek utraty wszystkich urządzeń",
+        "pointEverywhere": "Wiadomości prywatne, grupy i kanały tablic będą korzystać z tych kluczy",
+        "keyTitle": "Zapisz klucz odzyskiwania",
+        "keyBody": "Jeśli stracisz wszystkie swoje urządzenia, ten klucz to jedyny sposób na odzyskanie historii wiadomości. Nie przechowujemy jego kopii i nie możemy go zresetować.",
+        "keyLabel": "Klucz odzyskiwania",
+        "download": "Pobierz jako plik",
+        "copy": "Kopiuj",
+        "copied": "Skopiowano klucz odzyskiwania",
+        "copyFailed": "Nie udało się skopiować klucza odzyskiwania. Zapisz go ręcznie.",
+        "fileHeading": "Klucz odzyskiwania KanbanProject do szyfrowanych wiadomości",
+        "keepIt": "Trzymaj go w menedżerze haseł albo na papierze. Każdy, kto ma ten klucz i Twoje hasło, może przeczytać Twoją historię.",
+        "saved": "Klucz odzyskiwania jest zapisany w miejscu, do którego dotrę bez tej przeglądarki",
+        "checkLabel": "Wpisz ostatnią grupę, aby sprawdzić",
+        "finish": "Zakończ konfigurację",
+        "finishing": "Konfigurowanie…",
+        "cannotSkip": "Tego kroku nie można pominąć. Wiadomości otworzą się po zapisaniu klucza.",
+        "done": "Szyfrowane wiadomości są skonfigurowane w tej przeglądarce"
+      },
+      "reset": {
+        "title": "Zacząć od nowa z nowym kluczem?",
+        "body": "Historii wiadomości nie da się odczytać na żadnym nowym urządzeniu, a wszyscy Twoi rozmówcy zobaczą, że Twój numer bezpieczeństwa się zmienił. Każda inna przeglądarka straci klucz wiadomości i trzeba będzie ją skonfigurować ponownie."
+      },
+      "recover": {
+        "title": "Użyj klucza odzyskiwania",
+        "body": "Wpisz 48-znakowy klucz odzyskiwania zapisany podczas konfigurowania szyfrowanych wiadomości. Spacje i myślniki nie mają znaczenia.",
+        "label": "Klucz odzyskiwania",
+        "submit": "Skonfiguruj tę przeglądarkę"
+      },
+      "errors": {
+        "malformedKey": "Klucz odzyskiwania ma 48 liter i cyfr. Sprawdź, co wpisano.",
+        "wrongKey": "Ten klucz odzyskiwania nie pasuje do tego konta.",
+        "noSession": "Nie udało się rozpoznać tej sesji. Wyloguj się i zaloguj ponownie.",
+        "generic": "Nie udało się skonfigurować szyfrowanych wiadomości. Spróbuj ponownie."
+      }
+    },
     "fields": {
       "device": "Urządzenie",
       "address": "Adres",
@@ -507,6 +560,8 @@
       "actions": "Akcje",
       "thisDevice": "To urządzenie",
       "unknownDevice": "Nieznane urządzenie",
+      "messagingKey": "Klucz wiadomości",
+      "noMessagingKey": "Brak",
       "hidden": "Ukryte na koncie demonstracyjnym"
     },
     "buttons": {
@@ -759,6 +814,12 @@
       "TASK_NOT_FOUND": "To zadanie już nie istnieje.",
       "TOO_MANY_REQUESTS": "Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.",
       "UNSUPPORTED_LOCALE": "Ten język nie jest obsługiwany.",
+      "MESSAGING_UNAVAILABLE": "Szyfrowane wiadomości nie są dostępne.",
+      "IDENTITY_KEY_EXISTS": "Szyfrowane wiadomości są już skonfigurowane na tym koncie.",
+      "IDENTITY_KEY_NOT_FOUND": "Szyfrowane wiadomości nie są jeszcze skonfigurowane na tym koncie.",
+      "INVALID_CRYPTO_KEY": "Klucz szyfrowania nie przeszedł sprawdzenia. Skonfiguruj tę przeglądarkę ponownie.",
+      "CRYPTO_DEVICE_NOT_FOUND": "Ta przeglądarka nie jest już skonfigurowana do szyfrowanych wiadomości.",
+      "INVALID_KEY_PACKAGES": "Nie udało się zapisać kluczy szyfrowania.",
       "UNSUPPORTED_MEDIA_TYPE": "Ten typ pliku nie jest tu akceptowany.",
       "USER_NOT_FOUND": "Nie znaleziono tej osoby.",
       "USER_WIP_LIMIT_EXCEEDED": "Ta osoba osiągnęła już swój limit WIP.",

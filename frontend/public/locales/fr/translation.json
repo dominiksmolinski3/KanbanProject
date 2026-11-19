@@ -499,6 +499,59 @@
       "title": "Appareils connectés",
       "intro": "Toutes les sessions encore renouvelables sur ce compte. En terminer une déconnecte ce navigateur ; cela ne change pas le mot de passe.",
       "demoNotice": "Ceci est un compte de démonstration partagé : l'origine de connexion de chaque session est donc masquée.",
+      "messaging": {
+        "title": "Messages chiffrés",
+        "loading": "Vérification de la clé de messagerie de ce navigateur…",
+        "notSetUp": "Les messages seront chiffrés de bout en bout. Configurez-les sur ce navigateur pour créer vos clés et votre clé de récupération.",
+        "elsewhere": "Les messages chiffrés sont configurés sur votre compte, mais pas sur ce navigateur. Utilisez votre clé de récupération pour l'ajouter.",
+        "ready": "Ce navigateur est configuré pour les messages chiffrés.",
+        "removed": "La clé de messagerie de ce navigateur a été supprimée par une modification sur un autre appareil, et ses clés ont été effacées ici. Configurez-le à nouveau.",
+        "thisKey": "Clé de ce navigateur",
+        "buttons": {
+          "setUp": "Configurer sur ce navigateur",
+          "useRecoveryKey": "Utiliser ma clé de récupération",
+          "startOver": "Recommencer",
+          "cancel": "Annuler"
+        },
+        "setup": {
+          "introTitle": "Les messages sont chiffrés de bout en bout",
+          "introBody": "Seules les personnes d'une conversation peuvent la lire. KanbanProject conserve vos messages chiffrés et ne peut pas les lire, pas plus que quiconque s'introduirait dans nos serveurs.",
+          "pointBrowser": "Ce navigateur reçoit sa propre clé, qui ne le quitte jamais",
+          "pointRecovery": "Vous recevez une clé de récupération pour le cas où vous perdriez tous vos appareils",
+          "pointEverywhere": "Les messages directs, les groupes et les canaux des tableaux utiliseront tous ces clés",
+          "keyTitle": "Enregistrez votre clé de récupération",
+          "keyBody": "Si vous perdez tous vos appareils, cette clé est le seul moyen de récupérer l'historique de vos messages. Nous n'en gardons aucune copie et ne pouvons pas la réinitialiser.",
+          "keyLabel": "Clé de récupération",
+          "download": "Télécharger en fichier",
+          "copy": "Copier",
+          "copied": "Clé de récupération copiée",
+          "copyFailed": "La clé de récupération n'a pas pu être copiée. Notez-la plutôt.",
+          "fileHeading": "Clé de récupération KanbanProject pour les messages chiffrés",
+          "keepIt": "Gardez-la dans un gestionnaire de mots de passe ou sur papier. Toute personne qui possède cette clé et votre mot de passe peut lire votre historique.",
+          "saved": "J'ai enregistré ma clé de récupération à un endroit où je peux la retrouver sans ce navigateur",
+          "checkLabel": "Saisissez le dernier groupe pour vérifier",
+          "finish": "Terminer la configuration",
+          "finishing": "Configuration…",
+          "cannotSkip": "Cette étape ne peut pas être ignorée. Les messages s'ouvrent une fois la clé enregistrée.",
+          "done": "Les messages chiffrés sont configurés sur ce navigateur"
+        },
+        "reset": {
+          "title": "Recommencer avec une nouvelle clé ?",
+          "body": "L'historique de vos messages ne pourra être lu sur aucun nouvel appareil, et toutes les personnes avec qui vous échangez verront que votre numéro de sécurité a changé. Tous les autres navigateurs perdent leur clé de messagerie et devront être configurés à nouveau."
+        },
+        "recover": {
+          "title": "Utiliser votre clé de récupération",
+          "body": "Saisissez la clé de récupération de 48 caractères enregistrée lors de la configuration des messages chiffrés. Les espaces et les tirets ne comptent pas.",
+          "label": "Clé de récupération",
+          "submit": "Configurer ce navigateur"
+        },
+        "errors": {
+          "malformedKey": "Une clé de récupération comporte 48 lettres et chiffres. Vérifiez votre saisie.",
+          "wrongKey": "Cette clé de récupération ne correspond pas à ce compte.",
+          "noSession": "Cette session n'a pas pu être identifiée. Déconnectez-vous puis reconnectez-vous.",
+          "generic": "Les messages chiffrés n'ont pas pu être configurés. Réessayez."
+        }
+      },
       "fields": {
         "device": "Appareil",
         "address": "Adresse",
@@ -507,6 +560,8 @@
         "actions": "Actions",
         "thisDevice": "Cet appareil",
         "unknownDevice": "Appareil inconnu",
+        "messagingKey": "Clé de messagerie",
+        "noMessagingKey": "Aucune",
         "hidden": "Masqué sur le compte de démonstration"
       },
       "buttons": {
@@ -759,6 +814,12 @@
             "TASK_NOT_FOUND": "Cette tâche n'existe plus.",
             "TOO_MANY_REQUESTS": "Trop de tentatives. Patientez un instant et réessayez.",
             "UNSUPPORTED_LOCALE": "Cette langue n'est pas prise en charge.",
+            "MESSAGING_UNAVAILABLE": "Les messages chiffrés ne sont pas disponibles.",
+            "IDENTITY_KEY_EXISTS": "Les messages chiffrés sont déjà configurés sur ce compte.",
+            "IDENTITY_KEY_NOT_FOUND": "Les messages chiffrés ne sont pas encore configurés sur ce compte.",
+            "INVALID_CRYPTO_KEY": "La clé de chiffrement n'a pas passé la vérification. Configurez à nouveau ce navigateur.",
+            "CRYPTO_DEVICE_NOT_FOUND": "Ce navigateur n'est plus configuré pour les messages chiffrés.",
+            "INVALID_KEY_PACKAGES": "Les clés de chiffrement n'ont pas pu être enregistrées.",
             "UNSUPPORTED_MEDIA_TYPE": "Ce type de fichier n'est pas accepté ici.",
             "USER_NOT_FOUND": "Cette personne est introuvable.",
             "USER_WIP_LIMIT_EXCEEDED": "Cette personne a déjà atteint sa limite WIP.",

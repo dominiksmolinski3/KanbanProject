@@ -499,6 +499,59 @@
     "title": "Signed-in devices",
     "intro": "Every session that can still be renewed on this account. Ending one signs that browser out; it does not change your password.",
     "demoNotice": "This is a shared demo account, so where each session signs in from is hidden.",
+    "messaging": {
+      "title": "Encrypted messages",
+      "loading": "Checking this browser's messaging key…",
+      "notSetUp": "Messages will be end-to-end encrypted. Set them up on this browser to create your keys and your recovery key.",
+      "elsewhere": "Encrypted messages are set up on your account, but not on this browser. Use your recovery key to add it.",
+      "ready": "This browser is set up for encrypted messages.",
+      "removed": "This browser's messaging key was removed by a change on another device, and its keys were deleted here. Set it up again.",
+      "thisKey": "This browser's key",
+      "buttons": {
+        "setUp": "Set up on this browser",
+        "useRecoveryKey": "Use my recovery key",
+        "startOver": "Start over",
+        "cancel": "Cancel"
+      },
+      "setup": {
+        "introTitle": "Messages are end-to-end encrypted",
+        "introBody": "Only the people in a conversation can read it. KanbanProject stores your messages scrambled and cannot read them, and nor can anyone who gets into our servers.",
+        "pointBrowser": "This browser gets its own key, which never leaves it",
+        "pointRecovery": "You get a recovery key for when you lose every device",
+        "pointEverywhere": "Direct messages, groups and board channels will all use these keys",
+        "keyTitle": "Save your recovery key",
+        "keyBody": "If you lose every device you use, this key is the only way to get your message history back. We do not keep a copy and cannot reset it.",
+        "keyLabel": "Recovery key",
+        "download": "Download as a file",
+        "copy": "Copy",
+        "copied": "Recovery key copied",
+        "copyFailed": "The recovery key could not be copied. Write it down instead.",
+        "fileHeading": "KanbanProject recovery key for encrypted messages",
+        "keepIt": "Keep it in a password manager or on paper. Anyone with this key and your password can read your history.",
+        "saved": "I saved my recovery key somewhere I can find it without this browser",
+        "checkLabel": "Type the last group to check",
+        "finish": "Finish setup",
+        "finishing": "Setting up…",
+        "cannotSkip": "This step cannot be skipped. Messages open once the key is saved.",
+        "done": "Encrypted messages are set up on this browser"
+      },
+      "reset": {
+        "title": "Start over with a new key?",
+        "body": "Your message history cannot be read on any new device, and everyone you talk to will see that your safety number changed. Every other browser loses its messaging key and has to be set up again."
+      },
+      "recover": {
+        "title": "Use your recovery key",
+        "body": "Enter the 48-character recovery key you saved when you set up encrypted messages. Spaces and dashes do not matter.",
+        "label": "Recovery key",
+        "submit": "Set up this browser"
+      },
+      "errors": {
+        "malformedKey": "A recovery key has 48 letters and digits. Check what you typed.",
+        "wrongKey": "That recovery key does not match this account.",
+        "noSession": "This session could not be identified. Sign out and sign in again.",
+        "generic": "Encrypted messages could not be set up. Try again."
+      }
+    },
     "fields": {
       "device": "Device",
       "address": "Address",
@@ -507,6 +560,8 @@
       "actions": "Actions",
       "thisDevice": "This device",
       "unknownDevice": "Unknown device",
+      "messagingKey": "Messaging key",
+      "noMessagingKey": "None",
       "hidden": "Hidden on the demo account"
     },
     "buttons": {
@@ -759,6 +814,12 @@
       "TASK_NOT_FOUND": "That task no longer exists.",
       "TOO_MANY_REQUESTS": "Too many attempts. Wait a moment and try again.",
       "UNSUPPORTED_LOCALE": "That language is not supported.",
+      "MESSAGING_UNAVAILABLE": "Encrypted messages are not available.",
+      "IDENTITY_KEY_EXISTS": "Encrypted messages are already set up on this account.",
+      "IDENTITY_KEY_NOT_FOUND": "Encrypted messages are not set up on this account yet.",
+      "INVALID_CRYPTO_KEY": "The encryption key did not pass its check. Set up this browser again.",
+      "CRYPTO_DEVICE_NOT_FOUND": "This browser is no longer set up for encrypted messages.",
+      "INVALID_KEY_PACKAGES": "The encryption keys could not be stored.",
       "UNSUPPORTED_MEDIA_TYPE": "That file type is not accepted here.",
       "USER_NOT_FOUND": "That person could not be found.",
       "USER_WIP_LIMIT_EXCEEDED": "That person's WIP limit is already reached.",

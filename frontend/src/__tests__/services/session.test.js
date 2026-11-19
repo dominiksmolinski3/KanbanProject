@@ -63,6 +63,18 @@ describe('session', () => {
     expect(getSessionId()).toBe('12');
   });
 
+  test('clearing a session deletes the messaging keys this browser holds', () => {
+    const deleteDatabase = jest.fn();
+    globalThis.indexedDB = { deleteDatabase };
+    try {
+      clearSession();
+    } finally {
+      delete globalThis.indexedDB;
+    }
+
+    expect(deleteDatabase).toHaveBeenCalledWith('kanban-messaging-keys');
+  });
+
   test('clearing a session forgets the id with everything else', () => {
     storeSession({ token: 'a', expiresIn: 900_000, refreshToken: 'r', sessionId: 12 });
 

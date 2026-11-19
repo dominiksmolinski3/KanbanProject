@@ -499,6 +499,59 @@
       "title": "Dispositivi connessi",
       "intro": "Tutte le sessioni ancora rinnovabili su questo account. Chiuderne una disconnette quel browser; non cambia la password.",
       "demoNotice": "Questo è un account demo condiviso, quindi la provenienza di ogni sessione è nascosta.",
+      "messaging": {
+        "title": "Messaggi cifrati",
+        "loading": "Controllo della chiave dei messaggi di questo browser…",
+        "notSetUp": "I messaggi saranno cifrati end-to-end. Configurali su questo browser per creare le tue chiavi e la tua chiave di recupero.",
+        "elsewhere": "I messaggi cifrati sono configurati sul tuo account, ma non su questo browser. Usa la tua chiave di recupero per aggiungerlo.",
+        "ready": "Questo browser è configurato per i messaggi cifrati.",
+        "removed": "La chiave dei messaggi di questo browser è stata rimossa da una modifica su un altro dispositivo e le sue chiavi sono state cancellate qui. Configuralo di nuovo.",
+        "thisKey": "Chiave di questo browser",
+        "buttons": {
+          "setUp": "Configura su questo browser",
+          "useRecoveryKey": "Usa la mia chiave di recupero",
+          "startOver": "Ricomincia",
+          "cancel": "Annulla"
+        },
+        "setup": {
+          "introTitle": "I messaggi sono cifrati end-to-end",
+          "introBody": "Solo le persone in una conversazione possono leggerla. KanbanProject conserva i tuoi messaggi cifrati e non può leggerli, così come chiunque entri nei nostri server.",
+          "pointBrowser": "Questo browser riceve una chiave propria, che non lo lascia mai",
+          "pointRecovery": "Ricevi una chiave di recupero per quando perdi tutti i dispositivi",
+          "pointEverywhere": "Messaggi diretti, gruppi e canali delle bacheche useranno tutti queste chiavi",
+          "keyTitle": "Salva la tua chiave di recupero",
+          "keyBody": "Se perdi tutti i dispositivi che usi, questa chiave è l'unico modo per recuperare la cronologia dei messaggi. Non ne conserviamo una copia e non possiamo reimpostarla.",
+          "keyLabel": "Chiave di recupero",
+          "download": "Scarica come file",
+          "copy": "Copia",
+          "copied": "Chiave di recupero copiata",
+          "copyFailed": "Non è stato possibile copiare la chiave di recupero. Scrivila a mano.",
+          "fileHeading": "Chiave di recupero KanbanProject per i messaggi cifrati",
+          "keepIt": "Conservala in un gestore di password o su carta. Chiunque abbia questa chiave e la tua password può leggere la tua cronologia.",
+          "saved": "Ho salvato la chiave di recupero in un posto dove posso trovarla senza questo browser",
+          "checkLabel": "Digita l'ultimo gruppo per verificare",
+          "finish": "Completa la configurazione",
+          "finishing": "Configurazione in corso…",
+          "cannotSkip": "Questo passaggio non può essere saltato. I messaggi si aprono una volta salvata la chiave.",
+          "done": "I messaggi cifrati sono configurati su questo browser"
+        },
+        "reset": {
+          "title": "Ricominciare con una nuova chiave?",
+          "body": "La cronologia dei messaggi non potrà essere letta su nessun nuovo dispositivo e tutte le persone con cui parli vedranno che il tuo numero di sicurezza è cambiato. Ogni altro browser perde la sua chiave dei messaggi e va configurato di nuovo."
+        },
+        "recover": {
+          "title": "Usa la tua chiave di recupero",
+          "body": "Inserisci la chiave di recupero di 48 caratteri salvata quando hai configurato i messaggi cifrati. Spazi e trattini non contano.",
+          "label": "Chiave di recupero",
+          "submit": "Configura questo browser"
+        },
+        "errors": {
+          "malformedKey": "Una chiave di recupero ha 48 lettere e cifre. Controlla cosa hai digitato.",
+          "wrongKey": "Questa chiave di recupero non corrisponde a questo account.",
+          "noSession": "Non è stato possibile identificare questa sessione. Esci e accedi di nuovo.",
+          "generic": "Non è stato possibile configurare i messaggi cifrati. Riprova."
+        }
+      },
       "fields": {
         "device": "Dispositivo",
         "address": "Indirizzo",
@@ -507,6 +560,8 @@
         "actions": "Azioni",
         "thisDevice": "Questo dispositivo",
         "unknownDevice": "Dispositivo sconosciuto",
+        "messagingKey": "Chiave dei messaggi",
+        "noMessagingKey": "Nessuna",
         "hidden": "Nascosto sull'account demo"
       },
       "buttons": {
@@ -759,6 +814,12 @@
             "TASK_NOT_FOUND": "Questa attività non esiste più.",
             "TOO_MANY_REQUESTS": "Troppi tentativi. Attendi un momento e riprova.",
             "UNSUPPORTED_LOCALE": "Questa lingua non è supportata.",
+            "MESSAGING_UNAVAILABLE": "I messaggi cifrati non sono disponibili.",
+            "IDENTITY_KEY_EXISTS": "I messaggi cifrati sono già configurati su questo account.",
+            "IDENTITY_KEY_NOT_FOUND": "I messaggi cifrati non sono ancora configurati su questo account.",
+            "INVALID_CRYPTO_KEY": "La chiave di cifratura non ha superato il controllo. Configura di nuovo questo browser.",
+            "CRYPTO_DEVICE_NOT_FOUND": "Questo browser non è più configurato per i messaggi cifrati.",
+            "INVALID_KEY_PACKAGES": "Non è stato possibile salvare le chiavi di cifratura.",
             "UNSUPPORTED_MEDIA_TYPE": "Questo tipo di file non è accettato qui.",
             "USER_NOT_FOUND": "Impossibile trovare questa persona.",
             "USER_WIP_LIMIT_EXCEEDED": "Questa persona ha già raggiunto il suo limite WIP.",

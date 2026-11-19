@@ -1,5 +1,6 @@
 import { authService } from './authService';
 import { ApiError } from './apiError';
+import { wipeLocalKeys } from '../crypto/keyStore';
 import type { LoginResponse } from '../types/api';
 
 export const TOKEN_KEY = 'token';
@@ -35,6 +36,7 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(SESSION_ID_KEY);
+  wipeLocalKeys();
   clearListeners.forEach(listener => listener());
 }
 

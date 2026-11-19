@@ -1,6 +1,7 @@
 export const SECONDS = {
   'cypress/e2e/auth/login.cy.js': 4,
   'cypress/e2e/auth/logout.cy.js': 4,
+  'cypress/e2e/auth/messaging-keys.cy.js': 12,
   'cypress/e2e/board/columns.cy.js': 38,
   'cypress/e2e/board/live-sync.cy.js': 14,
   'cypress/e2e/board/rows.cy.js': 35,

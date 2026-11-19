@@ -144,6 +144,142 @@
   white-space: nowrap;
 }
 
+.device-messaging-key,
+.messaging-key code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.messaging-panel {
+  gap: var(--space-12);
+}
+
+.messaging-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.messaging-panel-icon,
+.messaging-setup-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-control);
+  background: var(--kb-accent-soft);
+  color: var(--kb-accent-ink);
+}
+
+.messaging-muted {
+  margin: 0;
+  color: var(--kb-ink-muted);
+}
+
+.messaging-ready,
+.messaging-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  font-weight: 500;
+}
+
+.messaging-ready {
+  color: var(--kb-ok);
+}
+
+.messaging-notice {
+  padding: 10px var(--space-12);
+  border-radius: var(--radius-control);
+  background: var(--kb-warn-soft);
+  color: var(--kb-warn);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.messaging-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: 13px;
+}
+
+.messaging-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.messaging-setup {
+  max-width: 520px;
+}
+
+.messaging-setup-step {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.messaging-setup-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.messaging-points {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding-inline-start: 20px;
+}
+
+.messaging-recovery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--radius-control);
+  background: var(--kb-sunken);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  user-select: all;
+}
+
+.messaging-caption {
+  margin: 0;
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.messaging-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.messaging-check input {
+  margin-top: 3px;
+  accent-color: var(--kb-accent);
+}
+
+.messaging-key-input {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.messaging-error {
+  margin: 0;
+  color: var(--kb-danger);
+  font-size: 13px;
+}
+
 @media (max-width: 640px) {
   .device-item {
     grid-template-columns: 40px minmax(0, 1fr);
@@ -152,5 +288,9 @@
   .device-end-btn {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .messaging-recovery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
