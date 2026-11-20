@@ -493,7 +493,9 @@
           "forget": "Dimentica questo browser",
           "remove": "Rimuovi",
           "continue": "Continua",
-          "save": "Salva"
+          "save": "Salva",
+          "link": "Collega con un codice",
+          "approve": "Collega un altro dispositivo"
         },
         "setup": {
           "introTitle": "I messaggi sono cifrati end-to-end",
@@ -569,6 +571,31 @@
         },
         "addRecovery": {
           "done": "La chiave di recupero è pronta"
+        },
+        "link": {
+          "title": "Collega questo browser",
+          "body": "Su un dispositivo in cui i messaggi cifrati già funzionano, apri Account › Dispositivi connessi, scegli «Collega un altro dispositivo» e inserisci il codice qui sotto. Puoi anche inquadrare il codice QR con la fotocamera di quel dispositivo. Non servono PIN né chiave di recupero.",
+          "qr": "Codice QR per collegare questo browser",
+          "orCode": "Oppure inserisci questo codice sull’altro dispositivo:",
+          "copy": "Copia il codice",
+          "copied": "Copiato",
+          "waiting": "In attesa dell’altro dispositivo. Il codice vale 5 minuti.",
+          "again": "Riprova",
+          "failed": {
+            "start": "Impossibile creare un codice. Riprova.",
+            "expired": "Il codice è scaduto.",
+            "finish": "L’altro dispositivo ha inviato qualcosa che questo browser non può usare. Riprova."
+          }
+        },
+        "approve": {
+          "title": "Collega un altro dispositivo",
+          "body": "Inserisci il codice mostrato sul nuovo dispositivo o incolla l’indirizzo del suo codice QR. Questo dispositivo gli consegnerà la tua chiave dei messaggi, cifrata in modo che solo il nuovo dispositivo possa leggerla.",
+          "label": "Codice o indirizzo",
+          "warning": "Continua solo se l’hai avviato poco fa sul tuo dispositivo. Chi ottenesse il tuo codice in quel lasso di tempo potrebbe leggere i tuoi messaggi.",
+          "badCode": "Questo non è un codice di collegamento valido.",
+          "done": "L’altro dispositivo è collegato.",
+          "submit": "Collega il dispositivo",
+          "notReady": "I messaggi cifrati devono funzionare in questo browser prima che possa collegare un altro dispositivo."
         }
       },
       "fields": {
@@ -854,7 +881,9 @@
             "VALIDATION_ERROR": "Controlla i campi e riprova.",
             "VERIFICATION_CODE_EXPIRED": "Questo codice è scaduto. Richiedine uno nuovo.",
             "VIEWER_READ_ONLY": "Puoi vedere questa bacheca ma non modificarla.",
-            "WRONG_PASSWORD": "La password attuale non è corretta."
+            "WRONG_PASSWORD": "La password attuale non è corretta.",
+            "DEVICE_LINK_NOT_FOUND": "Questo codice di collegamento è scaduto o non esiste. Ricomincia sul nuovo dispositivo.",
+            "DEVICE_LINK_ANSWERED": "Questo codice di collegamento è già stato approvato."
         }
     },
     "messages": {
@@ -891,7 +920,11 @@
             "unread": "Non letti: {{count}}",
             "muted": "Silenziata",
             "boards": "Bacheche",
-            "people": "Persone e gruppi"
+            "people": "Persone e gruppi",
+            "mentioned": "Sei stato menzionato",
+            "results": "Messaggi",
+            "searching": "Ricerca…",
+            "noResults": "Nessun messaggio trovato su questo dispositivo"
         },
         "thread": {
             "encrypted": "Crittografia end-to-end",
@@ -904,7 +937,10 @@
             "typingOne": "{{name}} sta scrivendo…",
             "typingMany": "Diverse persone stanno scrivendo…",
             "boardMembers": "Canale della bacheca · Membri: {{count}}",
-            "readOnly": "Puoi leggere questo canale ma non scrivere, perché su questa bacheca sei un visualizzatore."
+            "readOnly": "Puoi leggere questo canale ma non scrivere, perché su questa bacheca sei un visualizzatore.",
+            "replies": "Risposte: {{count}}",
+            "panel": "Thread",
+            "panelLog": "Messaggi di questo thread"
         },
         "request": {
             "title": "Richiesta di messaggi",
@@ -920,7 +956,8 @@
             "send": "Invia",
             "replying": "Risposta a {{name}}",
             "editing": "Stai modificando il tuo messaggio",
-            "cancelDraft": "Annulla"
+            "cancelDraft": "Annulla",
+            "mentions": "Persone che puoi menzionare"
         },
         "message": {
             "actions": "Azioni sul messaggio",
@@ -931,7 +968,9 @@
             "reaction": "{{emoji}}: {{count}}",
             "edited": "modificato",
             "deleted": "Questo messaggio è stato eliminato",
-            "replyMissing": "Il messaggio originale non è su questo dispositivo"
+            "replyMissing": "Il messaggio originale non è su questo dispositivo",
+            "replyInThread": "Rispondi nel thread",
+            "disappears": "Scompare {{time}}"
         },
         "notice": {
             "undecryptable": "Un messaggio di {{name}} non è stato decifrato su questo dispositivo.",
@@ -1022,6 +1061,26 @@
             "thisBoard": "Questa bacheca",
             "boardChannel": "Canale della bacheca · Membri: {{count}}",
             "none": "Ancora nessuna conversazione. Apri Messaggi per iniziarne una."
+        },
+        "disappear": {
+          "heading": "Messaggi a scomparsa",
+          "label": "Elimina i nuovi messaggi dopo",
+          "note": "Vale per i messaggi inviati da ora in poi. Il server elimina allora la copia cifrata e ogni dispositivo rimuove la propria.",
+          "off": "Mai",
+          "hour": "1 ora",
+          "day": "1 giorno",
+          "week": "1 settimana",
+          "month": "30 giorni",
+          "title": "I messaggi scompaiono dopo {{after}}"
+        },
+        "files": {
+          "attach": "Allega file",
+          "chosen": "File da inviare",
+          "remove": "Rimuovi {{name}}",
+          "tooMany": "Puoi inviare al massimo {{count}} file alla volta",
+          "tooLarge": "Un file può pesare al massimo {{size}} MB",
+          "failed": "Impossibile aprire il file",
+          "download": "Scarica {{name}} ({{size}})"
         }
     }
 }

@@ -493,7 +493,9 @@
           "forget": "Olvidar este navegador",
           "remove": "Quitar",
           "continue": "Continuar",
-          "save": "Guardar"
+          "save": "Guardar",
+          "link": "Vincular con un código",
+          "approve": "Vincular otro dispositivo"
         },
         "setup": {
           "introTitle": "Los mensajes están cifrados de extremo a extremo",
@@ -569,6 +571,31 @@
         },
         "addRecovery": {
           "done": "Tu clave de recuperación está lista"
+        },
+        "link": {
+          "title": "Vincular este navegador",
+          "body": "En un dispositivo donde los mensajes cifrados ya funcionen, abre Cuenta › Dispositivos con sesión iniciada, elige «Vincular otro dispositivo» e introduce el código de abajo. También puedes escanear el código QR con la cámara de ese dispositivo. No hace falta PIN ni clave de recuperación.",
+          "qr": "Código QR para vincular este navegador",
+          "orCode": "O introduce este código en el otro dispositivo:",
+          "copy": "Copiar el código",
+          "copied": "Copiado",
+          "waiting": "Esperando al otro dispositivo. El código sirve durante 5 minutos.",
+          "again": "Intentarlo de nuevo",
+          "failed": {
+            "start": "No se pudo crear un código. Inténtalo de nuevo.",
+            "expired": "El código ha caducado.",
+            "finish": "El otro dispositivo envió algo que este navegador no pudo usar. Inténtalo de nuevo."
+          }
+        },
+        "approve": {
+          "title": "Vincular otro dispositivo",
+          "body": "Introduce el código que aparece en el dispositivo nuevo o pega la dirección de su código QR. Este dispositivo le entregará entonces tu clave de mensajes, cifrada para que solo el dispositivo nuevo pueda leerla.",
+          "label": "Código o dirección",
+          "warning": "Continúa solo si lo has iniciado hace un momento en tu propio dispositivo. Quien obtenga tu código en ese tiempo podría leer tus mensajes.",
+          "badCode": "Ese no es un código de enlace válido.",
+          "done": "El otro dispositivo está vinculado.",
+          "submit": "Vincular el dispositivo",
+          "notReady": "Los mensajes cifrados deben funcionar en este navegador antes de poder vincular otro dispositivo."
         }
       },
       "fields": {
@@ -854,7 +881,9 @@
             "VALIDATION_ERROR": "Revisa los campos e inténtalo de nuevo.",
             "VERIFICATION_CODE_EXPIRED": "Ese código ha caducado. Solicita uno nuevo.",
             "VIEWER_READ_ONLY": "Puedes ver este tablero, pero no cambiarlo.",
-            "WRONG_PASSWORD": "La contraseña actual no es correcta."
+            "WRONG_PASSWORD": "La contraseña actual no es correcta.",
+            "DEVICE_LINK_NOT_FOUND": "Este código de enlace ha caducado o no existe. Empieza de nuevo en el dispositivo nuevo.",
+            "DEVICE_LINK_ANSWERED": "Este código de enlace ya ha sido aprobado."
         }
     },
     "messages": {
@@ -891,7 +920,11 @@
             "unread": "Sin leer: {{count}}",
             "muted": "Silenciada",
             "boards": "Tableros",
-            "people": "Personas y grupos"
+            "people": "Personas y grupos",
+            "mentioned": "Te han mencionado",
+            "results": "Mensajes",
+            "searching": "Buscando…",
+            "noResults": "No se encontraron mensajes en este dispositivo"
         },
         "thread": {
             "encrypted": "Cifrado de extremo a extremo",
@@ -904,7 +937,10 @@
             "typingOne": "{{name}} está escribiendo…",
             "typingMany": "Varias personas están escribiendo…",
             "boardMembers": "Canal del tablero · Miembros: {{count}}",
-            "readOnly": "Puedes leer este canal, pero no escribir en él, porque eres espectador en este tablero."
+            "readOnly": "Puedes leer este canal, pero no escribir en él, porque eres espectador en este tablero.",
+            "replies": "Respuestas: {{count}}",
+            "panel": "Hilo",
+            "panelLog": "Mensajes de este hilo"
         },
         "request": {
             "title": "Solicitud de mensajes",
@@ -920,7 +956,8 @@
             "send": "Enviar",
             "replying": "Respondiendo a {{name}}",
             "editing": "Editando tu mensaje",
-            "cancelDraft": "Cancelar"
+            "cancelDraft": "Cancelar",
+            "mentions": "Personas que puedes mencionar"
         },
         "message": {
             "actions": "Acciones del mensaje",
@@ -931,7 +968,9 @@
             "reaction": "{{emoji}}: {{count}}",
             "edited": "editado",
             "deleted": "Este mensaje se eliminó",
-            "replyMissing": "El mensaje original no está en este dispositivo"
+            "replyMissing": "El mensaje original no está en este dispositivo",
+            "replyInThread": "Responder en el hilo",
+            "disappears": "Desaparece {{time}}"
         },
         "notice": {
             "undecryptable": "Un mensaje de {{name}} no se pudo descifrar en este dispositivo.",
@@ -1022,6 +1061,26 @@
             "thisBoard": "Este tablero",
             "boardChannel": "Canal del tablero · Miembros: {{count}}",
             "none": "Aún no hay conversaciones. Abre Mensajes para empezar una."
+        },
+        "disappear": {
+          "heading": "Mensajes temporales",
+          "label": "Eliminar los mensajes nuevos después de",
+          "note": "Se aplica a los mensajes enviados a partir de ahora. El servidor elimina entonces la copia cifrada y cada dispositivo borra la suya.",
+          "off": "Nunca",
+          "hour": "1 hora",
+          "day": "1 día",
+          "week": "1 semana",
+          "month": "30 días",
+          "title": "Los mensajes desaparecen después de {{after}}"
+        },
+        "files": {
+          "attach": "Adjuntar archivos",
+          "chosen": "Archivos para enviar",
+          "remove": "Quitar {{name}}",
+          "tooMany": "Puedes enviar hasta {{count}} archivos a la vez",
+          "tooLarge": "Un archivo puede pesar como máximo {{size}} MB",
+          "failed": "No se pudo abrir el archivo",
+          "download": "Descargar {{name}} ({{size}})"
         }
     }
 }

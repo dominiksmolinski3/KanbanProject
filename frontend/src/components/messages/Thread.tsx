@@ -4,11 +4,14 @@ import { useMessages } from '../../context/MessagesContext';
 import { useAsyncAction } from '../../hooks/useAsyncAction';
 import type { ArchivedMessage } from '../../crypto/engine';
 import Icon from '../Icon';
-import Composer, { type Draft } from './Composer';
+import Composer, { type Draft, type Outgoing } from './Composer';
 import ConversationDetails from './ConversationDetails';
 import EarlierMessages from './EarlierMessages';
 import MessageRow, { type DeliveryStatus } from './MessageRow';
+import ThreadPanel from './ThreadPanel';
 import { conversationTitle, others } from './conversationTitle';
+import { disappearLabel } from './disappear';
+import type { Person } from './mentions';
 
 export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock' }) {
   const { t, i18n } = useTranslation();
@@ -18,6 +21,7 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
   } = useMessages();
   const [draft, setDraft] = useState<Draft>(null);
   const [details, setDetails] = useState(false);
+  const [panelRoot, setPanelRoot] = useState<string | null>(null);
   const request = useAsyncAction();
   const end = useRef<HTMLDivElement>(null);
 
@@ -36,11 +40,24 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
   const dock = variant === 'dock';
   const other = others(conversation, userId)[0];
 
-  const onSend = async (text: string) => {
+  const mentionable: Person[] = conversation.members
+    .filter((member) => member.userId !== userId && member.state === 'ACTIVE')
+    .map((member) => ({ userId: member.userId, name: member.name }));
+  const everyone: Person[] = conversation.members.map((member) => ({ userId: member.userId, name: member.name }));
+  const repliesTo = new Map<string, ArchivedMessage[]>();
+  messages.forEach((message) => {
+    if (message.threadId && byId.has(message.threadId)) {
+      repliesTo.set(message.threadId, [...(repliesTo.get(message.threadId) ?? []), message]);
+    }
+  });
+  const root = panelRoot ? byId.get(panelRoot) ?? null : null;
+
+  const onSend = async (text: string, outgoing: Outgoing) => {
     if (draft?.mode === 'edit') {
       await edit(draft.message.id, text);
     } else {
-      await send(text, draft?.mode === 'reply' ? draft.message.id : null);
+      await send(text, draft?.mode === 'reply' ? draft.message.id : null,
+        { mentions: outgoing.mentions, files: outgoing.files });
     }
     setDraft(null);
   };
@@ -53,36 +70,45 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
     return 'sent';
   };
 
-  let lastDay = '';
-  const rows = messages.map((message: ArchivedMessage, index) => {
-    const day = new Date(message.sentAt).toLocaleDateString(i18n.language, { dateStyle: 'medium' });
-    const separator = day !== lastDay ? <li key={`day-${day}`} className="message-day"><span>{day}</span></li> : null;
-    lastDay = day;
-    const previous = messages[index - 1];
+  const renderMessage = (message: ArchivedMessage, previous?: ArchivedMessage, inPanel = false) => {
     const mine = message.senderId === userId;
-    const showSender = conversation.kind !== 'DIRECT' && !mine && message.kind === 'text'
+    const showSender = (conversation.kind !== 'DIRECT' || inPanel) && !mine && message.kind === 'text'
       && (previous?.senderId !== message.senderId || previous?.kind !== 'text');
-    return [
-      separator,
+    return (
       <MessageRow
         key={message.id}
         message={message}
         mine={mine}
         status={statusOf(message)}
         userId={userId}
+        people={everyone}
         senderName={showSender ? personName(message.senderId) : null}
         nameOf={personName}
         replied={message.replyTo ? byId.get(message.replyTo) ?? null : undefined}
+        replies={inPanel ? 0 : repliesTo.get(message.id)?.length ?? 0}
+        onOpenThread={dock || inPanel || message.kind !== 'text' ? undefined : (target) => {
+          setDetails(false);
+          setPanelRoot(target.id);
+        }}
         onReply={(target) => setDraft({ mode: 'reply', message: target })}
         onEdit={(target) => setDraft({ mode: 'edit', message: target })}
         onDelete={(target) => void remove(target.id)}
         onReact={(target, emoji, on) => void react(target.id, emoji, on)}
-      />,
-    ];
+      />
+    );
+  };
+
+  let lastDay = '';
+  const shown = dock ? messages : messages.filter((message) => !message.threadId || !byId.has(message.threadId));
+  const rows = shown.map((message: ArchivedMessage, index) => {
+    const day = new Date(message.sentAt).toLocaleDateString(i18n.language, { dateStyle: 'medium' });
+    const separator = day !== lastDay ? <li key={`day-${day}`} className="message-day"><span>{day}</span></li> : null;
+    lastDay = day;
+    return [separator, renderMessage(message, shown[index - 1])];
   });
 
   return (
-    <div className={`thread-layout${details && !dock ? ' thread-layout--details' : ''}`}>
+    <div className={`thread-layout${(details || root) && !dock ? ' thread-layout--details' : ''}`}>
       <section className={`thread${dock ? ' thread--dock' : ''}`} aria-label={title}>
         {!dock && (
           <header className="thread-head">
@@ -97,10 +123,17 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
                   ? t('messages.thread.encrypted')
                   : t(conversation.kind === 'BOARD' ? 'messages.thread.boardMembers' : 'messages.thread.members',
                     { count: conversation.members.length })}
+                {conversation.disappearAfter ? (
+                  <span className="thread-disappear"
+                    title={t('messages.disappear.title', { after: disappearLabel(conversation.disappearAfter, t) })}>
+                    <Icon name="clock" size="sm" />
+                    {disappearLabel(conversation.disappearAfter, t)}
+                  </span>
+                ) : null}
               </span>
             </div>
             <button type="button" className="btn-ghost" aria-expanded={details} aria-label={t('messages.details.open')}
-              onClick={() => setDetails((open) => !open)}>
+              onClick={() => { setPanelRoot(null); setDetails((open) => !open); }}>
               <Icon name="info" />
             </button>
           </header>
@@ -150,6 +183,8 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
             disabled={blocked}
             draft={draft}
             draftAuthor={draft ? personName(draft.message.senderId) : ''}
+            people={mentionable}
+            attachments
             onCancelDraft={() => setDraft(null)}
             onSend={onSend}
             onTyping={notifyTyping}
@@ -157,6 +192,11 @@ export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock'
         )}
       </section>
       {details && !dock && <ConversationDetails onClose={() => setDetails(false)} />}
+      {root && !dock && (
+        <ThreadPanel root={root} replies={repliesTo.get(root.id) ?? []} people={mentionable} readOnly={readOnly}
+          disabled={blocked} renderMessage={(message) => renderMessage(message, undefined, true)}
+          onClose={() => setPanelRoot(null)} />
+      )}
     </div>
   );
 }

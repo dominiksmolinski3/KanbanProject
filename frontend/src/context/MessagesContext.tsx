@@ -5,7 +5,8 @@ import { CONVERSATIONS_KEY } from './messages/queryKeys';
 import { createMessenger, isGone, textPayload, type Messenger, type SyncOutcome } from './messages/messenger';
 import { messagesApi, type Conversation, type ConversationSettings, type MemberRole, type NewConversation } from '../services/messagesApi';
 import { watchConversations, type ConversationEvent } from '../services/conversationEvents';
-import { newMessageId } from '../crypto/payload';
+import { newMessageId, type FileRef } from '../crypto/payload';
+import { downloadFile, uploadFiles } from './messages/files';
 import type { ArchivedMessage } from '../crypto/engine';
 
 
@@ -22,7 +23,10 @@ interface ThreadsState {
 
 type ThreadsAction =
   | { type: 'merge'; conversationId: number; items: ArchivedMessage[] }
+  | { type: 'expire'; now: number }
   | { type: 'state'; conversationId: number; state: ThreadState };
+
+const expired = (message: ArchivedMessage, now: number) => Boolean(message.expiresAt) && Date.parse(message.expiresAt as string) <= now;
 
 function merge(current: ArchivedMessage[], items: ArchivedMessage[]): ArchivedMessage[] {
   const byId = new Map(current.map((message) => [message.id, message]));
@@ -31,6 +35,16 @@ function merge(current: ArchivedMessage[], items: ArchivedMessage[]): ArchivedMe
 }
 
 function threads(state: ThreadsState, action: ThreadsAction): ThreadsState {
+  if (action.type === 'expire') {
+    let changed = false;
+    const messages: Record<number, ArchivedMessage[]> = {};
+    for (const [conversationId, items] of Object.entries(state.messages)) {
+      const kept = items.filter((message) => !expired(message, action.now));
+      if (kept.length !== items.length) changed = true;
+      messages[Number(conversationId)] = kept;
+    }
+    return changed ? { ...state, messages } : state;
+  }
   if (action.type === 'merge') {
     if (!action.items.length && state.messages[action.conversationId]) return state;
     return {
@@ -52,7 +66,10 @@ export interface MessagesValue {
   messages: ArchivedMessage[];
   threadState: ThreadState;
   typing: number[];
-  send: (text: string, replyTo: string | null) => Promise<void>;
+  mentioned: number[];
+  search: (query: string) => Promise<ArchivedMessage[]>;
+  download: (file: FileRef) => Promise<Blob>;
+  send: (text: string, replyTo: string | null, extras?: SendExtras) => Promise<void>;
   edit: (target: string, text: string) => Promise<void>;
   remove: (target: string) => Promise<void>;
   react: (target: string, emoji: string, on: boolean) => Promise<void>;
@@ -71,6 +88,15 @@ export interface MessagesValue {
   verification: Messenger['verification'];
   setVerified: Messenger['setVerified'];
 }
+
+export interface SendExtras {
+  thread?: string | null;
+  mentions?: number[];
+  files?: File[];
+}
+
+const SEARCH_LIMIT = 50;
+const EXPIRY_CHECK_MS = 15000;
 
 const MessagesContext = createContext<MessagesValue | null>(null);
 
@@ -203,6 +229,11 @@ export function MessagesProvider({ children, messenger: given, initialConversati
   }, [userId, enabled, messenger, handle, refreshList]);
 
   useEffect(() => {
+    const timer = setInterval(() => dispatch({ type: 'expire', now: Date.now() }), EXPIRY_CHECK_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setTypingNow((now) => {
         const cutoff = Date.now() - TYPING_MS;
@@ -243,9 +274,27 @@ export function MessagesProvider({ children, messenger: given, initialConversati
     .filter((each) => each.me.state === 'ACTIVE' && !each.me.muted && !each.me.archived)
     .reduce((total, each) => total + each.unread, 0);
 
+  const search = useCallback((query: string) => messenger.search(query,
+    conversationsRef.current.filter((each) => each.me.state === 'ACTIVE').map((each) => each.id), SEARCH_LIMIT),
+  [messenger]);
+
+  const download = useCallback(async (file: FileRef) => {
+    const conversation = conversationsRef.current.find((each) => each.id === selectedRef.current);
+    if (!conversation) throw new Error('No conversation is open');
+    return downloadFile(conversation.id, file);
+  }, []);
+
+  const mentioned = userId === null ? [] : conversations
+    .filter((each) => each.me.state === 'ACTIVE' && each.unread > 0)
+    .filter((each) => (state.messages[each.id] ?? []).some((message) => message.seq > each.me.readSeq
+      && message.senderId !== userId && message.mentions?.includes(userId)))
+    .map((each) => each.id);
+
   const value: MessagesValue = {
     enabled,
     userId,
+    mentioned,
+    search,
     conversations,
     loading: enabled && list.isPending,
     unread,
@@ -257,7 +306,15 @@ export function MessagesProvider({ children, messenger: given, initialConversati
     nameOf: (conversation) => groupNames[conversation.id] ?? null,
     verification: messenger.verification,
     setVerified: messenger.setVerified,
-    send: (text, replyTo) => sendPayload(textPayload(text, replyTo)),
+    download,
+    send: async (text, replyTo, extras = {}) => {
+      const conversation = current();
+      if (!conversation) return;
+      const files = extras.files?.length ? await uploadFiles(conversation.id, extras.files) : [];
+      await sendPayload(textPayload(text, replyTo, {
+        thread: extras.thread, mentions: extras.mentions, files, ttl: conversation.disappearAfter,
+      }));
+    },
     edit: (target, text) => sendPayload({ t: 'edit', id: newMessageId(), target, text }),
     remove: (target) => sendPayload({ t: 'delete', id: newMessageId(), target }),
     react: (target, emoji, on) => sendPayload({ t: 'react', id: newMessageId(), target, emoji, on }),

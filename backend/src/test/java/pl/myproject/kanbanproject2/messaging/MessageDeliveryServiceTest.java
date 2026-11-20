@@ -128,6 +128,25 @@ class MessageDeliveryServiceTest {
     }
 
     @Test
+    @DisplayName("a conversation with a timer stores each message only until then, and never past the retention")
+    void disappearingMessages() {
+        group.take(MlsMessageKind.COMMIT, NOW);
+
+        group.disappearAfter(3600);
+        service.post(ania, 5L, new MessageRequest(10L, 1L, new byte[]{1}));
+        group.disappearAfter(0);
+        service.post(ania, 5L, new MessageRequest(10L, 1L, new byte[]{2}));
+        Conversation untouched = conversation(6, ConversationKind.GROUP, ania);
+        untouched.disappearAfter(Integer.MAX_VALUE);
+
+        ArgumentCaptor<MlsMessage> stored = ArgumentCaptor.forClass(MlsMessage.class);
+        verify(messages, org.mockito.Mockito.times(2)).save(stored.capture());
+        assertThat(stored.getAllValues().get(0).getExpiresAt()).isEqualTo(NOW.plusSeconds(3600));
+        assertThat(stored.getAllValues().get(1).getExpiresAt()).isEqualTo(NOW.plus(MessageDeliveryService.RETENTION));
+        assertThat(MessageDeliveryService.expiry(untouched, NOW)).isEqualTo(NOW.plus(MessageDeliveryService.RETENTION));
+    }
+
+    @Test
     @DisplayName("a message goes out at the current epoch, accepts a request by replying and counts as read by its sender")
     void post() {
         group.take(MlsMessageKind.COMMIT, NOW);

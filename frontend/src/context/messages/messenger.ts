@@ -3,7 +3,7 @@ import { messagesApi, type Conversation } from '../../services/messagesApi';
 import { deviceVault, type WorkerClient } from '../../crypto/client';
 import { readLocalDevice, type LocalDevice } from '../../crypto/keyStore';
 import type { ArchivedMessage, DirectoryMember, NoticeCode } from '../../crypto/engine';
-import { newMessageId, type Payload } from '../../crypto/payload';
+import { newMessageId, type FileRef, type Payload } from '../../crypto/payload';
 import { safetyNumber } from '../../crypto/safetyNumber';
 
 const ATTEMPTS = 3;
@@ -32,6 +32,7 @@ export interface Messenger {
   directory(conversationId: number): Promise<DirectoryMember[]>;
   history(conversationId: number, beforeSeq: number, limit: number): Promise<ArchivedMessage[]>;
   groupNames(conversationIds: number[]): Promise<Record<number, string | null>>;
+  search(query: string, conversationIds: number[], limit: number): Promise<ArchivedMessage[]>;
   verification(conversationId: number, otherId: number): Promise<Verification | null>;
   setVerified(otherId: number, identityKey: string, verified: boolean): Promise<void>;
 }
@@ -270,6 +271,8 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
 
     history: (conversationId, beforeSeq, limit) => vault.readArchive(conversationId, beforeSeq, limit),
 
+    search: (query, conversationIds, limit) => vault.search(query, conversationIds, limit),
+
     async groupNames(conversationIds) {
       if (!await device()) return {};
       const statuses = await Promise.all(conversationIds.map((id) => vault.groupStatus(id)));
@@ -295,5 +298,18 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
   };
 }
 
-export const textPayload = (text: string, replyTo: string | null): Payload =>
-  ({ t: 'text', id: newMessageId(), text, ...(replyTo ? { replyTo } : {}) });
+export interface TextExtras {
+  thread?: string | null;
+  mentions?: number[];
+  ttl?: number | null;
+  files?: FileRef[];
+}
+
+export const textPayload = (text: string, replyTo: string | null, extras: TextExtras = {}): Payload => ({
+  t: 'text', id: newMessageId(), text,
+  ...(replyTo ? { replyTo } : {}),
+  ...(extras.thread ? { thread: extras.thread } : {}),
+  ...(extras.mentions?.length ? { mentions: extras.mentions } : {}),
+  ...(extras.ttl ? { ttl: extras.ttl } : {}),
+  ...(extras.files?.length ? { files: extras.files } : {}),
+});

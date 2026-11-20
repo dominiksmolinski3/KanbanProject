@@ -493,7 +493,9 @@
         "forget": "Forget this browser",
         "remove": "Remove",
         "continue": "Continue",
-        "save": "Save"
+        "save": "Save",
+        "link": "Link with a code",
+        "approve": "Link another device"
       },
       "setup": {
         "introTitle": "Messages are end-to-end encrypted",
@@ -569,6 +571,31 @@
       },
       "addRecovery": {
         "done": "Your recovery key is ready"
+      },
+      "link": {
+        "title": "Link this browser",
+        "body": "On a device where encrypted messages already work, open Account › Signed-in devices and choose “Link another device”, then enter the code below. You can also scan the QR code with that device’s camera. No PIN or recovery key is needed.",
+        "qr": "QR code that links this browser",
+        "orCode": "Or enter this code on the other device:",
+        "copy": "Copy the code",
+        "copied": "Copied",
+        "waiting": "Waiting for the other device. The code works for 5 minutes.",
+        "again": "Try again",
+        "failed": {
+          "start": "Could not create a code. Try again.",
+          "expired": "The code has expired.",
+          "finish": "The other device sent something this browser could not use. Try again."
+        }
+      },
+      "approve": {
+        "title": "Link another device",
+        "body": "Enter the code shown on the new device, or paste the address from its QR code. This device then hands over your messaging key, encrypted so that only the new device can read it.",
+        "label": "Code or address",
+        "warning": "Only continue if you started this on your own device a moment ago. Anyone who gets your code in that time could read your messages.",
+        "badCode": "That is not a valid link code.",
+        "done": "The other device is linked.",
+        "submit": "Link the device",
+        "notReady": "Encrypted messages have to work on this browser before it can link another device."
       }
     },
     "fields": {
@@ -854,7 +881,9 @@
       "INVALID_CONVERSATION_REQUEST": "That change to the conversation is not allowed.",
       "RECIPIENT_NOT_SET_UP": "That person has not set up encrypted messages yet.",
       "STALE_EPOCH": "The conversation changed in the meantime. Try again.",
-      "MESSAGE_TOO_LARGE": "The message is too long."
+      "MESSAGE_TOO_LARGE": "The message is too long.",
+      "DEVICE_LINK_NOT_FOUND": "This link code has expired or does not exist. Start again on the new device.",
+      "DEVICE_LINK_ANSWERED": "This link code has already been approved."
     }
   },
   "messages": {
@@ -891,7 +920,11 @@
       "unread": "Unread: {{count}}",
       "muted": "Muted",
       "boards": "Boards",
-      "people": "People and groups"
+      "people": "People and groups",
+      "mentioned": "You were mentioned",
+      "results": "Messages",
+      "searching": "Searching…",
+      "noResults": "No messages found on this device"
     },
     "thread": {
       "encrypted": "End-to-end encrypted",
@@ -904,7 +937,10 @@
       "typingOne": "{{name}} is typing…",
       "typingMany": "Several people are typing…",
       "boardMembers": "Board channel · Members: {{count}}",
-      "readOnly": "You can read this channel but not post in it, because you are a viewer on this board."
+      "readOnly": "You can read this channel but not post in it, because you are a viewer on this board.",
+      "replies": "Replies: {{count}}",
+      "panel": "Thread",
+      "panelLog": "Messages in this thread"
     },
     "request": {
       "title": "Message request",
@@ -920,7 +956,8 @@
       "send": "Send",
       "replying": "Replying to {{name}}",
       "editing": "Editing your message",
-      "cancelDraft": "Cancel"
+      "cancelDraft": "Cancel",
+      "mentions": "People you can mention"
     },
     "message": {
       "actions": "Message actions",
@@ -931,7 +968,9 @@
       "reaction": "{{emoji}}: {{count}}",
       "edited": "edited",
       "deleted": "This message was deleted",
-      "replyMissing": "The original message is not on this device"
+      "replyMissing": "The original message is not on this device",
+      "replyInThread": "Reply in thread",
+      "disappears": "Disappears {{time}}"
     },
     "notice": {
       "undecryptable": "A message from {{name}} could not be decrypted on this device.",
@@ -1022,6 +1061,26 @@
       "thisBoard": "This board",
       "boardChannel": "Board channel · Members: {{count}}",
       "none": "No conversations yet. Open Messages to start one."
+    },
+    "disappear": {
+      "heading": "Disappearing messages",
+      "label": "Delete new messages after",
+      "note": "Applies to messages sent from now on. The server deletes the encrypted copy at that time, and every device removes its own copy.",
+      "off": "Never",
+      "hour": "1 hour",
+      "day": "1 day",
+      "week": "1 week",
+      "month": "30 days",
+      "title": "Messages disappear after {{after}}"
+    },
+    "files": {
+      "attach": "Attach files",
+      "chosen": "Files to send",
+      "remove": "Remove {{name}}",
+      "tooMany": "You can send up to {{count}} files at once",
+      "tooLarge": "A file can be at most {{size}} MB",
+      "failed": "The file could not be opened",
+      "download": "Download {{name}} ({{size}})"
     }
   }
 }

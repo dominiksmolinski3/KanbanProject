@@ -1,4 +1,4 @@
-import { deleteChecked, getJson, postJson, putJson } from './http';
+import { deleteChecked, getJson, postJson, postVoid, putJson } from './http';
 import { toBase64 } from '../crypto/bytes';
 import type { KeyPackageUpload } from '../crypto/keys';
 import type { PinWrap, PreparedDevice, SignedWrap } from '../crypto/deviceVault';
@@ -32,6 +32,14 @@ export interface MessagingStatus {
   identity: MessagingIdentity | null;
   pin: PinStatus | null;
   devices: MessagingDevice[];
+}
+
+export interface DeviceLink {
+  id: string;
+  devicePublic: string;
+  linkerPublic: string | null;
+  sealed: string | null;
+  expiresAt: string;
 }
 
 export interface IdentityBackup {
@@ -88,6 +96,17 @@ export const cryptoApi = {
       identitySignature: toBase64(device.identitySignature),
       keyPackages: packageBody(device.keyPackages),
     }),
+
+  createLink: (devicePublic: Uint8Array) =>
+    postJson<DeviceLink>(`${API_BASE_URL}/crypto/links`, { devicePublic: toBase64(devicePublic) }),
+
+  getLink: (id: string) => getJson<DeviceLink>(`${API_BASE_URL}/crypto/links/${id}`),
+
+  answerLink: (id: string, linkerPublic: Uint8Array, sealed: Uint8Array) =>
+    postVoid(`${API_BASE_URL}/crypto/links/${id}/answer`,
+      { linkerPublic: toBase64(linkerPublic), sealed: toBase64(sealed) }),
+
+  cancelLink: (id: string) => deleteChecked(`${API_BASE_URL}/crypto/links/${id}`),
 
   attachSession: (deviceId: number, sessionId: number) =>
     postJson<MessagingDevice>(`${API_BASE_URL}/crypto/devices/${deviceId}/session`, { sessionId }),

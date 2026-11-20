@@ -50,6 +50,9 @@ public class Conversation {
     @Column(name = "who_can_add", nullable = false, length = 16)
     private WhoCanAdd whoCanAdd;
 
+    @Column(name = "disappear_after_seconds")
+    private Integer disappearAfterSeconds;
+
     @Column(name = "board_id", unique = true)
     private Integer boardId;
 
@@ -108,6 +111,12 @@ public class Conversation {
         this.needsCommit = true;
     }
 
+    public void disappearAfter(Integer seconds) {
+        if (seconds != null) {
+            this.disappearAfterSeconds = seconds == 0 ? null : seconds;
+        }
+    }
+
     public void configure(HistoryVisibility historyVisibility, WhoCanAdd whoCanAdd) {
         if (historyVisibility != null) {
             this.historyVisibility = historyVisibility;
@@ -159,6 +168,10 @@ public class Conversation {
 
     public WhoCanAdd getWhoCanAdd() {
         return whoCanAdd;
+    }
+
+    public Integer getDisappearAfterSeconds() {
+        return disappearAfterSeconds;
     }
 
     public User getCreatedBy() {

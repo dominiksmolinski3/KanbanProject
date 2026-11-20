@@ -94,6 +94,8 @@ public enum ExceptionIdentifier {
     RECIPIENT_NOT_SET_UP(CONFLICT, "That person has not set up encrypted messages yet"),
     STALE_EPOCH(CONFLICT, "The conversation has moved on - fetch what is new and try again"),
     MESSAGE_TOO_LARGE(PAYLOAD_TOO_LARGE, "The message is too large"),
+    DEVICE_LINK_NOT_FOUND(NOT_FOUND, "That device link does not exist or has expired"),
+    DEVICE_LINK_ANSWERED(CONFLICT, "That device link has already been approved"),
 
     CONCURRENT_MODIFICATION(CONFLICT, "This item was changed by someone else - reload and try again"),
     DATA_CONFLICT(CONFLICT, "That value conflicts with data that is already stored"),

@@ -8,10 +8,12 @@ import type { useMessagingKeys } from './useMessagingKeys';
 import MessagingSetup from './MessagingSetup';
 import MessagingUnlock from './MessagingUnlock';
 import MessagingKeyChange from './MessagingKeyChange';
+import MessagingLink from './MessagingLink';
+import MessagingApprove from './MessagingApprove';
 
 type Messaging = ReturnType<typeof useMessagingKeys>;
 
-type Dialog = 'create' | 'replace' | 'pin' | 'recovery' | 'changePin' | 'addRecovery' | null;
+type Dialog = 'create' | 'replace' | 'pin' | 'recovery' | 'changePin' | 'addRecovery' | 'link' | 'approve' | null;
 
 export default function MessagingPanel({ messaging }: { messaging: Messaging }) {
   const { t, i18n } = useTranslation();
@@ -96,6 +98,10 @@ export default function MessagingPanel({ messaging }: { messaging: Messaging }) 
                 {t('devices.messaging.buttons.useRecoveryKey')}
               </button>
             )}
+            <button type="button" className={`btn ${pinUsable || identity?.recoveryKey ? 'btn-secondary' : 'btn-primary'}`}
+              onClick={() => setDialog('link')}>
+              {t('devices.messaging.buttons.link')}
+            </button>
             <button type="button" className="btn btn-danger-quiet" onClick={() => setDialog('replace')}>
               {t('devices.messaging.buttons.startOver')}
             </button>
@@ -126,6 +132,9 @@ export default function MessagingPanel({ messaging }: { messaging: Messaging }) 
                 {t('devices.messaging.buttons.addRecoveryKey')}
               </button>
             )}
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('approve')}>
+              {t('devices.messaging.buttons.approve')}
+            </button>
             <button
               type="button"
               className="btn btn-danger-quiet btn-sm"
@@ -176,6 +185,8 @@ export default function MessagingPanel({ messaging }: { messaging: Messaging }) 
           onClose={close}
         />
       )}
+      {dialog === 'link' && <MessagingLink onRegister={messaging.registerBrowser} onClose={close} />}
+      {dialog === 'approve' && <MessagingApprove onClose={close} />}
       {(dialog === 'changePin' || dialog === 'addRecovery') && (
         <MessagingKeyChange kind={dialog === 'changePin' ? 'pin' : 'recovery'} onDone={messaging.refresh} onClose={close} />
       )}

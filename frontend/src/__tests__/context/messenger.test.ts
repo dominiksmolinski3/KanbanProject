@@ -39,7 +39,7 @@ class FakeServer {
   conversation(): Conversation {
     return {
       id: 7, kind: 'GROUP', boardId: null, boardName: null, groupId: toBase64(new TextEncoder().encode('group-7')), epoch: this.epoch,
-      needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS',
+      needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS', disappearAfter: null,
       lastSeq: this.messages.length, createdAt: '2026-11-19T10:00:00Z', lastActivityAt: '2026-11-19T10:00:00Z',
       unread: 0, me: { role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deliveredSeq: 0, readSeq: 0, muted: false, pinned: false,
         archived: false },
@@ -165,6 +165,24 @@ describe('the messenger', () => {
     await ania.messenger.sync(mockServer.conversation());
     expect(await texts(ania)).toEqual(['hello', 'hi back']);
     expect((await ania.messenger.history(7, Infinity, 10))[1].replyTo).toBe(hello.id);
+  });
+
+  test('text carries a thread, mentions, files and a time to live only when they are given, and search reads the archive', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+    const file = { blobId: 1, key: 'a2V5', name: 'Budget.xlsx', type: 'application/vnd.ms-excel', size: 10 };
+
+    expect(Object.keys(textPayload('plain', null))).toEqual(['t', 'id', 'text']);
+    const rich = textPayload('look', 'r1', { thread: 't1', mentions: [2], ttl: 60, files: [file] });
+    expect(rich).toMatchObject({ replyTo: 'r1', thread: 't1', mentions: [2], ttl: 60, files: [file] });
+
+    await ania.messenger.send(mockServer.conversation(), textPayload('look', null, { thread: 't1', mentions: [2], files: [file] }));
+    await bartek.messenger.sync(mockServer.conversation());
+
+    expect((await bartek.messenger.search('LOOK', [7], 5)).map((item) => item.text)).toEqual(['look']);
+    expect(await bartek.messenger.search('nothing like it', [7], 5)).toEqual([]);
   });
 
   test('a device without a welcome in a group that already has commits waits', async () => {

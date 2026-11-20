@@ -353,18 +353,62 @@ class ConversationServiceTest {
         @Test
         @DisplayName("preferences are the caller's own, settings are the admins'")
         void preferencesAndSettings() {
-            service.update(bartek, 5L, new UpdateConversationRequest(true, true, null, null, null));
+            service.update(bartek, 5L, new UpdateConversationRequest(true, true, null, null, null, null));
             assertThat(other.isMuted()).isTrue();
             assertThat(other.isPinned()).isTrue();
             verify(notifier).notify(List.of(bartek), new ConversationEvent(ConversationEventType.MEMBERS, 5L, null, 2));
 
             assertThatThrownBy(() -> service.update(bartek, 5L,
-                    new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, null)))
+                    new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, null, null)))
                     .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.NOT_CONVERSATION_ADMIN);
 
-            service.update(ania, 5L, new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, WhoCanAdd.MEMBERS));
+            service.update(ania, 5L, new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, WhoCanAdd.MEMBERS, null));
             assertThat(group.getHistoryVisibility()).isEqualTo(HistoryVisibility.ALL);
             assertThat(group.getWhoCanAdd()).isEqualTo(WhoCanAdd.MEMBERS);
+        }
+
+        @Test
+        @DisplayName("an admin sets how long messages live, zero switches it off, and other values are refused")
+        void disappearingTimer() {
+            assertThat(group.getDisappearAfterSeconds()).isNull();
+
+            service.update(ania, 5L, new UpdateConversationRequest(null, null, null, null, null, 86400));
+            assertThat(group.getDisappearAfterSeconds()).isEqualTo(86400);
+
+            assertThatThrownBy(() -> service.update(ania, 5L,
+                    new UpdateConversationRequest(null, null, null, null, null, 17)))
+                    .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.INVALID_CONVERSATION_REQUEST);
+            assertThat(group.getDisappearAfterSeconds()).isEqualTo(86400);
+
+            service.update(ania, 5L, new UpdateConversationRequest(null, null, null, null, null, 0));
+            assertThat(group.getDisappearAfterSeconds()).isNull();
+        }
+
+        @Test
+        @DisplayName("a member who is not an admin cannot set the timer of a group")
+        void timerIsForAdmins() {
+            assertThatThrownBy(() -> service.update(bartek, 5L,
+                    new UpdateConversationRequest(null, null, null, null, null, 3600)))
+                    .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.NOT_CONVERSATION_ADMIN);
+            assertThat(group.getDisappearAfterSeconds()).isNull();
+        }
+
+        @Test
+        @DisplayName("either person of a direct chat sets the timer, but nothing else about it")
+        void directTimer() {
+            Conversation direct = conversation(8, ConversationKind.DIRECT, ania);
+            ConversationMember mine = joined(11, direct, bartek, MemberRole.MEMBER, MemberState.ACTIVE);
+            ConversationMember theirs = joined(12, direct, ania, MemberRole.MEMBER, MemberState.ACTIVE);
+            inConversation(direct, mine, theirs);
+            callerIs(mine);
+            when(locks.lock(8L)).thenReturn(direct);
+
+            service.update(bartek, 8L, new UpdateConversationRequest(null, null, null, null, null, 3600));
+            assertThat(direct.getDisappearAfterSeconds()).isEqualTo(3600);
+
+            assertThatThrownBy(() -> service.update(bartek, 8L,
+                    new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, null, null)))
+                    .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.INVALID_CONVERSATION_REQUEST);
         }
 
         @Test

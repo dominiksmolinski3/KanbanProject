@@ -20,6 +20,15 @@ import {
 } from './keys';
 import { DEVICE_INFO, type KeyStore, type LocalDevice } from './keyStore';
 import { blindPin, pinKeys, proofVerifier, unblindPin, type PinKeys } from './pin';
+import {
+  newLinkKeyPair,
+  newLinkSecret,
+  openIdentity as openLinkedIdentity,
+  sealIdentity,
+  type LinkCode,
+  type LinkKeyPair,
+  type SealedIdentity,
+} from './linking';
 
 const DEVICE_SECRETS = 'device-secrets';
 const SECRETS_LABEL = utf8('device secrets');
@@ -65,6 +74,13 @@ export class NoDeviceError extends Error {
   constructor() {
     super('NoDevice');
     this.name = 'NoDeviceError';
+  }
+}
+
+export class NoLinkError extends Error {
+  constructor() {
+    super('NoLink');
+    this.name = 'NoLinkError';
   }
 }
 
@@ -128,6 +144,7 @@ export function createDeviceVault(store: KeyStore) {
   let pending: { userId: number; secrets: DeviceSecrets; packages: GeneratedKeyPackage[] } | null = null;
   let blind: bigint | null = null;
   let unlockKeys: PinKeys | null = null;
+  let link: { pair: LinkKeyPair; secret: Uint8Array } | null = null;
 
   const keepPackages = async (storageKey: CryptoKey, packages: GeneratedKeyPackage[]) => {
     for (const { upload, secret } of packages) {
@@ -217,6 +234,24 @@ export function createDeviceVault(store: KeyStore) {
       unlockKeys = null;
     },
 
+    async beginLink(): Promise<{ publicKey: Uint8Array; secret: Uint8Array }> {
+      link = { pair: await newLinkKeyPair(), secret: newLinkSecret() };
+      return { publicKey: link.pair.publicKey, secret: link.secret };
+    },
+
+    async sealIdentityForLink(code: LinkCode): Promise<SealedIdentity> {
+      const held = await heldIdentity();
+      return sealIdentity(code, held.publicKey, held.pkcs8);
+    },
+
+    async completeLink(linkId: string, linkerPublic: Uint8Array, sealed: Uint8Array): Promise<void> {
+      if (!link) {
+        throw new NoLinkError();
+      }
+      identity = await openLinkedIdentity(linkId, link.pair, link.secret, linkerPublic, sealed);
+      link = null;
+    },
+
     async prepareDevice(userId: number, oneTime = ONE_TIME_PACKAGES): Promise<PreparedDevice> {
       if (!identity) {
         throw new NoIdentityError();
@@ -273,6 +308,7 @@ export function createDeviceVault(store: KeyStore) {
       pending = null;
       blind = null;
       unlockKeys = null;
+      link = null;
       await store.clear();
     },
   };

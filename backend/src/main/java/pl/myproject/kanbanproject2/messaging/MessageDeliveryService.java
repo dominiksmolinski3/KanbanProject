@@ -183,7 +183,7 @@ public class MessageDeliveryService {
         long seq = conversation.take(MlsMessageKind.APPLICATION, now);
         conversations.save(conversation);
         messages.save(new MlsMessage(conversation, seq, request.epoch(), MlsMessageKind.APPLICATION, sender,
-                request.body(), now, now.plus(RETENTION)));
+                request.body(), now, expiry(conversation, now)));
         if (me.getState() == MemberState.REQUEST) {
             me.accept();
         }
@@ -263,6 +263,16 @@ public class MessageDeliveryService {
 
     private List<User> everyone(Conversation conversation) {
         return members.findAllIn(List.of(conversation)).stream().map(ConversationMember::getUser).toList();
+    }
+
+    static Instant expiry(Conversation conversation, Instant now) {
+        Instant retention = now.plus(RETENTION);
+        Integer seconds = conversation.getDisappearAfterSeconds();
+        if (seconds == null) {
+            return retention;
+        }
+        Instant sooner = now.plusSeconds(seconds);
+        return sooner.isBefore(retention) ? sooner : retention;
     }
 
     private static GlobalException staleEpoch() {

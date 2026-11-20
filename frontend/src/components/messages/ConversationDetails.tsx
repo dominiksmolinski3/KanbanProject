@@ -7,6 +7,7 @@ import type { Contact, ConversationMemberInfo, HistoryVisibility, WhoCanAdd } fr
 import Icon from '../Icon';
 import ContactPicker from './ContactPicker';
 import SafetyNumber from './SafetyNumber';
+import { DISAPPEAR_OPTIONS, disappearLabel } from './disappear';
 import { initials, others } from './conversationTitle';
 import '../../styles/components/Forms.css';
 
@@ -159,6 +160,22 @@ export default function ConversationDetails({ onClose }: { onClose: () => void }
               <option value="MEMBERS">{t('messages.settings.members')}</option>
             </select>
           </label>
+        </section>
+      )}
+
+      {(admin || conversation.kind === 'DIRECT') && conversation.me.state === 'ACTIVE' && (
+        <section className="details-section" aria-label={t('messages.disappear.heading')}>
+          <h3>{t('messages.disappear.heading')}</h3>
+          <label className="form-group">
+            <span>{t('messages.disappear.label')}</span>
+            <select value={conversation.disappearAfter ?? 0} disabled={action.pending}
+              onChange={(event) => act(() => configure({ disappearAfter: Number(event.target.value) }))}>
+              {DISAPPEAR_OPTIONS.map((seconds) => (
+                <option key={seconds} value={seconds}>{disappearLabel(seconds, t)}</option>
+              ))}
+            </select>
+          </label>
+          <p className="messages-caption">{t('messages.disappear.note')}</p>
         </section>
       )}
 
