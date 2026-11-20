@@ -22,8 +22,8 @@ class BoardChannelBackfillDatabaseTest {
 
     @BeforeEach
     void setUp() {
-        dataSource = new DriverManagerDataSource(environment("TEST_DATABASE_URL"),
-                environment("TEST_DATABASE_USERNAME"), environment("TEST_DATABASE_PASSWORD"));
+        String[] connection = DatabaseTestConfiguration.connection();
+        dataSource = new DriverManagerDataSource(connection[0], connection[1], connection[2]);
         dataSource.setSchema(schema);
         jdbc = new JdbcTemplate(dataSource);
     }
@@ -31,14 +31,6 @@ class BoardChannelBackfillDatabaseTest {
     @AfterEach
     void tearDown() {
         new JdbcTemplate(dataSource).execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
-    }
-
-    private static String environment(String name) {
-        String value = System.getenv(name);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(name + " is not set; see DatabaseTestConfiguration for how to run these");
-        }
-        return value;
     }
 
     private Flyway flyway(String target) {

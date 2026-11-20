@@ -58,6 +58,14 @@ public class DatabaseTestConfiguration {
         }
     }
 
+    static String[] connection() {
+        Map<String, String> dotEnv = readDotEnv(Path.of(".env"));
+        return new String[] {
+                setting("TEST_DATABASE_URL", "SPRING_DATASOURCE_URL", dotEnv),
+                setting("TEST_DATABASE_USERNAME", "SPRING_DATASOURCE_USERNAME", dotEnv),
+                setting("TEST_DATABASE_PASSWORD", "SPRING_DATASOURCE_PASSWORD", dotEnv)};
+    }
+
     @Bean
     public Flyway flyway(DataSource dataSource) {
         Flyway flyway = Flyway.configure()
