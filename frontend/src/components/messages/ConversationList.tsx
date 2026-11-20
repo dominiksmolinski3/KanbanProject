@@ -18,9 +18,11 @@ export default function ConversationList() {
     titleOf(conversation).toLowerCase().includes(query.trim().toLowerCase()));
   const requests = matching.filter((conversation) => conversation.me.state === 'REQUEST');
   const archived = matching.filter((conversation) => conversation.me.state !== 'REQUEST' && conversation.me.archived);
-  const chats = matching
+  const active = matching
     .filter((conversation) => conversation.me.state !== 'REQUEST' && !conversation.me.archived)
     .sort((a, b) => Number(b.me.pinned) - Number(a.me.pinned));
+  const boardChannels = active.filter((conversation) => conversation.kind === 'BOARD');
+  const chats = active.filter((conversation) => conversation.kind !== 'BOARD');
 
   const row = (conversation: Conversation) => {
     const title = titleOf(conversation);
@@ -33,7 +35,7 @@ export default function ConversationList() {
           onClick={() => select(conversation.id)}
         >
           <span className="conversation-avatar" aria-hidden="true">
-            {conversation.kind === 'GROUP' ? <Icon name="people" size="sm" /> : initials(title)}
+            {conversation.kind === 'DIRECT' ? initials(title) : <Icon name={conversation.kind === 'BOARD' ? 'board' : 'people'} size="sm" />}
           </span>
           <span className="conversation-row-text">
             <span className="conversation-row-title">{title}</span>
@@ -75,6 +77,15 @@ export default function ConversationList() {
           <h2 className="conversation-list-section">{t('messages.list.requests')}</h2>
           <ul className="conversation-rows">{requests.map(row)}</ul>
         </section>
+      )}
+      {boardChannels.length > 0 && (
+        <section aria-label={t('messages.list.boards')}>
+          <h2 className="conversation-list-section">{t('messages.list.boards')}</h2>
+          <ul className="conversation-rows">{boardChannels.map(row)}</ul>
+        </section>
+      )}
+      {chats.length > 0 && boardChannels.length > 0 && (
+        <h2 className="conversation-list-section">{t('messages.list.people')}</h2>
       )}
       <ul className="conversation-rows">{chats.map(row)}</ul>
       {archived.length > 0 && (

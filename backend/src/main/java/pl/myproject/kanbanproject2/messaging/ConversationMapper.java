@@ -11,7 +11,8 @@ public class ConversationMapper implements Function<ConversationView, Conversati
     public ConversationDto apply(ConversationView view) {
         ConversationMember me = view.me();
         Conversation conversation = me.getConversation();
-        return new ConversationDto(conversation.getId(), conversation.getKind(), conversation.getGroupId(),
+        return new ConversationDto(conversation.getId(), conversation.getKind(), conversation.getBoardId(),
+                view.boardName(), conversation.getGroupId(),
                 conversation.getEpoch(), conversation.isNeedsCommit(), conversation.getHistoryVisibility(),
                 conversation.getWhoCanAdd(), conversation.getLastSeq(), conversation.getCreatedAt(),
                 conversation.getLastActivityAt(), view.unread(),

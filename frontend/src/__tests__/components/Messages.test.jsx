@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import Messages from '../../components/Messages';
-import { MessagesProvider } from '../../context/MessagesContext';
+import { MessagesProvider, useUnreadMessages } from '../../context/MessagesContext';
 import { messagesApi } from '../../services/messagesApi';
 import { watchConversations } from '../../services/conversationEvents';
-import { useMessagingKeys } from '../../components/devices/useMessagingKeys';
+import { useMessagingState } from '../../components/devices/useMessagingKeys';
 import ConversationList from '../../components/messages/ConversationList';
 import Thread from '../../components/messages/Thread';
 
@@ -18,13 +18,13 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { id: 1 } }) }));
-jest.mock('../../components/devices/useMessagingKeys', () => ({ useMessagingKeys: jest.fn() }));
+jest.mock('../../components/devices/useMessagingKeys', () => ({ useMessagingState: jest.fn() }));
 jest.mock('../../services/conversationEvents', () => ({ watchConversations: jest.fn(() => () => {}) }));
 jest.mock('../../services/messagesApi', () => ({
   messagesApi: {
     list: jest.fn(), create: jest.fn(), contacts: jest.fn(), lookup: jest.fn(), update: jest.fn(),
     addMembers: jest.fn(), setRole: jest.fn(), removeMember: jest.fn(), accept: jest.fn(), markRead: jest.fn(),
-    typing: jest.fn(), block: jest.fn(), markDelivered: jest.fn(),
+    typing: jest.fn(), block: jest.fn(), markDelivered: jest.fn(), earlierInBoard: jest.fn(), earlierWith: jest.fn(),
   },
 }));
 
@@ -36,7 +36,7 @@ const me = (extra = {}) => ({ role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deli
   pinned: false,
   archived: false, ...extra });
 const conversation = (id, kind, members, extra = {}) => ({
-  id, kind, groupId: 'AA==', epoch: 1, needsCommit: false, historyVisibility: 'JOINED', whoCanAdd: 'ADMINS', lastSeq: 3,
+  id, kind, boardId: null, boardName: null, groupId: 'AA==', epoch: 1, needsCommit: false, historyVisibility: 'JOINED', whoCanAdd: 'ADMINS', lastSeq: 3,
   createdAt: '2026-11-19T10:00:00Z', lastActivityAt: '2026-11-19T10:00:00Z', unread: 0, me: me(), members, ...extra,
 });
 
@@ -47,6 +47,12 @@ const direct = conversation(5, 'DIRECT', [ania, { ...bartek, role: 'ADMIN' }], {
 const group = conversation(6, 'GROUP', [ania, bartek, celina], { me: me({ pinned: true }) });
 const request = conversation(7, 'DIRECT', [ania, member(4, 'Darek')], { me: me({ state: 'REQUEST' }) });
 const archived = conversation(8, 'DIRECT', [ania, member(9, 'Ewa')], { me: me({ archived: true }) });
+const channel = conversation(10, 'BOARD', [ania, bartek, member(11, 'Viola', { role: 'VIEWER' })],
+  { boardId: 4, boardName: 'Website relaunch', unread: 4 });
+const viewing = conversation(12, 'BOARD', [member(13, 'Olga', { role: 'ADMIN' }), ania],
+  { boardId: 5, boardName: 'Read only board', me: me({ role: 'VIEWER' }) });
+const earlier = (entries, extra = {}) => ({ messages: entries, page: 0, size: 25, totalPages: 1,
+  totalEntries: entries.length, ...extra });
 
 const text = (seq, id, senderId, value, extra = {}) => ({
   conversationId: 5, seq, id, senderId, sentAt: '2026-11-19T10:00:00Z', kind: 'text', text: value, replyTo: null,
@@ -92,6 +98,8 @@ beforeEach(() => {
   messagesApi.markRead.mockResolvedValue();
   messagesApi.typing.mockResolvedValue();
   messagesApi.markDelivered.mockResolvedValue();
+  messagesApi.earlierInBoard.mockResolvedValue(earlier([]));
+  messagesApi.earlierWith.mockResolvedValue(earlier([]));
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
 });
 
@@ -101,20 +109,101 @@ describe('the messages page', () => {
     ['notSetUp', 'messages.gate.setUp'],
     ['elsewhere', 'messages.gate.unlock'],
   ])('when keys are %s it explains what to do', (state, message) => {
-    useMessagingKeys.mockReturnValue({ state });
+    useMessagingState.mockReturnValue({ state });
     render(<MemoryRouter><Messages /></MemoryRouter>);
     expect(screen.getByText(message)).toBeInTheDocument();
   });
 
   test('waits while the keys load, then shows the conversations', async () => {
-    useMessagingKeys.mockReturnValue({ state: 'loading' });
-    const { rerender } = render(<MemoryRouter><Messages /></MemoryRouter>);
+    useMessagingState.mockReturnValue({ state: 'loading' });
+    const page = () => (
+      <MemoryRouter>
+        <MessagesProvider messenger={fakeMessenger()}><Messages /></MessagesProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(page());
     expect(screen.getByText('app.loading')).toBeInTheDocument();
 
-    useMessagingKeys.mockReturnValue({ state: 'ready' });
-    rerender(<MemoryRouter><Messages /></MemoryRouter>);
+    useMessagingState.mockReturnValue({ state: 'ready' });
+    rerender(page());
     expect(await screen.findByText('messages.empty.title', { selector: 'h2' })).toBeInTheDocument();
     expect((await screen.findAllByRole('button', { name: /Bartek/ })).length).toBeGreaterThan(0);
+  });
+});
+
+describe('the unread count', () => {
+  function Count() {
+    return <output data-testid="unread">{useUnreadMessages()}</output>;
+  }
+
+  test('is zero outside the provider', () => {
+    render(<Count />);
+    expect(screen.getByTestId('unread')).toHaveTextContent('0');
+  });
+
+  test('adds up active, unmuted, unarchived conversations only', async () => {
+    messagesApi.list.mockResolvedValue([
+      conversation(20, 'DIRECT', [ania, bartek], { unread: 3 }),
+      conversation(21, 'DIRECT', [ania, bartek], { unread: 5, me: me({ muted: true }) }),
+      conversation(22, 'DIRECT', [ania, bartek], { unread: 7, me: me({ archived: true }) }),
+      conversation(23, 'DIRECT', [ania, bartek], { unread: 9, me: me({ state: 'REQUEST' }) }),
+      conversation(24, 'BOARD', [ania, bartek], { unread: 4, boardId: 4, boardName: 'Board' }),
+    ]);
+    render(<MessagesProvider messenger={fakeMessenger()}><Count /></MessagesProvider>);
+
+    await waitFor(() => expect(screen.getByTestId('unread')).toHaveTextContent('7'));
+  });
+
+  test('a provider that is switched off asks for nothing and counts nothing', async () => {
+    render(<MessagesProvider messenger={fakeMessenger()} enabled={false}><Count /></MessagesProvider>);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(messagesApi.list).not.toHaveBeenCalled();
+    expect(screen.getByTestId('unread')).toHaveTextContent('0');
+  });
+});
+
+describe('the address of the messages page', () => {
+  function Where() {
+    return <output data-testid="where">{useLocation().search}</output>;
+  }
+
+  const renderAt = (address) => {
+    useMessagingState.mockReturnValue({ state: 'ready' });
+    return render(
+      <MemoryRouter initialEntries={[address]}>
+        <MessagesProvider messenger={fakeMessenger()}><Messages /><Where /></MessagesProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  test('opens the conversation it names, and follows the selection from then on', async () => {
+    renderAt('/messages?c=6');
+
+    expect(await screen.findByLabelText('messages.composer.label')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Launch team', level: 2 })).toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('?c=6');
+
+    fireEvent.click(screen.getByRole('button', { name: /Bartek/ }));
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('?c=5'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'messages.back' }));
+    await waitFor(() => expect(screen.getByTestId('where')).toBeEmptyDOMElement());
+  });
+
+  test('drops an address that names a conversation which is not there', async () => {
+    renderAt('/messages?c=999');
+
+    expect(await screen.findByText('messages.empty.title', { selector: 'h2' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('where')).toBeEmptyDOMElement());
+  });
+
+  test('without an address it opens nothing by itself', async () => {
+    renderAt('/messages');
+
+    expect((await screen.findAllByRole('button', { name: /Bartek/ })).length).toBeGreaterThan(0);
+    expect(screen.getByText('messages.empty.title', { selector: 'h2' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('messages.composer.label')).not.toBeInTheDocument();
   });
 });
 
@@ -177,6 +266,16 @@ describe('a thread', () => {
     expect(await screen.findByText('hello')).toBeInTheDocument();
     expect(field).toHaveValue('');
     expect(messagesApi.typing).toHaveBeenCalledWith(5);
+  });
+
+  test('an archive that cannot be read leaves the thread to what sync brings', async () => {
+    const messenger = fakeMessenger({
+      history: jest.fn(async () => { throw new Error('archive'); }),
+      sync: jest.fn(async () => ({ outcome: 'synced', items: [text(3, 'b', 1, 'only from sync')], cursor: 3 })),
+    });
+    renderMessages(messenger, 5);
+
+    expect(await screen.findByText('only from sync')).toBeInTheDocument();
   });
 
   test('a failed send keeps the text and says so', async () => {
@@ -356,6 +455,7 @@ describe('a thread', () => {
     expect(screen.getByLabelText('messages.composer.label')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'messages.request.accept' }));
     await waitFor(() => expect(messagesApi.accept).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'messages.request.block' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'messages.request.block' }));
     await waitFor(() => expect(messagesApi.block).toHaveBeenCalledWith(4));
   });
@@ -407,6 +507,139 @@ describe('a thread', () => {
     renderMessages(fakeMessenger(), 5);
     fireEvent.click(await screen.findByRole('button', { name: 'messages.back' }));
     expect(screen.queryByLabelText('messages.composer.label')).not.toBeInTheDocument();
+  });
+});
+
+describe('board channels', () => {
+  beforeEach(() => {
+    messagesApi.list.mockResolvedValue([direct, channel, viewing]);
+  });
+
+  test('sit in a section of their own under the board\'s name, ahead of the people', async () => {
+    renderMessages(fakeMessenger());
+
+    const boards = await screen.findByRole('region', { name: 'messages.list.boards' });
+    expect(within(boards).getByRole('button', { name: /Website relaunch/ })).toBeInTheDocument();
+    expect(within(boards).getByRole('button', { name: /Read only board/ })).toBeInTheDocument();
+    expect(within(boards).getByLabelText('messages.list.unread:4')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'messages.list.boards' }).textContent).not.toMatch(/Bartek/);
+    expect(screen.getByText('messages.list.people')).toBeInTheDocument();
+  });
+
+  test('a thread names its senders, counts the board\'s members and takes a message from an editor', async () => {
+    const messenger = fakeMessenger({
+      history: jest.fn(async () => [text(2, 'a', 2, 'review is over its limit', { conversationId: 10 })]),
+    });
+    renderMessages(messenger, 10);
+
+    expect(await screen.findByText('review is over its limit')).toBeInTheDocument();
+    expect(screen.getByText('Bartek', { selector: '.message-sender' })).toBeInTheDocument();
+    expect(screen.getByText('messages.thread.boardMembers:3')).toBeInTheDocument();
+    expect(screen.getByLabelText('messages.composer.label')).toBeEnabled();
+  });
+
+  test('a viewer reads the thread and has no composer, only the reason', async () => {
+    renderMessages(fakeMessenger({ history: jest.fn(async () => [text(2, 'a', 13, 'welcome', { conversationId: 12 })]) }), 12);
+
+    expect(await screen.findByText('welcome')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent('messages.thread.readOnly');
+    expect(screen.queryByLabelText('messages.composer.label')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'messages.composer.send' })).not.toBeInTheDocument();
+  });
+
+  test('the details follow the board: no adding, removing, promoting or leaving, and only the owner sets history', async () => {
+    messagesApi.update.mockResolvedValue(channel);
+    renderMessages(fakeMessenger(), 10);
+    fireEvent.click(await screen.findByRole('button', { name: 'messages.details.open' }));
+    const panel = screen.getByRole('complementary', { name: 'messages.details.title' });
+
+    expect(within(panel).getByText('messages.details.followsBoard')).toBeInTheDocument();
+    expect(within(panel).getByText('messages.details.owner')).toBeInTheDocument();
+    expect(within(panel).getByText('messages.details.viewer')).toBeInTheDocument();
+    for (const name of ['messages.details.addPeople', 'messages.details.remove', 'messages.details.makeAdmin',
+      'messages.details.leave']) {
+      expect(within(panel).queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect(within(panel).queryByLabelText('messages.settings.whoCanAdd')).not.toBeInTheDocument();
+    expect(within(panel).queryByLabelText('messages.details.name')).not.toBeInTheDocument();
+
+    fireEvent.change(within(panel).getByLabelText('messages.settings.history'), { target: { value: 'DAYS_30' } });
+    await waitFor(() => expect(messagesApi.update).toHaveBeenCalledWith(10, { historyVisibility: 'DAYS_30' }));
+  });
+
+  test('a member who does not own the board cannot change the history setting', async () => {
+    renderMessages(fakeMessenger(), 12);
+    fireEvent.click(await screen.findByRole('button', { name: 'messages.details.open' }));
+    const panel = screen.getByRole('complementary', { name: 'messages.details.title' });
+
+    expect(within(panel).queryByLabelText('messages.settings.history')).not.toBeInTheDocument();
+    expect(within(panel).getByLabelText('messages.details.muted')).toBeInTheDocument();
+  });
+});
+
+describe('earlier messages', () => {
+  const old = (id, content, sender = 'ann@example.com') => ({ id, type: 'CHAT', content, sender, boardId: 4,
+    recipientId: null, timestamp: '2026-10-01T12:00:00Z' });
+
+  test('a board channel offers its plaintext history, newest last, and pages back through it', async () => {
+    messagesApi.list.mockResolvedValue([channel]);
+    messagesApi.earlierInBoard.mockImplementation(async (boardId, page) => (page === 0
+      ? earlier([old(2, 'second'), old(1, 'first')], { totalPages: 2, totalEntries: 3 })
+      : earlier([old(0, 'zeroth')], { page: 1, totalPages: 2, totalEntries: 3 })));
+    renderMessages(fakeMessenger(), 10);
+
+    const toggle = await screen.findByRole('button', { name: 'messages.earlier.title' });
+    expect(screen.queryByText('second')).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+
+    expect(await screen.findByText('second')).toBeInTheDocument();
+    const rows = screen.getAllByText(/first|second/);
+    expect(rows.map((row) => row.textContent)).toEqual(['first', 'second']);
+    expect(screen.getByText('messages.earlier.hint')).toBeInTheDocument();
+    expect(messagesApi.earlierInBoard).toHaveBeenCalledWith(4, 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'messages.earlier.older' }));
+    expect(await screen.findByText('zeroth')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'messages.earlier.older' })).not.toBeInTheDocument();
+  });
+
+  test('a direct conversation reads the old thread with that person by id', async () => {
+    messagesApi.earlierWith.mockResolvedValue(earlier([old(5, 'psst', 'bob@example.com')]));
+    renderMessages(fakeMessenger(), 5);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'messages.earlier.title' }));
+
+    expect(await screen.findByText('psst')).toBeInTheDocument();
+    expect(messagesApi.earlierWith).toHaveBeenCalledWith(2, 0);
+  });
+
+  test('says nothing when there is nothing from before', async () => {
+    messagesApi.list.mockResolvedValue([channel]);
+    renderMessages(fakeMessenger(), 10);
+
+    await screen.findByLabelText('messages.composer.label');
+    await waitFor(() => expect(messagesApi.earlierInBoard).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'messages.earlier.title' })).not.toBeInTheDocument();
+  });
+
+  test('says nothing once the old history has been dropped from the server', async () => {
+    messagesApi.list.mockResolvedValue([channel]);
+    messagesApi.earlierInBoard.mockRejectedValue(new Error('gone'));
+    renderMessages(fakeMessenger(), 10);
+
+    await screen.findByLabelText('messages.composer.label');
+    await waitFor(() => expect(messagesApi.earlierInBoard).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'messages.earlier.title' })).not.toBeInTheDocument();
+  });
+
+  test('groups have no old history to offer', async () => {
+    messagesApi.list.mockResolvedValue([group]);
+    renderMessages(fakeMessenger(), 6);
+
+    await screen.findByLabelText('messages.composer.label');
+    expect(messagesApi.earlierInBoard).not.toHaveBeenCalled();
+    expect(messagesApi.earlierWith).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'messages.earlier.title' })).not.toBeInTheDocument();
   });
 });
 

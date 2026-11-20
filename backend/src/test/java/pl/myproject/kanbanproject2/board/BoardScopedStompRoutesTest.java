@@ -45,19 +45,14 @@ class BoardScopedStompRoutesTest {
     }
 
     @Test
-    @DisplayName("the scan finds the handlers - a silent zero would pass the assertion above")
-    void theScanFindsSomething() {
+    @DisplayName("there is no STOMP handler: every client write is a REST call, and a new handler is a decision")
+    void thereAreNoHandlersYet() {
         assertThat(routes())
-                .as("@MessageMapping handlers found by scanning " + PRODUCTION_PACKAGE)
-                .isNotEmpty();
-    }
-
-    @Test
-    @DisplayName("the application destinations are the four board-scoped chat ones")
-    void theDestinationsAreTheOnesBoardScopingCovers() {
-        assertThat(routes().stream().map(Route::destination).sorted().toList())
-                .containsExactly("/chat.join", "/chat.leave", "/chat.sendMessage",
-                        "/chat.sendPrivateMessage");
+                .as("a @MessageMapping handler now exists under " + PRODUCTION_PACKAGE + ". Check that it "
+                        + "resolves the caller and asks BoardService, add its destination to "
+                        + "StompDestinationsMatchTheClientTest, and replace this test with one that "
+                        + "lists the destinations it covers")
+                .isEmpty();
     }
 
     private static List<Route> routes() {

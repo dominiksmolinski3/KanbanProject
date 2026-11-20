@@ -6,10 +6,11 @@ import type { ArchivedMessage } from '../../crypto/engine';
 import Icon from '../Icon';
 import Composer, { type Draft } from './Composer';
 import ConversationDetails from './ConversationDetails';
+import EarlierMessages from './EarlierMessages';
 import MessageRow, { type DeliveryStatus } from './MessageRow';
 import { conversationTitle, others } from './conversationTitle';
 
-export default function Thread() {
+export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock' }) {
   const { t, i18n } = useTranslation();
   const {
     selected, select, messages, threadState, typing, userId, nameOf, send, edit, remove, react, notifyTyping,
@@ -31,6 +32,8 @@ export default function Thread() {
   const personName = (id: number | null) => (id === null ? t('messages.unknownPerson') : people.get(id) ?? t('messages.formerMember'));
   const byId = new Map(messages.map((message) => [message.id, message]));
   const blocked = threadState === 'waiting' || threadState === 'removed' || conversation.me.state === 'REQUEST';
+  const readOnly = conversation.me.role === 'VIEWER';
+  const dock = variant === 'dock';
   const other = others(conversation, userId)[0];
 
   const onSend = async (text: string) => {
@@ -57,7 +60,7 @@ export default function Thread() {
     lastDay = day;
     const previous = messages[index - 1];
     const mine = message.senderId === userId;
-    const showSender = conversation.kind === 'GROUP' && !mine && message.kind === 'text'
+    const showSender = conversation.kind !== 'DIRECT' && !mine && message.kind === 'text'
       && (previous?.senderId !== message.senderId || previous?.kind !== 'text');
     return [
       separator,
@@ -79,26 +82,29 @@ export default function Thread() {
   });
 
   return (
-    <div className={`thread-layout${details ? ' thread-layout--details' : ''}`}>
-      <section className="thread" aria-label={title}>
-        <header className="thread-head">
-          <button type="button" className="btn-ghost thread-back" aria-label={t('messages.back')} onClick={() => select(null)}>
-            <Icon name="chevron-left" />
-          </button>
-          <div className="thread-title">
-            <h2>{title}</h2>
-            <span className="thread-subtitle">
-              <Icon name="lock" size="sm" />
-              {conversation.kind === 'GROUP'
-                ? t('messages.thread.members', { count: conversation.members.length })
-                : t('messages.thread.encrypted')}
-            </span>
-          </div>
-          <button type="button" className="btn-ghost" aria-expanded={details} aria-label={t('messages.details.open')}
-            onClick={() => setDetails((open) => !open)}>
-            <Icon name="info" />
-          </button>
-        </header>
+    <div className={`thread-layout${details && !dock ? ' thread-layout--details' : ''}`}>
+      <section className={`thread${dock ? ' thread--dock' : ''}`} aria-label={title}>
+        {!dock && (
+          <header className="thread-head">
+            <button type="button" className="btn-ghost thread-back" aria-label={t('messages.back')} onClick={() => select(null)}>
+              <Icon name="chevron-left" />
+            </button>
+            <div className="thread-title">
+              <h2>{title}</h2>
+              <span className="thread-subtitle">
+                <Icon name="lock" size="sm" />
+                {conversation.kind === 'DIRECT'
+                  ? t('messages.thread.encrypted')
+                  : t(conversation.kind === 'BOARD' ? 'messages.thread.boardMembers' : 'messages.thread.members',
+                    { count: conversation.members.length })}
+              </span>
+            </div>
+            <button type="button" className="btn-ghost" aria-expanded={details} aria-label={t('messages.details.open')}
+              onClick={() => setDetails((open) => !open)}>
+              <Icon name="info" />
+            </button>
+          </header>
+        )}
 
         {conversation.me.state === 'REQUEST' && (
           <div className="thread-banner" role="region" aria-label={t('messages.request.title')}>
@@ -122,6 +128,7 @@ export default function Thread() {
         {threadState === 'removed' && <p className="thread-state">{t('messages.thread.removed')}</p>}
         {threadState === 'failed' && <p className="thread-state messages-error">{t('messages.thread.failed')}</p>}
 
+        <EarlierMessages conversation={conversation} userId={userId} />
         <ol className="message-list" role="log" aria-live="polite" aria-label={t('messages.thread.log')}>
           {threadState === 'loading' && !messages.length && <li className="message-notice">{t('app.loading')}</li>}
           {threadState !== 'loading' && !messages.length && <li className="message-notice">{t('messages.thread.none')}</li>}
@@ -136,16 +143,20 @@ export default function Thread() {
               : t('messages.thread.typingMany', { count: typing.length })}
           </p>
         )}
-        <Composer
-          disabled={blocked}
-          draft={draft}
-          draftAuthor={draft ? personName(draft.message.senderId) : ''}
-          onCancelDraft={() => setDraft(null)}
-          onSend={onSend}
-          onTyping={notifyTyping}
-        />
+        {readOnly ? (
+          <p className="thread-readonly" role="note">{t('messages.thread.readOnly')}</p>
+        ) : (
+          <Composer
+            disabled={blocked}
+            draft={draft}
+            draftAuthor={draft ? personName(draft.message.senderId) : ''}
+            onCancelDraft={() => setDraft(null)}
+            onSend={onSend}
+            onTyping={notifyTyping}
+          />
+        )}
       </section>
-      {details && <ConversationDetails onClose={() => setDetails(false)} />}
+      {details && !dock && <ConversationDetails onClose={() => setDetails(false)} />}
     </div>
   );
 }

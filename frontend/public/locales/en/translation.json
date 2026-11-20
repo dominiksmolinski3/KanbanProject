@@ -463,33 +463,6 @@
     "intro": "The people on this board, and everyone you share any board with.",
     "people": "People you share a board with"
   },
-  "chat": {
-    "title": "Chat",
-    "connectionError": "Error connecting to chat",
-    "send": "Send",
-    "typingMessage": "Type a message...",
-    "openChat": "Open chat",
-    "private": "Private",
-    "recipient": "Recipient",
-    "noRecipient": "Please enter a recipient",
-    "noMessages": "No messages yet",
-    "userJoined": "{{user}} joined the chat",
-    "userLeft": "{{user}} left the chat",
-    "board": "Board",
-    "boardConversation": "Board chat",
-    "conversationKind": "Conversation",
-    "closeChat": "Close chat",
-    "noBoard": "Open a board first",
-    "loadOlder": "Load older messages",
-    "loadingHistory": "Loading…",
-    "historyError": "Could not load the conversation",
-    "errors": {
-      "empty": "A message cannot be empty",
-      "tooLong": "That message is too long",
-      "readOnly": "This board is read-only for you",
-      "notSent": "The message was not sent"
-    }
-  },
   "footer": {
     "help": "Help",
     "about": "About",
@@ -916,7 +889,9 @@
       "request": "Wants to send you messages",
       "archived": "Archived ({{count}})",
       "unread": "Unread: {{count}}",
-      "muted": "Muted"
+      "muted": "Muted",
+      "boards": "Boards",
+      "people": "People and groups"
     },
     "thread": {
       "encrypted": "End-to-end encrypted",
@@ -927,7 +902,9 @@
       "removed": "You are no longer in this conversation.",
       "failed": "This conversation could not be brought up to date. Try again in a moment.",
       "typingOne": "{{name}} is typing…",
-      "typingMany": "Several people are typing…"
+      "typingMany": "Several people are typing…",
+      "boardMembers": "Board channel · Members: {{count}}",
+      "readOnly": "You can read this channel but not post in it, because you are a viewer on this board."
     },
     "request": {
       "title": "Message request",
@@ -984,7 +961,10 @@
       "pinned": "Pin to the top",
       "archived": "Archive",
       "leave": "Leave group",
-      "block": "Block {{name}}"
+      "block": "Block {{name}}",
+      "owner": "Owner",
+      "viewer": "Viewer",
+      "followsBoard": "Everyone on the board is in this channel. People join and leave with the board."
     },
     "settings": {
       "title": "Group settings",
@@ -994,7 +974,8 @@
       "historyAll": "Everything",
       "whoCanAdd": "Who can add people",
       "admins": "Only admins",
-      "members": "All members"
+      "members": "All members",
+      "titleBoard": "Channel settings"
     },
     "new": {
       "title": "New conversation",
@@ -1024,6 +1005,23 @@
     "errors": {
       "generic": "That did not work. Try again.",
       "send": "The message was not sent. Try again."
+    },
+    "board": {
+      "untitled": "Board channel"
+    },
+    "earlier": {
+      "title": "Earlier messages (not encrypted)",
+      "hint": "Sent before this chat was encrypted. They are deleted automatically after a while.",
+      "older": "Show older"
+    },
+    "dock": {
+      "open": "Open messages",
+      "openFull": "Open in Messages",
+      "close": "Close messages",
+      "recent": "Recent conversations",
+      "thisBoard": "This board",
+      "boardChannel": "Board channel · Members: {{count}}",
+      "none": "No conversations yet. Open Messages to start one."
     }
   }
 }

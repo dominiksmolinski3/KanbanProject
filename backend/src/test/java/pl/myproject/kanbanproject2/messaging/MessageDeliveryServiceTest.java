@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageRequest;
 import pl.myproject.kanbanproject2.board.BoardService;
 import pl.myproject.kanbanproject2.exception.ExceptionIdentifier;
+import pl.myproject.kanbanproject2.exception.GlobalException;
 import pl.myproject.kanbanproject2.user.User;
 
 import java.time.Clock;
@@ -142,6 +143,44 @@ class MessageDeliveryServiceTest {
         assertThat(requested.getReadSeq()).isEqualTo(2L);
         assertThat(group.getLastActivityAt()).isEqualTo(NOW);
         verify(notifier).notify(List.of(ania, bartek), new ConversationEvent(ConversationEventType.MESSAGE, 5L, 2L, 3));
+    }
+
+    @Test
+    @DisplayName("a post to a board channel is a write to the board, so a viewer is refused before anything is stored")
+    void boardChannelPostIsABoardWrite() {
+        Conversation channel = conversation(6, ConversationKind.BOARD, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(channel, "boardId", 4);
+        channel.take(MlsMessageKind.COMMIT, NOW);
+        ConversationMember viewer = member(5, channel, celina, MemberRole.VIEWER, MemberState.ACTIVE, NOW);
+        when(access.requireMember(celina, 6L)).thenReturn(viewer);
+        when(access.requireOwnDevice(celina, 30L)).thenReturn(device(30, celina));
+        when(locks.lock(6L)).thenReturn(channel);
+        when(boards.requireWritable(celina, 4)).thenThrow(new GlobalException(ExceptionIdentifier.VIEWER_READ_ONLY));
+
+        assertThatThrownBy(() -> service.post(celina, 6L, new MessageRequest(30L, 1L, new byte[]{9})))
+                .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.VIEWER_READ_ONLY);
+
+        verify(messages, never()).save(any());
+        verify(notifier, never()).notify(anyList(), any());
+        assertThat(channel.getLastSeq()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("an editor posts to a board channel like anyone else, after the board agrees")
+    void boardChannelPostByAnEditor() {
+        Conversation channel = conversation(6, ConversationKind.BOARD, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(channel, "boardId", 4);
+        channel.take(MlsMessageKind.COMMIT, NOW);
+        ConversationMember editor = member(5, channel, celina, MemberRole.MEMBER, MemberState.ACTIVE, NOW);
+        when(access.requireMember(celina, 6L)).thenReturn(editor);
+        when(access.requireOwnDevice(celina, 30L)).thenReturn(device(30, celina));
+        when(locks.lock(6L)).thenReturn(channel);
+        when(members.findAllIn(List.of(channel))).thenReturn(List.of(editor));
+
+        PostedDto posted = service.post(celina, 6L, new MessageRequest(30L, 1L, new byte[]{9}));
+
+        assertThat(posted.seq()).isEqualTo(2L);
+        verify(boards).requireWritable(celina, 4);
     }
 
     @Test

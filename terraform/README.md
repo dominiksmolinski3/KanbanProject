@@ -94,7 +94,7 @@ You supply these:
 - `acs`: the resource group, Communication Services resource and email service that carry mail
   (see [Mail](#mail)). `null`, the default, turns mail off.
 - `captcha_enabled` and `captcha_secret`.
-- `messaging_enabled`, `false` by default, turns on encrypted messaging while it is being built.
+- `messaging_enabled`, `true` by default, switches encrypted messaging (board channels, direct messages and groups) on or off.
   Its PIN secret, `MESSAGING-PIN-KEY`, is generated into Key Vault once; replacing it invalidates every
   messaging PIN.
 

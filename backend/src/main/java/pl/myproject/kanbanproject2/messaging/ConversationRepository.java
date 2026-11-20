@@ -14,6 +14,9 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     Optional<Conversation> findByDirectKey(String directKey);
 
+    @Query("SELECT conversation.id FROM Conversation conversation WHERE conversation.boardId = :boardId")
+    Optional<Long> findIdByBoardId(@Param("boardId") Integer boardId);
+
     @Modifying(flushAutomatically = true)
     @Query("UPDATE Conversation conversation SET conversation.needsCommit = true WHERE conversation.id IN "
             + "(SELECT member.conversation.id FROM ConversationMember member WHERE member.user = :user)")

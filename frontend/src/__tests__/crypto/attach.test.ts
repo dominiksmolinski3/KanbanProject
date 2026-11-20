@@ -4,12 +4,12 @@ import { ApiError } from '../../services/apiError';
 jest.mock('../../services/cryptoApi', () => ({ cryptoApi: { attachSession: jest.fn() } }));
 jest.mock('../../crypto/keyStore', () => ({
   readLocalDevice: jest.fn(),
-  saveLocalDevice: jest.fn(),
+  rebindLocalDevice: jest.fn(),
   wipeLocalKeys: jest.fn(),
 }));
 
 const { cryptoApi } = jest.requireMock('../../services/cryptoApi');
-const { readLocalDevice, saveLocalDevice, wipeLocalKeys } = jest.requireMock('../../crypto/keyStore');
+const { readLocalDevice, rebindLocalDevice, wipeLocalKeys } = jest.requireMock('../../crypto/keyStore');
 
 const device = { userId: 5, deviceId: 3, signatureKey: new Uint8Array(32), boundSessionId: 12 };
 
@@ -33,7 +33,7 @@ describe('attaching this browser to its sign-in', () => {
     await attachThisBrowser(20, 5);
 
     expect(cryptoApi.attachSession).toHaveBeenCalledWith(3, 20);
-    expect(saveLocalDevice).toHaveBeenCalledWith({ ...device, boundSessionId: 20 });
+    expect(rebindLocalDevice).toHaveBeenCalledWith(20);
   });
 
   test('stays quiet when the device is already on this sign-in, or there is none', async () => {
@@ -56,7 +56,7 @@ describe('attaching this browser to its sign-in', () => {
     await attachThisBrowser(20);
 
     expect(wipeLocalKeys).toHaveBeenCalled();
-    expect(saveLocalDevice).not.toHaveBeenCalled();
+    expect(rebindLocalDevice).not.toHaveBeenCalled();
   });
 
   test('keeps the keys through any other failure, such as messaging being switched off', async () => {

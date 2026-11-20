@@ -1,4 +1,6 @@
-import { KEY_DATABASE, memoryKeyStore, readLocalDevice, saveLocalDevice, wipeLocalKeys, DEVICE_INFO } from '../../crypto/keyStore';
+import {
+  KEY_DATABASE, memoryKeyStore, readLocalDevice, rebindLocalDevice, saveLocalDevice, wipeLocalKeys, DEVICE_INFO,
+} from '../../crypto/keyStore';
 
 describe('the local key store', () => {
   test('reads nothing when this browser has no IndexedDB', async () => {
@@ -17,6 +19,25 @@ describe('the local key store', () => {
     await expect(saveLocalDevice(device)).resolves.toBeUndefined();
     await store.clear();
     await expect(readLocalDevice(store)).resolves.toBeNull();
+  });
+
+  test('moving the device onto a sign-in changes only its session', async () => {
+    const store = memoryKeyStore();
+    const device = { userId: 1, deviceId: 2, signatureKey: new Uint8Array([3]), boundSessionId: 4 };
+    await store.put(DEVICE_INFO, device);
+
+    await rebindLocalDevice(9, store);
+
+    await expect(readLocalDevice(store)).resolves.toEqual({ ...device, boundSessionId: 9 });
+  });
+
+  test('moving a device that is no longer there does not bring it back', async () => {
+    const store = memoryKeyStore();
+
+    await rebindLocalDevice(9, store);
+
+    await expect(readLocalDevice(store)).resolves.toBeNull();
+    await expect(rebindLocalDevice(9)).resolves.toBeUndefined();
   });
 
   test('wiping deletes the whole key database, and does nothing where there is none', () => {

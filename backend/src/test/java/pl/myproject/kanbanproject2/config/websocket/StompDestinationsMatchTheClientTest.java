@@ -35,7 +35,7 @@ class StompDestinationsMatchTheClientTest {
 
         assertThat(subscriptions)
                 .as("no .subscribe('...') call was found in frontend/src; this guard has gone stale")
-                .containsKeys("/topic/boards.7", "/topic/boards.7.chat", "/user/queue/messages");
+                .containsKeys("/topic/boards.7", "/user/queue/conversations");
         subscriptions.forEach((destination, site) -> assertThat(StompDestinationPolicy.allowsSubscribe(destination))
                 .as("%s subscribes to %s, which StompDestinationPolicy drops, so the screen would quietly "
                         + "never update. Allow the destination there, with the check it needs.", site, destination)
@@ -47,9 +47,6 @@ class StompDestinationsMatchTheClientTest {
     void everyClientSendIsAllowed() {
         Map<String, String> sends = destinations(SEND);
 
-        assertThat(sends)
-                .as("no destination: '...' was found in frontend/src; this guard has gone stale")
-                .containsKey("/app/chat.sendMessage");
         sends.forEach((destination, site) -> assertThat(StompDestinationPolicy.allowsSend(destination))
                 .as("%s sends to %s, which StompDestinationPolicy drops", site, destination)
                 .isTrue());

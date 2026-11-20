@@ -15,6 +15,7 @@ export interface LocalDevice {
 export interface KeyStore {
   get<T>(key: string): Promise<T | undefined>;
   put(key: string, value: unknown): Promise<void>;
+  update<T>(key: string, change: (current: T | undefined) => T | undefined): Promise<void>;
   clear(): Promise<void>;
 }
 
@@ -24,6 +25,10 @@ export function memoryKeyStore(): KeyStore {
     get: async <T>(key: string) => values.get(key) as T | undefined,
     put: async (key, value) => {
       values.set(key, value);
+    },
+    update: async <T>(key: string, change: (current: T | undefined) => T | undefined) => {
+      const next = change(values.get(key) as T | undefined);
+      if (next !== undefined) values.set(key, next);
     },
     clear: async () => values.clear(),
   };
@@ -66,6 +71,21 @@ export function indexedDbKeyStore(factory: IDBFactory = indexedDB): KeyStore {
     put: async (key, value) => {
       await run('readwrite', (store) => store.put(value, key));
     },
+    update: async <T>(key: string, change: (current: T | undefined) => T | undefined) => {
+      const opened = await connect();
+      await new Promise<void>((resolve, reject) => {
+        const transaction = opened.transaction(STORE, 'readwrite');
+        const store = transaction.objectStore(STORE);
+        const read = store.get(key);
+        read.onsuccess = () => {
+          const next = change(read.result as T | undefined);
+          if (next !== undefined) store.put(next, key);
+        };
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    },
     clear: async () => {
       await run('readwrite', (store) => store.clear());
     },
@@ -84,6 +104,12 @@ export async function readLocalDevice(store?: KeyStore): Promise<LocalDevice | n
 
 export async function saveLocalDevice(device: LocalDevice, store?: KeyStore): Promise<void> {
   await pageKeyStore(store)?.put(DEVICE_INFO, device);
+}
+
+// One transaction: a device that was deleted since it was read must not be written back.
+export async function rebindLocalDevice(sessionId: number, store?: KeyStore): Promise<void> {
+  await pageKeyStore(store)?.update<LocalDevice>(DEVICE_INFO,
+    (current) => (current ? { ...current, boundSessionId: sessionId } : undefined));
 }
 
 export function wipeLocalKeys(factory: IDBFactory | undefined = globalThis.indexedDB): void {

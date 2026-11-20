@@ -26,6 +26,16 @@ describe('messagesApi', () => {
     expect(sent(4).path).toBe('/api/blocks');
   });
 
+  test('reads the plaintext history that came before encryption, by board or by person', async () => {
+    await messagesApi.earlierInBoard(4);
+    await messagesApi.earlierInBoard(4, 2);
+    await messagesApi.earlierWith(9, 1);
+
+    expect(sent(0)).toEqual({ path: '/api/chat?boardId=4&page=0&size=25', method: 'GET', body: undefined });
+    expect(sent(1).path).toBe('/api/chat?boardId=4&page=2&size=25');
+    expect(sent(2).path).toBe('/api/chat/direct/9?page=1&size=25');
+  });
+
   test('starts, configures and manages the people of a conversation', async () => {
     await messagesApi.create({ kind: 'GROUP', userIds: [2, 3], historyVisibility: 'ALL' });
     await messagesApi.update(5, { muted: true });

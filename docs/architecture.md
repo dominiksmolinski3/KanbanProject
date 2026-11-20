@@ -262,7 +262,7 @@ act rather than a merge artifact.
 
 In local development the two run separately (`:5173` and `:8080`) and [vite.config.js](../frontend/vite.config.js) proxies `/api` (the whole REST surface) and `/ws` (the socket) to the backend. Because the backend applies the `/api` prefix centrally, a new endpoint needs no proxy change.
 
-**Every REST route is served under `/api`.** [WebConfig](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix `ChatController` too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. `ChatController` is a plain `@Controller` carrying `@MessageMapping`, so the predicate leaves its STOMP destinations alone.
+**Every REST route is served under `/api`.** [WebConfig](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix every STOMP controller too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. A plain `@Controller` carrying `@MessageMapping` is left alone by the predicate, so its STOMP destinations keep their own prefix.
 
 The prefix exists to keep the API off the paths React Router owns. `App.tsx` serves `/board`, `/users`, `/sessions`, `/activity` and `/flow`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
 
@@ -304,7 +304,7 @@ a URL fails rather than joining an unasserted set.
 
 ## Backend layering
 
-Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController` and `ChatController`, which have not been moved into their feature packages; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: FEAT-09 pointed avatars at `BlobStore` the same way attachments already used it, and retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
+Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, which has not been moved into its feature package; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: FEAT-09 pointed avatars at `BlobStore` the same way attachments already used it, and retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
@@ -840,7 +840,7 @@ from parts the repo already had, and each part keeps its original rule:
 
 ## Frontend state
 
-Three React contexts, composed in [App.tsx](../frontend/src/App.tsx): `AuthProvider` wraps the router; `KanbanProvider` and `ChatProvider` wrap the protected routes.
+Three React contexts, composed in [App.tsx](../frontend/src/App.tsx): `AuthProvider` wraps the router; `KanbanProvider` and `MessagesProvider` (through `MessagingLayer`) wrap the protected routes.
 
 [KanbanContext.tsx](../frontend/src/context/KanbanContext.tsx) is the single source of board state (columns, rows, tasks, users) and owns every mutation plus all HTML5 drag-and-drop handlers. Its pattern throughout: call the API, optimistically update local state, fire a `react-toastify` notification keyed through `t()`, and often follow with `refreshTasks()`/`refreshBoard()` to resync. Reordering issues **one** call for the whole container — `reorderTasks`, `reorderColumns`,
 `reorderRows`, each a `PATCH /api/{tasks,columns,rows}/positions` carrying `{ orderedIds }` and
@@ -1373,135 +1373,75 @@ the application under test runs under the real policy. `frame-ancestors` is stri
 cannot be named there, because the application under test genuinely does run in an iframe; that one
 is checked by reading the header instead.
 
-## Chat
+## Live socket and earlier chat
 
 STOMP at `/ws` (the server registers it with SockJS; the client opens the plain WebSocket at
 `/ws/websocket` and ships no SockJS code), relayed to a real broker (RabbitMQ, via its STOMP plugin — see
 [StompRelayProperties](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/StompRelayProperties.java)
 and `terraform/modules/broker`) on `/topic` and `/queue`, app prefix `/app`, user prefix `/user`;
-`WebSocketAuthInterceptor` authenticates the inbound channel. `ChatContext` uses a reducer (not
-`useState`) and delegates its subscriptions to [chatApi.ts](../frontend/src/services/chatApi.ts).
+`WebSocketAuthInterceptor` authenticates the inbound channel. Board chat was replaced by the
+encrypted board channels (see **Encrypted messaging**), which left the client sending nothing over the
+socket: every write is a REST call, and `/app` has no handler.
 
 **The page holds one connection, in [liveSocket.ts](../frontend/src/services/liveSocket.ts), and the
-board and the chat both subscribe on it.** It opens with the first user and closes with the last, so
-opening the chat panel costs no second socket, sign-in or broker session. Each user subscribes again
+board and the messenger both subscribe on it.** It opens with the first user and closes with the last,
+so opening the dock costs no second socket, sign-in or broker session. Each user subscribes again
 in its `onConnect`, and drops the handles of the connection before without unsubscribing them: a
 connection numbers its subscriptions from zero, so an old handle names somebody else's new
 subscription.
 
 **A subscription counts as live only when the broker confirms it.** RabbitMQ takes up to a second to
 open one, and a frame published before then never reaches it. Each subscription that matters carries
-a `receipt`, and on the `RECEIPT` the board, its open panels and the list of boards are read once
-more, and the chat reads its history again, announces itself and only then lets a message be sent.
+a `receipt`, and on the `RECEIPT` the board, its open panels, the list of boards and the list of
+conversations are read once more.
 
-**Chat is the board's conversation, and until `V18` it was the one feature the boards-with-members
-model never reached.** The destination was built out of a `roomId` the client supplied — so any
-string named a topic — and an empty one named `/topic/public`, a single global room every
-signed-in account subscribed to on connect, where a member of one board read the messages of every
-other board's members. `sendPrivateMessage` had the matching hole from the other side, addressing
-whatever `recipientId` it was handed and walking straight past the peer scoping `GET /api/users`
-exists to enforce. Neither is addressable now, and six things carry the replacement:
+**What the plaintext chat left behind, and why it still has a reader.** The chat was the one feature
+the boards-with-members model never reached until `V18`: its destination was built out of a client
+supplied `roomId`, so any string named a topic and an empty one named a global room every account
+read. Three rules outlived the code:
 
-- **A board message travels `/topic/boards.{id}.chat`**, which is the board's *own* destination
-  with a suffix rather than a prefix of its own — so `BoardSubscriptionInterceptor` authorises it
-  with no second check to keep in step. That interceptor's `boardIdIn` reads the **first** segment
-  after the prefix for exactly this reason; it used to parse the whole suffix as the id, and its
-  Javadoc said chat's topics "must pass through untouched", which is a fair description of how a
-  feature with no tenancy survives in a repository that checks everything else. A dot, not a
-  slash, for the RabbitMQ reason `BoardEventPublisher.DESTINATION_PREFIX` states at length.
-- **A direct message reaches a peer and nobody else**, checked against `BoardService.peersOf` —
-  the same collection `GET /api/users` is built from, so the two cannot disagree about who is
-  reachable.
-- **A message names its people by email address, so an email change renames them.**
-  `chat_messages.sender` and `recipient_id` are the account's username (its email) as text, not
-  foreign keys. When `EmailChangeService.confirmChange` moves an address, it rewrites both
-  columns in the same transaction. Before, a changed address left its direct-message history under
-  the old string, where `findDirectThread` no longer looked, so the thread was empty for both
-  people. The old address could also be registered again by someone else, and if that account
-  shared a board with the other party, the old thread would have appeared there. Closing an
-  account deletes its direct messages for the same reason. A message is stored under the peer's
-  own username, not the string the client typed: the peer check ignores case, but the user
-  registry and `findDirectThread` do not, so `Bob@X.com` was delivered to nobody and missing
-  from both histories.
-- **Nothing in `ChatController` throws.** An exception on the inbound channel becomes a STOMP ERROR
-  frame and a *closed session*, so a paste over the 2 000-character limit did not bounce the
-  message — it dropped the connection, and the client reconnected into a room it had to rejoin.
-  That is the failure `BoardSubscriptionInterceptor` had already written its reasoning down for,
-  one channel over. A refusal is a dropped frame and a WARN.
-- **A refusal the sender already knows about is answered; one that turns on who they are is not.**
-  Blank and over-long come back on the sender's own `/user/queue/errors` as a `ChatRefusal`
-  carrying a **translation key, never a sentence** — the activity feed's rule, for the same reason.
-  A board the caller may not post to is silence, or the refusal would confirm the board is real.
-  `ChatRefusalKeysExistTest` is the guard on the two-file coupling that creates: the key is chosen
-  in Java and rendered from `frontend/public/locales`, in all nine bundles, and nothing else can
-  see a rename on either side — the client never names these keys, so `i18n.test.js` cannot.
+- **A user destination is subscribed to without a name.** `/user/queue/conversations` is the whole
+  destination: Spring reads the account off the session it authenticated at CONNECT and rewrites the
+  subscription to a queue of the session's own. The old client subscribed to
+  `/user/{email}/queue/messages`, the *sending* form, which bound to a queue nothing publishes to; the
+  broker held the frames with no consumer and **no direct message was delivered for as long as the
+  relay had been in place**, with nothing erroring. Neither suite could see it, since Jest asserts a
+  subscription was made to a string and the backend suite asserts a send was made.
 - **`BoardScopedStompRoutesTest` is `BoardScopedRoutesTest`'s rule one channel over**: every
-  `@MessageMapping` handler takes the caller it has to check. The REST scan has held that surface
-  honest since the tenancy model landed and nothing scanned STOMP, which is the gap chat grew in —
-  a guard that covers one transport and not the other is a guard that says where the next hole
-  will be. There is no `PublicPaths` to be excused by here: the channel is authenticated at
-  CONNECT, so the rule has no exceptions. "CONNECT" means the message type, not the command:
-  STOMP 1.2 lets a client open with a `STOMP` frame, which Spring and the broker relay accept as a
-  connect, and `WebSocketAuthInterceptor` once checked only the `CONNECT` command, so a `STOMP`
-  frame with no token opened a session. The interceptor stamps the account on the message only; it
-  never sets `SecurityContextHolder`, whose thread-local would outlive the frame on a pooled
-  transport thread.
-- **A user destination is subscribed to without a name, and that was a live bug.**
-  `/user/queue/messages` is the whole destination: Spring reads the account off the session it
-  authenticated at CONNECT and rewrites the subscription to a queue of the session's own.
-  `chatApi.js` was subscribing to `/user/{email}/queue/messages` — which is the *sending* form —
-  so the subscription bound to a queue nothing publishes to. Measured on the compose stack: the
-  broker was holding the frames in `messages-user<session>` with no consumer, which is to say
-  **no direct message had been delivered since the STOMP relay replaced `enableSimpleBroker`**,
-  and nothing errored to say so. Neither suite could see it — Jest asserts a subscription was
-  made to a string, and the backend suite asserts `convertAndSendToUser` was called — so it took
-  running the stack. `chatApi.test.js` now asserts no subscription names an account.
+  `@MessageMapping` handler takes the caller it has to check, and nothing is excused, because the
+  channel is authenticated at CONNECT. "CONNECT" means the message type, not the command: STOMP 1.2
+  lets a client open with a `STOMP` frame, which Spring and the broker relay accept as a connect.
+  There is no handler today; the rule is there for the next one. Handlers never throw: an exception on
+  the inbound channel is a closed session.
+- **Rows name their people by email address, so an email change renames them.**
+  `chat_messages.sender` and `recipient_id` are the account's username as text, not foreign keys.
+  `EmailChangeService.confirmChange` rewrites both columns in the transaction, and closing an
+  account deletes its direct rows, or the old address could be registered again by someone who shares a
+  board with the other party and would read the old thread.
 
-- **Presence is sent and not stored.** "X joined" is worth a line in the panel while somebody is
-  looking and is not worth a row in the scroll-back, where a reconnecting client would bury the
-  conversation under its own comings and goings. `WebSocketEventListener` announces a LEAVE on the
-  board the session joined and on nothing otherwise; it used to fall back to `/topic/public`, so a
-  disconnect told every account on the deployment.
+**The old rows are read-only history, shown as "Earlier messages (not encrypted)".** Nothing writes
+`chat_messages` any more. `ChatHistoryController` still serves them, because the encrypted replacement
+starts empty and a board's last 90 days of conversation would otherwise vanish on deploy:
+`GET /api/chat?boardId=` for a board and `GET /api/chat/direct/{userId}` for the thread with a peer
+(`/direct?with=` takes the address instead), both paged with the activity feed's numbers and refusal —
+25 by default, 100 at most, `400 INVALID_CHAT_REQUEST` rather than a silent clamp. A person who
+shares no board is `404`. The thread screen asks for page 0 and shows the control only when something
+comes back, so the control disappears on its own once the rows are pruned.
 
-**The messages are readable at last, which is what makes writing them worth anything.**
-`ChatRepository` had an empty body and no route read the table, so every message was persisted to
-be unread: the panel showed only what arrived while it was open, and the rows accumulated forever
-in the database's storage, its backups and its restore time — line for line the charge this file
-levels at the `files` table when it calls it "the counter-example rather than the model". Chat was
-the second instance. `ChatHistoryController` serves two reads, because there are two kinds of
-message and one page holding both would answer neither question: `GET /api/chat?boardId=` is the
-board's conversation and `GET /api/chat/direct?with=` is the thread with one peer, in both
-directions. Both are paged with the activity feed's numbers and its refusal — 25 by default, 100
-at most, and `400 INVALID_CHAT_REQUEST` rather than a silent clamp. A `with=` naming somebody who
-shares no board is `404`, the same answer an address with no account gets.
-
-`ChatHistoryService.pruneExpiredMessages` is the other half: a conversation nobody can read
-accumulates forever and one anybody can read still does. It runs nightly at 03:30, off the hour the
-deadline sweep and the outbox relay use, and is deliberately **not** claimed the way those two are
-— a row deleted twice is a row deleted once, so a second replica running it concurrently is wasted
-work rather than a defect. `app.chat.retention-days` (90) is a plain property with a default rather
-than an environment variable, because a variable Terraform would have to pass, docker-compose
-repeat and `ConfigurationTest` audit is a cost a window no environment wants to differ on does not
-earn.
-
-`V18` is where the schema caught up: `chat_messages` gained a nullable `board_id` and lost
-`room_id`. **Exactly one of `board_id` and `recipient_id` is set** on any row the application
-writes. The rows already in the table are left alone rather than backfilled — a `room_id` of
-`general` is not a board id and no honest mapping exists — so they keep a null `board_id`, which
-means the read routes never return them, which is what they already were. `BoardService.deleteBoard`
-clears them by hand alongside the invitations and the activity rows, for the same reason: nothing
-cascades, and the foreign key is one the board could not be deleted around.
-
-On the client the room picker is gone — it offered `general`, `help` and `random`, which named
-topics the server had no opinion about. The board comes from `KanbanContext`, so switching boards
-switches the conversation and there is no second control to find; opening the panel loads page 0 of
-the history and "load older" pages back through it.
+`ChatHistoryService.pruneExpiredMessages` still runs nightly at 03:30 (off the hour the deadline sweep
+and the outbox relay use) and is deliberately **not** claimed the way those two are — a row deleted
+twice is a row deleted once. `app.chat.retention-days` (90) is a plain property with a default rather
+than an environment variable, because a variable Terraform would have to pass, docker-compose repeat
+and `ConfigurationTest` audit is a cost a window no environment wants to differ on does not earn.
+`chat_messages` is dropped by a later migration, once its newest row is older than that window and
+the history endpoints go with it; `BoardService.deleteBoard` clears a board's rows by hand until then,
+because nothing cascades and the foreign key is one the board could not be deleted around.
 
 ## Encrypted messaging
 
-The end-to-end encrypted messenger, behind `app.messaging.enabled` (`MESSAGING_ENABLED`, off by
-default). Phase 1 is keys and devices; phase 2 is direct messages and groups on `/messages`. The
-board chat above is untouched until board channels replace it.
+The end-to-end encrypted messenger, behind `app.messaging.enabled` (`MESSAGING_ENABLED`, on by
+default). Phase 1 is keys and devices; phase 2 is direct messages and groups on `/messages`; phase 3 is
+board channels and the dock, which replace the old board chat.
 
 - **The server holds public keys and opaque bytes.** The Ed25519 identity key is generated in the
   browser and reaches the server only sealed: under the PIN exchange below (`identity_pins`), and
@@ -1572,6 +1512,45 @@ board chat above is untouched until board channels replace it.
 - **Typing goes over REST**, `POST /conversations/{id}/typing`, relayed as a frame and never stored.
   Every frame on `/user/queue/conversations` is `{type, conversationId, seq, userId}`.
 
+### Board channels (phase 3)
+
+- **A board has one channel, and the board's roster is the channel's roster.** `conversations.board_id`
+  (unique, `ON DELETE CASCADE`) marks the channel of a board and `kind` is `BOARD`. `BoardService`
+  publishes `BoardRosterChanged` after a board is created, claimed, renamed or has a member added,
+  removed or forgotten, and `BoardDeleting` before it is deleted; `BoardChannels` listens in the same
+  transaction and seats exactly `Board.everyone()`: the owner as `ADMIN`, board viewers as `VIEWER`,
+  everyone else as `MEMBER`. A removed person loses the seat in the transaction that removed them, so
+  the fan-out to them stops at once, and the channel is marked `needs_commit`: the clients, as in a
+  group, add and remove devices to match. Channels exist whether or not messaging is enabled, so
+  switching it on needs no backfill; `V33` gave every existing board one.
+- **No external proposals.** The design had the server post MLS Add and Remove proposals. Phase 2
+  already keeps the MLS roster equal to the membership from the clients' side (`needs_commit` plus the
+  plan each device computes from the directory), so board channels reuse that path and the server never
+  authors an MLS message.
+- **Posting is a write to the board.** `MessageDeliveryService.post` calls `BoardService.requireWritable`
+  for a channel (`WriteAccessCoverageTest`), so a viewer is refused with `VIEWER_READ_ONLY`, the
+  refusal every other board write gives, and the `VIEWER` seat only tells the client to show a note
+  instead of a composer. Commits are open to every member, viewers included: adding a new device of a
+  member is housekeeping, and a channel whose only online member is a viewer should still advance.
+- **Nobody edits the roster by hand.** Adding, removing, promoting and leaving answer `400` for a
+  channel, a channel cannot be created through `POST /conversations`, and `whoCanAdd` is not a setting
+  of it. The owner (the `ADMIN` seat) sets how much history newcomers see; anyone else gets
+  `NOT_BOARD_OWNER`.
+- **A channel has no creator.** `conversations.created_by` is null for a board channel. Account
+  deletion publishes the board events before it removes the user, and a managed `Conversation` whose
+  `createdBy` is the user being deleted makes Hibernate throw at flush, which a locking `GroupRestarts`
+  would have loaded. `ConversationService.forgetAccount` treats a channel as a leaver's seat only: it
+  never promotes a successor (the board's new owner does that through the same event) and never deletes
+  the channel because it is empty (deleting the board does).
+- **The dock is the channel plus the last two conversations.** `MessageDock` replaces `Chat.tsx`: the
+  toggle carries the unread count, the first tab is the channel of the board on screen, and an
+  unset-up browser sees the same gate as `/messages`. `MessagesProvider` now lives in
+  `ProtectedLayout` (through `MessagingLayer`), switched on by `enabled`, so delivery receipts and the
+  unread count work on every page and the provider survives navigation; it must always be mounted,
+  because mounting it only once keys are ready would remount the whole page under it.
+- **Earlier messages.** See **Live socket and earlier chat**: the thread offers the plaintext rows of
+  its board, or of the person, until they are pruned.
+
 ## Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'
@@ -1609,9 +1588,9 @@ Six decisions carry it, and none of them is visible from the destination name:
   broker destination (`/topic/boards.{id}.chat`, `/user/{email}/queue/messages`) is relayed
   straight to RabbitMQ and never reaches a controller, so any signed-in account could post into any
   board's chat or anyone's inbox under any sender name, skipping the membership, write-access and
-  length checks in `ChatController`. Now a `SEND` must name `/app/**`, and a `SUBSCRIBE` must be one
-  of the four shapes the client uses: `/topic/boards.{id}`, `/topic/boards.{id}.chat`,
-  `/user/queue/messages` and `/user/queue/errors`. Anything else is dropped the way a refused
+  length checks of the controller that was meant to see it. Now a `SEND` must name `/app/**`, and a `SUBSCRIBE` must be one
+  of the three shapes the client uses: `/topic/boards.{id}`, `/user/queue/boards` and
+  `/user/queue/conversations`. Anything else is dropped the way a refused
   subscription is, and it is counted on the same meter under the reasons `unlisted-send` and
   `unlisted-subscribe`. A command only a server sends (`CONNECTED`, `MESSAGE`, `RECEIPT`, `ERROR`)
   is dropped under `server-command`: Spring decodes a client's `MESSAGE` frame and hands it to the
@@ -1663,8 +1642,8 @@ Six decisions carry it, and none of them is visible from the destination name:
   tasks and needs one re-read, so the events are collected against the transaction and sent once;
   the client then coalesces a burst into one fetch (`LIVE_REFRESH_WINDOW_MS`). Otherwise the
   busiest gesture on the board would be the noisiest thing on the wire.
-- **It is a second connection, not chat's.** `ChatContext` connects when somebody opens the chat
-  panel and disconnects when they close it, so a board riding that connection would stop updating
+- **It is a second connection, not chat's.** The old `ChatContext` connected when somebody opened the chat
+  panel and disconnected when they closed it, so a board riding that connection would stop updating
   the moment anyone tidied their screen and would never start for people who never open chat. The
   board client renews its token in `beforeConnect` rather than in the constructor, because the
   CONNECT frame is the only place the fifteen-minute token is checked and a socket that drops an
@@ -1802,7 +1781,7 @@ as nothing at all until the lease lapses.
 The other constraints named here when this paragraph was written are addressed now too: the
 deadline sweep claims its own rows the same way, `AuthRateLimiter`'s escalation lives in Redis
 rather than each replica's own process memory (see the auth section below), `WebSocketConfig`
-relays to a real broker rather than holding one in the JVM (see **Chat** and **Live board sync**),
+relays to a real broker rather than holding one in the JVM (see **Live socket and earlier chat** and **Live board sync**),
 and `TaskAttachmentService`'s transfer semaphore divides by a replica-count hint instead of reading
 as a per-replica limit (see **Attachments**). This — the outbox claim — went first because its
 failure mode is the one that leaves the building. With all five cleared, phase 4 of the container

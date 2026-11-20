@@ -169,6 +169,30 @@ class ChatHistoryServiceTest {
         }
 
         @Test
+        @DisplayName("the peer can be named by id, which is how the encrypted messenger knows them")
+        void readsByPeerId() {
+            when(boardService.peersOf(anna)).thenReturn(List.of(anna, bob));
+            when(chatRepository.findDirectThread(eq("anna@example.com"), eq("bob@example.com"), any()))
+                    .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 25), 0));
+
+            service.directHistoryWithUser(anna, bob.getId(), null, null);
+
+            verify(chatRepository).findDirectThread(eq("anna@example.com"), eq("bob@example.com"), any());
+        }
+
+        @Test
+        @DisplayName("an id that is not a peer is a 404")
+        void strangerByIdIsNotFound() {
+            when(boardService.peersOf(anna)).thenReturn(List.of(anna));
+
+            assertThatThrownBy(() -> service.directHistoryWithUser(anna, bob.getId(), null, null))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getIdentifier())
+                    .isEqualTo(ExceptionIdentifier.USER_NOT_FOUND);
+            verify(chatRepository, never()).findDirectThread(any(), any(), any());
+        }
+
+        @Test
         @DisplayName("an account sharing no board is a 404, the same answer an unknown address gets")
         void strangerIsNotFound() {
             when(boardService.peersOf(anna)).thenReturn(List.of(anna));
