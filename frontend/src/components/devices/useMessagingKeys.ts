@@ -23,13 +23,9 @@ export function currentSessionId(): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-export function useMessagingKeys() {
-  const { t } = useTranslation();
+export function useMessagingState() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const refilling = useRef(false);
-  const attaching = useRef(false);
-  const [removed, setRemoved] = useState(false);
 
   const status = useQuery({ queryKey: STATUS, queryFn: cryptoApi.status });
   const local = useQuery({
@@ -49,7 +45,6 @@ export function useMessagingKeys() {
     if (stale) {
       wipeLocalKeys();
       queryClient.setQueryData(THIS_BROWSER, null);
-      setRemoved(true);
     }
   }, [stale, queryClient]);
 
@@ -65,6 +60,22 @@ export function useMessagingKeys() {
   } else {
     state = status.data.identity ? 'elsewhere' : 'notSetUp';
   }
+
+  return { status, devices, thisDevice, stale, state };
+}
+
+export function useMessagingKeys() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const refilling = useRef(false);
+  const attaching = useRef(false);
+  const [removed, setRemoved] = useState(false);
+  const { status, devices, thisDevice, stale, state } = useMessagingState();
+
+  useEffect(() => {
+    if (stale) setRemoved(true);
+  }, [stale]);
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: STATUS });

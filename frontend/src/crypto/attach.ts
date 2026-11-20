@@ -1,6 +1,6 @@
 import { ApiError } from '../services/apiError';
 import { cryptoApi } from '../services/cryptoApi';
-import { readLocalDevice, saveLocalDevice, wipeLocalKeys } from './keyStore';
+import { readLocalDevice, rebindLocalDevice, wipeLocalKeys } from './keyStore';
 
 // A browser keeps its device across sign-outs; each new sign-in and each refresh moves the device onto it.
 export async function attachThisBrowser(sessionId: number | null, userId?: number): Promise<void> {
@@ -17,7 +17,7 @@ export async function attachThisBrowser(sessionId: number | null, userId?: numbe
       return;
     }
     await cryptoApi.attachSession(local.deviceId, sessionId);
-    await saveLocalDevice({ ...local, boundSessionId: sessionId });
+    await rebindLocalDevice(sessionId);
   } catch (error) {
     if (error instanceof ApiError && error.code === 'CRYPTO_DEVICE_NOT_FOUND') {
       wipeLocalKeys();

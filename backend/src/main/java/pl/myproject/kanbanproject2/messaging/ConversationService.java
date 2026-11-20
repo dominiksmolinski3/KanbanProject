@@ -105,12 +105,17 @@ public class ConversationService {
         Map<Long, Long> unread = new HashMap<>();
         messages.countUnread(caller, MlsMessageKind.APPLICATION)
                 .forEach(count -> unread.put(count.getConversationId(), count.getUnread()));
+        Map<Integer, String> boardNames = boards.namesOf(mine.stream()
+                .map(member -> member.getConversation().getBoardId())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
         return mine.stream()
                 .sorted(Comparator.comparing(
                         (ConversationMember member) -> member.getConversation().getLastActivityAt()).reversed())
                 .map(member -> mapper.apply(new ConversationView(member,
                         byConversation.getOrDefault(member.getConversation().getId(), List.of()),
-                        unread.getOrDefault(member.getConversation().getId(), 0L))))
+                        unread.getOrDefault(member.getConversation().getId(), 0L),
+                        boardNameOf(boardNames, member.getConversation()))))
                 .toList();
     }
 
@@ -123,6 +128,9 @@ public class ConversationService {
     public Created create(User caller, CreateConversationRequest request) {
         access.requireEnabled();
         requireSetUp(caller);
+        if (request.kind() == ConversationKind.BOARD) {
+            throw invalid("Kanał tablicy powstaje razem z tablicą");
+        }
         Set<Integer> others = new LinkedHashSet<>(request.userIds());
         others.remove(caller.getId());
         if (others.isEmpty()) {
@@ -173,8 +181,9 @@ public class ConversationService {
             notifier.notify(List.of(caller), event(ConversationEventType.MEMBERS, me.getConversation(), caller));
             return view(caller, me);
         }
-        requireGroupAdmin(me);
-        me.getConversation().configure(request.historyVisibility(), request.whoCanAdd());
+        requireSettingsAdmin(me);
+        me.getConversation().configure(request.historyVisibility(),
+                me.getConversation().getKind() == ConversationKind.BOARD ? null : request.whoCanAdd());
         conversations.save(me.getConversation());
         return announce(caller, me);
     }
@@ -183,6 +192,7 @@ public class ConversationService {
     public ConversationDto addMembers(User caller, Long conversationId, AddMembersRequest request) {
         ConversationMember me = access.requireMember(caller, conversationId);
         Conversation conversation = me.getConversation();
+        requireOwnRoster(conversation);
         if (conversation.getKind() != ConversationKind.GROUP) {
             throw invalid("Do rozmowy prywatnej nie można dodać osób");
         }
@@ -214,6 +224,7 @@ public class ConversationService {
     public void removeMember(User caller, Long conversationId, Integer userId) {
         ConversationMember me = access.requireMember(caller, conversationId);
         Conversation conversation = me.getConversation();
+        requireOwnRoster(conversation);
         if (caller.getId().equals(userId)) {
             leave(caller, me);
             return;
@@ -234,6 +245,7 @@ public class ConversationService {
     @Transactional
     public ConversationDto setRole(User caller, Long conversationId, Integer userId, MemberRoleRequest request) {
         ConversationMember me = access.requireMember(caller, conversationId);
+        requireOwnRoster(me.getConversation());
         requireGroupAdmin(me);
         ConversationMember target = members.findMembership(conversationId, userId)
                 .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND,
@@ -387,11 +399,12 @@ public class ConversationService {
             List<ConversationMemberRepository.MembershipRow> remaining = members.membershipsIn(conversationId).stream()
                     .filter(row -> !row.getMemberId().equals(membership.getMemberId()))
                     .toList();
-            if (membership.getKind() == ConversationKind.DIRECT || remaining.isEmpty()) {
+            if (membership.getKind() == ConversationKind.DIRECT
+                    || (membership.getKind() == ConversationKind.GROUP && remaining.isEmpty())) {
                 conversations.deleteWithContents(conversationId);
             } else {
                 members.deleteMembership(membership.getMemberId());
-                if (membership.getRole() == MemberRole.ADMIN
+                if (membership.getKind() == ConversationKind.GROUP && membership.getRole() == MemberRole.ADMIN
                         && remaining.stream().noneMatch(row -> row.getRole() == MemberRole.ADMIN)) {
                     remaining.stream()
                             .min(Comparator.comparing((ConversationMemberRepository.MembershipRow row)
@@ -445,7 +458,9 @@ public class ConversationService {
                 .mapToLong(MlsMessageRepository.UnreadCount::getUnread)
                 .findFirst()
                 .orElse(0L);
-        return mapper.apply(new ConversationView(me, members.findAllIn(List.of(me.getConversation())), unread));
+        Integer boardId = me.getConversation().getBoardId();
+        return mapper.apply(new ConversationView(me, members.findAllIn(List.of(me.getConversation())), unread,
+                boardId == null ? null : boards.namesOf(List.of(boardId)).get(boardId)));
     }
 
     private List<User> everyone(Conversation conversation) {
@@ -506,6 +521,26 @@ public class ConversationService {
 
     static String directKey(Integer one, Integer other) {
         return Math.min(one, other) + ":" + Math.max(one, other);
+    }
+
+    private static String boardNameOf(Map<Integer, String> names, Conversation conversation) {
+        return conversation.getBoardId() == null ? null : names.get(conversation.getBoardId());
+    }
+
+    private static void requireOwnRoster(Conversation conversation) {
+        if (conversation.getKind() == ConversationKind.BOARD) {
+            throw invalid("Osoby w kanale tablicy zmieniają się razem z członkami tablicy");
+        }
+    }
+
+    private static void requireSettingsAdmin(ConversationMember me) {
+        if (me.getConversation().getKind() == ConversationKind.BOARD) {
+            if (!me.isAdmin()) {
+                throw new GlobalException(ExceptionIdentifier.NOT_BOARD_OWNER);
+            }
+            return;
+        }
+        requireGroupAdmin(me);
     }
 
     private static void requireGroupAdmin(ConversationMember me) {

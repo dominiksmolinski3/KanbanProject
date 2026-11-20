@@ -17,12 +17,12 @@ jest.mock('../../context/KanbanContext', () => ({
     <div data-testid="kanban-provider" data-board-contents={String(boardContents)}>{children}</div>
   ),
 }));
-jest.mock('../../context/ChatContext', () => ({
-  ChatProvider: ({ children }) => <div data-testid="chat-provider">{children}</div>,
-}));
+jest.mock('../../components/messages/MessagingLayer', () => ({ children }) => (
+  <div data-testid="messaging-layer">{children}</div>
+));
 jest.mock('../../components/Header', () => () => <div>Header</div>);
 jest.mock('../../components/Footer', () => () => <div>Footer</div>);
-jest.mock('../../components/Chat', () => () => <div>Chat</div>);
+jest.mock('../../components/messages/MessageDock', () => () => <div>Dock</div>);
 
 const renderAt = (initialPath) =>
   render(
@@ -60,10 +60,10 @@ describe('ProtectedLayout', () => {
     renderAt('/board');
 
     expect(screen.getByTestId('kanban-provider')).toBeInTheDocument();
-    expect(screen.getByTestId('chat-provider')).toBeInTheDocument();
+    expect(screen.getByTestId('messaging-layer')).toBeInTheDocument();
     expect(screen.getByText('Header')).toBeInTheDocument();
     expect(screen.getByText('Footer')).toBeInTheDocument();
-    expect(screen.getByText('Chat')).toBeInTheDocument();
+    expect(screen.getByText('Dock')).toBeInTheDocument();
     expect(screen.getByText('Board content')).toBeInTheDocument();
   });
 

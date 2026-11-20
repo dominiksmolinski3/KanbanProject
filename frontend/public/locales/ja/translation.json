@@ -463,33 +463,6 @@
       "intro": "このボードのメンバーと、ボードを共有しているすべての人。",
       "people": "ボードを共有している人"
     },
-    "chat": {
-      "title": "チャット",
-      "connectionError": "チャットへの接続エラー",
-      "send": "送信",
-      "typingMessage": "メッセージを入力...",
-      "openChat": "チャットを開く",
-      "private": "プライベート",
-      "recipient": "受信者",
-      "noRecipient": "受信者を入力してください",
-      "noMessages": "まだメッセージはありません",
-      "userJoined": "{{user}}がチャットに参加しました",
-      "userLeft": "{{user}}がチャットを退出しました",
-      "board": "ボード",
-      "boardConversation": "ボードのチャット",
-      "conversationKind": "会話",
-      "closeChat": "チャットを閉じる",
-      "noBoard": "先にボードを開いてください",
-      "loadOlder": "以前のメッセージを読み込む",
-      "loadingHistory": "読み込み中…",
-      "historyError": "会話を読み込めませんでした",
-      "errors": {
-        "empty": "メッセージを入力してください",
-        "tooLong": "メッセージが長すぎます",
-        "readOnly": "このボードはあなたには読み取り専用です",
-        "notSent": "メッセージは送信されませんでした"
-      }
-    },
     "footer": {
       "help": "ヘルプ",
       "about": "私たちについて",
@@ -916,7 +889,9 @@
             "request": "あなたにメッセージを送りたがっています",
             "archived": "アーカイブ済み（{{count}}）",
             "unread": "未読: {{count}}",
-            "muted": "ミュート中"
+            "muted": "ミュート中",
+            "boards": "ボード",
+            "people": "個人とグループ"
         },
         "thread": {
             "encrypted": "エンドツーエンド暗号化",
@@ -927,7 +902,9 @@
             "removed": "あなたはもうこの会話に参加していません。",
             "failed": "この会話を最新の状態にできませんでした。少ししてからもう一度お試しください。",
             "typingOne": "{{name}} さんが入力中…",
-            "typingMany": "何人かが入力中…"
+            "typingMany": "何人かが入力中…",
+            "boardMembers": "ボードのチャンネル · メンバー: {{count}}",
+            "readOnly": "このボードでは閲覧者のため、このチャンネルは読むだけで投稿はできません。"
         },
         "request": {
             "title": "メッセージリクエスト",
@@ -984,7 +961,10 @@
             "pinned": "上部に固定",
             "archived": "アーカイブ",
             "leave": "グループを退出",
-            "block": "{{name}} さんをブロック"
+            "block": "{{name}} さんをブロック",
+            "owner": "所有者",
+            "viewer": "閲覧者",
+            "followsBoard": "ボードの全員がこのチャンネルに参加しています。ボードへの参加と退出に合わせて入退室します。"
         },
         "settings": {
             "title": "グループの設定",
@@ -994,7 +974,8 @@
             "historyAll": "すべて",
             "whoCanAdd": "メンバーを追加できる人",
             "admins": "管理者のみ",
-            "members": "メンバー全員"
+            "members": "メンバー全員",
+            "titleBoard": "チャンネルの設定"
         },
         "new": {
             "title": "新しい会話",
@@ -1024,6 +1005,23 @@
         "errors": {
             "generic": "うまくいきませんでした。もう一度お試しください。",
             "send": "メッセージを送信できませんでした。もう一度お試しください。"
+        },
+        "board": {
+            "untitled": "ボードのチャンネル"
+        },
+        "earlier": {
+            "title": "以前のメッセージ（暗号化なし）",
+            "hint": "このチャットが暗号化される前に送信されたメッセージです。しばらくすると自動的に削除されます。",
+            "older": "さらに古いものを表示"
+        },
+        "dock": {
+            "open": "メッセージを開く",
+            "openFull": "メッセージで開く",
+            "close": "メッセージを閉じる",
+            "recent": "最近の会話",
+            "thisBoard": "このボード",
+            "boardChannel": "ボードのチャンネル · メンバー: {{count}}",
+            "none": "会話はまだありません。メッセージを開いて始めましょう。"
         }
     }
 }

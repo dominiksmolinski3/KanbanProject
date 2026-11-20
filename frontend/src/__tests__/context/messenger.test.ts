@@ -38,7 +38,7 @@ class FakeServer {
 
   conversation(): Conversation {
     return {
-      id: 7, kind: 'GROUP', groupId: toBase64(new TextEncoder().encode('group-7')), epoch: this.epoch,
+      id: 7, kind: 'GROUP', boardId: null, boardName: null, groupId: toBase64(new TextEncoder().encode('group-7')), epoch: this.epoch,
       needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS',
       lastSeq: this.messages.length, createdAt: '2026-11-19T10:00:00Z', lastActivityAt: '2026-11-19T10:00:00Z',
       unread: 0, me: { role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deliveredSeq: 0, readSeq: 0, muted: false, pinned: false,
@@ -272,5 +272,9 @@ describe('the messenger', () => {
     await expect(stranger.sync(mockServer.conversation())).rejects.toThrow('no messaging device');
     expect(isGone(new ApiError('gone', { status: 404 }))).toBe(true);
     expect(isGone(new Error('other'))).toBe(false);
+  });
+
+  test('without a device reader it asks this browser, which has none to find in a test', async () => {
+    expect(await createMessenger({} as WorkerClient, 1).device()).toBeNull();
   });
 });

@@ -169,9 +169,9 @@ variable "acs" {
 }
 
 variable "messaging_enabled" {
-  description = "Enable end-to-end encrypted messaging in the backend while it is being built."
+  description = "Enable end-to-end encrypted messaging in the backend."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "captcha_enabled" {

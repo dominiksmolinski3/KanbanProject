@@ -167,6 +167,9 @@ public class MessageDeliveryService {
     @Transactional
     public PostedDto post(User caller, Long conversationId, MessageRequest request) {
         ConversationMember me = access.requireMember(caller, conversationId);
+        if (me.getConversation().getBoardId() != null) {
+            boards.requireWritable(caller, me.getConversation().getBoardId());
+        }
         CryptoDevice sender = access.requireOwnDevice(caller, request.deviceId());
         if (request.body().length > MAX_MESSAGE_BYTES) {
             throw new GlobalException(ExceptionIdentifier.MESSAGE_TOO_LARGE,

@@ -1,7 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MessagesProvider, useMessages } from '../context/MessagesContext';
-import { useMessagingKeys } from './devices/useMessagingKeys';
+import { useMessages } from '../context/MessagesContext';
+import { useMessagingState } from './devices/useMessagingKeys';
 import PageLoading from './PageLoading';
 import Icon from './Icon';
 import ConversationList from './messages/ConversationList';
@@ -10,7 +11,26 @@ import '../styles/components/Messages.css';
 
 function MessagesLayout() {
   const { t } = useTranslation();
-  const { selected } = useMessages();
+  const { selected, select, loading } = useMessages();
+  const [params, setParams] = useSearchParams();
+  const linked = useRef(Number(params.get('c')) || null);
+  const selectedId = selected?.id ?? null;
+
+  useEffect(() => {
+    if (linked.current !== null) select(linked.current);
+    return () => select(null);
+  }, [select]);
+
+  const shown = params.get('c');
+
+  useEffect(() => {
+    if (selectedId !== null) {
+      if (shown !== String(selectedId)) setParams({ c: String(selectedId) }, { replace: true });
+    } else if (!loading && shown !== null) {
+      setParams({}, { replace: true });
+    }
+  }, [selectedId, loading, shown, setParams]);
+
   return (
     <div className={`messages-page${selected ? ' messages-page--thread' : ''}`}>
       <ConversationList />
@@ -27,9 +47,7 @@ function MessagesLayout() {
 
 function Messages() {
   const { t } = useTranslation();
-  const { state } = useMessagingKeys();
-  const [params, setParams] = useSearchParams();
-  const initial = Number(params.get('c')) || null;
+  const { state } = useMessagingState();
 
   if (state === 'loading') return <PageLoading />;
   if (state !== 'ready') {
@@ -46,14 +64,7 @@ function Messages() {
       </section>
     );
   }
-  return (
-    <MessagesProvider
-      initialConversationId={initial}
-      onSelect={(id) => setParams(id ? { c: String(id) } : {}, { replace: true })}
-    >
-      <MessagesLayout />
-    </MessagesProvider>
-  );
+  return <MessagesLayout />;
 }
 
 export default Messages;

@@ -72,18 +72,15 @@ class WriteAccessCoverageTest {
     }
 
     @Test
-    @DisplayName("chat's board-send path asks BoardService.isWritable before it accepts a message")
-    void chatSendChecksWritability() throws IOException {
-        String body = read("chat/ChatController.java");
-        String method = methodBody(body, "public void sendMessage(", "chat/ChatController.java");
+    @DisplayName("posting to a board channel asks BoardService.requireWritable before it accepts a message")
+    void boardChannelPostChecksWritability() throws IOException {
+        String body = read("messaging/MessageDeliveryService.java");
+        String method = methodBody(body, "public PostedDto post(", "messaging/MessageDeliveryService.java");
 
         assertThat(method)
-                .as("ChatController#sendMessage no longer checks isWritable - a viewer could post to "
-                        + "a board's conversation, which FEAT-08 says read-only means read-only for")
-                .contains("isWritable(");
-        assertThat(method)
-                .as("the refusal has stopped naming ChatRefusal.READ_ONLY_BOARD")
-                .contains("READ_ONLY_BOARD");
+                .as("MessageDeliveryService#post no longer checks requireWritable - a viewer could post to "
+                        + "a board's channel, which FEAT-08 says read-only means read-only for")
+                .contains("requireWritable(");
     }
 
     private static String methodBody(String source, String signature, String file) {

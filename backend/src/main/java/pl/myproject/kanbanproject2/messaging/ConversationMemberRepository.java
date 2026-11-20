@@ -56,6 +56,18 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
     @Query("UPDATE ConversationMember member SET member.role = :role WHERE member.id = :id")
     int setRole(@Param("id") Long id, @Param("role") MemberRole role);
 
+    @Query("SELECT member.id AS memberId, member.user.id AS userId, member.role AS role "
+            + "FROM ConversationMember member WHERE member.conversation.id = :conversationId")
+    List<RosterRow> rosterOf(@Param("conversationId") Long conversationId);
+
+    interface RosterRow {
+        Long getMemberId();
+
+        Integer getUserId();
+
+        MemberRole getRole();
+    }
+
     interface MembershipRow {
         Long getMemberId();
 
