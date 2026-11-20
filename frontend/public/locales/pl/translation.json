@@ -463,33 +463,6 @@
     "intro": "Osoby na tej tablicy i wszyscy, z którymi dzielisz jakąkolwiek tablicę.",
     "people": "Osoby, z którymi dzielisz tablicę"
   },
-  "chat": {
-    "title": "Czat",
-    "connectionError": "Błąd połączenia z czatem",
-    "send": "Wyślij",
-    "typingMessage": "Wpisz wiadomość...",
-    "openChat": "Otwórz czat",
-    "private": "Prywatny",
-    "recipient": "Odbiorca",
-    "noRecipient": "Proszę podać odbiorcę",
-    "noMessages": "Brak wiadomości",
-    "userJoined": "{{user}} dołączył do czatu",
-    "userLeft": "{{user}} opuścił czat",
-    "board": "Tablica",
-    "boardConversation": "Czat tablicy",
-    "conversationKind": "Rozmowa",
-    "closeChat": "Zamknij czat",
-    "noBoard": "Najpierw otwórz tablicę",
-    "loadOlder": "Wczytaj starsze wiadomości",
-    "loadingHistory": "Wczytywanie…",
-    "historyError": "Nie udało się wczytać rozmowy",
-    "errors": {
-      "empty": "Wiadomość nie może być pusta",
-      "tooLong": "Ta wiadomość jest za długa",
-      "readOnly": "Ta tablica jest dla Ciebie tylko do odczytu",
-      "notSent": "Wiadomość nie została wysłana"
-    }
-  },
   "footer": {
     "help": "Pomoc",
     "about": "O nas",
@@ -916,7 +889,9 @@
       "request": "Chce wysyłać Ci wiadomości",
       "archived": "Zarchiwizowane ({{count}})",
       "unread": "Nieprzeczytane: {{count}}",
-      "muted": "Wyciszona"
+      "muted": "Wyciszona",
+      "boards": "Tablice",
+      "people": "Osoby i grupy"
     },
     "thread": {
       "encrypted": "Szyfrowanie end-to-end",
@@ -927,7 +902,9 @@
       "removed": "Nie należysz już do tej rozmowy.",
       "failed": "Nie udało się zaktualizować tej rozmowy. Spróbuj ponownie za chwilę.",
       "typingOne": "{{name}} pisze…",
-      "typingMany": "Kilka osób pisze…"
+      "typingMany": "Kilka osób pisze…",
+      "boardMembers": "Kanał tablicy · Uczestnicy: {{count}}",
+      "readOnly": "Możesz czytać ten kanał, ale nie możesz w nim pisać, bo na tej tablicy jesteś obserwatorem."
     },
     "request": {
       "title": "Prośba o rozmowę",
@@ -984,7 +961,10 @@
       "pinned": "Przypnij na górze",
       "archived": "Archiwizuj",
       "leave": "Opuść grupę",
-      "block": "Zablokuj: {{name}}"
+      "block": "Zablokuj: {{name}}",
+      "owner": "Właściciel",
+      "viewer": "Obserwator",
+      "followsBoard": "Wszyscy z tablicy są w tym kanale. Dołączają i odchodzą razem z tablicą."
     },
     "settings": {
       "title": "Ustawienia grupy",
@@ -994,7 +974,8 @@
       "historyAll": "Wszystko",
       "whoCanAdd": "Kto może dodawać osoby",
       "admins": "Tylko administratorzy",
-      "members": "Wszyscy uczestnicy"
+      "members": "Wszyscy uczestnicy",
+      "titleBoard": "Ustawienia kanału"
     },
     "new": {
       "title": "Nowa rozmowa",
@@ -1024,6 +1005,23 @@
     "errors": {
       "generic": "Nie udało się. Spróbuj ponownie.",
       "send": "Wiadomość nie została wysłana. Spróbuj ponownie."
+    },
+    "board": {
+      "untitled": "Kanał tablicy"
+    },
+    "earlier": {
+      "title": "Wcześniejsze wiadomości (niezaszyfrowane)",
+      "hint": "Wysłane, zanim ten czat został zaszyfrowany. Po pewnym czasie są usuwane automatycznie.",
+      "older": "Pokaż starsze"
+    },
+    "dock": {
+      "open": "Otwórz wiadomości",
+      "openFull": "Otwórz w Wiadomościach",
+      "close": "Zamknij wiadomości",
+      "recent": "Ostatnie rozmowy",
+      "thisBoard": "Ta tablica",
+      "boardChannel": "Kanał tablicy · Uczestnicy: {{count}}",
+      "none": "Nie ma jeszcze rozmów. Otwórz Wiadomości, aby jakąś zacząć."
     }
   }
 }

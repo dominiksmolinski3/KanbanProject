@@ -1,14 +1,15 @@
 import { deleteChecked, getJson, patchJson, postJson, postVoid, putJson, queryString } from './http';
 import type { DirectoryMember, ServerMessage } from '../crypto/engine';
 import type { KeyLogEntry } from '../crypto/keyLog';
+import type { ChatMessageResults } from '../types/api';
 
 const API_BASE_URL = '/api';
 const CONVERSATIONS = `${API_BASE_URL}/conversations`;
 
-export type ConversationKind = 'DIRECT' | 'GROUP';
+export type ConversationKind = 'DIRECT' | 'GROUP' | 'BOARD';
 export type HistoryVisibility = 'JOINED' | 'DAYS_30' | 'ALL';
 export type WhoCanAdd = 'ADMINS' | 'MEMBERS';
-export type MemberRole = 'ADMIN' | 'MEMBER';
+export type MemberRole = 'ADMIN' | 'MEMBER' | 'VIEWER';
 export type MemberState = 'ACTIVE' | 'REQUEST';
 
 export interface ConversationMemberInfo {
@@ -37,6 +38,8 @@ export interface Membership {
 export interface Conversation {
   id: number;
   kind: ConversationKind;
+  boardId: number | null;
+  boardName: string | null;
   groupId: string;
   epoch: number;
   needsCommit: boolean;
@@ -100,6 +103,8 @@ export interface NewConversation {
 
 export const MESSAGE_PAGE = 100;
 
+export const EARLIER_PAGE = 25;
+
 const conversation = (id: number) => `${CONVERSATIONS}/${id}`;
 
 export const messagesApi = {
@@ -152,6 +157,12 @@ export const messagesApi = {
 
   keyLog: (userId: number, after: number) =>
     getJson<KeyLogEntry[]>(`${API_BASE_URL}/crypto/users/${userId}/key-log?${queryString({ after })}`),
+
+  earlierInBoard: (boardId: number, page = 0) =>
+    getJson<ChatMessageResults>(`${API_BASE_URL}/chat?${queryString({ boardId, page, size: EARLIER_PAGE })}`),
+
+  earlierWith: (userId: number, page = 0) =>
+    getJson<ChatMessageResults>(`${API_BASE_URL}/chat/direct/${userId}?${queryString({ page, size: EARLIER_PAGE })}`),
 
   blocks: () => getJson<BlockedPerson[]>(`${API_BASE_URL}/blocks`),
 

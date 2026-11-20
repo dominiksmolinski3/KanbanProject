@@ -463,33 +463,6 @@
     "intro": "Die Personen auf diesem Board und alle, mit denen du ein Board teilst.",
     "people": "Personen, mit denen du ein Board teilst"
   },
-  "chat": {
-    "title": "Chat",
-    "connectionError": "Fehler beim Verbinden mit dem Chat",
-    "send": "Senden",
-    "typingMessage": "Nachricht eingeben...",
-    "openChat": "Chat öffnen",
-    "private": "Privat",
-    "recipient": "Empfänger",
-    "noRecipient": "Bitte geben Sie einen Empfänger ein",
-    "noMessages": "Noch keine Nachrichten",
-    "userJoined": "{{user}} ist dem Chat beigetreten",
-    "userLeft": "{{user}} hat den Chat verlassen",
-    "board": "Board",
-    "boardConversation": "Board-Chat",
-    "conversationKind": "Unterhaltung",
-    "closeChat": "Chat schließen",
-    "noBoard": "Öffne zuerst ein Board",
-    "loadOlder": "Ältere Nachrichten laden",
-    "loadingHistory": "Wird geladen…",
-    "historyError": "Die Unterhaltung konnte nicht geladen werden",
-    "errors": {
-      "empty": "Eine Nachricht darf nicht leer sein",
-      "tooLong": "Diese Nachricht ist zu lang",
-      "readOnly": "Dieses Board ist für dich schreibgeschützt",
-      "notSent": "Die Nachricht wurde nicht gesendet"
-    }
-  },
   "footer": {
     "help": "Hilfe",
     "about": "Über uns",
@@ -916,7 +889,9 @@
       "request": "Möchte dir Nachrichten senden",
       "archived": "Archiviert ({{count}})",
       "unread": "Ungelesen: {{count}}",
-      "muted": "Stummgeschaltet"
+      "muted": "Stummgeschaltet",
+      "boards": "Boards",
+      "people": "Personen und Gruppen"
     },
     "thread": {
       "encrypted": "Ende-zu-Ende-verschlüsselt",
@@ -927,7 +902,9 @@
       "removed": "Du bist nicht mehr in dieser Unterhaltung.",
       "failed": "Diese Unterhaltung konnte nicht aktualisiert werden. Versuche es gleich noch einmal.",
       "typingOne": "{{name}} schreibt…",
-      "typingMany": "Mehrere Personen schreiben…"
+      "typingMany": "Mehrere Personen schreiben…",
+      "boardMembers": "Board-Kanal · Mitglieder: {{count}}",
+      "readOnly": "Du kannst diesen Kanal lesen, aber nichts darin schreiben, weil du auf diesem Board Betrachter bist."
     },
     "request": {
       "title": "Nachrichtenanfrage",
@@ -984,7 +961,10 @@
       "pinned": "Oben anheften",
       "archived": "Archivieren",
       "leave": "Gruppe verlassen",
-      "block": "{{name}} blockieren"
+      "block": "{{name}} blockieren",
+      "owner": "Eigentümer",
+      "viewer": "Betrachter",
+      "followsBoard": "Alle auf dem Board sind in diesem Kanal. Personen kommen mit dem Board dazu und gehen mit ihm."
     },
     "settings": {
       "title": "Gruppeneinstellungen",
@@ -994,7 +974,8 @@
       "historyAll": "Alles",
       "whoCanAdd": "Wer Personen hinzufügen darf",
       "admins": "Nur Admins",
-      "members": "Alle Mitglieder"
+      "members": "Alle Mitglieder",
+      "titleBoard": "Kanaleinstellungen"
     },
     "new": {
       "title": "Neue Unterhaltung",
@@ -1024,6 +1005,23 @@
     "errors": {
       "generic": "Das hat nicht geklappt. Versuche es noch einmal.",
       "send": "Die Nachricht wurde nicht gesendet. Versuche es noch einmal."
+    },
+    "board": {
+      "untitled": "Board-Kanal"
+    },
+    "earlier": {
+      "title": "Frühere Nachrichten (nicht verschlüsselt)",
+      "hint": "Gesendet, bevor dieser Chat verschlüsselt wurde. Sie werden nach einiger Zeit automatisch gelöscht.",
+      "older": "Ältere anzeigen"
+    },
+    "dock": {
+      "open": "Nachrichten öffnen",
+      "openFull": "In Nachrichten öffnen",
+      "close": "Nachrichten schließen",
+      "recent": "Letzte Unterhaltungen",
+      "thisBoard": "Dieses Board",
+      "boardChannel": "Board-Kanal · Mitglieder: {{count}}",
+      "none": "Noch keine Unterhaltungen. Öffne Nachrichten, um eine zu beginnen."
     }
   }
 }

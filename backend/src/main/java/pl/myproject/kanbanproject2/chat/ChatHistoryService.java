@@ -79,6 +79,19 @@ public class ChatHistoryService {
                 PageRequest.of(wantedPage, wantedSize)), wantedPage, wantedSize);
     }
 
+    public ChatMessageResults directHistoryWithUser(User caller, Integer peerId, Integer page, Integer size) {
+        int wantedPage = pageOf(page);
+        int wantedSize = sizeOf(size);
+
+        var peer = boardService.peersOf(caller).stream()
+                .filter(user -> user.getId().equals(peerId))
+                .findFirst()
+                .orElseThrow(() -> new GlobalException(ExceptionIdentifier.USER_NOT_FOUND));
+
+        return results(chatRepository.findDirectThread(caller.getUsername(), peer.getUsername(),
+                PageRequest.of(wantedPage, wantedSize)), wantedPage, wantedSize);
+    }
+
     @Scheduled(cron = "0 30 3 * * *")
     public void pruneExpiredMessages() {
         if (retentionDays <= 0) {

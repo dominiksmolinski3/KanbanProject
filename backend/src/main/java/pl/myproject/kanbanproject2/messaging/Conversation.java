@@ -50,6 +50,9 @@ public class Conversation {
     @Column(name = "who_can_add", nullable = false, length = 16)
     private WhoCanAdd whoCanAdd;
 
+    @Column(name = "board_id", unique = true)
+    private Integer boardId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
@@ -75,6 +78,13 @@ public class Conversation {
         this.createdBy = createdBy;
         this.createdAt = createdAt;
         this.lastActivityAt = createdAt;
+    }
+
+    public static Conversation forBoard(Integer boardId, byte[] groupId, Instant createdAt) {
+        Conversation conversation = new Conversation(ConversationKind.BOARD, null, groupId, HistoryVisibility.JOINED,
+                WhoCanAdd.ADMINS, null, createdAt);
+        conversation.boardId = boardId;
+        return conversation;
     }
 
     public long take(MlsMessageKind messageKind, Instant at) {
@@ -113,6 +123,10 @@ public class Conversation {
 
     public ConversationKind getKind() {
         return kind;
+    }
+
+    public Integer getBoardId() {
+        return boardId;
     }
 
     public String getDirectKey() {

@@ -75,6 +75,17 @@ class ChatHistoryControllerHttpTest {
     }
 
     @Test
+    @DisplayName("the direct history can name the peer by id in the path")
+    void directHistoryByPeerId() throws Exception {
+        var whisper = new ChatMessageDto(2, MessageType.PRIVATE, "psst", "ann", null, "bob", Instant.parse("2026-10-01T12:00:00Z"));
+        when(historyService.directHistoryWithUser(caller, 9, null, null)).thenReturn(page(whisper));
+
+        mvc.perform(get("/chat/direct/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messages[0].content").value("psst"));
+    }
+
+    @Test
     @DisplayName("the direct history without a peer is a 400 carrying MISSING_PARAMETER")
     void directHistoryNeedsAPeer() throws Exception {
         mvc.perform(get("/chat/direct"))

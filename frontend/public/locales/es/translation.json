@@ -463,33 +463,6 @@
       "intro": "Las personas de este tablero y todas con las que compartes algún tablero.",
       "people": "Personas con las que compartes un tablero"
     },
-    "chat": {
-      "title": "Chat",
-      "connectionError": "Error al conectar al chat",
-      "send": "Enviar",
-      "typingMessage": "Escriba un mensaje...",
-      "openChat": "Abrir chat",
-      "private": "Privado",
-      "recipient": "Destinatario",
-      "noRecipient": "Por favor, ingrese un destinatario",
-      "noMessages": "Aún no hay mensajes",
-      "userJoined": "{{user}} se unió al chat",
-      "userLeft": "{{user}} abandonó el chat",
-      "board": "Tablero",
-      "boardConversation": "Chat del tablero",
-      "conversationKind": "Conversación",
-      "closeChat": "Cerrar el chat",
-      "noBoard": "Abre primero un tablero",
-      "loadOlder": "Cargar mensajes anteriores",
-      "loadingHistory": "Cargando…",
-      "historyError": "No se pudo cargar la conversación",
-      "errors": {
-        "empty": "Un mensaje no puede estar vacío",
-        "tooLong": "Ese mensaje es demasiado largo",
-        "readOnly": "Este tablero es de solo lectura para ti",
-        "notSent": "El mensaje no se envió"
-      }
-    },
     "footer": {
       "help": "Ayuda",
       "about": "Sobre nosotros",
@@ -916,7 +889,9 @@
             "request": "Quiere enviarte mensajes",
             "archived": "Archivadas ({{count}})",
             "unread": "Sin leer: {{count}}",
-            "muted": "Silenciada"
+            "muted": "Silenciada",
+            "boards": "Tableros",
+            "people": "Personas y grupos"
         },
         "thread": {
             "encrypted": "Cifrado de extremo a extremo",
@@ -927,7 +902,9 @@
             "removed": "Ya no estás en esta conversación.",
             "failed": "No se pudo actualizar esta conversación. Inténtalo de nuevo en un momento.",
             "typingOne": "{{name}} está escribiendo…",
-            "typingMany": "Varias personas están escribiendo…"
+            "typingMany": "Varias personas están escribiendo…",
+            "boardMembers": "Canal del tablero · Miembros: {{count}}",
+            "readOnly": "Puedes leer este canal, pero no escribir en él, porque eres espectador en este tablero."
         },
         "request": {
             "title": "Solicitud de mensajes",
@@ -984,7 +961,10 @@
             "pinned": "Fijar arriba",
             "archived": "Archivar",
             "leave": "Salir del grupo",
-            "block": "Bloquear a {{name}}"
+            "block": "Bloquear a {{name}}",
+            "owner": "Propietario",
+            "viewer": "Espectador",
+            "followsBoard": "Todas las personas del tablero están en este canal. Entran y salen con el tablero."
         },
         "settings": {
             "title": "Ajustes del grupo",
@@ -994,7 +974,8 @@
             "historyAll": "Todo",
             "whoCanAdd": "Quién puede añadir personas",
             "admins": "Solo los admins",
-            "members": "Todos los miembros"
+            "members": "Todos los miembros",
+            "titleBoard": "Ajustes del canal"
         },
         "new": {
             "title": "Nueva conversación",
@@ -1024,6 +1005,23 @@
         "errors": {
             "generic": "No ha funcionado. Inténtalo de nuevo.",
             "send": "El mensaje no se ha enviado. Inténtalo de nuevo."
+        },
+        "board": {
+            "untitled": "Canal del tablero"
+        },
+        "earlier": {
+            "title": "Mensajes anteriores (sin cifrar)",
+            "hint": "Enviados antes de que este chat se cifrara. Se eliminan automáticamente pasado un tiempo.",
+            "older": "Mostrar anteriores"
+        },
+        "dock": {
+            "open": "Abrir mensajes",
+            "openFull": "Abrir en Mensajes",
+            "close": "Cerrar mensajes",
+            "recent": "Conversaciones recientes",
+            "thisBoard": "Este tablero",
+            "boardChannel": "Canal del tablero · Miembros: {{count}}",
+            "none": "Aún no hay conversaciones. Abre Mensajes para empezar una."
         }
     }
 }

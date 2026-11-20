@@ -8,6 +8,9 @@ export function others(conversation: Conversation, userId: number | null) {
 export function conversationTitle(conversation: Conversation, userId: number | null, groupName: string | null,
   t: TFunction, language: string): string {
   const rest = others(conversation, userId);
+  if (conversation.kind === 'BOARD') {
+    return conversation.boardName ?? t('messages.board.untitled');
+  }
   if (conversation.kind === 'DIRECT') {
     return rest[0]?.name ?? t('messages.unknownPerson');
   }

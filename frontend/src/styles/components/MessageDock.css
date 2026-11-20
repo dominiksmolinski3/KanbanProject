@@ -1,0 +1,189 @@
+.dock-container {
+  position: fixed;
+  bottom: 20px;
+  inset-inline-end: 20px;
+  z-index: 1000;
+}
+
+.dock-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--kb-accent);
+  color: var(--kb-on-accent);
+  box-shadow: var(--kb-shadow-pop);
+  cursor: pointer;
+}
+
+.dock-toggle:hover {
+  border: 0;
+  background: var(--kb-accent-hover);
+}
+
+.dock-badge {
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--kb-danger);
+  color: var(--kb-on-danger);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--kb-canvas);
+}
+
+.dock-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--kb-chat-width);
+  max-width: calc(100vw - 40px);
+  height: min(560px, calc(100vh - var(--kb-header-height) - 40px));
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  background: var(--kb-surface);
+  color: var(--kb-ink);
+  box-shadow: var(--kb-shadow-pop);
+}
+
+.dock-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--kb-line);
+}
+
+.dock-heading {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dock-heading h3 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.dock-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--kb-control-height);
+  height: var(--kb-control-height);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--kb-ink-muted);
+  cursor: pointer;
+}
+
+.dock-icon-button:hover {
+  border: 0;
+  background: var(--kb-hover);
+  color: var(--kb-ink);
+}
+
+.dock-tabs {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-12);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--kb-line);
+}
+
+.dock-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: 0 0 auto;
+  padding: var(--space-4) var(--space-12);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--kb-ink-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dock-tab:hover {
+  border: 0;
+  background: var(--kb-hover);
+}
+
+.dock-tab[aria-pressed='true'] {
+  background: var(--kb-accent-soft);
+  color: var(--kb-ink);
+  font-weight: 600;
+}
+
+.dock-tab-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--kb-sunken);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.dock-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dock-body .thread-layout {
+  flex: 1 1 auto;
+}
+
+.dock-note,
+.dock-gate {
+  margin: 0;
+  padding: var(--space-16);
+  color: var(--kb-ink-muted);
+  font-size: 13px;
+}
+
+.dock-gate {
+  display: grid;
+  gap: var(--space-12);
+  justify-items: start;
+}
+
+@media (max-width: 600px) {
+  .dock-panel {
+    position: fixed;
+    inset: var(--kb-header-height) 0 0;
+    width: auto;
+    max-width: none;
+    height: auto;
+    border-radius: 0;
+  }
+}

@@ -88,6 +88,20 @@
   transition: background-color var(--kb-fast), color var(--kb-fast);
 }
 
+.app-header .nav-badge {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--kb-danger);
+  color: var(--kb-on-danger);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .app-header .nav-link:hover {
   background-color: var(--kb-chrome-hover);
   color: var(--kb-on-chrome);

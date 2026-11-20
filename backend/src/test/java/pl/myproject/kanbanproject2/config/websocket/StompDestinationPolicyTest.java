@@ -33,7 +33,7 @@ class StompDestinationPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/app/chat.sendMessage", "/app/chat.sendPrivateMessage", "/app/chat.join", "/app/chat.leave"})
+    @ValueSource(strings = {"/app/example.send", "/app/example.join"})
     @DisplayName("a SEND to a @MessageMapping handler reaches the controller that checks the caller")
     void letsApplicationSendsThrough(String destination) {
         var message = frame(StompCommand.SEND, destination);
@@ -43,12 +43,11 @@ class StompDestinationPolicyTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/topic/boards.7.chat",
             "/topic/boards.7",
-            "/user/someone@example.test/queue/messages",
-            "/queue/messages-user1a2b3c",
+            "/user/someone@example.test/queue/conversations",
+            "/queue/conversations-user1a2b3c",
             "/topic/#",
-            "/exchange/amq.topic/boards.7.chat",
+            "/exchange/amq.topic/boards.7",
             "/app"})
     @DisplayName("a SEND straight to a broker or user destination is dropped: it would skip every check the controllers make")
     void dropsSendsThatBypassTheControllers(String destination) {
@@ -66,8 +65,7 @@ class StompDestinationPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/topic/boards.7", "/topic/boards.7.chat", "/user/queue/messages", "/user/queue/errors",
-            "/user/queue/boards"})
+    @ValueSource(strings = {"/topic/boards.7", "/user/queue/boards", "/user/queue/conversations"})
     @DisplayName("the destinations the client subscribes to pass on to the board check")
     void letsTheClientsSubscriptionsThrough(String destination) {
         var message = frame(StompCommand.SUBSCRIBE, destination);
@@ -82,11 +80,14 @@ class StompDestinationPolicyTest {
             "/topic/boards.*",
             "/topic/boards.*.chat",
             "/topic/boards.7.#",
+            "/topic/boards.7.chat",
             "/topic/boards.7.chat.extra",
             "/topic/boards.",
             "/topic/public",
-            "/queue/messages-user1a2b3c",
-            "/user/someone@example.test/queue/messages",
+            "/user/queue/messages",
+            "/user/queue/errors",
+            "/queue/conversations-user1a2b3c",
+            "/user/someone@example.test/queue/conversations",
             "/exchange/amq.topic/#"})
     @DisplayName("a wildcard or unlisted SUBSCRIBE is dropped: RabbitMQ would bind it across every board")
     void dropsUnlistedSubscriptions(String destination) {
@@ -101,7 +102,7 @@ class StompDestinationPolicyTest {
     @EnumSource(value = StompCommand.class, names = {"CONNECTED", "MESSAGE", "RECEIPT", "ERROR"})
     @DisplayName("a command only a server sends is dropped: Spring routes a client MESSAGE to the controllers like a SEND")
     void dropsServerCommandsFromAClient(StompCommand command) {
-        for (String destination : new String[] {"/app/chat.sendPrivateMessage", "/user/someone@example.test/queue/messages"}) {
+        for (String destination : new String[] {"/app/example.send", "/user/someone@example.test/queue/conversations"}) {
             assertThat(policy.preSend(frame(command, destination), CHANNEL))
                     .as("a client %s to %s passed the policy, skipping every check keyed on SEND", command, destination)
                     .isNull();

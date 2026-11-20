@@ -47,6 +47,7 @@ export default function ConversationDetails({ onClose }: { onClose: () => void }
   if (!selected) return null;
   const conversation = selected;
   const group = conversation.kind === 'GROUP';
+  const board = conversation.kind === 'BOARD';
   const admin = conversation.me.role === 'ADMIN';
   const canAdd = group && (admin || (conversation.whoCanAdd === 'MEMBERS' && conversation.me.state === 'ACTIVE'));
   const other = others(conversation, userId)[0];
@@ -88,6 +89,8 @@ export default function ConversationDetails({ onClose }: { onClose: () => void }
                   {member.name}
                   {me && <span className="details-badge">{t('messages.details.you')}</span>}
                   {group && member.role === 'ADMIN' && <span className="details-badge">{t('messages.details.admin')}</span>}
+                  {board && member.role === 'ADMIN' && <span className="details-badge">{t('messages.details.owner')}</span>}
+                  {board && member.role === 'VIEWER' && <span className="details-badge">{t('messages.details.viewer')}</span>}
                   {member.state === 'REQUEST' && <span className="details-badge">{t('messages.details.invited')}</span>}
                 </span>
                 {!me && (
@@ -118,7 +121,23 @@ export default function ConversationDetails({ onClose }: { onClose: () => void }
             <Icon name="plus" size="sm" />{t('messages.details.addPeople')}
           </button>
         )}
+        {board && <p className="messages-caption">{t('messages.details.followsBoard')}</p>}
       </section>
+
+      {board && admin && (
+        <section className="details-section" aria-label={t('messages.settings.titleBoard')}>
+          <h3>{t('messages.settings.titleBoard')}</h3>
+          <label className="form-group">
+            <span>{t('messages.settings.history')}</span>
+            <select value={conversation.historyVisibility} disabled={action.pending}
+              onChange={(event) => act(() => configure({ historyVisibility: event.target.value as HistoryVisibility }))}>
+              <option value="JOINED">{t('messages.settings.historyJoined')}</option>
+              <option value="DAYS_30">{t('messages.settings.historyDays')}</option>
+              <option value="ALL">{t('messages.settings.historyAll')}</option>
+            </select>
+          </label>
+        </section>
+      )}
 
       {group && admin && (
         <section className="details-section" aria-label={t('messages.settings.title')}>
@@ -159,7 +178,7 @@ export default function ConversationDetails({ onClose }: { onClose: () => void }
           <button type="button" className="btn btn-danger btn-sm" disabled={action.pending} onClick={() => act(leave)}>
             {t('messages.details.leave')}
           </button>
-        ) : other && (
+        ) : !board && other && (
           <button type="button" className="btn btn-danger btn-sm" disabled={action.pending} onClick={() => act(() => block(other.userId))}>
             {t('messages.details.block', { name: other.name })}
           </button>

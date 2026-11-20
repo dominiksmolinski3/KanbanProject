@@ -463,33 +463,6 @@
       "intro": "Les personnes de ce tableau, et toutes celles avec qui vous partagez un tableau.",
       "people": "Personnes avec qui vous partagez un tableau"
     },
-    "chat": {
-      "title": "Chat",
-      "connectionError": "Erreur de connexion au chat",
-      "send": "Envoyer",
-      "typingMessage": "Tapez un message...",
-      "openChat": "Ouvrir le chat",
-      "private": "Privé",
-      "recipient": "Destinataire",
-      "noRecipient": "Veuillez entrer un destinataire",
-      "noMessages": "Pas encore de messages",
-      "userJoined": "{{user}} a rejoint le chat",
-      "userLeft": "{{user}} a quitté le chat",
-      "board": "Tableau",
-      "boardConversation": "Chat du tableau",
-      "conversationKind": "Conversation",
-      "closeChat": "Fermer le chat",
-      "noBoard": "Ouvrez d’abord un tableau",
-      "loadOlder": "Charger les messages plus anciens",
-      "loadingHistory": "Chargement…",
-      "historyError": "Impossible de charger la conversation",
-      "errors": {
-        "empty": "Un message ne peut pas être vide",
-        "tooLong": "Ce message est trop long",
-        "readOnly": "Ce tableau est en lecture seule pour vous",
-        "notSent": "Le message n’a pas été envoyé"
-      }
-    },
     "footer": {
       "help": "Aide",
       "about": "À propos",
@@ -916,7 +889,9 @@
             "request": "Souhaite vous envoyer des messages",
             "archived": "Archivées ({{count}})",
             "unread": "Non lus : {{count}}",
-            "muted": "En sourdine"
+            "muted": "En sourdine",
+            "boards": "Tableaux",
+            "people": "Personnes et groupes"
         },
         "thread": {
             "encrypted": "Chiffré de bout en bout",
@@ -927,7 +902,9 @@
             "removed": "Vous ne faites plus partie de cette conversation.",
             "failed": "Cette conversation n'a pas pu être mise à jour. Réessayez dans un instant.",
             "typingOne": "{{name}} écrit…",
-            "typingMany": "Plusieurs personnes écrivent…"
+            "typingMany": "Plusieurs personnes écrivent…",
+            "boardMembers": "Canal du tableau · Membres : {{count}}",
+            "readOnly": "Vous pouvez lire ce canal sans pouvoir y écrire, car vous êtes lecteur sur ce tableau."
         },
         "request": {
             "title": "Demande de message",
@@ -984,7 +961,10 @@
             "pinned": "Épingler en haut",
             "archived": "Archiver",
             "leave": "Quitter le groupe",
-            "block": "Bloquer {{name}}"
+            "block": "Bloquer {{name}}",
+            "owner": "Propriétaire",
+            "viewer": "Lecteur",
+            "followsBoard": "Toutes les personnes du tableau sont dans ce canal. Elles arrivent et partent avec le tableau."
         },
         "settings": {
             "title": "Paramètres du groupe",
@@ -994,7 +974,8 @@
             "historyAll": "Tout",
             "whoCanAdd": "Qui peut ajouter des personnes",
             "admins": "Seulement les admins",
-            "members": "Tous les membres"
+            "members": "Tous les membres",
+            "titleBoard": "Paramètres du canal"
         },
         "new": {
             "title": "Nouvelle conversation",
@@ -1024,6 +1005,23 @@
         "errors": {
             "generic": "Cela n'a pas fonctionné. Réessayez.",
             "send": "Le message n'a pas été envoyé. Réessayez."
+        },
+        "board": {
+            "untitled": "Canal du tableau"
+        },
+        "earlier": {
+            "title": "Messages antérieurs (non chiffrés)",
+            "hint": "Envoyés avant que ce chat soit chiffré. Ils sont supprimés automatiquement au bout d'un certain temps.",
+            "older": "Afficher les plus anciens"
+        },
+        "dock": {
+            "open": "Ouvrir les messages",
+            "openFull": "Ouvrir dans Messages",
+            "close": "Fermer les messages",
+            "recent": "Conversations récentes",
+            "thisBoard": "Ce tableau",
+            "boardChannel": "Canal du tableau · Membres : {{count}}",
+            "none": "Aucune conversation pour l'instant. Ouvrez Messages pour en commencer une."
         }
     }
 }

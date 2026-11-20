@@ -12,7 +12,6 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 import pl.myproject.kanbanproject2.board.event.BoardEventPublisher;
-import pl.myproject.kanbanproject2.chat.ChatService;
 import pl.myproject.kanbanproject2.messaging.ConversationNotifier;
 
 import java.util.EnumSet;
@@ -29,9 +28,7 @@ public class StompDestinationPolicy implements ChannelInterceptor {
     private static final String OWN_USER_PREFIX = "/user";
 
     private static final Pattern SUBSCRIBABLE = Pattern.compile(
-            Pattern.quote(BoardEventPublisher.DESTINATION_PREFIX) + "\\d+(?:" + Pattern.quote(ChatService.CHAT_SUFFIX) + ")?"
-                    + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.DIRECT_QUEUE)
-                    + "|" + Pattern.quote(OWN_USER_PREFIX + ChatService.ERROR_QUEUE)
+            Pattern.quote(BoardEventPublisher.DESTINATION_PREFIX) + "\\d+"
                     + "|" + Pattern.quote(OWN_USER_PREFIX + BoardEventPublisher.BOARDS_QUEUE)
                     + "|" + Pattern.quote(OWN_USER_PREFIX + ConversationNotifier.QUEUE));
 

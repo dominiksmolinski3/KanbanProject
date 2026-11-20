@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Transactional
@@ -148,11 +149,14 @@ public class BoardService {
             var board = unclaimed.get();
             board.setOwner(user);
             board.addMember(user);
-            return boardRepository.save(board);
+            var claimed = boardRepository.save(board);
+            events.publishEvent(new BoardRosterChanged(claimed));
+            return claimed;
         }
 
         var board = boardRepository.save(new Board(DEFAULT_BOARD_NAME, user));
         seedDefaultColumns(board);
+        events.publishEvent(new BoardRosterChanged(board));
         return board;
     }
 
@@ -187,6 +191,7 @@ public class BoardService {
     public BoardDto createBoard(User caller, CreateBoardRequest request) {
         var board = boardRepository.save(new Board(request.name(), caller));
         seedDefaultColumns(board);
+        events.publishEvent(new BoardRosterChanged(board));
         return boardMapper.apply(board, caller);
     }
 
@@ -194,12 +199,15 @@ public class BoardService {
         var board = requireOwned(caller, id);
         board.setName(request.name());
         events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
-        return boardMapper.apply(boardRepository.save(board), caller);
+        var saved = boardRepository.save(board);
+        events.publishEvent(new BoardRosterChanged(saved));
+        return boardMapper.apply(saved, caller);
     }
 
     public void deleteBoard(User caller, Integer id) {
         var board = requireOwned(caller, id);
         events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
+        events.publishEvent(new BoardDeleting(board));
 
         var tasks = taskRepository.findByBoardOrderByIdAsc(board);
         if (!tasks.isEmpty()) {
@@ -234,6 +242,7 @@ public class BoardService {
         var saved = boardRepository.saveAndFlush(board);
         boardRepository.updateMemberRole(saved.getId(), user.getId(), role.name());
         events.publishEvent(BoardsChanged.forEveryoneIn(saved.everyone()));
+        events.publishEvent(new BoardRosterChanged(saved));
         return saved;
     }
 
@@ -253,7 +262,9 @@ public class BoardService {
         events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
         unassignFromBoardTasks(board, member);
         board.removeMember(member);
-        return boardMapper.apply(boardRepository.save(board), caller);
+        var saved = boardRepository.save(board);
+        events.publishEvent(new BoardRosterChanged(saved));
+        return boardMapper.apply(saved, caller);
     }
 
     private void unassignFromBoardTasks(Board board, User member) {
@@ -277,12 +288,14 @@ public class BoardService {
                 board.removeMember(user);
                 boardRepository.save(board);
                 events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
+                events.publishEvent(new BoardRosterChanged(board));
             }
         }
         for (Board board : boardRepository.findVisibleTo(user)) {
             board.removeMember(user);
             boardRepository.save(board);
             events.publishEvent(BoardsChanged.forEveryoneIn(board.everyone()));
+            events.publishEvent(new BoardRosterChanged(board));
         }
         invitationRepository.forgetInviter(user);
         activityRepository.forgetActor(user);
@@ -298,6 +311,23 @@ public class BoardService {
                 .min(Comparator.comparing((User candidate) -> BoardRole.VIEWER.name().equals(roles.get(candidate.getId())))
                         .thenComparing(User::getId))
                 .orElse(null);
+    }
+
+    public Map<Integer, BoardRole> memberRoles(Board board) {
+        var roles = new HashMap<Integer, BoardRole>();
+        for (Object[] row : boardRepository.findMemberRoles(board.getId())) {
+            roles.put(((Number) row[0]).intValue(), BoardRole.valueOf((String) row[1]));
+        }
+        return roles;
+    }
+
+    public Map<Integer, String> namesOf(Collection<Integer> boardIds) {
+        var names = new HashMap<Integer, String>();
+        if (boardIds.isEmpty()) {
+            return names;
+        }
+        boardRepository.findAllById(boardIds).forEach(board -> names.put(board.getId(), board.getName()));
+        return names;
     }
 
     public boolean shareABoard(User caller, Integer userId) {

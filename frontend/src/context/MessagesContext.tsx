@@ -42,9 +42,11 @@ function threads(state: ThreadsState, action: ThreadsAction): ThreadsState {
 }
 
 export interface MessagesValue {
+  enabled: boolean;
   userId: number | null;
   conversations: Conversation[];
   loading: boolean;
+  unread: number;
   selected: Conversation | null;
   select: (conversationId: number | null) => void;
   messages: ArchivedMessage[];
@@ -72,6 +74,10 @@ export interface MessagesValue {
 
 const MessagesContext = createContext<MessagesValue | null>(null);
 
+export function useUnreadMessages(): number {
+  return useContext(MessagesContext)?.unread ?? 0;
+}
+
 export function useMessages(): MessagesValue {
   const value = useContext(MessagesContext);
   if (!value) throw new Error('useMessages must be used inside a MessagesProvider');
@@ -82,10 +88,10 @@ interface MessagesProviderProps {
   children: ReactNode;
   messenger?: Messenger;
   initialConversationId?: number | null;
-  onSelect?: (conversationId: number | null) => void;
+  enabled?: boolean;
 }
 
-export function MessagesProvider({ children, messenger: given, initialConversationId = null, onSelect }: MessagesProviderProps) {
+export function MessagesProvider({ children, messenger: given, initialConversationId = null, enabled = true }: MessagesProviderProps) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
@@ -98,7 +104,7 @@ export function MessagesProvider({ children, messenger: given, initialConversati
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
 
-  const list = useQuery({ queryKey: CONVERSATIONS_KEY, queryFn: messagesApi.list });
+  const list = useQuery({ queryKey: CONVERSATIONS_KEY, queryFn: messagesApi.list, enabled });
   const conversations = useMemo(() => list.data ?? [], [list.data]);
   const conversationsRef = useRef(conversations);
   conversationsRef.current = conversations;
@@ -189,12 +195,12 @@ export function MessagesProvider({ children, messenger: given, initialConversati
   }, [messenger, refreshList]);
 
   useEffect(() => {
-    if (userId === null) return undefined;
+    if (userId === null || !enabled) return undefined;
     void messenger.acceptWelcomes().then((joined) => { if (joined.length) void refreshList(); }).catch(() => undefined);
     return watchConversations(handle, () => {
       void refreshList();
     });
-  }, [userId, messenger, handle, refreshList]);
+  }, [userId, enabled, messenger, handle, refreshList]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -229,17 +235,20 @@ export function MessagesProvider({ children, messenger: given, initialConversati
     void refreshList();
   }, [messenger, refreshList]);
 
-  const select = useCallback((conversationId: number | null) => {
-    setSelectedId(conversationId);
-    onSelect?.(conversationId);
-  }, [onSelect]);
+  const select = useCallback((conversationId: number | null) => setSelectedId(conversationId), []);
 
   const current = () => conversationsRef.current.find((each) => each.id === selectedRef.current) ?? null;
 
+  const unread = conversations
+    .filter((each) => each.me.state === 'ACTIVE' && !each.me.muted && !each.me.archived)
+    .reduce((total, each) => total + each.unread, 0);
+
   const value: MessagesValue = {
+    enabled,
     userId,
     conversations,
-    loading: list.isPending,
+    loading: enabled && list.isPending,
+    unread,
     selected,
     select,
     messages: selected ? state.messages[selected.id] ?? [] : [],

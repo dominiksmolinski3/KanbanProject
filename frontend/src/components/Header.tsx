@@ -6,6 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
 import BoardSwitcher from './BoardSwitcher';
 import { useAuth } from '../context/AuthContext';
+import { useUnreadMessages } from '../context/MessagesContext';
 import { useOutsideClick } from '../hooks/useOutsideClick';
 import BrandMark from './BrandMark';
 import Icon from './Icon';
@@ -26,6 +27,7 @@ function Header() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { logout } = useAuth();
   const { t } = useTranslation();
+  const unreadMessages = useUnreadMessages();
   const messaging = useQuery({ queryKey: MESSAGING_STATUS, queryFn: cryptoApi.status, staleTime: 60_000 });
   const pages = messaging.data?.enabled ? [...PAGES, MESSAGES_PAGE] : PAGES;
 
@@ -63,6 +65,9 @@ function Header() {
           <NavLink key={page.to} to={page.to} className="nav-link" title={t(page.key)}>
             <Icon name={page.icon} />
             <span className="nav-label">{t(page.key)}</span>
+            {page === MESSAGES_PAGE && unreadMessages > 0 && (
+              <span className="nav-badge" aria-label={t('messages.list.unread', { count: unreadMessages })}>{unreadMessages}</span>
+            )}
           </NavLink>
         ))}
       </nav>

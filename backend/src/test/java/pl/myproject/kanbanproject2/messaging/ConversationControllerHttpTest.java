@@ -42,7 +42,8 @@ class ConversationControllerHttpTest {
     private ObjectMapper json;
     private User caller;
 
-    private static final ConversationDto CONVERSATION = new ConversationDto(5L, ConversationKind.GROUP, new byte[]{1, 2},
+    private static final ConversationDto CONVERSATION = new ConversationDto(5L, ConversationKind.GROUP, null, null,
+            new byte[]{1, 2},
             3, true, HistoryVisibility.DAYS_30, WhoCanAdd.ADMINS, 9, NOW, NOW, 2,
             new MembershipDto(MemberRole.ADMIN, MemberState.ACTIVE, 1, 8, 7, false, true, false),
             List.of(new MemberDto(2, "Bartek", false, MemberRole.MEMBER, MemberState.REQUEST, NOW, 1, 6, 5)));
