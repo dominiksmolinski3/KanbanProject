@@ -10,6 +10,7 @@ import MessagingUnlock from './MessagingUnlock';
 import MessagingKeyChange from './MessagingKeyChange';
 import MessagingLink from './MessagingLink';
 import MessagingApprove from './MessagingApprove';
+import MessagingPush from './MessagingPush';
 
 type Messaging = ReturnType<typeof useMessagingKeys>;
 
@@ -121,6 +122,7 @@ export default function MessagingPanel({ messaging }: { messaging: Messaging }) 
           </p>
           <p className="messaging-caption">{t('devices.messaging.keepsKey')}</p>
           {!identity?.recoveryKey && <p className="messaging-caption">{t('devices.messaging.noRecoveryKey')}</p>}
+          <MessagingPush deviceId={thisDevice.id} />
           <div className="messaging-actions">
             {pinAvailable && (
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('changePin')}>

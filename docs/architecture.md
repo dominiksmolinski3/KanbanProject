@@ -1552,6 +1552,61 @@ board channels and the dock, which replace the old board chat.
 - **Earlier messages.** See **Live socket and earlier chat**: the thread offers the plaintext rows of
   its board, or of the person, until they are pruned.
 
+### Threads, files, notifications and linking (phase 4)
+
+- **Threads, mentions and the timer are fields of the signed payload.** A `text` payload may carry
+  `thread` (the id of the first message), `mentions` (user ids) and `ttl` (seconds). Nothing about them
+  is visible to the server. A reply whose first message is missing from the archive stays in the main
+  list rather than vanishing. Mentions are found by matching `@Name` against the chat's members when the
+  message is sent, so a name typed without picking it still counts, and a text is only highlighted for
+  the people its `mentions` list names.
+- **Disappearing messages are enforced twice.** `conversations.disappear_after_seconds` (V34; zero or
+  null means never) is the one setting the server knows. `MessageDeliveryService.post` sets the stored
+  ciphertext's `expires_at` to `min(retention, now + timer)`, so the nightly prune deletes it, and the
+  sender stamps `ttl` on the payload so every client removes its own decrypted copy: a message that
+  arrives already expired is never stored, an archive read purges what has lapsed, and the open thread
+  drops it on a timer. Groups and board channels let an admin set it; in a direct chat either person may,
+  and nothing else of a direct chat is a setting. It applies to messages sent after it is changed.
+- **Search is local.** `engine.search` decrypts the archive of the conversations it is given inside the
+  worker and compares text and file names with case and accents folded. The server never sees a query.
+- **A file is sealed in the browser before it is uploaded.** `crypto/attachments.ts` encrypts it with a
+  fresh AES-GCM key, `POST /conversations/{id}/blobs` stores the ciphertext (V35, `message_blobs`) and
+  the key, name, type and size travel inside the MLS message as a `FileRef`. The server stores opaque bytes
+  under `messages/<conversation>/<uuid>`, writes the blob before the row and removes it again if the row
+  fails, and `MessageBlobs` is the `BlobOwner` that lets the orphan sweep reclaim anything left over. A
+  blob expires with the same rule as a message (`MessageBlobPrune`), and uploading into a board channel is a
+  write to the board. The multipart limit is 10 MB for the ciphertext, so the client allows 9 MB of file.
+  Deleting a message drops its `FileRef`s, but the stored ciphertext lives until it expires.
+- **Linking a browser needs no PIN.** `V36` adds `device_links`: the new browser makes an ephemeral P-256
+  key and a 16-byte secret, posts only the public key, and shows `id.publicKey.secret` as a QR code (an
+  address ending in `/link#...`) and as text. A signed-in device takes that code, seals its identity key
+  with ECDH against the new browser's key, mixes the secret into the HKDF salt and binds the link id as
+  associated data, and posts the result. The secret never reaches the server, so a server that swaps keys
+  cannot forge an answer. A link lives five minutes, an account has one at a time, and it is answered
+  once. The camera stays off in `Permissions-Policy`, which is why the approving side takes a pasted code
+  or the `/link` page rather than scanning in the app.
+- **Notifications carry two ids.** `PushQueue` runs inside `post`: for each active, unmuted member other
+  than the sender it upserts one `push_outbox` row per registered endpoint and conversation (V37), so a
+  burst collapses into one row holding the newest `seq`. `PushRelay` claims due rows with
+  `FOR UPDATE SKIP LOCKED` on `PushOutboxClaimer`, a separate bean, leases them, sends outside any
+  transaction and deletes what was delivered. A gone endpoint (404 or 410, `UNREGISTERED`) is deleted, any
+  other failure retries with a doubling wait and is dropped after five (`PUSH_DEAD_LETTER` in the log).
+  Web Push is RFC 8291 with a VAPID JWT, written with the JDK's own crypto; the payload is `{c, s}`. FCM
+  gets an OAuth token from the service-account key, caches it, and sends the ids as data plus a
+  notification whose text is an Android string resource, so the server holds no wording. The app cannot
+  decrypt while it is closed (the keys live in the WebView's storage), so a notification says only that
+  there is a new message.
+- **Only real push services are ever called.** The endpoint URL comes from the browser, so `PushService`
+  accepts only https on port 443 under `fcm.googleapis.com`, `android.googleapis.com`,
+  `push.services.mozilla.com`, `push.apple.com` and `notify.windows.com`. Without that list a user could make the
+  server request any address. A new browser vendor's push service goes into `PUSH_SERVICES` with a test.
+- **Configuration.** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `FCM_CREDENTIALS` are
+  empty by default, and an empty value turns that kind off: nothing is queued and `/push/config` offers
+  nothing. They are kept in step across `application.properties`, compose, `.env.example` and the
+  container-app module; the private key and the FCM key are Key Vault secrets, written only when set.
+  The web worker is `public/push-sw.js`, a plain file so it needs no build step and no CSP change; it
+  gets its translated notice through its own URL and shows nothing while a window of the app is in front.
+
 ## Live board sync
 
 A board is the same board for everybody on it, so a change one person makes appears on the others'

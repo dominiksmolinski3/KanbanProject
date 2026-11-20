@@ -4,4 +4,6 @@
     <string name="title_activity_main">Kanban</string>
     <string name="package_name">com.kanbanproject.app</string>
     <string name="custom_url_scheme">com.kanbanproject.app</string>
+    <string name="push_new_message_title">New message</string>
+    <string name="push_new_message_body">Open Kanban to read it.</string>
 </resources>

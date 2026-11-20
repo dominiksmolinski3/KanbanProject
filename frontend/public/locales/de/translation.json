@@ -596,6 +596,18 @@
         "done": "Das andere Gerät ist verbunden.",
         "submit": "Gerät verbinden",
         "notReady": "Verschlüsselte Nachrichten müssen in diesem Browser funktionieren, bevor er ein weiteres Gerät verbinden kann."
+      },
+      "push": {
+        "title": "Benachrichtigungen",
+        "body": "Erhalte einen Hinweis auf neue Nachrichten, auch wenn dieser Browser geschlossen ist. Der Hinweis sagt nur, dass es eine neue Nachricht gibt; ihr Inhalt wird nie an den Benachrichtigungsdienst gesendet.",
+        "enable": "Benachrichtigungen aktivieren",
+        "disable": "Benachrichtigungen deaktivieren",
+        "on": "Benachrichtigungen sind für diesen Browser aktiv.",
+        "blocked": "Benachrichtigungen sind für diese Website blockiert. Erlaube sie in den Website-Einstellungen des Browsers und versuche es erneut.",
+        "unsupported": "Dieser Browser kann bei geschlossenem Fenster keine Benachrichtigungen anzeigen.",
+        "failed": "Benachrichtigungen konnten nicht geändert werden. Versuche es erneut.",
+        "noticeTitle": "Neue Nachricht",
+        "noticeBody": "Öffne Kanban, um sie zu lesen."
       }
     },
     "fields": {
@@ -883,7 +895,9 @@
       "STALE_EPOCH": "Die Unterhaltung hat sich inzwischen geändert. Versuche es noch einmal.",
       "MESSAGE_TOO_LARGE": "Die Nachricht ist zu lang.",
       "DEVICE_LINK_NOT_FOUND": "Dieser Verbindungscode ist abgelaufen oder existiert nicht. Beginne auf dem neuen Gerät von vorn.",
-      "DEVICE_LINK_ANSWERED": "Dieser Verbindungscode wurde bereits bestätigt."
+      "DEVICE_LINK_ANSWERED": "Dieser Verbindungscode wurde bereits bestätigt.",
+      "PUSH_NOT_CONFIGURED": "Benachrichtigungen sind auf diesem Server nicht eingerichtet.",
+      "INVALID_PUSH_ENDPOINT": "Dieser Browser hat eine Benachrichtigungsadresse angegeben, die nicht akzeptiert wird."
     }
   },
   "messages": {

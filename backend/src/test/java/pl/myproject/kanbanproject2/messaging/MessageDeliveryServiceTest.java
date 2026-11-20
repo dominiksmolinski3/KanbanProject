@@ -47,6 +47,7 @@ class MessageDeliveryServiceTest {
     private ConversationDeviceRepository holders;
     private BoardService boards;
     private ConversationNotifier notifier;
+    private PushQueue push;
     private MessageDeliveryService service;
 
     private final User ania = user(1, "Ania");
@@ -70,9 +71,10 @@ class MessageDeliveryServiceTest {
         holders = mock(ConversationDeviceRepository.class);
         boards = mock(BoardService.class);
         notifier = mock(ConversationNotifier.class);
+        push = mock(PushQueue.class);
         service = new MessageDeliveryService(access, mock(ConversationRepository.class), locks, members, messages,
                 welcomes, devices, identities, keyLog, claimer, holders, boards, notifier, new MlsMessageMapper(),
-                new WelcomeMapper(), new KeyLogEntryMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
+                new WelcomeMapper(), new KeyLogEntryMapper(), push, Clock.fixed(NOW, ZoneOffset.UTC));
 
         group = conversation(5, ConversationKind.GROUP, ania);
         me = member(1, group, ania, MemberRole.ADMIN, MemberState.ACTIVE, NOW);

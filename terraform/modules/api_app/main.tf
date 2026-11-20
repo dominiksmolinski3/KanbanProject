@@ -7,6 +7,8 @@ locals {
   ghcr_credentials_configured = var.ghcr_token != ""
   delivery_reports_configured = var.mail_delivery_report_key != ""
   captcha_secret_configured   = var.captcha_secret != ""
+  vapid_private_configured    = var.push_vapid_private_key != ""
+  fcm_credentials_configured  = var.push_fcm_credentials != ""
 
   app_name = "kanban-api-${var.env}"
 
@@ -37,6 +39,8 @@ resource "azurerm_container_app" "main" {
     azurerm_key_vault_secret.acs_email_connection_string,
     azurerm_key_vault_secret.mail_delivery_report_key,
     azurerm_key_vault_secret.captcha_secret,
+    azurerm_key_vault_secret.vapid_private_key,
+    azurerm_key_vault_secret.fcm_credentials,
     azurerm_key_vault_secret.ghcr_token,
   ]
 
@@ -63,6 +67,22 @@ resource "azurerm_container_app" "main" {
     content {
       name                = "app-mail-delivery-report-key"
       key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "APP-MAIL-DELIVERY-REPORT-KEY")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
+  }
+  dynamic "secret" {
+    for_each = local.vapid_private_configured ? [1] : []
+    content {
+      name                = "vapid-private-key"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "VAPID-PRIVATE-KEY")
+      identity            = azurerm_user_assigned_identity.main.id
+    }
+  }
+  dynamic "secret" {
+    for_each = local.fcm_credentials_configured ? [1] : []
+    content {
+      name                = "fcm-credentials"
+      key_vault_secret_id = format("%s/secrets/%s", trimsuffix(var.key_vault_uri, "/"), "FCM-CREDENTIALS")
       identity            = azurerm_user_assigned_identity.main.id
     }
   }
@@ -170,6 +190,28 @@ resource "azurerm_container_app" "main" {
       env {
         name        = "MESSAGING_PIN_KEY"
         secret_name = "messaging-pin-key"
+      }
+      env {
+        name  = "VAPID_PUBLIC_KEY"
+        value = var.push_vapid_public_key
+      }
+      env {
+        name  = "VAPID_SUBJECT"
+        value = var.push_vapid_subject
+      }
+      dynamic "env" {
+        for_each = local.vapid_private_configured ? [1] : []
+        content {
+          name        = "VAPID_PRIVATE_KEY"
+          secret_name = "vapid-private-key"
+        }
+      }
+      dynamic "env" {
+        for_each = local.fcm_credentials_configured ? [1] : []
+        content {
+          name        = "FCM_CREDENTIALS"
+          secret_name = "fcm-credentials"
+        }
       }
       dynamic "env" {
         for_each = local.captcha_secret_configured ? [1] : []
@@ -507,6 +549,26 @@ resource "azurerm_key_vault_secret" "captcha_secret" {
   name         = "CAPTCHA-SECRET"
   value        = var.captcha_secret
   content_type = "reCAPTCHA shared secret"
+  key_vault_id = var.key_vault_id
+}
+
+resource "azurerm_key_vault_secret" "vapid_private_key" {
+  count = local.vapid_private_configured ? 1 : 0
+
+  tags         = var.tags
+  name         = "VAPID-PRIVATE-KEY"
+  value        = var.push_vapid_private_key
+  content_type = "Web Push VAPID private key, base64url"
+  key_vault_id = var.key_vault_id
+}
+
+resource "azurerm_key_vault_secret" "fcm_credentials" {
+  count = local.fcm_credentials_configured ? 1 : 0
+
+  tags         = var.tags
+  name         = "FCM-CREDENTIALS"
+  value        = var.push_fcm_credentials
+  content_type = "Firebase service-account key (JSON)"
   key_vault_id = var.key_vault_id
 }
 

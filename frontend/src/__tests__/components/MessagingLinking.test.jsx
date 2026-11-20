@@ -203,7 +203,7 @@ describe('the link page', () => {
 
 describe('the QR code', () => {
   test('draws one dark square per module of the encoded text', () => {
-    const { container } = render(<QrCode value="https://example.com/link#abc" label="QR" />);
+    const { container } = render(<QrCode value="/link#abc" label="QR" />);
 
     const path = container.querySelector('path');
     expect(screen.getByRole('img', { name: 'QR' })).toBeInTheDocument();

@@ -596,6 +596,18 @@
         "done": "Drugie urządzenie zostało połączone.",
         "submit": "Połącz urządzenie",
         "notReady": "Aby połączyć inne urządzenie, szyfrowane wiadomości muszą najpierw działać w tej przeglądarce."
+      },
+      "push": {
+        "title": "Powiadomienia",
+        "body": "Dostawaj powiadomienie o nowej wiadomości, gdy ta przeglądarka jest zamknięta. Powiadomienie mówi tylko, że jest nowa wiadomość; jej treść nigdy nie trafia do usługi powiadomień.",
+        "enable": "Włącz powiadomienia",
+        "disable": "Wyłącz powiadomienia",
+        "on": "Powiadomienia są włączone w tej przeglądarce.",
+        "blocked": "Powiadomienia są zablokowane dla tej witryny. Zezwól na nie w ustawieniach witryny w przeglądarce i spróbuj ponownie.",
+        "unsupported": "Ta przeglądarka nie potrafi pokazywać powiadomień, gdy jest zamknięta.",
+        "failed": "Nie udało się zmienić powiadomień. Spróbuj ponownie.",
+        "noticeTitle": "Nowa wiadomość",
+        "noticeBody": "Otwórz Kanban, aby ją przeczytać."
       }
     },
     "fields": {
@@ -883,7 +895,9 @@
       "STALE_EPOCH": "Rozmowa zmieniła się w międzyczasie. Spróbuj ponownie.",
       "MESSAGE_TOO_LARGE": "Wiadomość jest za długa.",
       "DEVICE_LINK_NOT_FOUND": "Ten kod połączenia wygasł lub nie istnieje. Zacznij od nowa na nowym urządzeniu.",
-      "DEVICE_LINK_ANSWERED": "Ten kod połączenia został już zatwierdzony."
+      "DEVICE_LINK_ANSWERED": "Ten kod połączenia został już zatwierdzony.",
+      "PUSH_NOT_CONFIGURED": "Powiadomienia nie są skonfigurowane na tym serwerze.",
+      "INVALID_PUSH_ENDPOINT": "Ta przeglądarka podała adres powiadomień, który nie jest akceptowany."
     }
   },
   "messages": {

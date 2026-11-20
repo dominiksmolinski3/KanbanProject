@@ -596,6 +596,18 @@
           "done": "L’autre appareil est lié.",
           "submit": "Lier l’appareil",
           "notReady": "Les messages chiffrés doivent fonctionner dans ce navigateur avant qu’il puisse lier un autre appareil."
+        },
+        "push": {
+          "title": "Notifications",
+          "body": "Recevez un avis à l’arrivée d’un nouveau message alors que ce navigateur est fermé. L’avis indique seulement qu’il y a un nouveau message ; son contenu n’est jamais envoyé au service de notification.",
+          "enable": "Activer les notifications",
+          "disable": "Désactiver les notifications",
+          "on": "Les notifications sont activées pour ce navigateur.",
+          "blocked": "Les notifications sont bloquées pour ce site. Autorisez-les dans les paramètres du site du navigateur, puis réessayez.",
+          "unsupported": "Ce navigateur ne peut pas afficher de notifications lorsqu’il est fermé.",
+          "failed": "Impossible de modifier les notifications. Réessayez.",
+          "noticeTitle": "Nouveau message",
+          "noticeBody": "Ouvrez Kanban pour le lire."
         }
       },
       "fields": {
@@ -883,7 +895,9 @@
             "VIEWER_READ_ONLY": "Vous pouvez consulter ce tableau, mais pas le modifier.",
             "WRONG_PASSWORD": "Le mot de passe actuel n'est pas correct.",
             "DEVICE_LINK_NOT_FOUND": "Ce code de liaison a expiré ou n’existe pas. Recommencez sur le nouvel appareil.",
-            "DEVICE_LINK_ANSWERED": "Ce code de liaison a déjà été approuvé."
+            "DEVICE_LINK_ANSWERED": "Ce code de liaison a déjà été approuvé.",
+            "PUSH_NOT_CONFIGURED": "Les notifications ne sont pas configurées sur ce serveur.",
+            "INVALID_PUSH_ENDPOINT": "Ce navigateur a fourni une adresse de notification qui n’est pas acceptée."
         }
     },
     "messages": {

@@ -54,6 +54,7 @@ public class MessageDeliveryService {
     private final MlsMessageMapper messageMapper;
     private final WelcomeMapper welcomeMapper;
     private final KeyLogEntryMapper keyLogMapper;
+    private final PushQueue push;
     private final Clock clock;
 
     @Autowired
@@ -65,9 +66,9 @@ public class MessageDeliveryService {
                                   KeyPackageClaimer claimer, ConversationDeviceRepository holders,
                                   BoardService boards, ConversationNotifier notifier,
                                   MlsMessageMapper messageMapper, WelcomeMapper welcomeMapper,
-                                  KeyLogEntryMapper keyLogMapper) {
+                                  KeyLogEntryMapper keyLogMapper, PushQueue push) {
         this(access, conversations, locks, members, messages, welcomes, devices, identities, keyLog, claimer, holders,
-                boards, notifier, messageMapper, welcomeMapper, keyLogMapper, Clock.systemUTC());
+                boards, notifier, messageMapper, welcomeMapper, keyLogMapper, push, Clock.systemUTC());
     }
 
     MessageDeliveryService(ConversationAccess access, ConversationRepository conversations,
@@ -75,7 +76,7 @@ public class MessageDeliveryService {
                            MlsWelcomeRepository welcomes, CryptoDeviceRepository devices,
                            IdentityKeyRepository identities, KeyLogRepository keyLog, KeyPackageClaimer claimer,
                            ConversationDeviceRepository holders, BoardService boards, ConversationNotifier notifier, MlsMessageMapper messageMapper,
-                           WelcomeMapper welcomeMapper, KeyLogEntryMapper keyLogMapper, Clock clock) {
+                           WelcomeMapper welcomeMapper, KeyLogEntryMapper keyLogMapper, PushQueue push, Clock clock) {
         this.access = access;
         this.conversations = conversations;
         this.locks = locks;
@@ -92,6 +93,7 @@ public class MessageDeliveryService {
         this.messageMapper = messageMapper;
         this.welcomeMapper = welcomeMapper;
         this.keyLogMapper = keyLogMapper;
+        this.push = push;
         this.clock = clock;
     }
 
@@ -189,8 +191,10 @@ public class MessageDeliveryService {
         }
         me.readUpTo(seq);
         members.save(me);
-        notifier.notify(everyone(conversation),
+        List<ConversationMember> roster = members.findAllIn(List.of(conversation));
+        notifier.notify(roster.stream().map(ConversationMember::getUser).toList(),
                 new ConversationEvent(ConversationEventType.MESSAGE, conversationId, seq, caller.getId()));
+        push.messagePosted(conversation, seq, caller.getId(), roster);
         return new PostedDto(seq, conversation.getEpoch(), now);
     }
 

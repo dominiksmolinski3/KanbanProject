@@ -596,6 +596,18 @@
           "done": "El otro dispositivo está vinculado.",
           "submit": "Vincular el dispositivo",
           "notReady": "Los mensajes cifrados deben funcionar en este navegador antes de poder vincular otro dispositivo."
+        },
+        "push": {
+          "title": "Notificaciones",
+          "body": "Recibe un aviso cuando llegue un mensaje nuevo con este navegador cerrado. El aviso solo dice que hay un mensaje nuevo; su contenido nunca se envía al servicio de notificaciones.",
+          "enable": "Activar notificaciones",
+          "disable": "Desactivar notificaciones",
+          "on": "Las notificaciones están activadas en este navegador.",
+          "blocked": "Las notificaciones están bloqueadas para este sitio. Permítelas en los ajustes del sitio del navegador e inténtalo de nuevo.",
+          "unsupported": "Este navegador no puede mostrar notificaciones mientras está cerrado.",
+          "failed": "No se pudieron cambiar las notificaciones. Inténtalo de nuevo.",
+          "noticeTitle": "Mensaje nuevo",
+          "noticeBody": "Abre Kanban para leerlo."
         }
       },
       "fields": {
@@ -883,7 +895,9 @@
             "VIEWER_READ_ONLY": "Puedes ver este tablero, pero no cambiarlo.",
             "WRONG_PASSWORD": "La contraseña actual no es correcta.",
             "DEVICE_LINK_NOT_FOUND": "Este código de enlace ha caducado o no existe. Empieza de nuevo en el dispositivo nuevo.",
-            "DEVICE_LINK_ANSWERED": "Este código de enlace ya ha sido aprobado."
+            "DEVICE_LINK_ANSWERED": "Este código de enlace ya ha sido aprobado.",
+            "PUSH_NOT_CONFIGURED": "Las notificaciones no están configuradas en este servidor.",
+            "INVALID_PUSH_ENDPOINT": "Este navegador ha dado una dirección de notificaciones que no se acepta."
         }
     },
     "messages": {

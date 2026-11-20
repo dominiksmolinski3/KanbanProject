@@ -596,6 +596,18 @@
         "done": "The other device is linked.",
         "submit": "Link the device",
         "notReady": "Encrypted messages have to work on this browser before it can link another device."
+      },
+      "push": {
+        "title": "Notifications",
+        "body": "Get a notice when a new message arrives while this browser is closed. The notice says only that there is a new message; its content is never sent to the notification service.",
+        "enable": "Turn on notifications",
+        "disable": "Turn off notifications",
+        "on": "Notifications are on for this browser.",
+        "blocked": "Notifications are blocked for this site. Allow them in the browser’s site settings, then try again.",
+        "unsupported": "This browser cannot show notifications while it is closed.",
+        "failed": "Could not change notifications. Try again.",
+        "noticeTitle": "New message",
+        "noticeBody": "Open Kanban to read it."
       }
     },
     "fields": {
@@ -883,7 +895,9 @@
       "STALE_EPOCH": "The conversation changed in the meantime. Try again.",
       "MESSAGE_TOO_LARGE": "The message is too long.",
       "DEVICE_LINK_NOT_FOUND": "This link code has expired or does not exist. Start again on the new device.",
-      "DEVICE_LINK_ANSWERED": "This link code has already been approved."
+      "DEVICE_LINK_ANSWERED": "This link code has already been approved.",
+      "PUSH_NOT_CONFIGURED": "Notifications are not set up on this server.",
+      "INVALID_PUSH_ENDPOINT": "This browser gave an address for notifications that is not accepted."
     }
   },
   "messages": {

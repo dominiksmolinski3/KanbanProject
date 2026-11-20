@@ -20,7 +20,7 @@ describe('link codes', () => {
     const secret = newLinkSecret();
     const code = makeLinkCode(ID, pair.publicKey, secret);
 
-    for (const input of [code, `  ${code}\n`, `https://app.example/link#${code}`]) {
+    for (const input of [code, `  ${code}\n`, `/link#${code}`]) {
       expect(parseLinkCode(input)).toEqual({ id: ID, devicePublic: pair.publicKey, secret });
     }
   });

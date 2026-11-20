@@ -596,6 +596,18 @@
           "done": "L’altro dispositivo è collegato.",
           "submit": "Collega il dispositivo",
           "notReady": "I messaggi cifrati devono funzionare in questo browser prima che possa collegare un altro dispositivo."
+        },
+        "push": {
+          "title": "Notifiche",
+          "body": "Ricevi un avviso quando arriva un nuovo messaggio con questo browser chiuso. L’avviso dice solo che c’è un nuovo messaggio; il contenuto non viene mai inviato al servizio di notifica.",
+          "enable": "Attiva le notifiche",
+          "disable": "Disattiva le notifiche",
+          "on": "Le notifiche sono attive per questo browser.",
+          "blocked": "Le notifiche sono bloccate per questo sito. Consentile nelle impostazioni del sito del browser e riprova.",
+          "unsupported": "Questo browser non può mostrare notifiche quando è chiuso.",
+          "failed": "Impossibile modificare le notifiche. Riprova.",
+          "noticeTitle": "Nuovo messaggio",
+          "noticeBody": "Apri Kanban per leggerlo."
         }
       },
       "fields": {
@@ -883,7 +895,9 @@
             "VIEWER_READ_ONLY": "Puoi vedere questa bacheca ma non modificarla.",
             "WRONG_PASSWORD": "La password attuale non è corretta.",
             "DEVICE_LINK_NOT_FOUND": "Questo codice di collegamento è scaduto o non esiste. Ricomincia sul nuovo dispositivo.",
-            "DEVICE_LINK_ANSWERED": "Questo codice di collegamento è già stato approvato."
+            "DEVICE_LINK_ANSWERED": "Questo codice di collegamento è già stato approvato.",
+            "PUSH_NOT_CONFIGURED": "Le notifiche non sono configurate su questo server.",
+            "INVALID_PUSH_ENDPOINT": "Questo browser ha fornito un indirizzo per le notifiche che non è accettato."
         }
     },
     "messages": {
