@@ -123,7 +123,7 @@ against a move into it, because one request at a time almost never overlaps anot
 ## Two containers, one origin
 
 There are two images and one public address. [frontend/Dockerfile](../frontend/Dockerfile) builds the
-Vite bundle and copies it into `nginx-unprivileged`; [backend/Dockerfile](../backend/Dockerfile) builds
+Vite bundle and copies it into the official `nginx` image, run as uid 101; [backend/Dockerfile](../backend/Dockerfile) builds
 the Spring Boot jar. nginx serves the bundle from disk and reverse-proxies `/api`, `/ws` and
 `/v3/api-docs` to the API container, so the **browser still sees exactly one origin** — which is the
 whole point of proxying rather than publishing an `api.` host alongside. `api.ts` calling relative
@@ -200,7 +200,7 @@ API needs no `server.compression`; `gzip_proxied any` keeps that true for a requ
 through the platform's ingress. `EdgeCompressionTest` pins the directives.
 
 **The edge image runs `apk upgrade` on its own base, and that is not defensiveness.** The pinned
-`nginx-unprivileged:1.29-alpine` digest is the newest tag Docker Hub publishes, and its package set
+base, then `nginx-unprivileged:1.29-alpine`, was the newest tag Docker Hub published, and its package set
 is far enough behind Alpine's security branch that Trivy found **35 fixable HIGH findings** in it —
 twenty of them `curl`/`libcurl`, in an image whose only HTTP client is a busybox `wget`. That failed
 the CD scan gate on the first run after the split and correctly blocked `:latest` on *both* images,
@@ -211,6 +211,17 @@ reproducibly vulnerable, and the daily CD sweep rebuilding the tip is what re-ru
 to `dhi.io/nginx` for consistency with the node stage was the alternative and is declined: it
 carries no `/docker-entrypoint.d`, no `envsubst` and no `wget`, so it would mean hand-writing the
 templating, the resolver discovery and the healthcheck.
+
+**The base is the official `nginx` image, not `nginx-unprivileged`, because the latter ships nginx
+releases late.** `nginx-unprivileged` is the official Dockerfile with a few `sed` edits, and it
+followed each mainline release by 0 to 9 days. On 21 Nov 2026 it still had no 1.31.9, three days
+after nginx.org fixed ten advisories in it, while the official image had shipped it. Switching
+costs little, because the modules and the `/docker-entrypoint.d` scripts are the same.
+`frontend/nginx/nginx.conf` replaces the stock one with `user` removed and the pid and temp paths
+under `/tmp`, so uid 101 can start the master. The Dockerfile deletes the stock `conf.d/default.conf`,
+which would otherwise listen on port 80, and hands `conf.d` (where the entrypoint renders the
+template) and `/var/cache/nginx` to uid 101. Unlike `nginx-unprivileged`, it leaves the rest of
+`/etc/nginx` owned by root, so a worker cannot rewrite its own configuration.
 
 **One identifier per request joins the two log streams, which had nothing in common before.** A
 502 recorded at the edge could not be matched to the API line for the same request — and that is
