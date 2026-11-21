@@ -47,6 +47,7 @@ class MessageDeliveryServiceTest {
     private ConversationDeviceRepository holders;
     private BoardService boards;
     private ConversationNotifier notifier;
+    private PushQueue push;
     private MessageDeliveryService service;
 
     private final User ania = user(1, "Ania");
@@ -70,9 +71,10 @@ class MessageDeliveryServiceTest {
         holders = mock(ConversationDeviceRepository.class);
         boards = mock(BoardService.class);
         notifier = mock(ConversationNotifier.class);
+        push = mock(PushQueue.class);
         service = new MessageDeliveryService(access, mock(ConversationRepository.class), locks, members, messages,
                 welcomes, devices, identities, keyLog, claimer, holders, boards, notifier, new MlsMessageMapper(),
-                new WelcomeMapper(), new KeyLogEntryMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
+                new WelcomeMapper(), new KeyLogEntryMapper(), push, Clock.fixed(NOW, ZoneOffset.UTC));
 
         group = conversation(5, ConversationKind.GROUP, ania);
         me = member(1, group, ania, MemberRole.ADMIN, MemberState.ACTIVE, NOW);
@@ -125,6 +127,25 @@ class MessageDeliveryServiceTest {
                 .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.CRYPTO_DEVICE_NOT_FOUND);
         assertThatThrownBy(() -> service.commit(ania, 5L, new CommitRequest(10L, 0L, new byte[]{1}, null, List.of(30L))))
                 .hasFieldOrPropertyWithValue("identifier", ExceptionIdentifier.INVALID_CONVERSATION_REQUEST);
+    }
+
+    @Test
+    @DisplayName("a conversation with a timer stores each message only until then, and never past the retention")
+    void disappearingMessages() {
+        group.take(MlsMessageKind.COMMIT, NOW);
+
+        group.disappearAfter(3600);
+        service.post(ania, 5L, new MessageRequest(10L, 1L, new byte[]{1}));
+        group.disappearAfter(0);
+        service.post(ania, 5L, new MessageRequest(10L, 1L, new byte[]{2}));
+        Conversation untouched = conversation(6, ConversationKind.GROUP, ania);
+        untouched.disappearAfter(Integer.MAX_VALUE);
+
+        ArgumentCaptor<MlsMessage> stored = ArgumentCaptor.forClass(MlsMessage.class);
+        verify(messages, org.mockito.Mockito.times(2)).save(stored.capture());
+        assertThat(stored.getAllValues().get(0).getExpiresAt()).isEqualTo(NOW.plusSeconds(3600));
+        assertThat(stored.getAllValues().get(1).getExpiresAt()).isEqualTo(NOW.plus(MessageDeliveryService.RETENTION));
+        assertThat(MessageDeliveryService.expiry(untouched, NOW)).isEqualTo(NOW.plus(MessageDeliveryService.RETENTION));
     }
 
     @Test

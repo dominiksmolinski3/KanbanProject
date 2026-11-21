@@ -1,4 +1,5 @@
-import { deleteChecked, getJson, patchJson, postJson, postVoid, putJson, queryString } from './http';
+import { deleteChecked, getJson, patchJson, postJson, postVoid, putJson, queryString, read } from './http';
+import { apiError } from './apiError';
 import type { DirectoryMember, ServerMessage } from '../crypto/engine';
 import type { KeyLogEntry } from '../crypto/keyLog';
 import type { ChatMessageResults } from '../types/api';
@@ -49,6 +50,7 @@ export interface Conversation {
   createdAt: string;
   lastActivityAt: string;
   unread: number;
+  disappearAfter: number | null;
   me: Membership;
   members: ConversationMemberInfo[];
 }
@@ -73,6 +75,11 @@ export interface Posted {
   createdAt: string;
 }
 
+export interface UploadedBlob {
+  id: number;
+  size: number;
+}
+
 export interface Welcome {
   id: number;
   conversationId: number;
@@ -92,6 +99,7 @@ export interface ConversationSettings {
   archived?: boolean;
   historyVisibility?: HistoryVisibility;
   whoCanAdd?: WhoCanAdd;
+  disappearAfter?: number;
 }
 
 export interface NewConversation {
@@ -163,6 +171,18 @@ export const messagesApi = {
 
   earlierWith: (userId: number, page = 0) =>
     getJson<ChatMessageResults>(`${API_BASE_URL}/chat/direct/${userId}?${queryString({ page, size: EARLIER_PAGE })}`),
+
+  uploadBlob: async (id: number, bytes: Uint8Array) => {
+    const form = new FormData();
+    form.append('file', new Blob([bytes as BlobPart]), 'attachment');
+    return read<UploadedBlob>(await fetch(`${CONVERSATIONS}/${id}/blobs`, { method: 'POST', body: form }));
+  },
+
+  downloadBlob: async (id: number, blobId: number) => {
+    const response = await fetch(`${CONVERSATIONS}/${id}/blobs/${blobId}`);
+    if (!response.ok) throw await apiError(response);
+    return new Uint8Array(await response.arrayBuffer());
+  },
 
   blocks: () => getJson<BlockedPerson[]>(`${API_BASE_URL}/blocks`),
 

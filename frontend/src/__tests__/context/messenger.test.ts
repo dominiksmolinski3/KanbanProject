@@ -39,7 +39,7 @@ class FakeServer {
   conversation(): Conversation {
     return {
       id: 7, kind: 'GROUP', boardId: null, boardName: null, groupId: toBase64(new TextEncoder().encode('group-7')), epoch: this.epoch,
-      needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS',
+      needsCommit: this.needsCommit, historyVisibility: this.historyVisibility, whoCanAdd: 'MEMBERS', disappearAfter: null,
       lastSeq: this.messages.length, createdAt: '2026-11-19T10:00:00Z', lastActivityAt: '2026-11-19T10:00:00Z',
       unread: 0, me: { role: 'ADMIN', state: 'ACTIVE', joinedSeq: 1, deliveredSeq: 0, readSeq: 0, muted: false, pinned: false,
         archived: false },
@@ -167,6 +167,24 @@ describe('the messenger', () => {
     expect((await ania.messenger.history(7, Infinity, 10))[1].replyTo).toBe(hello.id);
   });
 
+  test('text carries a thread, mentions, files and a time to live only when they are given, and search reads the archive', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+    const file = { blobId: 1, key: 'a2V5', name: 'Budget.xlsx', type: 'application/vnd.ms-excel', size: 10 };
+
+    expect(Object.keys(textPayload('plain', null))).toEqual(['t', 'id', 'text']);
+    const rich = textPayload('look', 'r1', { thread: 't1', mentions: [2], ttl: 60, files: [file] });
+    expect(rich).toMatchObject({ replyTo: 'r1', thread: 't1', mentions: [2], ttl: 60, files: [file] });
+
+    await ania.messenger.send(mockServer.conversation(), textPayload('look', null, { thread: 't1', mentions: [2], files: [file] }));
+    await bartek.messenger.sync(mockServer.conversation());
+
+    expect((await bartek.messenger.search('LOOK', [7], 5)).map((item) => item.text)).toEqual(['look']);
+    expect(await bartek.messenger.search('nothing like it', [7], 5)).toEqual([]);
+  });
+
   test('a device without a welcome in a group that already has commits waits', async () => {
     const ania = await addDevice(1);
     await ania.messenger.sync(mockServer.conversation());
@@ -193,6 +211,81 @@ describe('the messenger', () => {
     expect(await texts(celina)).toEqual(['before celina', 'welcome celina']);
     await bartek.messenger.sync(mockServer.conversation());
     expect(await texts(bartek)).toEqual(['before celina', 'welcome celina']);
+  });
+
+  describe.each([
+    ['a device of an account whose key never changed', false, ['before the new device', 'welcome back']],
+    ['a device under a replaced identity', true, ['welcome back']],
+  ])('a newcomer that is %s', (_name, replaced, expected) => {
+    test('gets only the history that fits', async () => {
+      const ania = await addDevice(1);
+      const bartek = await addDevice(2);
+      await ania.messenger.sync(mockServer.conversation());
+      await bartek.messenger.acceptWelcomes();
+      mockServer.joinedAt[2] = '1970-01-01T00:00:00Z';
+      await ania.messenger.send(mockServer.conversation(), textPayload('before the new device', null));
+
+      mockServer.devices = mockServer.devices.filter((device) => device !== bartek);
+      if (replaced) {
+        mockServer.keyLogs[2] = [{ id: 1, change: 'IDENTITY', subject: '', prevHash: null, entryHash: '',
+          at: '2026-11-19T11:00:00Z' }];
+      }
+      const fresh = await addDevice(2);
+      mockServer.needsCommit = true;
+      ania.messenger.forgetDirectory(7);
+      await ania.messenger.send(mockServer.conversation(), textPayload('welcome back', null));
+
+      expect(await fresh.messenger.acceptWelcomes()).toEqual([7]);
+      await fresh.messenger.sync(mockServer.conversation());
+      expect(await texts(fresh)).toEqual(expected);
+    });
+  });
+
+  test('settling adds a newcomer without anyone having to send, and a device outside the group leaves it alone', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+
+    const celina = await addDevice(3);
+    mockServer.needsCommit = true;
+    ania.messenger.forgetDirectory();
+    expect(await celina.messenger.settle(mockServer.conversation())).toBeNull();
+
+    const settled = await ania.messenger.settle(mockServer.conversation());
+
+    expect(settled?.outcome).toBe('synced');
+    expect(mockServer.needsCommit).toBe(false);
+    expect(await celina.messenger.acceptWelcomes()).toEqual([7]);
+    expect((await celina.messenger.sync(mockServer.conversation())).outcome).toBe('synced');
+  });
+
+  test('a device that has not been added yet refuses to send instead of starting the group over', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+    const celina = await addDevice(3);
+    mockServer.needsCommit = true;
+    const epoch = mockServer.epoch;
+    const stock = ania.packages.length + bartek.packages.length;
+
+    await expect(celina.messenger.send(mockServer.conversation(), textPayload('too early', null)))
+      .rejects.toMatchObject({ code: 'NOT_IN_GROUP' });
+
+    expect(mockServer.epoch).toBe(epoch);
+    expect(ania.packages.length + bartek.packages.length).toBe(stock);
+  });
+
+  test('settling commits nothing when the group already holds every device', async () => {
+    const ania = await addDevice(1);
+    await ania.messenger.sync(mockServer.conversation());
+    const epoch = mockServer.epoch;
+
+    const settled = await ania.messenger.settle(mockServer.conversation());
+
+    expect(settled?.outcome).toBe('synced');
+    expect(mockServer.epoch).toBe(epoch);
   });
 
   test('a newcomer to a joiners-only group sees nothing from before', async () => {

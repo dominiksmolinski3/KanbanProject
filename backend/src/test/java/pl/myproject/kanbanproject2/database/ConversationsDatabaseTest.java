@@ -43,6 +43,7 @@ import pl.myproject.kanbanproject2.messaging.KeyPackageClaimer;
 import pl.myproject.kanbanproject2.messaging.KeyPackageRepository;
 import pl.myproject.kanbanproject2.messaging.MessageDeliveryService;
 import pl.myproject.kanbanproject2.messaging.MessageRequest;
+import pl.myproject.kanbanproject2.messaging.PushQueue;
 import pl.myproject.kanbanproject2.messaging.MessagingProperties;
 import pl.myproject.kanbanproject2.messaging.MlsMessageMapper;
 import pl.myproject.kanbanproject2.messaging.MlsMessageRepository;
@@ -136,7 +137,7 @@ class ConversationsDatabaseTest {
                                                       ConversationNotifier notifier) {
             return new MessageDeliveryService(access, conversations, locks, members, messages, welcomes, devices,
                     identities, keyLog, claimer, holders, boards, notifier, new MlsMessageMapper(), new WelcomeMapper(),
-                    new KeyLogEntryMapper());
+                    new KeyLogEntryMapper(), org.mockito.Mockito.mock(PushQueue.class));
         }
 
         @Bean

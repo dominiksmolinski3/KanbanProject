@@ -723,7 +723,7 @@
 .messages-dialog {
   display: grid;
   gap: var(--space-12);
-  width: min(520px, calc(100vw - 32px));
+  min-width: 0;
 }
 
 .contact-picker {
@@ -820,4 +820,179 @@
   .message-actions {
     opacity: 1;
   }
+}
+
+.message-bubble.has-mention {
+  box-shadow: 0 0 0 2px var(--kb-gold);
+}
+
+.message-mention {
+  padding: 0 2px;
+  border-radius: 4px;
+  background: var(--kb-gold-soft);
+  color: var(--kb-ink);
+  font-weight: 600;
+}
+
+.message-row.is-found .message-bubble {
+  box-shadow: 0 0 0 2px var(--kb-focus);
+}
+
+.message-thread-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  justify-self: start;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.message-expiry {
+  display: inline-flex;
+  align-items: center;
+}
+
+.thread-disappear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.thread-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.thread-panel-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.message-files {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--kb-line);
+  border-radius: var(--radius-control);
+  background: var(--kb-surface);
+  color: var(--kb-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.message-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-file-size,
+.message-file-note {
+  color: var(--kb-ink-muted);
+  font-size: 12px;
+}
+
+.message-file-image {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-control);
+}
+
+.composer-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.composer-files li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  max-width: 100%;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--kb-raised);
+  font-size: 13px;
+}
+
+.composer-files span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-mentions {
+  display: grid;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--kb-line);
+  border-radius: var(--radius-control);
+  background: var(--kb-surface);
+  box-shadow: var(--kb-shadow-pop);
+  list-style: none;
+}
+
+.composer-mentions button {
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--kb-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.composer-mentions button.is-active,
+.composer-mentions button:hover {
+  background: var(--kb-hover);
+}
+
+.conversation-mention {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--kb-gold);
+  color: var(--kb-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conversation-hit-snippet {
+  display: block;
+  overflow: hidden;
+  color: var(--kb-ink-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

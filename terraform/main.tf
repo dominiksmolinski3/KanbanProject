@@ -261,6 +261,10 @@ module "api_app" {
   captcha_enabled                  = var.captcha_enabled
   messaging_enabled                = var.messaging_enabled
   captcha_secret                   = var.captcha_secret
+  push_vapid_public_key            = var.push_vapid_public_key
+  push_vapid_private_key           = var.push_vapid_private_key
+  push_vapid_subject               = var.push_vapid_subject
+  push_fcm_credentials             = var.push_fcm_credentials
   storage_account_id               = module.storage.id
   storage_blob_endpoint            = module.storage.blob_endpoint
   storage_container_name           = module.storage.container_name

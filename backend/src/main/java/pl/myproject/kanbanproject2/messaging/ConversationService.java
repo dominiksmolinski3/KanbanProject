@@ -34,6 +34,8 @@ public class ConversationService {
 
     static final int GROUP_ID_BYTES = 16;
 
+    static final Set<Integer> DISAPPEAR_AFTER = Set.of(0, 3600, 86400, 604800, 2592000);
+
     private final ConversationAccess access;
     private final ConversationRepository conversations;
     private final ConversationLocks locks;
@@ -176,14 +178,23 @@ public class ConversationService {
         ConversationMember me = access.requireMember(caller, conversationId);
         me.prefer(request.muted(), request.pinned(), request.archived());
         members.save(me);
-        boolean settings = request.historyVisibility() != null || request.whoCanAdd() != null;
+        boolean settings = request.historyVisibility() != null || request.whoCanAdd() != null
+                || request.disappearAfter() != null;
         if (!settings) {
             notifier.notify(List.of(caller), event(ConversationEventType.MEMBERS, me.getConversation(), caller));
             return view(caller, me);
         }
-        requireSettingsAdmin(me);
+        boolean timerOnly = me.getConversation().getKind() == ConversationKind.DIRECT
+                && request.historyVisibility() == null && request.whoCanAdd() == null;
+        if (!timerOnly) {
+            requireSettingsAdmin(me);
+        }
+        if (request.disappearAfter() != null && !DISAPPEAR_AFTER.contains(request.disappearAfter())) {
+            throw invalid("Niedozwolony czas znikania wiadomości");
+        }
         me.getConversation().configure(request.historyVisibility(),
                 me.getConversation().getKind() == ConversationKind.BOARD ? null : request.whoCanAdd());
+        me.getConversation().disappearAfter(request.disappearAfter());
         conversations.save(me.getConversation());
         return announce(caller, me);
     }

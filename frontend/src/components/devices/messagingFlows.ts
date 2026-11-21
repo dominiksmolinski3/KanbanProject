@@ -1,5 +1,6 @@
 import { deviceVault } from '../../crypto/client';
 import { fromBase64 } from '../../crypto/bytes';
+import { makeLinkCode, parseLinkCode } from '../../crypto/linking';
 import type { LocalDevice } from '../../crypto/keyStore';
 import { cryptoApi, type IdentityBackup } from '../../services/cryptoApi';
 
@@ -53,6 +54,41 @@ export async function unlockWithPin(userId: number, pin: string): Promise<void> 
 
 export async function unlockWithRecoveryKey(recoveryKey: string): Promise<void> {
   await deviceVault().restoreWithRecoveryKey(recoveryKey, wrapped(await cryptoApi.identityBackup()));
+}
+
+export interface StartedLink {
+  id: string;
+  code: string;
+  expiresAt: string;
+}
+
+export async function startLink(): Promise<StartedLink> {
+  const vault = deviceVault();
+  const { publicKey, secret } = await vault.beginLink();
+  const created = await cryptoApi.createLink(publicKey);
+  return { id: created.id, code: makeLinkCode(created.id, publicKey, secret), expiresAt: created.expiresAt };
+}
+
+export async function receiveLink(id: string): Promise<boolean> {
+  const link = await cryptoApi.getLink(id);
+  if (!link.sealed || !link.linkerPublic) return false;
+  await deviceVault().completeLink(id, fromBase64(link.linkerPublic), fromBase64(link.sealed));
+  await cryptoApi.cancelLink(id).catch(() => undefined);
+  return true;
+}
+
+export class BadLinkCodeError extends Error {
+  constructor() {
+    super('BadLinkCode');
+    this.name = 'BadLinkCodeError';
+  }
+}
+
+export async function approveLink(input: string): Promise<void> {
+  const code = parseLinkCode(input);
+  if (!code) throw new BadLinkCodeError();
+  const { linkerPublic, sealed } = await deviceVault().sealIdentityForLink(code);
+  await cryptoApi.answerLink(code.id, linkerPublic, sealed);
 }
 
 export async function addRecoveryKey(recoveryKey: string): Promise<void> {

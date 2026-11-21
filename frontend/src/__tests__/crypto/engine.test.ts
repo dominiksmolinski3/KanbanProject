@@ -319,5 +319,82 @@ describe('the messaging engine', () => {
 
     expect(atBob.items.map((item) => item.kind)).toEqual(['notice']);
   });
+
+  describe('threads, mentions, files, disappearing messages and search', () => {
+    const FILE = { blobId: 4, key: 'a2V5', name: 'Plan.pdf', type: 'application/pdf', size: 1200 };
+
+    async function pair() {
+      const server = new FakeServer();
+      const alice = await newDevice(1);
+      const bob = await newDevice(2);
+      server.members = [[alice], [bob]];
+      await reconcile(server, alice);
+      await join(server, bob);
+      return { server, alice, bob };
+    }
+
+    test('thread, mentions and files travel with the message and into the history of a new device', async () => {
+      const { server, alice, bob } = await pair();
+      await send(server, alice, { t: 'text', id: 'root', text: 'Start' });
+      await send(server, alice, { t: 'text', id: 'reply', text: 'See @Bob', thread: 'root', mentions: [2], files: [FILE] });
+      await sync(server, bob);
+
+      const [, reply] = await bob.engine.readArchive(CONVERSATION, Infinity, 10);
+      expect(reply).toMatchObject({ threadId: 'root', mentions: [2], files: [FILE], expiresAt: null });
+
+      const bob2 = await newDevice(2, bob);
+      server.members[1] = [bob, bob2];
+      const added = await reconcile(server, alice);
+      await join(server, bob2);
+      const credentials = await alice.engine.credentialsOf(server.directory(), added!.welcomed);
+      for (const chunk of await alice.engine.historyFor(CONVERSATION, null, credentials)) await send(server, alice, chunk);
+      await sync(server, bob2);
+
+      const imported = (await bob2.engine.readArchive(CONVERSATION, Infinity, 10)).find((item) => item.id === 'reply');
+      expect(imported).toMatchObject({ threadId: 'root', mentions: [2], files: [FILE] });
+    });
+
+    test('deleting a message also drops its files', async () => {
+      const { server, alice, bob } = await pair();
+      await send(server, alice, { t: 'text', id: 'm1', text: '', files: [FILE] });
+      await send(server, alice, { t: 'delete', id: 'd1', target: 'm1' });
+      await sync(server, bob);
+
+      const [deleted] = await bob.engine.readArchive(CONVERSATION, Infinity, 10);
+      expect(deleted).toMatchObject({ deleted: true, files: [] });
+    });
+
+    test('a message that arrives already expired is never stored, and a stored one is removed once it expires', async () => {
+      const { server, alice, bob } = await pair();
+      await send(server, alice, { t: 'text', id: 'late', text: 'gone before it arrived', ttl: 60 });
+      const received = await sync(server, bob);
+      expect(received.items.filter((item) => item.kind === 'text')).toEqual([]);
+
+      const payload: Payload = { t: 'text', id: 'soon', text: 'short lived', ttl: 1 };
+      const encrypted = await alice.engine.encryptPayload(CONVERSATION, payload);
+      const seq = server.post(alice, encrypted.epoch, encrypted.body)!;
+      await alice.engine.recordSent(CONVERSATION, seq, payload, 1, new Date().toISOString());
+      expect(await texts(alice)).toEqual(['gone before it arrived', 'short lived']);
+
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
+      expect(await texts(alice)).toEqual(['gone before it arrived']);
+    });
+
+    test('search finds text and file names regardless of case and accents, newest first', async () => {
+      const { server, alice, bob } = await pair();
+      await send(server, alice, { t: 'text', id: 'm1', text: 'Spotkanie w ŚRODĘ' });
+      await send(server, bob, { t: 'text', id: 'm2', text: 'budget', files: [{ ...FILE, name: 'Środa.xlsx' }] });
+      await send(server, bob, { t: 'text', id: 'm3', text: 'unrelated' });
+      await send(server, alice, { t: 'delete', id: 'd1', target: 'm1' });
+      await sync(server, alice);
+      await sync(server, bob);
+
+      expect((await bob.engine.search('sroda', [CONVERSATION], 10)).map((item) => item.id)).toEqual(['m2']);
+      expect((await alice.engine.search('  BUDGET ', [CONVERSATION], 10)).map((item) => item.id)).toEqual(['m2']);
+      expect(await alice.engine.search('   ', [CONVERSATION], 10)).toEqual([]);
+      expect(await alice.engine.search('e', [CONVERSATION], 1)).toHaveLength(1);
+    });
+  });
 });
 

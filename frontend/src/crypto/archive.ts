@@ -14,6 +14,7 @@ export interface Archive {
   byId(conversationId: number, id: string): Promise<ArchiveRecord | undefined>;
   before(conversationId: number, seq: number, limit: number): Promise<ArchiveRecord[]>;
   all(conversationId: number): Promise<ArchiveRecord[]>;
+  remove(conversationId: number, seq: number): Promise<void>;
   drop(conversationId: number): Promise<void>;
   clear(): Promise<void>;
 }
@@ -32,6 +33,9 @@ export function memoryArchive(): Archive {
     byId: async (conversationId, id) => of(conversationId).find((record) => record.id === id),
     before: async (conversationId, seq, limit) => of(conversationId).filter((record) => record.seq < seq).slice(-limit),
     all: async (conversationId) => of(conversationId),
+    remove: async (conversationId, seq) => {
+      records.delete(key(conversationId, seq));
+    },
     drop: async (conversationId) => {
       of(conversationId).forEach((record) => records.delete(key(record.conversationId, record.seq)));
     },
@@ -100,6 +104,9 @@ export function indexedDbArchive(factory: IDBFactory = indexedDB): Archive {
       });
     },
     all: (conversationId) => run<ArchiveRecord[]>('readonly', (store) => store.getAll(range(conversationId))),
+    remove: async (conversationId, seq) => {
+      await run('readwrite', (store) => store.delete([conversationId, seq]));
+    },
     drop: async (conversationId) => {
       await run('readwrite', (store) => store.delete(range(conversationId)));
     },

@@ -493,7 +493,9 @@
         "forget": "Zapomnij tę przeglądarkę",
         "remove": "Usuń",
         "continue": "Dalej",
-        "save": "Zapisz"
+        "save": "Zapisz",
+        "link": "Połącz kodem",
+        "approve": "Połącz inne urządzenie"
       },
       "setup": {
         "introTitle": "Wiadomości są szyfrowane end-to-end",
@@ -569,6 +571,44 @@
       },
       "addRecovery": {
         "done": "Klucz odzyskiwania jest gotowy"
+      },
+      "link": {
+        "title": "Połącz tę przeglądarkę",
+        "body": "Na urządzeniu, na którym szyfrowane wiadomości już działają, otwórz Konto › Zalogowane urządzenia, wybierz „Połącz inne urządzenie” i wpisz poniższy kod. Możesz też zeskanować kod QR aparatem tego urządzenia. PIN ani klucz odzyskiwania nie są potrzebne.",
+        "qr": "Kod QR łączący tę przeglądarkę",
+        "orCode": "Albo wpisz ten kod na drugim urządzeniu:",
+        "copy": "Skopiuj kod",
+        "copied": "Skopiowano",
+        "waiting": "Czekam na drugie urządzenie. Kod działa przez 5 minut.",
+        "again": "Spróbuj ponownie",
+        "failed": {
+          "start": "Nie udało się utworzyć kodu. Spróbuj ponownie.",
+          "expired": "Kod wygasł.",
+          "finish": "Drugie urządzenie przesłało dane, których ta przeglądarka nie może użyć. Spróbuj ponownie."
+        }
+      },
+      "approve": {
+        "title": "Połącz inne urządzenie",
+        "body": "Wpisz kod widoczny na nowym urządzeniu albo wklej adres z jego kodu QR. To urządzenie przekaże wtedy Twój klucz do wiadomości, zaszyfrowany tak, że odczyta go tylko nowe urządzenie.",
+        "label": "Kod lub adres",
+        "warning": "Kontynuuj tylko wtedy, gdy przed chwilą sam(a) zacząłeś(-ęłaś) to na własnym urządzeniu. Ktoś, kto w tym czasie zdobędzie Twój kod, mógłby czytać Twoje wiadomości.",
+        "badCode": "To nie jest prawidłowy kod połączenia.",
+        "done": "Drugie urządzenie zostało połączone.",
+        "submit": "Połącz urządzenie",
+        "notReady": "Aby połączyć inne urządzenie, szyfrowane wiadomości muszą najpierw działać w tej przeglądarce."
+      },
+      "push": {
+        "title": "Powiadomienia",
+        "body": "Dostawaj powiadomienie o nowej wiadomości, gdy ta przeglądarka jest zamknięta. Powiadomienie mówi tylko, że jest nowa wiadomość; jej treść nigdy nie trafia do usługi powiadomień.",
+        "enable": "Włącz powiadomienia",
+        "disable": "Wyłącz powiadomienia",
+        "on": "Powiadomienia są włączone w tej przeglądarce.",
+        "blocked": "Powiadomienia są zablokowane dla tej witryny. Zezwól na nie w ustawieniach witryny w przeglądarce i spróbuj ponownie.",
+        "unsupported": "Ta przeglądarka nie potrafi pokazywać powiadomień, gdy jest zamknięta.",
+        "failed": "Nie udało się zmienić powiadomień. Spróbuj ponownie.",
+        "noticeTitle": "Nowa wiadomość",
+        "noticeBody": "Otwórz Kanban, aby ją przeczytać.",
+        "unreachable": "Ta przeglądarka nie może połączyć się ze swoją usługą powiadomień push. W Brave włącz „Use Google Services for Push Messaging” w ustawieniach prywatności; w innych przeglądarkach sprawdź, czy VPN lub zapora nie blokują połączenia z Google, a potem spróbuj ponownie."
       }
     },
     "fields": {
@@ -854,7 +894,11 @@
       "INVALID_CONVERSATION_REQUEST": "Taka zmiana w rozmowie jest niedozwolona.",
       "RECIPIENT_NOT_SET_UP": "Ta osoba nie skonfigurowała jeszcze szyfrowanych wiadomości.",
       "STALE_EPOCH": "Rozmowa zmieniła się w międzyczasie. Spróbuj ponownie.",
-      "MESSAGE_TOO_LARGE": "Wiadomość jest za długa."
+      "MESSAGE_TOO_LARGE": "Wiadomość jest za długa.",
+      "DEVICE_LINK_NOT_FOUND": "Ten kod połączenia wygasł lub nie istnieje. Zacznij od nowa na nowym urządzeniu.",
+      "DEVICE_LINK_ANSWERED": "Ten kod połączenia został już zatwierdzony.",
+      "PUSH_NOT_CONFIGURED": "Powiadomienia nie są skonfigurowane na tym serwerze.",
+      "INVALID_PUSH_ENDPOINT": "Ta przeglądarka podała adres powiadomień, który nie jest akceptowany."
     }
   },
   "messages": {
@@ -891,7 +935,11 @@
       "unread": "Nieprzeczytane: {{count}}",
       "muted": "Wyciszona",
       "boards": "Tablice",
-      "people": "Osoby i grupy"
+      "people": "Osoby i grupy",
+      "mentioned": "Wspomniano o Tobie",
+      "results": "Wiadomości",
+      "searching": "Szukam…",
+      "noResults": "Nie znaleziono wiadomości na tym urządzeniu"
     },
     "thread": {
       "encrypted": "Szyfrowanie end-to-end",
@@ -904,7 +952,10 @@
       "typingOne": "{{name}} pisze…",
       "typingMany": "Kilka osób pisze…",
       "boardMembers": "Kanał tablicy · Uczestnicy: {{count}}",
-      "readOnly": "Możesz czytać ten kanał, ale nie możesz w nim pisać, bo na tej tablicy jesteś obserwatorem."
+      "readOnly": "Możesz czytać ten kanał, ale nie możesz w nim pisać, bo na tej tablicy jesteś obserwatorem.",
+      "replies": "Odpowiedzi: {{count}}",
+      "panel": "Wątek",
+      "panelLog": "Wiadomości w tym wątku"
     },
     "request": {
       "title": "Prośba o rozmowę",
@@ -920,7 +971,8 @@
       "send": "Wyślij",
       "replying": "Odpowiedź dla: {{name}}",
       "editing": "Edytujesz swoją wiadomość",
-      "cancelDraft": "Anuluj"
+      "cancelDraft": "Anuluj",
+      "mentions": "Osoby, które możesz oznaczyć"
     },
     "message": {
       "actions": "Działania na wiadomości",
@@ -931,7 +983,9 @@
       "reaction": "{{emoji}}: {{count}}",
       "edited": "edytowano",
       "deleted": "Ta wiadomość została usunięta",
-      "replyMissing": "Oryginalnej wiadomości nie ma na tym urządzeniu"
+      "replyMissing": "Oryginalnej wiadomości nie ma na tym urządzeniu",
+      "replyInThread": "Odpowiedz w wątku",
+      "disappears": "Zniknie {{time}}"
     },
     "notice": {
       "undecryptable": "Nie udało się odszyfrować na tym urządzeniu wiadomości od: {{name}}.",
@@ -1022,6 +1076,26 @@
       "thisBoard": "Ta tablica",
       "boardChannel": "Kanał tablicy · Uczestnicy: {{count}}",
       "none": "Nie ma jeszcze rozmów. Otwórz Wiadomości, aby jakąś zacząć."
+    },
+    "disappear": {
+      "heading": "Znikające wiadomości",
+      "label": "Usuwaj nowe wiadomości po",
+      "note": "Dotyczy wiadomości wysłanych od teraz. Serwer usuwa wtedy zaszyfrowaną kopię, a każde urządzenie usuwa własną.",
+      "off": "Nigdy",
+      "hour": "1 godzinie",
+      "day": "1 dniu",
+      "week": "1 tygodniu",
+      "month": "30 dniach",
+      "title": "Wiadomości znikają po {{after}}"
+    },
+    "files": {
+      "attach": "Dołącz pliki",
+      "chosen": "Pliki do wysłania",
+      "remove": "Usuń {{name}}",
+      "tooMany": "Możesz wysłać najwyżej {{count}} plików naraz",
+      "tooLarge": "Plik może mieć najwyżej {{size}} MB",
+      "failed": "Nie udało się otworzyć pliku",
+      "download": "Pobierz {{name}} ({{size}})"
     }
   }
 }

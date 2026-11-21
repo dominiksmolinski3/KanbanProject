@@ -493,7 +493,9 @@
           "forget": "Oublier ce navigateur",
           "remove": "Retirer",
           "continue": "Continuer",
-          "save": "Enregistrer"
+          "save": "Enregistrer",
+          "link": "Lier avec un code",
+          "approve": "Lier un autre appareil"
         },
         "setup": {
           "introTitle": "Les messages sont chiffrés de bout en bout",
@@ -569,6 +571,44 @@
         },
         "addRecovery": {
           "done": "Votre clé de récupération est prête"
+        },
+        "link": {
+          "title": "Lier ce navigateur",
+          "body": "Sur un appareil où les messages chiffrés fonctionnent déjà, ouvrez Compte › Appareils connectés, choisissez « Lier un autre appareil » et saisissez le code ci-dessous. Vous pouvez aussi scanner le code QR avec l’appareil photo de cet appareil. Aucun code PIN ni clé de récupération n’est nécessaire.",
+          "qr": "Code QR pour lier ce navigateur",
+          "orCode": "Ou saisissez ce code sur l’autre appareil :",
+          "copy": "Copier le code",
+          "copied": "Copié",
+          "waiting": "En attente de l’autre appareil. Le code est valable 5 minutes.",
+          "again": "Réessayer",
+          "failed": {
+            "start": "Impossible de créer un code. Réessayez.",
+            "expired": "Le code a expiré.",
+            "finish": "L’autre appareil a envoyé des données que ce navigateur ne peut pas utiliser. Réessayez."
+          }
+        },
+        "approve": {
+          "title": "Lier un autre appareil",
+          "body": "Saisissez le code affiché sur le nouvel appareil ou collez l’adresse de son code QR. Cet appareil lui transmet alors votre clé de messagerie, chiffrée de sorte que seul le nouvel appareil puisse la lire.",
+          "label": "Code ou adresse",
+          "warning": "Ne continuez que si vous venez de lancer cette opération sur votre propre appareil. Quiconque obtiendrait votre code pendant ce temps pourrait lire vos messages.",
+          "badCode": "Ce n’est pas un code de liaison valide.",
+          "done": "L’autre appareil est lié.",
+          "submit": "Lier l’appareil",
+          "notReady": "Les messages chiffrés doivent fonctionner dans ce navigateur avant qu’il puisse lier un autre appareil."
+        },
+        "push": {
+          "title": "Notifications",
+          "body": "Recevez un avis à l’arrivée d’un nouveau message alors que ce navigateur est fermé. L’avis indique seulement qu’il y a un nouveau message ; son contenu n’est jamais envoyé au service de notification.",
+          "enable": "Activer les notifications",
+          "disable": "Désactiver les notifications",
+          "on": "Les notifications sont activées pour ce navigateur.",
+          "blocked": "Les notifications sont bloquées pour ce site. Autorisez-les dans les paramètres du site du navigateur, puis réessayez.",
+          "unsupported": "Ce navigateur ne peut pas afficher de notifications lorsqu’il est fermé.",
+          "failed": "Impossible de modifier les notifications. Réessayez.",
+          "noticeTitle": "Nouveau message",
+          "noticeBody": "Ouvrez Kanban pour le lire.",
+          "unreachable": "Ce navigateur ne parvient pas à joindre son service de notifications push. Dans Brave, activez « Use Google Services for Push Messaging » dans les paramètres de confidentialité ; dans les autres navigateurs, vérifiez qu’aucun VPN ni pare-feu ne bloque Google, puis réessayez."
         }
       },
       "fields": {
@@ -854,7 +894,11 @@
             "VALIDATION_ERROR": "Vérifiez les champs et réessayez.",
             "VERIFICATION_CODE_EXPIRED": "Ce code a expiré. Demandez-en un nouveau.",
             "VIEWER_READ_ONLY": "Vous pouvez consulter ce tableau, mais pas le modifier.",
-            "WRONG_PASSWORD": "Le mot de passe actuel n'est pas correct."
+            "WRONG_PASSWORD": "Le mot de passe actuel n'est pas correct.",
+            "DEVICE_LINK_NOT_FOUND": "Ce code de liaison a expiré ou n’existe pas. Recommencez sur le nouvel appareil.",
+            "DEVICE_LINK_ANSWERED": "Ce code de liaison a déjà été approuvé.",
+            "PUSH_NOT_CONFIGURED": "Les notifications ne sont pas configurées sur ce serveur.",
+            "INVALID_PUSH_ENDPOINT": "Ce navigateur a fourni une adresse de notification qui n’est pas acceptée."
         }
     },
     "messages": {
@@ -891,7 +935,11 @@
             "unread": "Non lus : {{count}}",
             "muted": "En sourdine",
             "boards": "Tableaux",
-            "people": "Personnes et groupes"
+            "people": "Personnes et groupes",
+            "mentioned": "Vous avez été mentionné",
+            "results": "Messages",
+            "searching": "Recherche…",
+            "noResults": "Aucun message trouvé sur cet appareil"
         },
         "thread": {
             "encrypted": "Chiffré de bout en bout",
@@ -904,7 +952,10 @@
             "typingOne": "{{name}} écrit…",
             "typingMany": "Plusieurs personnes écrivent…",
             "boardMembers": "Canal du tableau · Membres : {{count}}",
-            "readOnly": "Vous pouvez lire ce canal sans pouvoir y écrire, car vous êtes lecteur sur ce tableau."
+            "readOnly": "Vous pouvez lire ce canal sans pouvoir y écrire, car vous êtes lecteur sur ce tableau.",
+            "replies": "Réponses : {{count}}",
+            "panel": "Fil de discussion",
+            "panelLog": "Messages de ce fil"
         },
         "request": {
             "title": "Demande de message",
@@ -920,7 +971,8 @@
             "send": "Envoyer",
             "replying": "Réponse à {{name}}",
             "editing": "Modification de votre message",
-            "cancelDraft": "Annuler"
+            "cancelDraft": "Annuler",
+            "mentions": "Personnes que vous pouvez mentionner"
         },
         "message": {
             "actions": "Actions sur le message",
@@ -931,7 +983,9 @@
             "reaction": "{{emoji}} : {{count}}",
             "edited": "modifié",
             "deleted": "Ce message a été supprimé",
-            "replyMissing": "Le message d'origine n'est pas sur cet appareil"
+            "replyMissing": "Le message d'origine n'est pas sur cet appareil",
+            "replyInThread": "Répondre dans le fil",
+            "disappears": "Disparaît {{time}}"
         },
         "notice": {
             "undecryptable": "Un message de {{name}} n'a pas pu être déchiffré sur cet appareil.",
@@ -1022,6 +1076,26 @@
             "thisBoard": "Ce tableau",
             "boardChannel": "Canal du tableau · Membres : {{count}}",
             "none": "Aucune conversation pour l'instant. Ouvrez Messages pour en commencer une."
+        },
+        "disappear": {
+          "heading": "Messages éphémères",
+          "label": "Supprimer les nouveaux messages après",
+          "note": "S’applique aux messages envoyés à partir de maintenant. Le serveur supprime alors la copie chiffrée et chaque appareil supprime la sienne.",
+          "off": "Jamais",
+          "hour": "1 heure",
+          "day": "1 jour",
+          "week": "1 semaine",
+          "month": "30 jours",
+          "title": "Les messages disparaissent après {{after}}"
+        },
+        "files": {
+          "attach": "Joindre des fichiers",
+          "chosen": "Fichiers à envoyer",
+          "remove": "Retirer {{name}}",
+          "tooMany": "Vous pouvez envoyer jusqu’à {{count}} fichiers à la fois",
+          "tooLarge": "Un fichier ne peut pas dépasser {{size}} Mo",
+          "failed": "Impossible d’ouvrir le fichier",
+          "download": "Télécharger {{name}} ({{size}})"
         }
     }
 }

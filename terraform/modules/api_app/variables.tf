@@ -153,6 +153,24 @@ variable "captcha_secret" {
   sensitive = true
 }
 
+variable "push_vapid_public_key" {
+  type = string
+}
+
+variable "push_vapid_private_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "push_vapid_subject" {
+  type = string
+}
+
+variable "push_fcm_credentials" {
+  type      = string
+  sensitive = true
+}
+
 variable "ingress_trusted_proxy_count" {
   description = <<-EOT
     How many X-Forwarded-For entries are appended between the browser and the app, counted from

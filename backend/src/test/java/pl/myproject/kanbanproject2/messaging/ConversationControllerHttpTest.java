@@ -46,7 +46,7 @@ class ConversationControllerHttpTest {
             new byte[]{1, 2},
             3, true, HistoryVisibility.DAYS_30, WhoCanAdd.ADMINS, 9, NOW, NOW, 2,
             new MembershipDto(MemberRole.ADMIN, MemberState.ACTIVE, 1, 8, 7, false, true, false),
-            List.of(new MemberDto(2, "Bartek", false, MemberRole.MEMBER, MemberState.REQUEST, NOW, 1, 6, 5)));
+            List.of(new MemberDto(2, "Bartek", false, MemberRole.MEMBER, MemberState.REQUEST, NOW, 1, 6, 5)), null);
 
     @BeforeEach
     void setUp() {

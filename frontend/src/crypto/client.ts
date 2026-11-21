@@ -16,7 +16,8 @@ const OPERATIONS: Record<VaultOperation, true> = {
   forget: true, groupStatus: true, planChanges: true, liveDeviceIds: true, prepareCommit: true, confirmCommit: true,
   discardCommit: true, acceptWelcome: true, receiveMessages: true, encryptPayload: true, recordSent: true,
   readArchive: true, historyFor: true, credentialsOf: true, addNotices: true, dropConversation: true, pins: true,
-  checkContacts: true, setVerified: true, wipeMessages: true,
+  checkContacts: true, setVerified: true, wipeMessages: true, search: true, beginLink: true, sealIdentityForLink: true,
+  completeLink: true,
 };
 
 export type WorkerClient = Remote<WorkerOperations>;

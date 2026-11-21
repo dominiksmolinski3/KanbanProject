@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { ArchivedMessage } from '../../crypto/engine';
 import { useOutsideClick } from '../../hooks/useOutsideClick';
 import Icon from '../Icon';
+import MessageFiles from './MessageFiles';
+import { splitMentions, type Person } from './mentions';
 import { REACTIONS } from './reactions';
 
 export type DeliveryStatus = 'sent' | 'delivered' | 'read';
@@ -15,13 +17,16 @@ interface MessageRowProps {
   nameOf: (userId: number | null) => string;
   replied: ArchivedMessage | null | undefined;
   userId: number | null;
+  people?: Person[];
+  replies?: number;
+  onOpenThread?: (message: ArchivedMessage) => void;
   onReply: (message: ArchivedMessage) => void;
   onEdit: (message: ArchivedMessage) => void;
   onDelete: (message: ArchivedMessage) => void;
   onReact: (message: ArchivedMessage, emoji: string, on: boolean) => void;
 }
 
-export default function MessageRow({ message, mine, status = null, senderName, nameOf, replied, userId, onReply, onEdit, onDelete, onReact }: MessageRowProps) {
+export default function MessageRow({ message, mine, status = null, senderName, nameOf, replied, userId, people = [], replies = 0, onOpenThread, onReply, onEdit, onDelete, onReact }: MessageRowProps) {
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -42,9 +47,13 @@ export default function MessageRow({ message, mine, status = null, senderName, n
     action();
   };
 
+  const mentionable = people.filter((person) => message.mentions?.includes(person.userId));
+  const mentionsMe = userId !== null && !mine && Boolean(message.mentions?.includes(userId));
+  const parts = splitMentions(message.text, mentionable);
+
   return (
-    <li className={`message-row${mine ? ' is-mine' : ''}`}>
-      <div className="message-bubble">
+    <li className={`message-row${mine ? ' is-mine' : ''}`} id={`message-${message.id}`}>
+      <div className={`message-bubble${mentionsMe ? ' has-mention' : ''}`}>
         {senderName && <span className="message-sender">{senderName}</span>}
         {replied !== undefined && (
           <blockquote className="message-quote">
@@ -55,8 +64,32 @@ export default function MessageRow({ message, mine, status = null, senderName, n
         )}
         {message.deleted
           ? <p className="message-text message-text--deleted">{t('messages.message.deleted')}</p>
-          : <p className="message-text">{message.text}</p>}
+          : (
+            <>
+              {message.text && (
+                <p className="message-text">
+                  {parts.some((part) => part.mention)
+                    ? parts.map((part, index) => (part.mention
+                      ? <mark key={index} className="message-mention">{part.text}</mark>
+                      : <span key={index}>{part.text}</span>))
+                    : message.text}
+                </p>
+              )}
+              {message.files && message.files.length > 0 && <MessageFiles files={message.files} />}
+            </>
+          )}
+        {onOpenThread && !message.deleted && replies > 0 && (
+          <button type="button" className="message-thread-link" onClick={() => onOpenThread(message)}>
+            <Icon name="comment" size="sm" />{t('messages.thread.replies', { count: replies })}
+          </button>
+        )}
         <span className="message-meta">
+          {message.expiresAt && !message.deleted && (
+            <span className="message-expiry" title={t('messages.message.disappears', { time: new Date(message.expiresAt).toLocaleString(i18n.language) })}>
+              <Icon name="clock" size="sm" />
+              <span className="visually-hidden">{t('messages.message.disappears', { time: new Date(message.expiresAt).toLocaleString(i18n.language) })}</span>
+            </span>
+          )}
           <time dateTime={message.sentAt}>{time}</time>
           {message.editedAt && !message.deleted && <span>{t('messages.message.edited')}</span>}
           {status && (
@@ -100,6 +133,11 @@ export default function MessageRow({ message, mine, status = null, senderName, n
               <button type="button" role="menuitem" onClick={() => act(() => onReply(message))}>
                 <Icon name="comment" size="sm" />{t('messages.message.reply')}
               </button>
+              {onOpenThread && (
+                <button type="button" role="menuitem" onClick={() => act(() => onOpenThread(message))}>
+                  <Icon name="comment" size="sm" />{t('messages.message.replyInThread')}
+                </button>
+              )}
               {mine && (
                 <>
                   <button type="button" role="menuitem" onClick={() => act(() => onEdit(message))}>

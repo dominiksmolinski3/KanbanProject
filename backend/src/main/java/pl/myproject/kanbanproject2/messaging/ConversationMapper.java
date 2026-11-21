@@ -24,6 +24,7 @@ public class ConversationMapper implements Function<ConversationView, Conversati
                                 member.getUser().getAvatarBlobName() != null, member.getRole(), member.getState(),
                                 member.getJoinedAt(), member.getJoinedSeq(), member.getDeliveredSeq(),
                                 member.getReadSeq()))
-                        .toList());
+                        .toList(),
+                conversation.getDisappearAfterSeconds());
     }
 }

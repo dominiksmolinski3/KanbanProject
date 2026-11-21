@@ -103,12 +103,12 @@ class BoardChannelRulesTest {
     @DisplayName("only the board's owner sets how much history newcomers see, and who can add is not a setting here")
     void ownerSetsHistory() {
         assertThatThrownBy(() -> service.update(editor, 10L,
-                new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, null)))
+                new UpdateConversationRequest(null, null, null, HistoryVisibility.ALL, null, null)))
                 .isInstanceOfSatisfying(GlobalException.class,
                         exception -> assertThat(exception.getIdentifier()).isEqualTo(ExceptionIdentifier.NOT_BOARD_OWNER));
 
         ConversationDto updated = service.update(owner, 10L,
-                new UpdateConversationRequest(null, null, null, HistoryVisibility.DAYS_30, WhoCanAdd.MEMBERS));
+                new UpdateConversationRequest(null, null, null, HistoryVisibility.DAYS_30, WhoCanAdd.MEMBERS, null));
 
         assertThat(channel.getHistoryVisibility()).isEqualTo(HistoryVisibility.DAYS_30);
         assertThat(channel.getWhoCanAdd()).isEqualTo(WhoCanAdd.ADMINS);
@@ -120,7 +120,7 @@ class BoardChannelRulesTest {
     @DisplayName("a member's own preferences are open to every member, viewers included")
     void viewersKeepPreferences() {
         ConversationDto muted = service.update(viewer, 10L,
-                new UpdateConversationRequest(true, null, null, null, null));
+                new UpdateConversationRequest(true, null, null, null, null, null));
 
         assertThat(muted.me().muted()).isTrue();
         assertThat(muted.me().role()).isEqualTo(MemberRole.VIEWER);
