@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CONTACTS_KEY } from '../../context/messages/queryKeys';
@@ -30,8 +30,7 @@ export default function ContactPicker({ multiple, chosen, onChange, exclude = []
     }
   };
 
-  const find = async (event: FormEvent) => {
-    event.preventDefault();
+  const find = async () => {
     if (!email.trim()) return;
     await lookup.run(async () => {
       const contact = await messagesApi.lookup(email.trim());
@@ -73,15 +72,25 @@ export default function ContactPicker({ multiple, chosen, onChange, exclude = []
           </li>
         ))}
       </ul>
-      <form className="contact-lookup" onSubmit={find}>
+      <div className="contact-lookup">
         <label className="form-group">
           <span>{t('messages.new.byEmail')}</span>
-          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void find();
+              }
+            }}
+          />
         </label>
-        <button type="submit" className="btn btn-secondary" disabled={lookup.pending || !email.trim()}>
+        <button type="button" className="btn btn-secondary" onClick={() => void find()} disabled={lookup.pending || !email.trim()}>
           {t('messages.new.find')}
         </button>
-      </form>
+      </div>
       <p className="messages-caption">{t('messages.new.byEmailHint')}</p>
       {lookup.error && <p className="messages-error" role="alert">{lookup.error}</p>}
     </div>
