@@ -493,7 +493,9 @@
         "forget": "Diesen Browser vergessen",
         "remove": "Entfernen",
         "continue": "Weiter",
-        "save": "Speichern"
+        "save": "Speichern",
+        "link": "Mit einem Code verbinden",
+        "approve": "Weiteres Gerät verbinden"
       },
       "setup": {
         "introTitle": "Nachrichten sind Ende-zu-Ende-verschlüsselt",
@@ -569,6 +571,44 @@
       },
       "addRecovery": {
         "done": "Dein Wiederherstellungsschlüssel ist bereit"
+      },
+      "link": {
+        "title": "Diesen Browser verbinden",
+        "body": "Öffne auf einem Gerät, auf dem verschlüsselte Nachrichten schon funktionieren, Konto › Angemeldete Geräte, wähle „Weiteres Gerät verbinden“ und gib den Code unten ein. Du kannst auch den QR-Code mit der Kamera dieses Geräts scannen. Eine PIN oder ein Wiederherstellungsschlüssel ist nicht nötig.",
+        "qr": "QR-Code zum Verbinden dieses Browsers",
+        "orCode": "Oder gib diesen Code auf dem anderen Gerät ein:",
+        "copy": "Code kopieren",
+        "copied": "Kopiert",
+        "waiting": "Warte auf das andere Gerät. Der Code gilt 5 Minuten.",
+        "again": "Erneut versuchen",
+        "failed": {
+          "start": "Der Code konnte nicht erstellt werden. Versuche es erneut.",
+          "expired": "Der Code ist abgelaufen.",
+          "finish": "Das andere Gerät hat etwas gesendet, das dieser Browser nicht verwenden kann. Versuche es erneut."
+        }
+      },
+      "approve": {
+        "title": "Weiteres Gerät verbinden",
+        "body": "Gib den Code ein, der auf dem neuen Gerät angezeigt wird, oder füge die Adresse aus seinem QR-Code ein. Dieses Gerät übergibt dann deinen Nachrichtenschlüssel, verschlüsselt, sodass nur das neue Gerät ihn lesen kann.",
+        "label": "Code oder Adresse",
+        "warning": "Fahre nur fort, wenn du das gerade eben auf deinem eigenen Gerät gestartet hast. Wer in dieser Zeit deinen Code erhält, könnte deine Nachrichten lesen.",
+        "badCode": "Das ist kein gültiger Verbindungscode.",
+        "done": "Das andere Gerät ist verbunden.",
+        "submit": "Gerät verbinden",
+        "notReady": "Verschlüsselte Nachrichten müssen in diesem Browser funktionieren, bevor er ein weiteres Gerät verbinden kann."
+      },
+      "push": {
+        "title": "Benachrichtigungen",
+        "body": "Erhalte einen Hinweis auf neue Nachrichten, auch wenn dieser Browser geschlossen ist. Der Hinweis sagt nur, dass es eine neue Nachricht gibt; ihr Inhalt wird nie an den Benachrichtigungsdienst gesendet.",
+        "enable": "Benachrichtigungen aktivieren",
+        "disable": "Benachrichtigungen deaktivieren",
+        "on": "Benachrichtigungen sind für diesen Browser aktiv.",
+        "blocked": "Benachrichtigungen sind für diese Website blockiert. Erlaube sie in den Website-Einstellungen des Browsers und versuche es erneut.",
+        "unsupported": "Dieser Browser kann bei geschlossenem Fenster keine Benachrichtigungen anzeigen.",
+        "failed": "Benachrichtigungen konnten nicht geändert werden. Versuche es erneut.",
+        "noticeTitle": "Neue Nachricht",
+        "noticeBody": "Öffne Kanban, um sie zu lesen.",
+        "unreachable": "Dieser Browser erreicht seinen Push-Dienst nicht. Aktiviere in Brave in den Datenschutzeinstellungen „Use Google Services for Push Messaging“; prüfe in anderen Browsern, ob ein VPN oder eine Firewall Google blockiert, und versuche es dann erneut."
       }
     },
     "fields": {
@@ -854,7 +894,11 @@
       "INVALID_CONVERSATION_REQUEST": "Diese Änderung an der Unterhaltung ist nicht erlaubt.",
       "RECIPIENT_NOT_SET_UP": "Diese Person hat verschlüsselte Nachrichten noch nicht eingerichtet.",
       "STALE_EPOCH": "Die Unterhaltung hat sich inzwischen geändert. Versuche es noch einmal.",
-      "MESSAGE_TOO_LARGE": "Die Nachricht ist zu lang."
+      "MESSAGE_TOO_LARGE": "Die Nachricht ist zu lang.",
+      "DEVICE_LINK_NOT_FOUND": "Dieser Verbindungscode ist abgelaufen oder existiert nicht. Beginne auf dem neuen Gerät von vorn.",
+      "DEVICE_LINK_ANSWERED": "Dieser Verbindungscode wurde bereits bestätigt.",
+      "PUSH_NOT_CONFIGURED": "Benachrichtigungen sind auf diesem Server nicht eingerichtet.",
+      "INVALID_PUSH_ENDPOINT": "Dieser Browser hat eine Benachrichtigungsadresse angegeben, die nicht akzeptiert wird."
     }
   },
   "messages": {
@@ -891,7 +935,11 @@
       "unread": "Ungelesen: {{count}}",
       "muted": "Stummgeschaltet",
       "boards": "Boards",
-      "people": "Personen und Gruppen"
+      "people": "Personen und Gruppen",
+      "mentioned": "Du wurdest erwähnt",
+      "results": "Nachrichten",
+      "searching": "Suche läuft…",
+      "noResults": "Auf diesem Gerät wurden keine Nachrichten gefunden"
     },
     "thread": {
       "encrypted": "Ende-zu-Ende-verschlüsselt",
@@ -904,7 +952,10 @@
       "typingOne": "{{name}} schreibt…",
       "typingMany": "Mehrere Personen schreiben…",
       "boardMembers": "Board-Kanal · Mitglieder: {{count}}",
-      "readOnly": "Du kannst diesen Kanal lesen, aber nichts darin schreiben, weil du auf diesem Board Betrachter bist."
+      "readOnly": "Du kannst diesen Kanal lesen, aber nichts darin schreiben, weil du auf diesem Board Betrachter bist.",
+      "replies": "Antworten: {{count}}",
+      "panel": "Thread",
+      "panelLog": "Nachrichten in diesem Thread"
     },
     "request": {
       "title": "Nachrichtenanfrage",
@@ -920,7 +971,8 @@
       "send": "Senden",
       "replying": "Antwort an {{name}}",
       "editing": "Du bearbeitest deine Nachricht",
-      "cancelDraft": "Abbrechen"
+      "cancelDraft": "Abbrechen",
+      "mentions": "Personen, die du erwähnen kannst"
     },
     "message": {
       "actions": "Aktionen für die Nachricht",
@@ -931,7 +983,9 @@
       "reaction": "{{emoji}}: {{count}}",
       "edited": "bearbeitet",
       "deleted": "Diese Nachricht wurde gelöscht",
-      "replyMissing": "Die ursprüngliche Nachricht ist nicht auf diesem Gerät"
+      "replyMissing": "Die ursprüngliche Nachricht ist nicht auf diesem Gerät",
+      "replyInThread": "Im Thread antworten",
+      "disappears": "Verschwindet {{time}}"
     },
     "notice": {
       "undecryptable": "Eine Nachricht von {{name}} konnte auf diesem Gerät nicht entschlüsselt werden.",
@@ -1022,6 +1076,26 @@
       "thisBoard": "Dieses Board",
       "boardChannel": "Board-Kanal · Mitglieder: {{count}}",
       "none": "Noch keine Unterhaltungen. Öffne Nachrichten, um eine zu beginnen."
+    },
+    "disappear": {
+      "heading": "Selbstlöschende Nachrichten",
+      "label": "Neue Nachrichten löschen nach",
+      "note": "Gilt für Nachrichten, die ab jetzt gesendet werden. Der Server löscht dann die verschlüsselte Kopie, und jedes Gerät entfernt seine eigene.",
+      "off": "Nie",
+      "hour": "1 Stunde",
+      "day": "1 Tag",
+      "week": "1 Woche",
+      "month": "30 Tage",
+      "title": "Nachrichten verschwinden nach {{after}}"
+    },
+    "files": {
+      "attach": "Dateien anhängen",
+      "chosen": "Zu sendende Dateien",
+      "remove": "{{name}} entfernen",
+      "tooMany": "Du kannst höchstens {{count}} Dateien auf einmal senden",
+      "tooLarge": "Eine Datei darf höchstens {{size}} MB groß sein",
+      "failed": "Die Datei konnte nicht geöffnet werden",
+      "download": "{{name}} herunterladen ({{size}})"
     }
   }
 }

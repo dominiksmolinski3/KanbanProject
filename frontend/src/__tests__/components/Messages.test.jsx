@@ -64,6 +64,7 @@ function fakeMessenger(overrides = {}) {
     device: jest.fn(async () => ({ userId: 1, deviceId: 10 })),
     acceptWelcomes: jest.fn(async () => []),
     sync: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 3 })),
+    settle: jest.fn(async () => null),
     send: jest.fn(async (_conversation, payload) => (payload.t === 'text' ? [text(9, payload.id, 1, payload.text)] : [])),
     rename: jest.fn(async () => {}),
     checkTrust: jest.fn(async () => []),
@@ -779,6 +780,45 @@ describe('starting a conversation', () => {
     expect(await screen.findByText('messages.new.notFound')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'messages.cancel' }));
     expect(screen.queryByRole('button', { name: 'messages.new.find' })).not.toBeInTheDocument();
+  });
+
+  test('pressing Enter in the address field looks the person up and does not start the conversation', async () => {
+    messagesApi.lookup.mockResolvedValue({ id: 12, name: 'Gosia', email: 'g@example.com', hasAvatar: false, messaging: true });
+    renderMessages(fakeMessenger());
+    fireEvent.click(await screen.findByRole('button', { name: 'messages.list.new' }));
+
+    const field = screen.getByLabelText('messages.new.byEmail');
+    fireEvent.change(field, { target: { value: 'g@example.com' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(await screen.findByRole('radio', { name: /Gosia/ })).toBeChecked();
+    expect(messagesApi.lookup).toHaveBeenCalledWith('g@example.com');
+    expect(messagesApi.create).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'messages.new.start' })).toBeInTheDocument();
+  });
+
+  test('the dialogs that pick people hold no form inside another form, which a browser submits as a page load', async () => {
+    renderMessages(fakeMessenger());
+    fireEvent.click(await screen.findByRole('button', { name: 'messages.list.new' }));
+
+    await screen.findByLabelText('messages.new.byEmail');
+
+    expect(document.querySelectorAll('form form')).toHaveLength(0);
+  });
+
+  test('a conversation that needs a commit is settled in the background, without opening it or sending', async () => {
+    const waiting = conversation(6, 'GROUP', [ania, bartek], { needsCommit: true });
+    messagesApi.list.mockResolvedValue([direct, waiting]);
+    const messenger = fakeMessenger({
+      settle: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 3 })),
+    });
+    renderMessages(messenger);
+
+    await waitFor(() => expect(messenger.settle).toHaveBeenCalledTimes(1));
+    expect(messenger.settle).toHaveBeenCalledWith(waiting);
+    expect(messenger.send).not.toHaveBeenCalled();
+    await waitFor(() => expect(messagesApi.list).toHaveBeenCalledTimes(2));
+    expect(messenger.settle).toHaveBeenCalledTimes(1);
   });
 
   test('says when there is nobody to pick', async () => {

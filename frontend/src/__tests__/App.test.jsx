@@ -23,6 +23,7 @@ jest.mock('../components/ActivityFeed', () => () => <div>ActivityFeed</div>);
 jest.mock('../components/Devices', () => () => <div>Devices</div>);
 jest.mock('../components/Account', () => () => <div>Account</div>);
 jest.mock('../components/Messages', () => () => <div>Messages</div>);
+jest.mock('../components/LinkDevice', () => () => <div>LinkDevice</div>);
 jest.mock('../components/FlowMetrics', () => () => <div>FlowMetrics</div>);
 jest.mock('../context/AuthContext', () => ({
   useAuth: jest.fn(),
@@ -61,7 +62,8 @@ describe('App routing', () => {
     ['/flow', 'FlowMetrics'],
     ['/sessions', 'Devices'],
     ['/account', 'Account'],
-    ['/messages', 'Messages']
+    ['/messages', 'Messages'],
+    ['/link', 'LinkDevice']
   ])('%s lazily loads %s inside the layout', async (path, screenName) => {
     navigateTo(path);
     render(<App />);

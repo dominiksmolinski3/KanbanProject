@@ -187,6 +187,32 @@ variable "captcha_secret" {
   default     = ""
 }
 
+variable "push_vapid_public_key" {
+  description = "Public half of the VAPID key pair that signs Web Push requests. Empty turns browser notifications off."
+  type        = string
+  default     = ""
+}
+
+variable "push_vapid_private_key" {
+  description = "Private half of the VAPID key pair, base64url. Stored in Key Vault. Empty turns browser notifications off."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "push_vapid_subject" {
+  description = "Contact for the push services, a mailto: or https: address. Empty turns browser notifications off."
+  type        = string
+  default     = ""
+}
+
+variable "push_fcm_credentials" {
+  description = "Firebase service-account key (JSON) the API uses to send Android notifications. Stored in Key Vault. Empty turns them off."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "attachment_retention_days" {
   description = "How long a deleted attachment blob stays recoverable. Null - the default - ties it to postgres_backup_retention_days, so the database and the blobs can be restored to the same instant; there is no foreign key between the two stores and nothing else keeps their recovery windows aligned. Set a number only to break that tie on purpose. Azure allows 1-365 here, against a Postgres maximum of 35."
   type        = number

@@ -3,7 +3,7 @@ import { messagesApi, type Conversation } from '../../services/messagesApi';
 import { deviceVault, type WorkerClient } from '../../crypto/client';
 import { readLocalDevice, type LocalDevice } from '../../crypto/keyStore';
 import type { ArchivedMessage, DirectoryMember, NoticeCode } from '../../crypto/engine';
-import { newMessageId, type Payload } from '../../crypto/payload';
+import { newMessageId, type FileRef, type Payload } from '../../crypto/payload';
 import { safetyNumber } from '../../crypto/safetyNumber';
 
 const ATTEMPTS = 3;
@@ -25,6 +25,7 @@ export interface Messenger {
   device(): Promise<LocalDevice | null>;
   acceptWelcomes(): Promise<number[]>;
   sync(conversation: Conversation): Promise<SyncResult>;
+  settle(conversation: Conversation): Promise<SyncResult | null>;
   send(conversation: Conversation, payload: Payload): Promise<ArchivedMessage[]>;
   rename(conversation: Conversation, name: string): Promise<void>;
   checkTrust(conversation: Conversation): Promise<ArchivedMessage[]>;
@@ -32,6 +33,7 @@ export interface Messenger {
   directory(conversationId: number): Promise<DirectoryMember[]>;
   history(conversationId: number, beforeSeq: number, limit: number): Promise<ArchivedMessage[]>;
   groupNames(conversationIds: number[]): Promise<Record<number, string | null>>;
+  search(query: string, conversationIds: number[], limit: number): Promise<ArchivedMessage[]>;
   verification(conversationId: number, otherId: number): Promise<Verification | null>;
   setVerified(otherId: number, identityKey: string, verified: boolean): Promise<void>;
 }
@@ -98,6 +100,17 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
     return undefined;
   }
 
+  async function identityReplacedSince(userId: number, joinedAt: string | undefined): Promise<boolean> {
+    if (!joinedAt) return false;
+    const joined = Date.parse(joinedAt);
+    for (let after = 0;;) {
+      const page = await messagesApi.keyLog(userId, after);
+      if (page.some((entry) => entry.change === 'IDENTITY' && Date.parse(entry.at) > joined)) return true;
+      if (!page.length) return false;
+      after = page[page.length - 1].id;
+    }
+  }
+
   async function shareHistory(conversation: Conversation, local: LocalDevice, welcomed: number[], directoryNow: DirectoryMember[],
     rosterBefore: string[]) {
     const owners = new Map<number, number>();
@@ -105,10 +118,16 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
       for (const each of member.devices) owners.set(each.id, member.userId);
     }
     const existing = new Set(rosterBefore.map((credential) => Number(/^u(\d+)\./.exec(credential)?.[1])));
+    const replaced = new Map<number, boolean>();
     const bySince = new Map<string | null, number[]>();
     for (const deviceId of welcomed) {
       const ownerId = owners.get(deviceId);
       if (ownerId === undefined) continue;
+      if (!replaced.has(ownerId)) {
+        replaced.set(ownerId, await identityReplacedSince(ownerId,
+          conversation.members.find((member) => member.userId === ownerId)?.joinedAt));
+      }
+      if (replaced.get(ownerId)) continue;
       const since = sinceFor(conversation, ownerId, existing);
       if (since === undefined) continue;
       bySince.set(since, [...(bySince.get(since) ?? []), deviceId]);
@@ -221,9 +240,22 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
 
     sync: (conversation) => exclusive(conversation.id, () => syncNow(conversation)),
 
+    settle: (conversation) => exclusive(conversation.id, async () => {
+      const local = await requireDevice();
+      if (!(await vault.groupStatus(conversation.id)).hasGroup) return null;
+      const synced = await syncNow(conversation);
+      if (synced.outcome !== 'synced') return synced;
+      directories.delete(conversation.id);
+      if (!await needsChanges(await messagesApi.get(conversation.id)) || !await commit(conversation, local)) return synced;
+      const after = await pull(conversation, local);
+      return { ...after, items: [...synced.items, ...after.items] };
+    }),
+
     send: (conversation, payload) => exclusive(conversation.id, async () => {
       const local = await requireDevice();
-      await syncNow(conversation);
+      if ((await syncNow(conversation)).outcome === 'waiting') {
+        throw new ApiError('This device has not been added to the conversation yet', { status: 409, code: 'NOT_IN_GROUP' });
+      }
       return withRetries(conversation, async (current) => {
         if (await needsChanges(current) && !await commit(current, local)) return null;
         try {
@@ -270,6 +302,8 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
 
     history: (conversationId, beforeSeq, limit) => vault.readArchive(conversationId, beforeSeq, limit),
 
+    search: (query, conversationIds, limit) => vault.search(query, conversationIds, limit),
+
     async groupNames(conversationIds) {
       if (!await device()) return {};
       const statuses = await Promise.all(conversationIds.map((id) => vault.groupStatus(id)));
@@ -295,5 +329,18 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
   };
 }
 
-export const textPayload = (text: string, replyTo: string | null): Payload =>
-  ({ t: 'text', id: newMessageId(), text, ...(replyTo ? { replyTo } : {}) });
+export interface TextExtras {
+  thread?: string | null;
+  mentions?: number[];
+  ttl?: number | null;
+  files?: FileRef[];
+}
+
+export const textPayload = (text: string, replyTo: string | null, extras: TextExtras = {}): Payload => ({
+  t: 'text', id: newMessageId(), text,
+  ...(replyTo ? { replyTo } : {}),
+  ...(extras.thread ? { thread: extras.thread } : {}),
+  ...(extras.mentions?.length ? { mentions: extras.mentions } : {}),
+  ...(extras.ttl ? { ttl: extras.ttl } : {}),
+  ...(extras.files?.length ? { files: extras.files } : {}),
+});

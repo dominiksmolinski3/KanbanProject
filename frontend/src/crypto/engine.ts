@@ -20,7 +20,7 @@ import {
 import { chainHolds, type KeyLogEntry } from './keyLog';
 import { ciphersuite, deviceSignaturePayload, open, seal } from './keys';
 import type { KeyStore } from './keyStore';
-import { decodeEnvelope, encodeEnvelope, signedBytes, type HistoryItem, type Payload } from './payload';
+import { decodeEnvelope, encodeEnvelope, signedBytes, type FileRef, type HistoryItem, type Payload } from './payload';
 
 const HISTORY_LIMIT = 1000;
 const HISTORY_CHUNK = 150;
@@ -65,6 +65,10 @@ export interface ArchivedMessage {
   deleted: boolean;
   reactions: Record<string, number[]>;
   notice: { code: NoticeCode; userId: number | null } | null;
+  threadId?: string | null;
+  mentions?: number[];
+  expiresAt?: string | null;
+  files?: FileRef[];
 }
 
 export interface GroupStatus {
@@ -185,6 +189,8 @@ const groupKey = (conversationId: number) => `group:${conversationId}`;
 const pendingKey = (conversationId: number) => `pending:${conversationId}`;
 const pinKey = (userId: number) => `pin:${userId}`;
 const label = (...parts: (string | number)[]) => utf8(parts.join(':'));
+const isExpired = (expiresAt: string | null | undefined, now: number) => Boolean(expiresAt) && Date.parse(expiresAt as string) <= now;
+const fold = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
 async function signatureHolds(identityKey: Uint8Array, signature: Uint8Array, payload: Uint8Array): Promise<boolean> {
   try {
@@ -275,6 +281,13 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
     await archive.put(await sealRecord(opened, message));
   }
 
+  async function liveOnly(messages: ArchivedMessage[]): Promise<ArchivedMessage[]> {
+    const now = Date.now();
+    const expired = messages.filter((message) => isExpired(message.expiresAt, now));
+    for (const message of expired) await archive.remove(message.conversationId, message.seq);
+    return expired.length ? messages.filter((message) => !isExpired(message.expiresAt, now)) : messages;
+  }
+
   async function byId(opened: OpenedDevice, conversationId: number, id: string): Promise<ArchivedMessage | null> {
     const record = await archive.byId(conversationId, id);
     return record ? openRecord(opened, record) : null;
@@ -313,9 +326,12 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
   async function apply(opened: OpenedDevice, conversationId: number, seq: number, payload: Payload,
     senderId: number | null, sentAt: string): Promise<ArchivedMessage[]> {
     if (payload.t === 'text') {
+      const expiresAt = payload.ttl ? new Date(Date.parse(sentAt) + payload.ttl * 1000).toISOString() : null;
+      if (isExpired(expiresAt, Date.now())) return [];
       const message: ArchivedMessage = {
         conversationId, seq, id: payload.id, senderId, sentAt, kind: 'text', text: payload.text,
         replyTo: payload.replyTo ?? null, editedAt: null, deleted: false, reactions: {}, notice: null,
+        threadId: payload.thread ?? null, mentions: payload.mentions ?? [], expiresAt, files: payload.files ?? [],
       };
       await keep(opened, message);
       return [message];
@@ -324,11 +340,12 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
       if (!payload.for.includes(ownCredential(opened))) return [];
       const imported: ArchivedMessage[] = [];
       for (const item of payload.items) {
-        if (await byId(opened, conversationId, item.id)) continue;
+        if (isExpired(item.expiresAt, Date.now()) || await byId(opened, conversationId, item.id)) continue;
         const message: ArchivedMessage = {
           conversationId, seq: item.seq, id: item.id, senderId: item.senderId, sentAt: item.sentAt, kind: 'text',
           text: item.deleted ? '' : item.text, replyTo: item.replyTo, editedAt: item.editedAt, deleted: item.deleted,
-          reactions: item.reactions ?? {}, notice: null,
+          reactions: item.reactions ?? {}, notice: null, threadId: item.threadId ?? null, mentions: item.mentions ?? [],
+          expiresAt: item.expiresAt ?? null, files: item.deleted ? [] : item.files ?? [],
         };
         await keep(opened, message);
         imported.push(message);
@@ -351,6 +368,7 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
         target.deleted = true;
         target.text = '';
         target.reactions = {};
+        target.files = [];
       }
     }
     await keep(opened, target);
@@ -608,7 +626,26 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
       return lock(async () => {
         const opened = await openStoredDevice(store);
         const records = await archive.before(conversationId, beforeSeq, limit);
-        return Promise.all(records.map((record) => openRecord(opened, record)));
+        return liveOnly(await Promise.all(records.map((record) => openRecord(opened, record))));
+      });
+    },
+
+    async search(query: string, conversationIds: number[], limit: number): Promise<ArchivedMessage[]> {
+      return lock(async () => {
+        const needle = fold(query.trim());
+        if (!needle) return [];
+        const opened = await openStoredDevice(store);
+        const found: ArchivedMessage[] = [];
+        for (const conversationId of conversationIds) {
+          const records = await archive.all(conversationId);
+          const messages = await liveOnly(await Promise.all(records.map((record) => openRecord(opened, record))));
+          for (const message of messages) {
+            if (message.kind !== 'text' || message.deleted) continue;
+            const haystack = [message.text, ...(message.files ?? []).map((file) => file.name)].join('\n');
+            if (fold(haystack).includes(needle)) found.push(message);
+          }
+        }
+        return found.sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt)).slice(0, limit);
       });
     },
 
@@ -617,12 +654,15 @@ export function createMessagingEngine(store: KeyStore, archive: Archive, lock: L
         const opened = await openStoredDevice(store);
         const records = await archive.all(conversationId);
         const items: HistoryItem[] = [];
-        for (const record of records.slice(-HISTORY_LIMIT)) {
-          const message = await openRecord(opened, record);
+        const live = await liveOnly(await Promise.all(records.slice(-HISTORY_LIMIT)
+          .map((record) => openRecord(opened, record))));
+        for (const message of live) {
           if (message.kind !== 'text' || (since && message.sentAt < since)) continue;
           items.push({
             seq: message.seq, id: message.id, senderId: message.senderId, sentAt: message.sentAt, text: message.text,
             replyTo: message.replyTo, editedAt: message.editedAt, deleted: message.deleted, reactions: message.reactions,
+            threadId: message.threadId ?? null, mentions: message.mentions ?? [], expiresAt: message.expiresAt ?? null,
+            files: message.files ?? [],
           });
         }
         const chunks: Payload[] = [];
