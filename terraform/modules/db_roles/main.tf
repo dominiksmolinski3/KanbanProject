@@ -69,7 +69,7 @@ resource "azurerm_container_app_job" "roles" {
   template {
     container {
       name   = "roles"
-      image  = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261116@sha256:248b83a2c820a89bcb13ff28c0990050e5266a79b43f01a9aa597ed7acd5dcdc"
+      image  = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261121@sha256:1bc12e7fe2b89c28de78a541891107b3aee0b326fc0e37ec60e38fd2c277adaf"
       cpu    = 0.25
       memory = "0.5Gi"
       # A Windows checkout gives the script CRLF endings, and sh reads each \r as part of the command.
