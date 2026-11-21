@@ -213,6 +213,34 @@ describe('the messenger', () => {
     expect(await texts(bartek)).toEqual(['before celina', 'welcome celina']);
   });
 
+  describe.each([
+    ['a device of an account whose key never changed', false, ['before the new device', 'welcome back']],
+    ['a device under a replaced identity', true, ['welcome back']],
+  ])('a newcomer that is %s', (_name, replaced, expected) => {
+    test('gets only the history that fits', async () => {
+      const ania = await addDevice(1);
+      const bartek = await addDevice(2);
+      await ania.messenger.sync(mockServer.conversation());
+      await bartek.messenger.acceptWelcomes();
+      mockServer.joinedAt[2] = '1970-01-01T00:00:00Z';
+      await ania.messenger.send(mockServer.conversation(), textPayload('before the new device', null));
+
+      mockServer.devices = mockServer.devices.filter((device) => device !== bartek);
+      if (replaced) {
+        mockServer.keyLogs[2] = [{ id: 1, change: 'IDENTITY', subject: '', prevHash: null, entryHash: '',
+          at: '2026-11-19T11:00:00Z' }];
+      }
+      const fresh = await addDevice(2);
+      mockServer.needsCommit = true;
+      ania.messenger.forgetDirectory(7);
+      await ania.messenger.send(mockServer.conversation(), textPayload('welcome back', null));
+
+      expect(await fresh.messenger.acceptWelcomes()).toEqual([7]);
+      await fresh.messenger.sync(mockServer.conversation());
+      expect(await texts(fresh)).toEqual(expected);
+    });
+  });
+
   test('settling adds a newcomer without anyone having to send, and a device outside the group leaves it alone', async () => {
     const ania = await addDevice(1);
     const bartek = await addDevice(2);

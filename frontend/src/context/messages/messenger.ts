@@ -100,6 +100,17 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
     return undefined;
   }
 
+  async function identityReplacedSince(userId: number, joinedAt: string | undefined): Promise<boolean> {
+    if (!joinedAt) return false;
+    const joined = Date.parse(joinedAt);
+    for (let after = 0;;) {
+      const page = await messagesApi.keyLog(userId, after);
+      if (page.some((entry) => entry.change === 'IDENTITY' && Date.parse(entry.at) > joined)) return true;
+      if (!page.length) return false;
+      after = page[page.length - 1].id;
+    }
+  }
+
   async function shareHistory(conversation: Conversation, local: LocalDevice, welcomed: number[], directoryNow: DirectoryMember[],
     rosterBefore: string[]) {
     const owners = new Map<number, number>();
@@ -107,10 +118,16 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
       for (const each of member.devices) owners.set(each.id, member.userId);
     }
     const existing = new Set(rosterBefore.map((credential) => Number(/^u(\d+)\./.exec(credential)?.[1])));
+    const replaced = new Map<number, boolean>();
     const bySince = new Map<string | null, number[]>();
     for (const deviceId of welcomed) {
       const ownerId = owners.get(deviceId);
       if (ownerId === undefined) continue;
+      if (!replaced.has(ownerId)) {
+        replaced.set(ownerId, await identityReplacedSince(ownerId,
+          conversation.members.find((member) => member.userId === ownerId)?.joinedAt));
+      }
+      if (replaced.get(ownerId)) continue;
       const since = sinceFor(conversation, ownerId, existing);
       if (since === undefined) continue;
       bySince.set(since, [...(bySince.get(since) ?? []), deviceId]);

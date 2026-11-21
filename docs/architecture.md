@@ -1497,7 +1497,9 @@ board channels and the dock, which replace the old board chat.
   device is signed by its account's identity key.
 - **History for newcomers is re-sent by a member's device**, from its local archive, as encrypted
   `history` messages addressed to the new devices: everything since the owner joined for another
-  device of a member, and for a new member what the group's setting allows. The server never holds
+  device of a member, and for a new member what the group's setting allows. A member whose identity
+  key was replaced (**Start over**) after joining counts as neither: nothing is re-sent, because the
+  reset promises that old history stays unreadable. The server never holds
   history it could read.
 - **Strangers arrive as requests.** Anyone reachable by exact email (`/conversations/lookup`, rate
   limited like sign-in) can be messaged; non-peers join as `REQUEST`, and a blocked person gets the
