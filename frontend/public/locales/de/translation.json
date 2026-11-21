@@ -607,7 +607,8 @@
         "unsupported": "Dieser Browser kann bei geschlossenem Fenster keine Benachrichtigungen anzeigen.",
         "failed": "Benachrichtigungen konnten nicht geändert werden. Versuche es erneut.",
         "noticeTitle": "Neue Nachricht",
-        "noticeBody": "Öffne Kanban, um sie zu lesen."
+        "noticeBody": "Öffne Kanban, um sie zu lesen.",
+        "unreachable": "Dieser Browser erreicht seinen Push-Dienst nicht. Aktiviere in Brave in den Datenschutzeinstellungen „Use Google Services for Push Messaging“; prüfe in anderen Browsern, ob ein VPN oder eine Firewall Google blockiert, und versuche es dann erneut."
       }
     },
     "fields": {

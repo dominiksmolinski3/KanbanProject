@@ -607,7 +607,8 @@
           "unsupported": "このブラウザは、閉じている間は通知を表示できません。",
           "failed": "通知を変更できませんでした。もう一度お試しください。",
           "noticeTitle": "新しいメッセージ",
-          "noticeBody": "Kanban を開いて読んでください。"
+          "noticeBody": "Kanban を開いて読んでください。",
+          "unreachable": "このブラウザーはプッシュ通知サービスに接続できませんでした。Brave では、プライバシー設定で「Use Google Services for Push Messaging」をオンにしてください。ほかのブラウザーでは、VPN やファイアウォールが Google への接続を妨げていないか確認してから、もう一度お試しください。"
         }
       },
       "fields": {

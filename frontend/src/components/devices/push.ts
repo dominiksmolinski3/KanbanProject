@@ -19,6 +19,13 @@ export class PushUnavailableError extends Error {
   }
 }
 
+export class PushServiceError extends Error {
+  constructor() {
+    super('PushServiceUnreachable');
+    this.name = 'PushServiceError';
+  }
+}
+
 export interface NoticeText {
   title: string;
   body: string;
@@ -72,6 +79,8 @@ async function enableWeb(deviceId: number, config: PushConfig, notice: NoticeTex
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64(config.webPushKey),
+  }).catch((failure) => {
+    throw failure instanceof Error && failure.name === 'AbortError' ? new PushServiceError() : failure;
   });
   const keys = subscription.toJSON().keys;
   const stored = await pushApi.register({

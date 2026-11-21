@@ -607,7 +607,8 @@
           "unsupported": "Questo browser non può mostrare notifiche quando è chiuso.",
           "failed": "Impossibile modificare le notifiche. Riprova.",
           "noticeTitle": "Nuovo messaggio",
-          "noticeBody": "Apri Kanban per leggerlo."
+          "noticeBody": "Apri Kanban per leggerlo.",
+          "unreachable": "Questo browser non riesce a raggiungere il suo servizio di notifiche push. In Brave, attiva «Use Google Services for Push Messaging» nelle impostazioni sulla privacy; negli altri browser, controlla che nessuna VPN o firewall blocchi Google, poi riprova."
         }
       },
       "fields": {

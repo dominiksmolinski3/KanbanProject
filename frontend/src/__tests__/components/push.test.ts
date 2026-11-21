@@ -5,6 +5,7 @@ import {
   pushEnabled,
   pushSupport,
   PushBlockedError,
+  PushServiceError,
   PushUnavailableError,
 } from '../../components/devices/push';
 import { pushApi } from '../../services/pushApi';
@@ -87,6 +88,15 @@ describe('push on the web', () => {
 
     expect(api.register).not.toHaveBeenCalled();
     expect(await pushEnabled()).toBe(false);
+  });
+
+  test('a push service that cannot be reached is told apart from other failures', async () => {
+    registration.pushManager.subscribe.mockRejectedValueOnce(Object.assign(new Error('Registration failed - push service error'), { name: 'AbortError' }));
+    await expect(enablePush(7, { webPushKey: KEY, fcm: false }, NOTICE)).rejects.toBeInstanceOf(PushServiceError);
+    expect(api.register).not.toHaveBeenCalled();
+
+    registration.pushManager.subscribe.mockRejectedValueOnce(new Error('boom'));
+    await expect(enablePush(7, { webPushKey: KEY, fcm: false }, NOTICE)).rejects.not.toBeInstanceOf(PushServiceError);
   });
 
   test('a server without a Web Push key offers nothing', async () => {

@@ -607,7 +607,8 @@
         "unsupported": "Ta przeglądarka nie potrafi pokazywać powiadomień, gdy jest zamknięta.",
         "failed": "Nie udało się zmienić powiadomień. Spróbuj ponownie.",
         "noticeTitle": "Nowa wiadomość",
-        "noticeBody": "Otwórz Kanban, aby ją przeczytać."
+        "noticeBody": "Otwórz Kanban, aby ją przeczytać.",
+        "unreachable": "Ta przeglądarka nie może połączyć się ze swoją usługą powiadomień push. W Brave włącz „Use Google Services for Push Messaging” w ustawieniach prywatności; w innych przeglądarkach sprawdź, czy VPN lub zapora nie blokują połączenia z Google, a potem spróbuj ponownie."
       }
     },
     "fields": {

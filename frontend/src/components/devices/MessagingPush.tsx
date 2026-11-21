@@ -9,10 +9,16 @@ import {
   pushEnabled,
   pushSupport,
   PushBlockedError,
+  PushServiceError,
 } from './push';
 
 const ENABLED = ['push', 'enabled'] as const;
 const CONFIG = ['push', 'config'] as const;
+const PROBLEMS = {
+  blocked: 'devices.messaging.push.blocked',
+  unreachable: 'devices.messaging.push.unreachable',
+  failed: 'devices.messaging.push.failed',
+} as const;
 
 export default function MessagingPush({ deviceId }: { deviceId: number }) {
   const { t } = useTranslation();
@@ -20,7 +26,7 @@ export default function MessagingPush({ deviceId }: { deviceId: number }) {
   const support = pushSupport();
   const config = useQuery({ queryKey: CONFIG, queryFn: pushApi.config, enabled: support !== 'none' });
   const enabled = useQuery({ queryKey: ENABLED, queryFn: pushEnabled, enabled: support !== 'none' });
-  const [problem, setProblem] = useState<'blocked' | 'failed' | null>(null);
+  const [problem, setProblem] = useState<keyof typeof PROBLEMS | null>(null);
   const [pending, setPending] = useState(false);
 
   const offered = support === 'native' ? config.data?.fcm : Boolean(config.data?.webPushKey);
@@ -44,7 +50,7 @@ export default function MessagingPush({ deviceId }: { deviceId: number }) {
       await queryClient.invalidateQueries({ queryKey: ENABLED });
     } catch (failure) {
       console.warn('[Push] Could not change notifications:', failure);
-      setProblem(failure instanceof PushBlockedError ? 'blocked' : 'failed');
+      setProblem(failure instanceof PushBlockedError ? 'blocked' : failure instanceof PushServiceError ? 'unreachable' : 'failed');
     } finally {
       setPending(false);
     }
@@ -62,7 +68,7 @@ export default function MessagingPush({ deviceId }: { deviceId: number }) {
       )}
       {problem && (
         <p className="messaging-error" role="alert">
-          {t(problem === 'blocked' ? 'devices.messaging.push.blocked' : 'devices.messaging.push.failed')}
+          {t(PROBLEMS[problem])}
         </p>
       )}
       <div className="messaging-actions">

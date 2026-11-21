@@ -1,14 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '../../test-utils/rtl';
 import '@testing-library/jest-dom';
 import MessagingPush from '../../components/devices/MessagingPush';
-import { disablePush, enablePush, pushEnabled, pushSupport, PushBlockedError } from '../../components/devices/push';
+import { disablePush, enablePush, pushEnabled, pushSupport, PushBlockedError, PushServiceError } from '../../components/devices/push';
 import { pushApi } from '../../services/pushApi';
 
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key) => key, i18n: { language: 'en' } }) }));
 jest.mock('../../services/pushApi', () => ({ pushApi: { config: jest.fn() } }));
 jest.mock('../../components/devices/push', () => {
   class PushBlockedError extends Error {}
-  return { pushSupport: jest.fn(), pushEnabled: jest.fn(), enablePush: jest.fn(), disablePush: jest.fn(), PushBlockedError };
+  class PushServiceError extends Error {}
+  return {
+    pushSupport: jest.fn(), pushEnabled: jest.fn(), enablePush: jest.fn(), disablePush: jest.fn(), PushBlockedError, PushServiceError,
+  };
 });
 
 beforeEach(() => {
@@ -50,6 +53,15 @@ describe('notifications on the devices page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('devices.messaging.push.blocked');
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('devices.messaging.push.failed'));
+  });
+
+  test('names an unreachable push service instead of a generic failure', async () => {
+    enablePush.mockRejectedValueOnce(new PushServiceError());
+    render(<MessagingPush deviceId={7} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'devices.messaging.push.enable' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('devices.messaging.push.unreachable');
   });
 
   test('says so when the browser cannot show them, and shows nothing when the server offers none', async () => {
