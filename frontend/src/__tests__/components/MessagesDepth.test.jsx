@@ -50,6 +50,7 @@ function fakeMessenger(overrides = {}) {
     device: jest.fn(async () => ({ userId: 1, deviceId: 10 })),
     acceptWelcomes: jest.fn(async () => []),
     sync: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 9 })),
+    settle: jest.fn(async () => null),
     send: jest.fn(async (_conversation, payload) => (payload.t === 'text' ? [message(10, payload.id, 1, payload.text)] : [])),
     rename: jest.fn(),
     checkTrust: jest.fn(async () => []),

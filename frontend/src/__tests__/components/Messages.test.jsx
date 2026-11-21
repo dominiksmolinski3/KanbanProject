@@ -64,6 +64,7 @@ function fakeMessenger(overrides = {}) {
     device: jest.fn(async () => ({ userId: 1, deviceId: 10 })),
     acceptWelcomes: jest.fn(async () => []),
     sync: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 3 })),
+    settle: jest.fn(async () => null),
     send: jest.fn(async (_conversation, payload) => (payload.t === 'text' ? [text(9, payload.id, 1, payload.text)] : [])),
     rename: jest.fn(async () => {}),
     checkTrust: jest.fn(async () => []),
@@ -803,6 +804,21 @@ describe('starting a conversation', () => {
     await screen.findByLabelText('messages.new.byEmail');
 
     expect(document.querySelectorAll('form form')).toHaveLength(0);
+  });
+
+  test('a conversation that needs a commit is settled in the background, without opening it or sending', async () => {
+    const waiting = conversation(6, 'GROUP', [ania, bartek], { needsCommit: true });
+    messagesApi.list.mockResolvedValue([direct, waiting]);
+    const messenger = fakeMessenger({
+      settle: jest.fn(async () => ({ outcome: 'synced', items: [], cursor: 3 })),
+    });
+    renderMessages(messenger);
+
+    await waitFor(() => expect(messenger.settle).toHaveBeenCalledTimes(1));
+    expect(messenger.settle).toHaveBeenCalledWith(waiting);
+    expect(messenger.send).not.toHaveBeenCalled();
+    await waitFor(() => expect(messagesApi.list).toHaveBeenCalledTimes(2));
+    expect(messenger.settle).toHaveBeenCalledTimes(1);
   });
 
   test('says when there is nobody to pick', async () => {

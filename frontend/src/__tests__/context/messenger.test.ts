@@ -213,6 +213,53 @@ describe('the messenger', () => {
     expect(await texts(bartek)).toEqual(['before celina', 'welcome celina']);
   });
 
+  test('settling adds a newcomer without anyone having to send, and a device outside the group leaves it alone', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+
+    const celina = await addDevice(3);
+    mockServer.needsCommit = true;
+    ania.messenger.forgetDirectory();
+    expect(await celina.messenger.settle(mockServer.conversation())).toBeNull();
+
+    const settled = await ania.messenger.settle(mockServer.conversation());
+
+    expect(settled?.outcome).toBe('synced');
+    expect(mockServer.needsCommit).toBe(false);
+    expect(await celina.messenger.acceptWelcomes()).toEqual([7]);
+    expect((await celina.messenger.sync(mockServer.conversation())).outcome).toBe('synced');
+  });
+
+  test('a device that has not been added yet refuses to send instead of starting the group over', async () => {
+    const ania = await addDevice(1);
+    const bartek = await addDevice(2);
+    await ania.messenger.sync(mockServer.conversation());
+    await bartek.messenger.acceptWelcomes();
+    const celina = await addDevice(3);
+    mockServer.needsCommit = true;
+    const epoch = mockServer.epoch;
+    const stock = ania.packages.length + bartek.packages.length;
+
+    await expect(celina.messenger.send(mockServer.conversation(), textPayload('too early', null)))
+      .rejects.toMatchObject({ code: 'NOT_IN_GROUP' });
+
+    expect(mockServer.epoch).toBe(epoch);
+    expect(ania.packages.length + bartek.packages.length).toBe(stock);
+  });
+
+  test('settling commits nothing when the group already holds every device', async () => {
+    const ania = await addDevice(1);
+    await ania.messenger.sync(mockServer.conversation());
+    const epoch = mockServer.epoch;
+
+    const settled = await ania.messenger.settle(mockServer.conversation());
+
+    expect(settled?.outcome).toBe('synced');
+    expect(mockServer.epoch).toBe(epoch);
+  });
+
   test('a newcomer to a joiners-only group sees nothing from before', async () => {
     const ania = await addDevice(1);
     await ania.messenger.sync(mockServer.conversation());

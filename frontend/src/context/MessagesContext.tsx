@@ -206,6 +206,25 @@ export function MessagesProvider({ children, messenger: given, initialConversati
     });
   }, [behindKey, messenger, refreshList]);
 
+  const settling = useRef(new Set<number>());
+  const pendingKey = conversations.filter((each) => each.needsCommit).map((each) => `${each.id}:${each.epoch}`).join(',');
+
+  useEffect(() => {
+    conversationsRef.current
+      .filter((each) => each.needsCommit && !settling.current.has(each.id))
+      .forEach((conversation) => {
+        settling.current.add(conversation.id);
+        messenger.settle(conversation)
+          .then((result) => {
+            if (!result) return undefined;
+            dispatch({ type: 'merge', conversationId: conversation.id, items: result.items });
+            return refreshList();
+          })
+          .catch(() => undefined)
+          .finally(() => settling.current.delete(conversation.id));
+      });
+  }, [pendingKey, messenger, refreshList]);
+
   const handle = useCallback((event: ConversationEvent) => {
     const conversationId = event.conversationId;
     if (event.type === 'TYPING' && conversationId !== null && event.userId !== null) {

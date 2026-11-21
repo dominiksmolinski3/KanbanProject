@@ -43,6 +43,7 @@ export default function MessagingPush({ deviceId }: { deviceId: number }) {
       }
       await queryClient.invalidateQueries({ queryKey: ENABLED });
     } catch (failure) {
+      console.warn('[Push] Could not change notifications:', failure);
       setProblem(failure instanceof PushBlockedError ? 'blocked' : 'failed');
     } finally {
       setPending(false);

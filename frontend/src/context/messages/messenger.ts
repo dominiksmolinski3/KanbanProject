@@ -25,6 +25,7 @@ export interface Messenger {
   device(): Promise<LocalDevice | null>;
   acceptWelcomes(): Promise<number[]>;
   sync(conversation: Conversation): Promise<SyncResult>;
+  settle(conversation: Conversation): Promise<SyncResult | null>;
   send(conversation: Conversation, payload: Payload): Promise<ArchivedMessage[]>;
   rename(conversation: Conversation, name: string): Promise<void>;
   checkTrust(conversation: Conversation): Promise<ArchivedMessage[]>;
@@ -222,9 +223,22 @@ export function createMessenger(vault: WorkerClient = deviceVault(), userId?: nu
 
     sync: (conversation) => exclusive(conversation.id, () => syncNow(conversation)),
 
+    settle: (conversation) => exclusive(conversation.id, async () => {
+      const local = await requireDevice();
+      if (!(await vault.groupStatus(conversation.id)).hasGroup) return null;
+      const synced = await syncNow(conversation);
+      if (synced.outcome !== 'synced') return synced;
+      directories.delete(conversation.id);
+      if (!await needsChanges(await messagesApi.get(conversation.id)) || !await commit(conversation, local)) return synced;
+      const after = await pull(conversation, local);
+      return { ...after, items: [...synced.items, ...after.items] };
+    }),
+
     send: (conversation, payload) => exclusive(conversation.id, async () => {
       const local = await requireDevice();
-      await syncNow(conversation);
+      if ((await syncNow(conversation)).outcome === 'waiting') {
+        throw new ApiError('This device has not been added to the conversation yet', { status: 409, code: 'NOT_IN_GROUP' });
+      }
       return withRetries(conversation, async (current) => {
         if (await needsChanges(current) && !await commit(current, local)) return null;
         try {
