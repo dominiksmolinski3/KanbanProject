@@ -12,6 +12,7 @@ import ThreadPanel from './ThreadPanel';
 import { conversationTitle, others } from './conversationTitle';
 import { disappearLabel } from './disappear';
 import type { Person } from './mentions';
+import '../../styles/components/Messages.css';
 
 export default function Thread({ variant = 'page' }: { variant?: 'page' | 'dock' }) {
   const { t, i18n } = useTranslation();
