@@ -7,16 +7,19 @@ ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
+FROM nginx:1.31-alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7
 
-# Numeric UID/GID on both lines: hadolint's DL3066 flags a name a host system may not resolve.
-USER 0
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
 ARG APK_UPGRADE_DATE
-RUN apk upgrade --no-cache
+# The entrypoint renders the template into conf.d as uid 101; the stock default.conf would serve port 80.
+RUN apk upgrade --no-cache \
+    && rm /etc/nginx/conf.d/default.conf \
+    && chown 101:101 /etc/nginx/conf.d /var/cache/nginx
+# Numeric: hadolint's DL3066 flags a name a host system may not resolve.
 USER 101
 
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /frontend/dist/ /usr/share/nginx/html/
