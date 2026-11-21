@@ -173,14 +173,44 @@ jobs:
           sarif_file: trivy-monitoring-results.sarif
           category: trivy-monitoring-binaries
 
+  # Trivy matches nginx.org's mainline package against Alpine's stable-branch fixes and reports it clean.
+  nginx-advisories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Pull Docker Hub images through a mirror
+        uses: ./.github/actions/docker-hub-mirror
+
+      - name: Read the nginx version the web image is built on
+        id: nginx
+        run: |
+          set -euo pipefail
+          base=$(awk 'toupper($1) == "FROM" { image = $2 } END { print image }' frontend/Dockerfile)
+          docker pull -q "$base"
+          version=$(docker run --rm --entrypoint nginx "$base" -v 2>&1 \
+            | sed -nE 's|^nginx version: nginx/([0-9.]+).*|\1|p')
+          if [ -z "$version" ]; then
+            echo "::error::$base printed no nginx version, so this sweep would check nothing"
+            exit 1
+          fi
+          echo "$base runs nginx $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check it against the nginx.org security advisories
+        env:
+          NGINX_VERSION: ${{ steps.nginx.outputs.version }}
+        run: python3 .github/scripts/nginx_advisories.py "$NGINX_VERSION"
+
   scan-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    needs: [ trivy-fs-scan, terraform-images, terraform-image-scan, monitoring-binary-scan ]
+    needs: [ trivy-fs-scan, terraform-images, terraform-image-scan, monitoring-binary-scan, nginx-advisories ]
     permissions:
       contents: read
       issues: write
     uses: ./.github/workflows/sweep-alarm.yml
     with:
-      results: "${{ needs.trivy-fs-scan.result }} ${{ needs.terraform-images.result }} ${{ needs.terraform-image-scan.result }} ${{ needs.monitoring-binary-scan.result }}"
+      results: "${{ needs.trivy-fs-scan.result }} ${{ needs.terraform-images.result }} ${{ needs.terraform-image-scan.result }} ${{ needs.monitoring-binary-scan.result }} ${{ needs.nginx-advisories.result }}"
       subject: the dependency vulnerability sweep failed
       label: scan-red

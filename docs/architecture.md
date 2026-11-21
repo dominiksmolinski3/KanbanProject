@@ -2292,6 +2292,20 @@ and reasons in `local.refusal_alerts`.
   executable the role installs is missing from what it unpacked. A red result means moving a
   pin: to a new release, or to a newer revision of the package. Prometheus and
   `blackbox_exporter` also move with `docker-compose.yml`, through `PinnedImagesTest`.
+  **It checks the edge's nginx against nginx.org's own advisories, because Trivy cannot.** The web
+  image runs nginx.org's mainline package (`1.31.x`), and Trivy matches it against Alpine's secdb,
+  which records fixes for Alpine's own stable-branch build. On 18 Nov 2026 the secdb listed
+  CVE-2026-123007 and CVE-2026-123633 as fixed in `nginx 1.30.7-r0`; `1.31.7-r1` sorts above that,
+  so Trivy reported the image clean while it was in the range of ten advisories. Mainline always
+  sorts above stable, so this is a permanent blind spot, not a lag. The job runs `nginx -v` in the
+  last `FROM` of `frontend/Dockerfile` (the image's `apk upgrade` cannot move nginx, which comes
+  from a repository the image does not keep) and `.github/scripts/nginx_advisories.py` fails on any
+  advisory whose vulnerable range holds that version and whose fixed list does not, whatever its
+  severity, since nginx.org rated a CVSS 8.1 use-after-free "medium". It skips only the
+  `nginx/Windows` ranges and the one advisory rated "none", and fails rather than passes on a page
+  it reads fewer than fifty entries from or cannot parse. It is a sweep and not a PR gate because a
+  red result often has no remedy yet: three days after nginx.org released 1.31.9,
+  `nginx-unprivileged` still had no image of it.
 - `base-images.yml` ("Base images") — **every image Terraform pins is a thin wrapper under
   [images/](../images/)**: `FROM` the upstream image by digest, then `apk upgrade`. Upstream images
   lag their distro: `curlimages/curl:8.23.0` carried sixteen krb5 CVEs for weeks after Alpine had
