@@ -2291,9 +2291,9 @@ and reasons in `local.refusal_alerts`.
   neither, and the curl one was fourteen months old, with two critical OpenSSL findings, when the
   scan was added. Those pins now move through `base-images.yml` (below); this sweep is the check
   that they did. Its first job lists every literal `image = "..."` under `terraform/` and fails when it finds none.
-  The scan skips `usr/local/bin/gosu` and nothing else: `govulncheck` finds one of gosu's findings
-  reachable, a denial of service through parsing `/etc/passwd` and `/etc/group`, and in these jobs
-  those are the image's own files.
+  The scan skips `usr/local/bin/gosu` and nothing else, until the pin moves to a postgres wrapper
+  without it (below): `govulncheck` finds one of gosu's findings reachable, a denial of service
+  through parsing `/etc/passwd` and `/etc/group`, and in these jobs those are the image's own files.
   **It scans the binaries the monitoring VM installs too.** `ansible/group_vars/all.yml` pins
   Prometheus, `node_exporter` and `blackbox_exporter` by sha256, and no scanner looked at them.
   `node_exporter` 1.12.1 was the latest release, and its archive had fifteen high findings in the
@@ -2322,8 +2322,19 @@ and reasons in `local.refusal_alerts`.
   lag their distro: `curlimages/curl:8.23.0` carried sixteen krb5 CVEs for weeks after Alpine had
   shipped the fix, and the only remedy was waiting. Dependabot bumps each `FROM` like any Dockerfile.
   Daily, the workflow rebuilds each wrapper and scans it against the image Terraform pins. **It
-  publishes only when the rebuild resolves a finding or the `FROM` has moved** (read from the
-  `org.opencontainers.image.base.name` label), so an image changes only when that buys something.
+  publishes only when the rebuild resolves a finding, the `FROM` has moved or the wrapper itself
+  changed** (read from the `org.opencontainers.image.base.name` label and from
+  `kanbanproject.context-tree`, the git tree hash of the wrapper's directory), so an image changes
+  only when that buys something. Without the third reason an edit to a wrapper waited, unpublished,
+  for Dependabot's next bump of its base.
+  **The wrappers run as their upstream's own unprivileged user** (`USER 70:70` for postgres,
+  `USER 100:101` for rabbitmq; curl already does). Every Container Apps job and the broker set
+  `command`, which replaces the image's entrypoint, so the entrypoint's `gosu` or `su-exec` that
+  `checkov:skip=CKV_DOCKER_3` used to cite never ran: `pg_dump`, `psql` and the restore drill ran as
+  root, and the broker ran `rabbitmq-plugins` as root before the entrypoint dropped it. The postgres
+  wrapper deletes `gosu`, which nothing calls any more, and its 62 Go findings with it.
+  `restore-drill.sh` runs `initdb` through `gosu` only when it finds itself root, so it works on
+  either side of the pin move.
   A rebuild with a finding the pin lacks fails the run. Published images are signed, checked to
   pull anonymously (the Azure jobs have no ghcr credentials), and one `ops(terraform)` PR on
   `ops/base-image-pins` moves every pin. It needs the `BASE_IMAGES_PR_TOKEN` secret, a PAT with

@@ -458,7 +458,7 @@ run in `kanban-api-migrate-<env>`, which starts the API image with `--migrate-on
 privileges give `kanban_writer` and `kanban_reader` their rights on anything `kanban_owner`
 creates.
 
-`terraform apply` starts two manual jobs and waits for each (`scripts/run-container-app-job.sh`,
+`terraform apply` starts these jobs and waits for each (`scripts/run-container-app-job.sh`,
 which needs `bash` and a logged-in `az`):
 
 1. `kanban-<env>-db-roles` creates the Entra roles and the three group roles and grants the
@@ -466,8 +466,16 @@ which needs `bash` and a logged-in `az`):
    also hands every table `psqladmin` created over to `kanban_owner`. With password login off it
    checks that nothing is left to hand over, and fails if something is.
 2. `kanban-api-migrate-<env>` runs Flyway. It reruns whenever `app_image_tag` moves.
+3. `kanban-<env>-pg-dump`, then `kanban-<env>-restore-drill` (see [Database dumps](#database-dumps)):
+   one real dump, uploaded and restored. They rerun whenever either job's template changes, such as
+   a moved image pin or an edited script, so an apply that breaks the backups fails instead of
+   leaving it to the nightly alert. They wait for the API, because the drill reads the migration
+   history.
 
-The API's revision depends on both, so a failed job stops the apply before the API changes.
+The API's revision depends on the first two, so a failed job stops the apply before the API changes.
+A failed round trip fails the apply after it. Each one adds a dump to `daily/`, which the
+immutability policy keeps for 14 days like any other, so even an environment created and torn down
+on the same day now leaves a dump account that can't be deleted for 14 days.
 
 To turn password login off: apply once with it on (the hand-over needs `psqladmin`), then set
 `postgres_password_auth_enabled = false` and apply again. Break-glass is then a job running as the
@@ -575,8 +583,9 @@ A private package with neither set fails with `ImagePullBackOff`.
 The broker, the backup jobs and `db_roles` pull `ghcr.io/<owner>/kanbanproject-{rabbitmq,curl,postgres}`
 by digest, with no credentials, so those packages must be public. They are wrappers under
 [images/](../images/) that `base-images.yml` rebuilds daily. It publishes a rebuild only when it
-fixes a finding or Dependabot moved its base, and then opens an `ops(terraform)` PR that moves the
-pins. Apply after it merges.
+fixes a finding, Dependabot moved its base or the wrapper's directory changed, and then opens an
+`ops(terraform)` PR that moves the pins. Apply after it merges. The wrappers run as their upstream's
+unprivileged user, because the jobs' `command` replaces the entrypoint that would otherwise drop root.
 
 ### Key Vault network access
 
