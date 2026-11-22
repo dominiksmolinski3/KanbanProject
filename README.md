@@ -492,7 +492,7 @@ We're happy to take pull requests. A few things make them easier to merge:
    a package that drops below its floor.
 4. Open the pull request against `main`.
 
-[CLAUDE.md](CLAUDE.md) lists the conventions and the easy-to-miss traps, and
+[CONTRIBUTING.md](CONTRIBUTING.md) lists the conventions and the easy-to-miss traps, and
 [docs/architecture.md](docs/architecture.md) explains the reasons behind them.
 
 ## Authors

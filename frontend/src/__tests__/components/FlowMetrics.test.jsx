@@ -303,7 +303,7 @@ describe('FlowMetrics', () => {
     expect(screen.queryByText('flow.cumulativeFlow')).not.toBeInTheDocument();
   });
 
-  describe("the board's own definition (FLOW-02)", () => {
+  describe("the board's own definition", () => {
     test('the default choice names the column the board defines, where it defines one', async () => {
       fetchFlowMetrics.mockResolvedValue(metrics({
         startColumnId: 11, doneColumnId: 11, definedStartColumnId: 11, definedDoneColumnId: 11

@@ -40,8 +40,6 @@ terraform/*.local.tfvars
 terraform/*.local.auto.tfvars
 terraform/*.tfplan
 terraform/errored.tfstate
-INFRASTRUCTURE-REVIEW.md
-/.claude
 docker-compose.override.yml
 
 frontend/cypress/screenshots/

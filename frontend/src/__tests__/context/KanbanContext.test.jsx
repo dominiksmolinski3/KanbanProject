@@ -1370,7 +1370,7 @@ describe('KanbanContext Provider', () => {
     expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
   });
 
-  describe('a viewer on the active board (FEAT-08)', () => {
+  describe('a viewer on the active board', () => {
     const viewerBoard = { id: 1, name: 'Kanban', ownerId: 1, owned: false, members: [], role: 'VIEWER' };
 
     beforeEach(() => {

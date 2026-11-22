@@ -41,4 +41,4 @@ to start with that combination rather than failing on the first board update.
   explains what it protects in its assertion message.
 
 [docs/architecture.md](../docs/architecture.md) is the detailed architecture reference, and
-[CLAUDE.md](../CLAUDE.md) lists the traps.
+[CONTRIBUTING.md](../CONTRIBUTING.md) lists the traps.

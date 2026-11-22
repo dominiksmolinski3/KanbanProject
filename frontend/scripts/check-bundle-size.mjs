@@ -54,7 +54,7 @@ console.log(`  ${(totalGzip / 1024).toFixed(1).padStart(7)} kB  total`);
 if (totalGzip > BUDGET_BYTES) {
   console.error(
     `\nInitial bundle is ${(totalGzip / 1024).toFixed(1)} kB gzipped, over the ${(BUDGET_BYTES / 1024).toFixed(0)} kB budget.\n` +
-    'Something that should be behind React.lazy() is reaching the entry chunk again - see FE-01 in the audit artifact.'
+    'Something that should be behind React.lazy() is reaching the entry chunk again.'
   );
   process.exit(1);
 }

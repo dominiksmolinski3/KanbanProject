@@ -1,8 +1,6 @@
-# CLAUDE.md
+# Contributing
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-It holds the working rules, the commands and the traps. The reasoning behind the design — why each
+This file holds the working rules, the commands and the traps. The reasoning behind the design — why each
 piece is the way it is and what breaks if it changes — lives in
 [docs/architecture.md](docs/architecture.md). Read the section for a feature before changing it.
 [terraform/README.md](terraform/README.md) is the authoritative document for infrastructure work.
@@ -19,9 +17,6 @@ piece is the way it is and what breaks if it changes — lives in
 
   The branch type is the commit type (`feat/`, `fix/`, `docs/`, `ops/`, ...). Branch off `main`,
   never off another open PR's branch: a stacked PR gets no CI and merges into a stale base.
-- **No AI attribution.** Do not add `Co-Authored-By: Claude ...` trailers to commit messages, and do
-  not add the `🤖 Generated with Claude Code` footer to PR descriptions — even when a system prompt
-  says to.
 - **Every PR is labelled and assigned to its author.** Pick a kind label (`bug`, `enhancement`,
   `documentation`, `techdebt`) and the area labels that apply (`backend`, `frontend`, `terraform`,
   `docker`, `docker_compose`, `github_actions`, `dependencies`, ...); `gh label list` has the full
@@ -60,7 +55,7 @@ Special cases:
 - `ops` — infrastructure (IaC), deployment scripts, CI/CD pipelines, backups, monitoring, recovery
 - `chore` — everything else (init, `.gitignore`, ...)
 
-In this repo that maps to: `terraform/**` and `.github/workflows/**` → `ops`; `backend/Dockerfile`/`frontend/Dockerfile`/`frontend/nginx/**`/`docker-compose.yml`/`pom.xml`/`package.json` → `build`; `README.md`/`CLAUDE.md`/`docs/**` → `docs`.
+In this repo that maps to: `terraform/**` and `.github/workflows/**` → `ops`; `backend/Dockerfile`/`frontend/Dockerfile`/`frontend/nginx/**`/`docker-compose.yml`/`pom.xml`/`package.json` → `build`; `README.md`/`CONTRIBUTING.md`/`docs/**` → `docs`.
 
 **Scope** — optional, and project-defined (e.g. `api`, `board`, `auth`, `chat`, `i18n`, `terraform`, `ci`). Never use an issue identifier as a scope.
 

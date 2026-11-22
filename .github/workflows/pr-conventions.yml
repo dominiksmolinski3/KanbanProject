@@ -20,7 +20,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-    - name: Title, commits, kind label and assignee follow CLAUDE.md
+    - name: Title, commits, kind label and assignee follow CONTRIBUTING.md
       env:
         GH_TOKEN: ${{ github.token }}
         PR: ${{ github.event.pull_request.number }}

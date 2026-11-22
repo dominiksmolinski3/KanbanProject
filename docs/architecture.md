@@ -1,7 +1,7 @@
 # Architecture
 
 The design reasoning behind this repository: why each piece is the way it is, and what breaks if it
-changes. [CLAUDE.md](../CLAUDE.md) holds the working rules and commands; this holds the why. Read the
+changes. [CONTRIBUTING.md](../CONTRIBUTING.md) holds the working rules and commands; this holds the why. Read the
 section for a feature before changing it.
 
 ## Development and testing
@@ -12,8 +12,8 @@ All backend commands run from `backend/`, all frontend commands from `frontend/`
 
 The `pom.xml` pins `<java.version>21</java.version>`, so the bytecode target stays 21, but CI
 (`kanban-ci.yml`), `codeql.yml` and `backend/Dockerfile` all build and run on **JDK 25**
-(`eclipse-temurin:25`) — one toolchain across all three, which is what Stage 3 of the audit meant
-by "pin one JDK". CodeQL was the one that had drifted, on 23, which is a third JDK nobody chose. The frontend build
+(`eclipse-temurin:25`) — one toolchain across all three. CodeQL was the one that had drifted, on 23,
+which is a third JDK nobody chose. The frontend build
 image is Node 26, matching `node-version: 26` in CI.
 
 The JaCoCo `check` goal is bound to `verify`, so `package` and `test` skip it — **CI runs `verify`**,
@@ -308,15 +308,14 @@ Neither suite can see this on its own: Jest stubs `fetch`, so a frontend test as
 made to a string and never that anything serves it, and the backend suite asserts routes no client
 necessarily calls. It is a **subset** assertion, not an equality — a served route nothing calls is
 not a defect. `FileController` used to be the standing example (owned and unused for revisions);
-FEAT-09 read that as the finding it was and removed the controller, the entity and the `files`
-table together rather than leaving it as an illustration. The handful of calls whose
+it was removed with its entity and the `files` table rather than left as an illustration. The handful of calls whose
 path the caller supplies (`reorder(endpoint, ...)`, which is one function for three routes) are
 named in `CALLER_SUPPLIED_PATHS` with the routes they stand for, so a genuinely new way of building
 a URL fails rather than joining an unasserted set.
 
 ## Backend layering
 
-Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, which has not been moved into its feature package; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: FEAT-09 pointed avatars at `BlobStore` the same way attachments already used it, and retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
+Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, which has not been moved into its feature package; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: avatars moved to `BlobStore` the same way attachments already used it, which retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
@@ -330,7 +329,7 @@ Within a feature the flow is controller → service → repository, with `mapper
 `Board` is the unit of access. Every `BoardColumn`, `Row` and `Task` carries a non-null `board_id`, and
 being on a board's member list is the only thing that grants access to anything on it. The
 **owner** may rename, delete and change the membership. A **member** may do anything to the board's
-contents. A **viewer** (`board_members.role`, `V21`, FEAT-08) may see all of it and change none of
+contents. A **viewer** (`board_members.role`, `V21`) may see all of it and change none of
 it.
 
 **Read-only is enforced per mutation, and `WriteAccessCoverageTest` lists the mutations.** Every
@@ -353,9 +352,8 @@ route is written to avoid. Four things about the row are load-bearing:
 
 - **It names an address, not a user id.** That is what lets an invitation be created for somebody
   who has not signed up: the row waits, and `GET /api/invitations` finds it the first time they log
-  in. The alternative — creating an unverified account on their behalf, which is what the audit
-  originally sketched — would let any account occupy an arbitrary address and lock its real owner
-  out of signup. Addresses are stored lower-cased, so the partial unique index in `V14` is a plain
+  in. The alternative — creating an unverified account on their behalf — would let any account
+  occupy an arbitrary address and lock its real owner out of signup. Addresses are stored lower-cased, so the partial unique index in `V14` is a plain
   one.
 - **The response is the invitation and never the board**, and it is byte-identical whether or not
   the address has an account. The one place the two cases differ is the mailbox: `registered`
@@ -466,8 +464,8 @@ one board. Either mistake, and a repeated id, is `400 INVALID_REORDER`.
 one assignee finds tasks carrying *either* label *and* having that person on them, which is how a
 row of filter chips reads. Paging is `page`/`size`, default 25, **maximum 100, and asking for more
 is a `400 INVALID_SEARCH` rather than a silent 100** — a caller handed fewer rows than it asked for
-cannot tell that from a short last page, and will page past rows it never saw. That ceiling is
-PERF-02's "decide what large enough means", answered where the unbounded thing actually is: a board
+cannot tell that from a short last page, and will page past rows it never saw. That ceiling
+sits where the unbounded thing actually is: a board
 renders every card it has and is bounded by what a team will put on one, while a search returns
 whatever the query selects and an empty query selects the whole board.
 
@@ -526,7 +524,7 @@ Four details carry it:
 
 `/activity` is a client route, so it is in `SpaRoutes.ALL` — see the SPA-routing note above.
 
-**Flow metrics are read from `task_column_history`, not stored anywhere (FEAT-07).**
+**Flow metrics are read from `task_column_history`, not stored anywhere.**
 `GET /api/flow` answers a board's cumulative flow diagram, the cycle times of the cards that
 finished in a window, and daily throughput. It needs no new table and no new write path. The
 interval series has been written on every move since the start and, until this, only the task
@@ -538,7 +536,7 @@ numbers:
 - **"Done" is a column, and arriving at or past it counts.** A card that skips Done for Closed
   has still finished. The start works the same way. Positions are today's, because a history
   row points at a column and a column has only its current position. What a read uses is, in
-  order: a column chosen in the request, the board's own definition, and FEAT-07's rule (the
+  order: a column chosen in the request, the board's own definition, and the default (the
   last column, and arrival on the board, which makes that default a lead time).
 - **The first finish is the finish.** A card bounced between Review and Done counts once, or
   one card would read as throughput.
@@ -558,7 +556,7 @@ with no chart dependency. The eight band colours are a validated categorical pal
 past eight fold into one "earlier columns" band. Every chart has a table view, because three of
 the light-mode colours sit below 3:1 against the chart surface.
 
-**A board defines its own start and done (`V23`, FLOW-02).** The default board ends `Done, Closed`,
+**A board defines its own start and done (`V23`).** The default board ends `Done, Closed`,
 so measuring to the last column opened the screen on "0 finished" for any team that stops at Done,
 and a column picked on screen lived in one browser tab — two people on the same board could read
 two definitions of done without knowing it. `boards.flow_start_column_id` and
@@ -769,7 +767,7 @@ storage*.
 
 ## Avatars
 
-FEAT-09 pointed avatars at `BlobStore` too — the seam, the quota knobs and the private endpoint
+Avatars live in `BlobStore` too — the seam, the quota knobs and the private endpoint
 were already built for task attachments, and an avatar was the other place a `@Lob` was still
 carrying bytes Postgres never queried into. `user/avatar/` holds the feature: `AvatarService`
 (upload, `content`, `delete`) and `UserAvatarController`, at the same route the account-owned
@@ -819,7 +817,7 @@ way: no storage account configured, or the transfer cap is exhausted.
 
 ## Comments
 
-A card has its own thread (FEAT-06, `V22`), in `task/comment/`. Until then the only place to say
+A card has its own thread (`V22`), in `task/comment/`. Until then the only place to say
 anything about a card was chat, and chat is the whole board's conversation. The feature is built
 from parts the repo already had, and each part keeps its original rule:
 
@@ -831,7 +829,7 @@ from parts the repo already had, and each part keeps its original rule:
   `400 INVALID_COMMENT_REQUEST` rather than a silent clamp. The body is 1 to 2 000 characters,
   chat's limit, enforced by `@Valid` on `TaskCommentRequest`.
 - **Three rules for who may do what, and the server enforces them all.** A viewer reads the
-  thread but may not write in it, because FEAT-08 already decided that for chat and a comment is
+  thread but may not write in it, because a viewer already may not write in chat, and a comment is
   the same act at a smaller scale. Only the author may edit a comment. The author or the board's
   owner may delete it, since an owner who cannot remove something posted on their board is not
   moderating it. Both refusals are `403 NOT_COMMENT_AUTHOR`, because the caller can already see the
@@ -1727,7 +1725,7 @@ method call", which is a thing a check can see. Deletes map nothing, so they are
 separately, and so are `TaskAttachmentService`'s upload and delete, which are not that shape.
 
 **A subtask is a card change, and that is why `TaskDto` carries `openSubtasks`.** `SubTaskService`
-was the one writer left out of the list above (SYNC-01): each card worked out its "unfinished
+was the one writer left out of the list above: each card worked out its "unfinished
 subtasks" warning with a fetch of its own on mount and never again, so somebody else ticking the
 last subtask left the warning on every other screen until a reload. The count now rides on the task
 listing, a subtask write announces `SUBTASKS`, and the client answers that with the same
@@ -1762,8 +1760,8 @@ showing and not worth interrupting them over, and `/activity` is the screen that
 variables are the one coupling in this repo with no compiler on either side: a variable the
 application requires and an environment never sets is a container that will not start, and a secret
 an environment supplies that nothing reads is a lie that survives every build. Both have happened
-here - the `SPRING-MAIL-*` Key Vault secrets outlived the code that read them by two revisions
-(MAIL-02), and `CAPTCHA_SECRET` reached a verifier that did not exist (SEC-06). The test reads four
+here - the `SPRING-MAIL-*` Key Vault secrets outlived the code that read them by two revisions,
+and `CAPTCHA_SECRET` reached a verifier that did not exist. The test reads four
 files and compares them: the `${VAR}` placeholders in `application.properties`, the
 `@ConfigurationProperties` records, `docker-compose.yml` and
 `terraform/modules/container_app/main.tf`.
@@ -2014,13 +2012,12 @@ Vite build time** (a Docker `ARG`, so it is fixed when the image is built and ca
 restarting the container), and **`CAPTCHA_SECRET` is read by the server at startup**. Set the secret
 and enable the check with no site key and the widget never renders, so every login arrives with no
 token and fails closed - the control locks everybody out instead of protecting anything. Set the
-site key with `CAPTCHA_ENABLED=false` and the widget renders and is decorative, which is what
-SEC-06 was. `ConfigurationTest` audits which environments supply what; that the two agree in
+site key with `CAPTCHA_ENABLED=false` and the widget renders and is decorative, which is how it
+once shipped here. `ConfigurationTest` audits which environments supply what; that the two agree in
 *meaning* is not something any test here can see, so it is written here instead.
 
 
-**Application metrics reach Azure Monitor through the Application Insights Java agent (OBS-01's
-loose end).** The app registers its own meters under `kanban.*` - outbox dead letters and pending
+**Application metrics reach Azure Monitor through the Application Insights Java agent.** The app registers its own meters under `kanban.*` - outbox dead letters and pending
 depth, undelivered mail, rate-limit refusals, edit conflicts, dropped board subscriptions and busy
 attachment transfers - and until this the numbers never left the container: `/actuator/metrics` on
 one replica, reset on every restart. The backend image now carries the agent (pinned by version and
@@ -2214,7 +2211,7 @@ and reasons in `local.refusal_alerts`.
   answers what the trunk claims. It is the one direction nothing else here covers: every other
   guard reads source and compares it with source, Checkov reads what Terraform declares, and
   `terraform plan` reads what Terraform declared last time — **all of which stay green on an
-  environment running eight-day-old code**, which is precisely what TF-09 was. The claims are read
+  environment running eight-day-old code**, which is exactly what happened here. The claims are read
   out of the source at run time rather than copied into the script (the page's two policies from
   the nginx snippet, the API's from `SecurityHeaders`, `SpaRoutes.ALL`), because a copy is the drift every guard here exists to catch; a
   source file the script cannot parse is an error, never a skipped check. It needs no credentials
@@ -2247,9 +2244,7 @@ and reasons in `local.refusal_alerts`.
   differ, so the package's own semver understated its coupling. `react` and `react-dom` are a
   Dependabot **group** now — there is no pull request that moves one alone — and
   `frontend/src/__tests__/dependencyPairs.test.js` fails the build when the two declare different
-  versions, on the branch proposing it rather than an hour later on somebody else's PR. The full
-  read of PRs 61–121 is in [docs/dependency-backlog-audit.md](../docs/dependency-backlog-audit.md);
-  its conclusion is that counting unreviewed PRs was never the useful thing to track.
+  versions, on the branch proposing it rather than an hour later on somebody else's PR.
 - `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`)
   security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP
   ZAP DAST run. None gate a PR, and **all three now call `sweep-alarm.yml`**, because a weekly cron
@@ -2258,7 +2253,7 @@ and reasons in `local.refusal_alerts`.
   only ever catches the sweep itself breaking, and the findings reach a person through the standing
   `ZAP Scan Baseline Report` issue — **which is now assigned and labelled**, because the first one
   sat open and unread for eight days with the absent `Content-Security-Policy` as its first
-  finding. That is the same shape as the dead-letter queue MAIL-04 was filed over, and it cost the
+  finding. That is the same shape as the mail dead-letter queue nobody watched, and it cost the
   same. The assignment step is `continue-on-error`, deliberately: the scan has already run and its
   report is already filed by the time it executes, so it must not turn a green sweep red.
   **A finding that is a decision is written down in [.zap/rules.tsv](../.zap/rules.tsv), not left in
@@ -2291,9 +2286,7 @@ and reasons in `local.refusal_alerts`.
   neither, and the curl one was fourteen months old, with two critical OpenSSL findings, when the
   scan was added. Those pins now move through `base-images.yml` (below); this sweep is the check
   that they did. Its first job lists every literal `image = "..."` under `terraform/` and fails when it finds none.
-  The scan skips `usr/local/bin/gosu` and nothing else, until the pin moves to a postgres wrapper
-  without it (below): `govulncheck` finds one of gosu's findings reachable, a denial of service
-  through parsing `/etc/passwd` and `/etc/group`, and in these jobs those are the image's own files.
+  The scan skips nothing.
   **It scans the binaries the monitoring VM installs too.** `ansible/group_vars/all.yml` pins
   Prometheus, `node_exporter` and `blackbox_exporter` by sha256, and no scanner looked at them.
   `node_exporter` 1.12.1 was the latest release, and its archive had fifteen high findings in the
@@ -2355,9 +2348,8 @@ and reasons in `local.refusal_alerts`.
   `command`, which replaces the image's entrypoint, so the entrypoint's `gosu` or `su-exec` that
   `checkov:skip=CKV_DOCKER_3` used to cite never ran: `pg_dump`, `psql` and the restore drill ran as
   root, and the broker ran `rabbitmq-plugins` as root before the entrypoint dropped it. The postgres
-  wrapper deletes `gosu`, which nothing calls any more, and its 62 Go findings with it.
-  `restore-drill.sh` runs `initdb` through `gosu` only when it finds itself root, so it works on
-  either side of the pin move.
+  wrapper deletes `gosu`, which nothing calls any more, and its 62 Go findings with it, so no scan
+  needs to skip it.
   A rebuild with a finding the pin lacks fails the run. Published images are signed, checked to
   pull anonymously (the Azure jobs have no ghcr credentials), and one `ops(terraform)` PR on
   `ops/base-image-pins` moves every pin. It needs the `BASE_IMAGES_PR_TOKEN` secret, a PAT with
@@ -2431,10 +2423,10 @@ and reasons in `local.refusal_alerts`.
   response to that is always to put the escape back. **There is deliberately no `plan` job.** One
   existed, gated off behind `TF_PLAN_ENABLED` and never wired, and measuring it before wiring it
   showed it could not work: the values that gate `count` on the alerts, the Event Grid pair and
-  three Key Vault secrets live in gitignored `<env>.local.tfvars` — TF-07's fix — which CI cannot
+  three Key Vault secrets live in gitignored `<env>.local.tfvars`, which CI cannot
   read, so the exact command the job ran against real dev state plans **`0 to add, 2 to change, 15
   to destroy`** where a person's `./tf.sh dev plan` reads **`No changes`**. A permanent
-  fifteen-resource destroy diff on every pull request is TF-12's failure in the place this project
+  fifteen-resource destroy diff on every pull request is a standing false alarm in the place this project
   treats as its strongest signal, and the only way to make it truthful is dev's live ACS
   credential in GitHub secrets. Retired rather than fixed; the reasoning is in
   [terraform/README.md](../terraform/README.md). **`tf.sh apply` refuses a stale

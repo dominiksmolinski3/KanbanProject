@@ -191,7 +191,7 @@ describe('Task Component', () => {
         expect(avatar).toHaveClass('avatar-preview');
     });
 
-    test('reads its open subtasks off the task rather than fetching them per card (SYNC-01)', async () => {
+    test('reads its open subtasks off the task rather than fetching them per card', async () => {
         await act(async () => {
             render(
                 <KanbanContext.Provider value={mockContextValue}>
@@ -604,7 +604,7 @@ describe('Task Component', () => {
         expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
     });
 
-    describe('on a read-only board (FEAT-08)', () => {
+    describe('on a read-only board', () => {
         const readOnlyContext = { ...mockContextValue, readOnly: true };
 
         test('the card is not draggable', async () => {
