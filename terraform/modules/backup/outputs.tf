@@ -14,6 +14,14 @@ output "restore_drill_job_name" {
   value = azurerm_container_app_job.restore_drill.name
 }
 
+output "jobs_revision" {
+  description = "Changes whenever the dump or the drill job's template does: an image pin, a script, an env var."
+  value = sha256(jsonencode([
+    azurerm_container_app_job.pg_dump.template,
+    azurerm_container_app_job.restore_drill.template,
+  ]))
+}
+
 output "identity" {
   value = {
     id           = azurerm_user_assigned_identity.job.id
