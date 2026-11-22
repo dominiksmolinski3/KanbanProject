@@ -30,6 +30,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Pull Docker Hub images through a mirror
       uses: ./.github/actions/docker-hub-mirror
@@ -99,6 +101,8 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: 26
@@ -149,6 +153,13 @@ jobs:
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY || 'Y2ktb25seS1zaWduaW5nLWtleS1ub3QtYS1yZWFsLXNlY3JldA==' }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Pull Docker Hub images through a mirror
+      uses: ./.github/actions/docker-hub-mirror
+
     - name: Log in to Docker Hardened Images
       if: env.DOCKERHUB_USERNAME != ''
       uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -157,10 +168,14 @@ jobs:
         username: ${{ env.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-    - name: Pull Docker Hub images through a mirror
-      uses: ./.github/actions/docker-hub-mirror
+    # npm runs later in this job, so the dhi.io login must be gone before any package script can read it.
+    - name: Pull the Docker Hardened Images bases, then log out
+      if: env.DOCKERHUB_USERNAME != ''
+      run: |
+        set -euo pipefail
+        trap 'docker logout dhi.io' EXIT
+        git grep -hoE '^FROM[[:space:]]+dhi\.io/[^[:space:]]+' -- '*Dockerfile' | awk '{print $2}' | sort -u \
+          | xargs -r -n1 docker pull -q
 
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
@@ -381,6 +396,8 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Pull Docker Hub images through a mirror
       id: mirror
