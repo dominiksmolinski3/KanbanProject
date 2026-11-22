@@ -9,6 +9,7 @@ it to itself: nothing connects to it over SSH, because nothing can.
 | `tls_material` | Creates a CA and a server certificate on the data disk once, publishes the CA certificate to `MONITORING-CA-CERT`, and reads the push and read credentials from Key Vault as the VM's identity |
 | `prometheus_stack` | Checksum-pinned Prometheus, `node_exporter` and `blackbox_exporter` on loopback, with the rules and scrape targets from `observability/prometheus` (see [Pinned binaries](#pinned-binaries)) |
 | `edge_proxy` | nginx on 443: the push credential may only `POST` the OTLP path, the read credential may only query, everything else is a 404 |
+| `backup` | A systemd timer that takes a Prometheus TSDB snapshot at 03:15 UTC, uploads it to the backup region's storage account and logs `BACKUP_OK`. The timer only runs when Terraform hands it a container to upload to |
 
 ## Pinned binaries
 
