@@ -22,10 +22,38 @@ jobs:
       with:
         github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-    - name: Enable auto-merge for patch and minor updates
+    # fetch-metadata calls a digest bump semver-major (it compares the old digest with the tag), so the diff decides.
+    - name: Check whether the update only moves image digests
+      id: digest
+      if: |
+        steps.metadata.outputs.package-ecosystem == 'docker' ||
+        steps.metadata.outputs.package-ecosystem == 'docker_compose'
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        digest='@sha256:[0-9a-f]{64}'
+        files="repos/$GH_REPO/pulls/$PR_NUMBER/files"
+        others=$(gh api --paginate "$files" --jq '.[] | select(.status != "modified" or .patch == null) | .filename')
+        patch=$(gh api --paginate "$files" --jq '.[].patch // empty')
+        removed=$(sed -n 's/^-//p' <<<"$patch")
+        added=$(sed -n 's/^+//p' <<<"$patch")
+        result=true
+        if [ -n "$others" ] || [ -z "$removed" ] || [ -z "$added" ] \
+          || grep -qvE "$digest" <<<"$removed" || grep -qvE "$digest" <<<"$added" \
+          || [ "$(sed -E "s/$digest//g" <<<"$removed" | LC_ALL=C sort)" != "$(sed -E "s/$digest//g" <<<"$added" | LC_ALL=C sort)" ]; then
+          result=false
+        fi
+        echo "only-digests=$result" >> "$GITHUB_OUTPUT"
+        echo "Only image digests move: $result"
+
+    - name: Enable auto-merge for patch, minor and digest-only updates
       if: |
         steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
-        steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+        steps.digest.outputs.only-digests == 'true'
       run: gh pr merge --auto --squash "$PR_URL"
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}

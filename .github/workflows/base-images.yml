@@ -313,14 +313,15 @@ jobs:
           echo
           echo "Opened by $RUN_URL."
         } > pr-body.md
-        number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
-        if [ -n "$number" ]; then
-          gh pr edit "$number" --body-file pr-body.md
+        pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+        if [ -n "$pr" ]; then
+          gh pr edit "$pr" --body-file pr-body.md
         else
-          gh pr create --base main --head "$BRANCH" \
+          pr=$(gh pr create --base main --head "$BRANCH" \
             --title 'ops(terraform): pin the rebuilt base images' --body-file pr-body.md \
-            --assignee "$OWNER" --label techdebt --label dependencies --label terraform --label docker
+            --assignee "$OWNER" --label techdebt --label dependencies --label terraform --label docker)
         fi
+        gh pr merge --auto --squash "$pr"
 
   base-images-alarm:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')

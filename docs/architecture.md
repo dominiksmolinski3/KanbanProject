@@ -2244,7 +2244,12 @@ and reasons in `local.refusal_alerts`.
   only — so a low advisory in any transitive dependency stopped work, and nothing said so.
   `high` is the line worth blocking a merge on; anything below it is in the PR comment.
 - `dependabot-auto-merge.yml` — auto-merges Dependabot PRs that pass CI, and **only
-  `semver-patch` and `semver-minor`**: majors are held for a person. That rule has held every time
+  `semver-patch`, `semver-minor` and a Docker update that moves digests alone**: majors are held
+  for a person. A digest bump keeps its tag, but `fetch-metadata` compares the old digest with the
+  tag and calls it `semver-major`, so every `node:26-dev` refresh used to wait for a click. The
+  workflow decides those from the PR's patch instead: every changed line carries an `@sha256:`
+  digest, and the removed and added lines are the same once the digests are stripped. A group
+  that also moves one tag fails that test and keeps the old rule. That rule has held every time
   it mattered — Spring Boot 4, azurerm 5 and the jjwt 0.12 API rewrite were each opened by a human
   and each needed source changes they got. The one bump that ever broke `main` was a *correctly
   classified* minor: `react-dom` reads `react`'s version at import and refuses to load when they
@@ -2362,7 +2367,9 @@ and reasons in `local.refusal_alerts`.
   `ops/base-image-pins` moves every pin. It needs the `BASE_IMAGES_PR_TOKEN` secret, a PAT with
   contents and pull-request write: GitHub Actions may not open PRs here, and a PR pushed with
   `GITHUB_TOKEN` runs no CI, so without it the run pushes the branch and fails with the compare
-  link. A rebuild fixes OS packages only; a finding in a compiled binary (gosu, a Go module) still
+  link. **The run turns on auto-merge for that PR**, so the required checks are its only gate: a
+  PR the PAT opens is not Dependabot's, and `dependabot-auto-merge.yml` never sees it, which left
+  every pin waiting on a click although the rebuild had already proved it adds no finding. A rebuild fixes OS packages only; a finding in a compiled binary (gosu, a Go module) still
   waits for upstream. On a PR that touches `images/` the same job builds and compares without
   publishing. `BaseImagesCoverageTest` keeps every wrapper in the matrix, in hadolint and in
   Dependabot, and refuses a Terraform image with no wrapper.
