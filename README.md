@@ -417,7 +417,7 @@ Everything lives in [.github/workflows/](.github/workflows/):
 | `sweep-alarm.yml` | The shared alarm every scheduled workflow reports through |
 | `pr-conventions.yml` | Checks a pull request's title, commit subjects, kind label and assignee |
 | `pr-changes.yml` | The shared diff check other workflows call to skip work a pull request doesn't touch |
-| `workflow-lint.yml` | actionlint and ShellCheck |
+| `workflow-lint.yml` | actionlint, ShellCheck and zizmor |
 | `gradle-wrapper.yml` | Validates the Android project's committed Gradle wrapper |
 | `scorecard.yml` | OpenSSF Scorecard |
 | `dependency-submission.yml` | Submits the Maven and Gradle dependency graphs to GitHub |

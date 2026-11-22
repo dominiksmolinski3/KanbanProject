@@ -12,8 +12,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # A week, not three days: actions and providers run beside the Azure OIDC login and the image signing.
     cooldown:
-      default-days: 3
+      default-days: 7
     commit-message:
       prefix: ops
       include: scope
@@ -121,7 +122,7 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 3
+      default-days: 7
     commit-message:
       prefix: ops
       include: scope

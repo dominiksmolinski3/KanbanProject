@@ -308,7 +308,10 @@ the test is the specification. The reasons are in [docs/architecture.md](docs/ar
 - A job that pulls images runs `.github/actions/docker-hub-mirror` after checkout and before its
   first pull, and a Buildx builder takes its `buildkitd-config` output. Never log in to docker.io:
   the mirror then refuses every pull once the account's quota is spent. Only `dhi.io` gets a login
-  (`DockerHubMirrorCoverageTest`).
+  (`DockerHubMirrorCoverageTest`), and a job that later runs npm logs out of it first.
+- Every checkout sets `persist-credentials: false`, and a `${{ }}` never goes inside a `run:`
+  script: pass it through `env:` or use the runner's `GITHUB_*` variable. zizmor in
+  `workflow-lint.yml` fails the PR otherwise.
 - The `main` ruleset requires checks by their exact job name. Renaming a required job, or a matrix
   job without its own `name:`, blocks every PR until the ruleset is changed to match.
 - A new scheduled workflow calls `sweep-alarm.yml` and is listed in `SweepAlarmCoverageTest`. A

@@ -2238,6 +2238,17 @@ and reasons in `local.refusal_alerts`.
   Dockerfiles (`backend/`, `frontend/`, `observability/grafana/`) and the three wrappers under
   `images/`. A matrix rather than steps so a failure names the image it is about, and so a new
   image is a line rather than a copied block (`BaseImagesCoverageTest` checks the wrappers are in it).
+- `workflow-lint.yml` — actionlint with ShellCheck over the workflows' `run:` steps, ShellCheck
+  over the repo's scripts, and **zizmor**, which audits the workflows themselves: a checkout that
+  leaves the token in `.git/config` (every checkout sets `persist-credentials: false`; only
+  `base-images.yml`'s pin job pushes, and it sets its own remote), a `${{ }}` expanded inside a
+  `run:` script rather than passed through `env:` or the runner's `GITHUB_*` variables, an
+  unpinned action. zizmor is pinned to a version so a new release's audits cannot turn unrelated
+  PRs red; `.github/zizmor.yml` disables `self-repository`, whose `$/` form actionlint 1.7.12
+  does not know and the coverage tests do not match.
+  The CI `e2e` job logs in to `dhi.io`, pulls the hardened bases and logs out **before
+  `npm ci`**: the warm-up Cypress run and every later step execute package code, and the login
+  in `~/.docker/config.json` would be theirs to read for the rest of the job.
 - `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR, commenting the
   summary and **failing at `high` or above**. It is a gate, not a note. The action's default
   `fail-on-severity` is `low`, which it had been running on while this file called it comment
@@ -2249,7 +2260,10 @@ and reasons in `local.refusal_alerts`.
   tag and calls it `semver-major`, so every `node:26-dev` refresh used to wait for a click. The
   workflow decides those from the PR's patch instead: every changed line carries an `@sha256:`
   digest, and the removed and added lines are the same once the digests are stripped. A group
-  that also moves one tag fails that test and keeps the old rule. That rule has held every time
+  that also moves one tag fails that test and keeps the old rule. GitHub Actions and Terraform
+  providers wait **7 days** in Dependabot's cooldown, the rest 3: once merged, that code runs
+  beside the Azure OIDC login, the Key Vault secrets and the image-signing identity, so a
+  hijacked release gets a week to be noticed and pulled upstream before it is proposed here. That rule has held every time
   it mattered — Spring Boot 4, azurerm 5 and the jjwt 0.12 API rewrite were each opened by a human
   and each needed source changes they got. The one bump that ever broke `main` was a *correctly
   classified* minor: `react-dom` reads `react`'s version at import and refuses to load when they
