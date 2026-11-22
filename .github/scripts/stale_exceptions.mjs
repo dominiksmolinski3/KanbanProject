@@ -301,7 +301,8 @@ function staleMavenPins() {
       let text = stale.reduce((current, pin) => current.replace(pin.block, ''), pom);
       for (const pin of stale) {
         if (pin.property && !text.includes(`\${${pin.property}}`)) {
-          text = text.replace(new RegExp(`[ \\t]*<${pin.property.replace(/\./g, '\\.')}>[^<]*</${pin.property.replace(/\./g, '\\.')}>\\n`), '');
+          const tag = pin.property.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+          text = text.replace(new RegExp(`[ \\t]*<${tag}>[^<]*</${tag}>\\n`), '');
         }
       }
       writeText(pomPath, text, eol);
