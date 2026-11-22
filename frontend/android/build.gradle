@@ -49,6 +49,18 @@ buildscript {
 
 apply from: "variables.gradle"
 
+// Lifts only requests below the fixed release, so a library that asks for a newer one still gets it.
+ext.patchAppLibraries = { DependencyResolveDetails details ->
+    if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-basement') {
+        def requested = details.requested.version =~ /\d+(\.\d+)*/
+        def v = requested.find() ? requested.group().tokenize('.')*.toInteger() + [0, 0] : null
+        if (v != null && (v[0] <=> 18 ?: v[1] <=> 0 ?: v[2] <=> 2) < 0) {
+            details.useVersion '18.3.0'
+            details.because 'GHSA-cm6r-892j-jv2g: fixed in play-services-basement 18.0.2'
+        }
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -56,6 +68,7 @@ allprojects {
     }
     configurations.configureEach {
         resolutionStrategy.eachDependency(rootProject.patchBuildTools)
+        resolutionStrategy.eachDependency(rootProject.patchAppLibraries)
     }
 }
 
