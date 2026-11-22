@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jdk-noble@sha256:80f67fb3d6f76e2d817d98a4cc2a9cf05f054d4e6adc5e2144bde671d722e63f AS backend-build
+FROM eclipse-temurin:25-jdk-noble@sha256:4ddc1a8bdaf283421df5487411aff10b797ccf1e06a339041005114c8f489b5c AS backend-build
 WORKDIR /build
 
 # mvnw checks distributionSha256Sum against the .zip, and without unzip it fetches the .tar.gz instead.
@@ -19,7 +19,7 @@ RUN ./mvnw package -Dmaven.test.skip=true \
  && mv target/*.jar app.jar \
  && java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
-FROM eclipse-temurin:25-jre-noble@sha256:e3b6f7887a50f20d8f07abf279d8a81a5953fb398a9555bd9edd56b9bd15968c
+FROM eclipse-temurin:25-jre-noble@sha256:f3dd0838e69b881cc382237d5901e74ae3705b1056ad964b2e0e523b174fef99
 WORKDIR /app
 
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
