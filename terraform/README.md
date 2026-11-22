@@ -97,6 +97,10 @@ You supply these:
 - `messaging_enabled`, `true` by default, switches encrypted messaging (board channels, direct messages and groups) on or off.
   Its PIN secret, `MESSAGING-PIN-KEY`, is generated into Key Vault once; replacing it invalidates every
   messaging PIN.
+- Push notifications for new messages: `push_vapid_public_key`, `push_vapid_private_key` and
+  `push_vapid_subject` for browsers (Web Push), `push_fcm_credentials` (a Firebase service-account
+  key as JSON) for the Android app. Each kind is off while its values are empty. The two private
+  values go into Key Vault as `VAPID-PRIVATE-KEY` and `FCM-CREDENTIALS`, and only when set.
 
 `jwt_secret_key` is **not** an input. Terraform generates it (see [Secrets](#secrets)).
 
@@ -121,6 +125,12 @@ You supply these:
   to the internet (see [Ingress restrictions](#ingress-restrictions)).
 - `alert_email`: if set, Terraform creates an action group and the alerts in
   `modules/diagnostics`.
+- `monthly_budget`: a cost budget in the subscription's billing currency (see [Budget](#budget)).
+  `null`, the default, creates none.
+- `owner_tag` and `extra_tags` (see [Tags](#tags)).
+- Monitoring: `monitoring_enabled`, `api_otlp_export_enabled`, `monitoring_operator_object_ids`,
+  `grafana_image_tag` and `grafana_custom_domain` (see [Monitoring VM](#monitoring-vm) and
+  [Grafana](#grafana)).
 - Database sizing: `postgres_sku_name`, `postgres_storage_mb`, `postgres_zone`,
   `postgres_high_availability_mode`, `postgres_standby_availability_zone` (see
   [Postgres sizing and availability](#postgres-sizing-and-availability)).
@@ -322,39 +332,43 @@ in.
 Every application secret lives in Key Vault, and each app reads it through its managed identity
 when a revision starts. Secrets get there in three ways.
 
-**Generated.** The Postgres admin password, the JWT signing key and the RabbitMQ password have no
-outside issuer, so Terraform generates them with an ephemeral `random_password` and writes them
-through write-only attributes. Nobody types or sees them, and they're never in Terraform state. Each
-is rewritten only when its version variable (`jwt_secret_version`, `password_version`) is bumped,
-which is also how you rotate one; restart whatever reads it afterwards. The JWT key is stored
+**Generated.** The Postgres admin password, the JWT signing key, the RabbitMQ password, the
+messaging PIN key and the monitoring credentials have no outside issuer, so Terraform generates them
+with an ephemeral `random_password` and writes them through write-only attributes. Nobody types or
+sees them, and they're never in Terraform state. Each is rewritten only when its version variable
+(`jwt_secret_version`, `password_version`, `credentials_version`) is bumped, which is also how you
+rotate one; restart whatever reads it afterwards. The PIN key has no version variable, and
+replacing it by hand invalidates every messaging PIN. The JWT key is stored
 base64-encoded, because `JwtService.getSignInKey` decodes it and throws on anything under 32 bytes.
 
 **Read from Azure.** The ACS connection string is the Communication Services resource's own key,
 which Terraform reads from the resource it manages (see [Mail](#mail)). It ends up in state, not in
 any tfvars file.
 
-**Supplied.** `captcha_secret` comes from Google, so it can't be generated. It's a variable, which
-means it sits in your tfvars file and in state in plaintext.
+**Supplied.** `captcha_secret` comes from Google, the VAPID private key from whoever generated the
+pair, and the FCM key from Firebase, so none of them can be generated here. They're variables, which
+means they sit in your tfvars file and in state in plaintext. So does `mail_delivery_report_key`.
 
 I accept that on purpose. Whoever runs `terraform apply` has to hold `Key Vault Secrets Officer`
 on the vault, because Terraform writes the secrets, so they can already read every secret with one
-`az keyvault secret show`. Keeping these two out of tfvars wouldn't hide anything from them. Both
-can also be revoked from a console in seconds, so exposure costs a rotation.
+`az keyvault secret show`. Keeping these out of tfvars wouldn't hide anything from them. Each can
+also be revoked or replaced from a console in seconds, so exposure costs a rotation.
 
 That does mean **the state blob is as sensitive as the vault**. What matters is who can read it:
 treat `Storage Blob Data Reader` on the state container like full credential access.
 
 ### Local overrides, one per environment
 
-Anything that must not be committed (the ACS connection string, the captcha secret, the alert
-address, your own IP for the Key Vault firewall) goes in `<env>.local.tfvars`, which is gitignored.
+Anything that must not be committed (the captcha secret, the push keys, the delivery-report key,
+the alert address, your own IP for the Key Vault firewall) goes in `<env>.local.tfvars`, which is
+gitignored.
 `./tf.sh <env> ...` passes it after the committed `<env>.tfvars`, and a file for another environment
 simply isn't read.
 
 The name must not contain `.auto.`. Terraform loads every `*.auto.tfvars` in the directory on every
 run, whatever `-var-file` you pass, and `prod.tfvars` doesn't set the secrets because they have no
-committed value. A `<env>.local.auto.tfvars` would carry dev's ACS connection string, captcha secret,
-alert address and your IP straight into a prod plan. `tf.sh` refuses to run while any
+committed value. A `<env>.local.auto.tfvars` would carry dev's captcha secret, push keys, alert
+address and your IP straight into a prod plan. `tf.sh` refuses to run while any
 `*.local.auto.tfvars` exists:
 
 ```
@@ -560,8 +574,10 @@ every API call.
 
 ### The container images
 
-The apps pull `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>` and
-`ghcr.io/<github_repository_owner>/kanbanproject-web:<app_image_tag>`.
+The apps pull `ghcr.io/<github_repository_owner>/kanbanproject-app:<app_image_tag>`,
+`ghcr.io/<github_repository_owner>/kanbanproject-web:<app_image_tag>` and, with monitoring on,
+`ghcr.io/<github_repository_owner>/kanbanproject-grafana`, at `grafana_image_tag` when that is set
+and at `app_image_tag` otherwise.
 
 `github_repository_owner` has to be the account `kanban-cd.yml` publishes to. The workflow pushes
 under the repository owner, so on a fork that's the fork's owner. A wrong value plans fine and then
@@ -710,8 +726,9 @@ needs. Narrow it in a `*.tfvars` file for an environment that shouldn't be publi
 the subnet edge, so it's a blunt tool, not a WAF.
 
 **Outbound is left on Azure's defaults, deliberately.** The app's egress doesn't fit into service
-tags. It pulls images from `ghcr.io`, sends mail over HTTPS to the ACS Email API and verifies
-captchas against `google.com`, on top of what the environment itself needs (MCR, Entra ID, Azure
+tags. It pulls images from `ghcr.io`, sends mail over HTTPS to the ACS Email API, verifies
+captchas against `google.com` and delivers push notifications to the browsers' push services and
+FCM, on top of what the environment itself needs (MCR, Entra ID, Azure
 Monitor, Azure Files on 445, NTP on UDP 123). A default-deny egress rule that misses one of those
 shows up as a revision that never becomes healthy, not as a clear error. If I ever filter egress, it
 will be behind a NAT gateway or firewall, not in these NSGs.
@@ -879,6 +896,24 @@ Two consequences:
   an assignment gets replaced (vault rebuilt, identity recreated, someone else applying). Keying on
   the assignment id recreates the wait whenever the grant is recreated.
 
+### Tags
+
+Every resource Terraform creates carries `environment`, `application`, `managed_by`, `owner`
+(`owner_tag`) and `repository`, with `extra_tags` merged over them. Cost reports and policy group on
+these, so `owner_tag` is worth setting even roughly.
+
+A resource Terraform doesn't create, whether Azure added it on its own or someone made it in the
+portal, gets no tags from it. So the resource group carries four policy assignments, *Inherit a tag
+from the resource group if missing*, for `application`, `environment`, `owner` and `repository`,
+plus a remediation that tags what already exists. `managed_by` is left out on purpose: a resource
+somebody made in the portal must not claim Terraform owns it.
+
+### Budget
+
+`monthly_budget` creates a subscription budget filtered to the application's, the backup's and the
+mail's resource groups. Owners and `alert_email` get a mail at 50, 80 and 100% of actual spend and
+when the forecast crosses 100%. A budget only reports; nothing is stopped when it's exceeded.
+
 ### Monitoring VM
 
 `monitoring_enabled` creates the Prometheus VM (`modules/monitoring_vm`) in `snet-monitoring-<env>`.
@@ -942,6 +977,9 @@ terraform/scripts/grafana-role.sh someone@example.com none     # remove access
 
 Editor means Explore and scratch dashboards. The provisioned dashboards only change through the
 repo.
+
+`grafana_custom_domain` binds a hostname to Grafana the same way `custom_domain` does for the web
+app (see [Custom domain](#custom-domain)), including the two applies.
 
 The Grafana image is built on `grafana/grafana`, where Grafana Labs publishes OSS releases;
 `grafana/grafana-oss` stopped at 13.0.2. Since 13.3, most data sources ship as bundled plugins,

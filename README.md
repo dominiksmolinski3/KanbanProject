@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  A Kanban board for small teams: columns, swimlanes, WIP limits, drag and drop, and live updates
-  for everyone looking at the same board.
+  A Kanban board for small teams: columns, swimlanes, WIP limits, drag and drop, live updates for
+  everyone looking at the same board, and an end-to-end encrypted messenger beside it.
 </p>
 
 ## Contents
@@ -41,12 +41,20 @@ We built KanbanProject to manage our own work the Kanban way. You lay out your w
 split it into swimlanes, and move cards across as work progresses. It has:
 
 - a drag-and-drop board with columns and rows (swimlanes), which also works from the keyboard
-- cards with subtasks, assignees, labels, deadlines and file attachments
+- cards with subtasks, assignees, labels, deadlines, comments and file attachments
 - WIP limits on columns, rows and people
+- several boards per account, shared by invitation, with members who can edit and viewers who can
+  only look
 - live sync, so a change on one screen shows up on every other screen watching the board
+- search over a board's cards by text, label, assignee, status and deadline
 - flow metrics built from every card's move history: cumulative flow, cycle time and throughput
 - an activity feed of who moved, assigned, completed or commented on what
-- dark mode that follows your operating system
+- an end-to-end encrypted messenger: direct messages, groups and one channel per board, with
+  threads, mentions, files, disappearing messages and a search that runs in your browser. The
+  server never sees what a message or a file says, and browser and Android push notifications only
+  say that a message arrived
+- an Android app built from the same code
+- nine languages, and a light, dark or system theme
 
 ## Screenshots
 
@@ -76,10 +84,12 @@ split it into swimlanes, and move cards across as work progresses. It has:
 ## Tech stack
 
 - **Backend**: Spring Boot 4.1 on Java 21 (built and run on JDK 25)
-- **Frontend**: React 19 and Vite 8
+- **Frontend**: React 19, TypeScript, Vite 8 and TanStack Query; Capacitor for Android
+- **Messaging**: MLS (`ts-mls`) in a Web Worker; Web Push and Firebase Cloud Messaging for
+  notifications
 - **Data**: PostgreSQL, with Redis for rate limiting and RabbitMQ relaying live updates
 - **Files**: Azure Blob Storage (Azurite locally)
-- **Infrastructure**: Docker, Terraform on Azure Container Apps, Prometheus and Grafana
+- **Infrastructure**: Docker, Terraform on Azure Container Apps, Ansible, Prometheus and Grafana
 - **Testing**: JUnit, Mockito and JaCoCo on the backend; Jest, ESLint and Cypress on the frontend;
   k6 for load tests
 
@@ -181,6 +191,8 @@ cp .env.example .env
    | `SECURITY_RATE_LIMIT_REDIS_HOST` / `_PORT` | Redis for the rate limiters. Defaults to `localhost:6379` |
    | `STOMP_RELAY_HOST` / `_PORT` | RabbitMQ's STOMP listener. Defaults to `localhost:61613` |
    | `STOMP_RELAY_USERNAME` / `_PASSWORD` | Broker login. The default `guest`/`guest` only works from the broker's own host, so a broker in Docker needs a real user |
+   | `MESSAGING_PIN_KEY` | Optional. The secret behind the messaging PIN, any long random string (`openssl rand -base64 32`). Empty leaves the PIN off, and the messenger then offers only the recovery key. Changing it invalidates every PIN |
+   | `VAPID_PUBLIC_KEY` / `_PRIVATE_KEY` / `VAPID_SUBJECT`, `FCM_CREDENTIALS` | Optional. Web Push keys and the Firebase service-account key for notifications. Empty turns that kind off |
 
    `.env` is gitignored. Docker Compose uses a separate `.env` in the repository root (see
    [With Docker](#with-docker)).
@@ -260,14 +272,23 @@ npm run cap:open
 The API only answers browsers whose origin it knows, and the app's origin is `https://localhost`.
 Add it to `SECURITY_CORS_ALLOWED_ORIGINS` on the deployment you point the app at.
 
+For notifications, put your Firebase project's `google-services.json` in `frontend/android/app/`
+(git ignores it too) and give the deployment the matching `FCM_CREDENTIALS`. Without the file the
+app builds and runs, just without notifications.
+
 ## Using the board
 
 1. Create columns for your workflow stages, e.g. "To Do", "In Progress", "Done".
 2. Add rows to group work by type or project.
 3. Add a task with the "Add Task" button.
 4. Drag tasks between columns as they move along.
-5. Click a task to see its details, add subtasks or assign people.
+5. Click a task to see its details, add subtasks, comments and files, or assign people.
 6. Set WIP limits on columns so no stage gets overloaded.
+7. Invite people to the board from its member list, as members or as viewers.
+8. Open the message dock to talk in the board's channel, or go to **Messages** for direct messages
+   and groups. The first time, the browser creates your keys and asks for a PIN or a recovery key,
+   which is how another browser of yours gets them back. A second browser can also be linked by a
+   code from one that is already set up.
 
 ## Project layout
 
@@ -278,12 +299,16 @@ Add it to `SECURITY_CORS_ALLOWED_ORIGINS` on the deployment you point the app at
 - `frontend/`: the React application ([frontend/README.md](frontend/README.md) covers the board UI
   and its design tokens)
   - `src/components`: React components
+  - `src/context`: the auth, board and messaging state, and every board mutation
   - `src/board`: the board's view model and hooks (WIP state, card metadata, swimlane collapse)
-  - `src/services`: API calls, one module per feature
+  - `src/crypto`: the messenger's encryption, run in a Web Worker
+  - `src/services`: API calls, one module per feature, and the live socket
   - `src/styles`: CSS
+  - `android/`: the Capacitor project for the Android app
 - `terraform/`: the Azure infrastructure ([terraform/README.md](terraform/README.md))
+- `images/`: thin wrappers around the third-party images Terraform runs (RabbitMQ, Postgres, curl)
 - `observability/`: Prometheus and Grafana configuration and dashboards
-- `ansible/`: the monitoring VM's configuration
+- `ansible/`: the monitoring VM's configuration ([ansible/README.md](ansible/README.md))
 - `loadtest/`: k6 scenarios
 - `.github/workflows/`: CI/CD
 - `docs/`: architecture notes and diagrams ([docs/architecture.md](docs/architecture.md) explains
@@ -294,13 +319,14 @@ Add it to `SECURITY_CORS_ALLOWED_ORIGINS` on the deployment you point the app at
 ### How a request flows
 
 <p align="center">
-  <img src="docs/architecture/application-architecture.svg" alt="Application architecture: browser through nginx and the Spring Boot API to Postgres, Redis, RabbitMQ, Blob Storage and the email API, with the API pushing metrics to Prometheus and Grafana reading them" width="100%"/>
+  <img src="docs/architecture/application-architecture.svg" alt="Application architecture: the browser or Android app through nginx and the Spring Boot API to Postgres, Redis, RabbitMQ, Blob Storage, the email API and the push services, with the API pushing metrics to Prometheus and Grafana reading them" width="100%"/>
 </p>
 
 Browsers only ever talk to **nginx**, the app's single public address. It serves the built frontend
 and proxies `/api`, `/ws` and `/v3/api-docs` to the **Spring Boot API** over an internal TLS
 connection. Only the API talks to the shared services: Postgres, Azure Managed Redis, the RabbitMQ
-STOMP broker, Blob Storage and the ACS Email API. Because all shared state lives in those services,
+STOMP broker, Blob Storage, the ACS Email API and the push services (Web Push and FCM). The
+messenger encrypts in the browser, so what the API stores and relays for it is ciphertext. Because all shared state lives in those services,
 both nginx and the API can run several replicas. Every API replica pushes its metrics over OTLP to
 **Prometheus**, and **Grafana** reads them from there.
 
@@ -335,8 +361,9 @@ In Azure, four Container Apps run in one environment:
 
 Each runs as its own managed identity. PostgreSQL Flexible Server sits in a delegated subnet with no
 public access and Entra-only logins. Redis, Key Vault and the storage account are closed to the
-internet and reached over private endpoints, without account keys. Container Apps jobs run the
-Flyway migrations, a nightly `pg_dump` and a nightly restore drill. The dumps and a replicated copy
+internet and reached over private endpoints, without account keys. Container Apps jobs create the
+database roles, run the Flyway migrations, and take a nightly `pg_dump` that a nightly restore drill
+checks. The dumps and a replicated copy
 of the attachments live in a second region (Sweden Central). Prometheus runs on a small VM with no
 public IP and no SSH. It only accepts 443 from the Container Apps subnet, is configured by Ansible
 through Run Command, and sends a nightly snapshot to the backup region.
@@ -377,6 +404,7 @@ Everything lives in [.github/workflows/](.github/workflows/):
 | `android-ci.yml` | Builds the debug APK when the Android project, its config or the frontend dependencies change |
 | `kanban-cd.yml` | Builds, scans, pushes and promotes the images |
 | `release-images.yml` | On a `vX.Y.Z` tag, gives the images of that commit the version |
+| `base-images.yml` | Rebuilds the wrappers under `images/` every day and opens one PR that moves Terraform's pins when a rebuild fixes something |
 | `deployed-contract.yml` | Checks every day that the deployed site still matches `main` |
 | `codeql.yml` | CodeQL on the Java, JavaScript/TypeScript, Python and GitHub Actions code |
 | `migration-order.yml` | Keeps Flyway migration numbers in order across branches |

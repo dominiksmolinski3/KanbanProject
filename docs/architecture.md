@@ -8,7 +8,7 @@ section for a feature before changing it.
 
 All backend commands run from `backend/`, all frontend commands from `frontend/`. On Windows use `mvnw.cmd`; on Linux/macOS/CI use `./mvnw`. The wrapper is committed as mode `100644` and `.gitattributes` only pins `/mvnw` at the repo root (the real one is `backend/mvnw`), so Linux consumers have to fix it up first — CI runs `chmod +x backend/mvnw` and `backend/Dockerfile` runs `sed -i 's/\r$//' mvnw && chmod +x mvnw`.
 
-### Backend (Java 21 language level / Spring Boot 4.1.1 / Maven wrapper)
+### Backend (Java 21 language level / Spring Boot 4.1.2 / Maven wrapper)
 
 The `pom.xml` pins `<java.version>21</java.version>`, so the bytecode target stays 21, but CI
 (`kanban-ci.yml`), `codeql.yml` and `backend/Dockerfile` all build and run on **JDK 25**
@@ -91,7 +91,7 @@ relay does. `cypress/replicas/cross-replica-sync.cy.js` is the spec that needs t
 **Live board sync**. It is also the only local stack that has ever run the outbox claim, the
 deadline sweep claim and the Redis escalation with a genuine competitor on the other side.
 
-Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
+Requires a root `.env` (template: `.env.example`) supplying `SPRING_DATASOURCE_DB`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_KEY`, `ACS_EMAIL_CONNECTION_STRING`, `ACS_EMAIL_SENDER_ADDRESS`, `CAPTCHA_SECRET`, `CAPTCHA_ENABLED`, `VITE_RECAPTCHA_SITE_KEY`. The messaging values (`MESSAGING_ENABLED`, `MESSAGING_PIN_KEY`, `VAPID_*`, `FCM_CREDENTIALS`) may stay empty: without a PIN key the PIN is unavailable, and without the push keys nothing is queued for notifications (see **Encrypted messaging**). `AZURE_STORAGE_CONNECTION_STRING` is optional and meant to stay empty: blank points the app at the stack's own **azurite** service, so attachments work locally with no Azure subscription. A deployed account never uses it — Terraform passes `AZURE_STORAGE_BLOB_ENDPOINT` and `AZURE_STORAGE_IDENTITY_CLIENT_ID` from its own outputs, and with `shared_access_key_enabled = false` there is no key a connection string could even be built from.
 
 ### Load testing
 
@@ -127,9 +127,9 @@ Vite bundle and copies it into the official `nginx` image, run as uid 101; [back
 the Spring Boot jar. nginx serves the bundle from disk and reverse-proxies `/api`, `/ws` and
 `/v3/api-docs` to the API container, so the **browser still sees exactly one origin** — which is the
 whole point of proxying rather than publishing an `api.` host alongside. `api.ts` calling relative
-paths like `/api/columns` just works, `apiInterceptor.ts` keeps matching on substrings, both SockJS
-clients keep pointing at `window.location.origin`, and `connect-src 'self'` keeps covering the
-WebSocket. **No JavaScript changed when the deployment split, and none should have to.**
+paths like `/api/columns` just works, `apiInterceptor.ts` keeps matching on substrings, the one
+socket opens on the page's own origin (`socketOrigin()`), and `connect-src 'self'` keeps covering
+the WebSocket. **No JavaScript changed when the deployment split, and none should have to.**
 
 The edge config is [frontend/nginx/default.conf.template](../frontend/nginx/default.conf.template),
 rendered by the stock nginx entrypoint's `envsubst` at container start so the upstream is a
@@ -276,7 +276,7 @@ In local development the two run separately (`:5173` and `:8080`) and [vite.conf
 
 **Every REST route is served under `/api`.** [WebConfig](../backend/src/main/java/pl/myproject/kanbanproject2/config/websocket/WebConfig.java) applies the prefix in one place via `configurePathMatch`, so controllers declare their own mapping (`@RequestMapping("/tasks")`) and are served at `/api/tasks`. The predicate is `forAnnotation(RestController.class)` **and** `forBasePackage("pl.myproject.kanbanproject2")`, composed with `Predicate.and` — `HandlerTypePredicate`'s own builder treats its selectors as *alternatives*, so `.annotation(X).basePackage(Y)` means "X **or** Y" and would prefix every STOMP controller too. The package half is what keeps a library's controller where its own documentation says it is: springdoc's `OpenApiWebMvcResource` is a `@RestController`, and without it the published contract moves to `/api/v3/api-docs`. **Never write `/api` into a controller mapping** — it would be served at `/api/api/...`; `ApiPathPrefixTest` fails the build if you do. A plain `@Controller` carrying `@MessageMapping` is left alone by the predicate, so its STOMP destinations keep their own prefix.
 
-The prefix exists to keep the API off the paths React Router owns. `App.tsx` serves `/board`, `/users`, `/sessions`, `/activity` and `/flow`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
+The prefix exists to keep the API off the paths React Router owns. `App.tsx` serves `/board`, `/users`, `/sessions`, `/activity`, `/flow`, `/account`, `/messages` and `/link`; before the prefix, `/users` resolved to `UserController` and the page was unreachable on a refresh.
 
 [SpaRoutes](../backend/src/main/java/pl/myproject/kanbanproject2/config/SpaRoutes.java) used to be load-bearing twice — `WebConfig` forwarded each route to `/index.html` and `SecurityConfiguration` permitted each one — and neither is true any more. nginx's `try_files` answers every client route with no list at all, which is why **the routes are deliberately not enumerated in the edge config**: a list in two places is the drift every guard here exists to catch. What survives is the claim, read by `deployed-contract.yml` (does the origin still answer each route with the shell?) and by `SpaRoutesMatchTheClientTest`, which parses `App.tsx`. That test is new with the split and is the reason to keep the class: while Spring served the shell, a route missing from the list was a deep link that 403'd and somebody noticed on the first try. Now it would be a contract sweep that silently checks one route fewer.
 
@@ -297,8 +297,8 @@ Two decisions are load-bearing and neither is visible from the route:
   carries a `@SecurityRequirement`; [OpenApiConfiguration](../backend/src/main/java/pl/myproject/kanbanproject2/config/OpenApiConfiguration.java)
   contributes an `OpenApiCustomizer` that marks every operation whose path is not public, off the
   same list `SecurityConfiguration` builds the chain from. The spec says what the chain does because
-  both read one list — which matters most at `/api/auth/**`, where `devices` is authenticated and
-  its seven neighbours are not. Shapes need no such help: they come from the DTO records, so a
+  both read one list — which matters most at `/api/auth/**`, whose eight routes are all public,
+  while `/api/devices`, which once sat among them, is not. Shapes need no such help: they come from the DTO records, so a
   record change is a contract change.
 
 **`ClientRoutesExistTest` is the guard the contract was wanted for.** It resolves every `fetch` URL
@@ -315,7 +315,7 @@ a URL fails rather than joining an unasserted set.
 
 ## Backend layering
 
-Packages are organised **by feature, not by layer**: `board/`, `task/`, `task/subtask/`, `task/history/`, `task/attachment/`, `user/`, `user/auth/`, `user/avatar/`, `layout/column/`, `layout/row/`, `chat/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. (`controller/` still holds `AuthenticationController`, which has not been moved into its feature package; `FileController` was the third and is gone — see **Attachments**.) `file/` is gone too: avatars moved to `BlobStore` the same way attachments already used it, which retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
+Packages are organised **by feature, not by layer**: `board/` (with `board/event/` and `board/invitation/`), `task/` (with `task/activity/`, `task/attachment/`, `task/comment/`, `task/flow/`, `task/history/` and `task/subtask/`), `user/` (with `user/auth/` and `user/avatar/`), `layout/column/`, `layout/row/`, `chat/` and `messaging/`, with cross-cutting code in `config/`, `exception/`, `mail/` and `storage/`. A feature package holds its own entity, controller, service, repository, mapper and DTOs together. There is no `controller/` package any more: `AuthenticationController` lives in `user/auth/`, and `FileController` is gone — see **Attachments**. `file/` is gone too: avatars moved to `BlobStore` the same way attachments already used it, which retired the controller, the `File` entity and the `files` table together, since nothing else read from it.
 
 Within a feature the flow is controller → service → repository, with `mapper` classes converting entities to DTOs. Conventions worth matching:
 
@@ -1051,8 +1051,11 @@ Three things follow from running in a WebView on another origin.
 - **Android backup is off** (`allowBackup="false"`). Both tokens live in `localStorage`, and a backup
   would copy them to the user's cloud account.
 
-What this does not do yet: push notifications (the app has `/api/devices` for sessions, not for
-push tokens), a release or signed build, or an iOS project. `android-ci.yml` builds the debug APK on
+Notifications go through FCM with `@capacitor/push-notifications` (see **Threads, files,
+notifications and linking**). The Firebase config, `frontend/android/app/google-services.json`, is
+gitignored, and the Gradle build applies the Google services plugin only when the file is there, so
+a build without it simply has no notifications. What this does not do yet: a release or signed
+build, or an iOS project. `android-ci.yml` builds the debug APK on
 changes to the Android project, its config or the frontend dependencies, and checks that the bundle and
 the API origin made it in; it is not part of the gate in `kanban-ci.yml`, because a path-filtered
 workflow cannot be a required check. `frontend/android` is generated by
@@ -1709,12 +1712,14 @@ Six decisions carry it, and none of them is visible from the destination name:
   tasks and needs one re-read, so the events are collected against the transaction and sent once;
   the client then coalesces a burst into one fetch (`LIVE_REFRESH_WINDOW_MS`). Otherwise the
   busiest gesture on the board would be the noisiest thing on the wire.
-- **It is a second connection, not chat's.** The old `ChatContext` connected when somebody opened the chat
-  panel and disconnected when they closed it, so a board riding that connection would stop updating
-  the moment anyone tidied their screen and would never start for people who never open chat. The
-  board client renews its token in `beforeConnect` rather than in the constructor, because the
-  CONNECT frame is the only place the fifteen-minute token is checked and a socket that drops an
-  hour later would otherwise retry with a dead token every five seconds forever.
+- **It rides the page's one connection, and that connection belongs to no panel.** The old
+  `ChatContext` connected when somebody opened the chat panel and disconnected when they closed it,
+  so a board riding that connection would have stopped updating the moment anyone tidied their
+  screen. `liveSocket.ts` opens with its first subscriber and closes with its last, and the board is
+  a subscriber for as long as it is on screen (see **Live socket and earlier chat**). It renews its
+  token in `beforeConnect` rather than in the constructor, because the CONNECT frame is the only
+  place the fifteen-minute token is checked and a socket that drops an hour later would otherwise
+  retry with a dead token every five seconds forever.
 
 **A mutation that forgets to announce is silent**: the row is written, the response is right, every
 unit test passes, and only somebody *else's* screen is wrong. So `TaskService`, `ColumnService`,
@@ -1738,7 +1743,7 @@ the rest are marked stale and read again when their panel next opens.
 
 **The cross-replica half is tested by a spec that needs two replicas to exist.**
 `cypress/replicas/cross-replica-sync.cy.js` opens the board through nginx — whose upstream is the
-compose service `app` and which has never heard of `app2` — so the document's SockJS connection,
+compose service `app` and which has never heard of `app2` — so the document's WebSocket,
 its CONNECT and its SUBSCRIBE are all held by one replica, and then makes every change against the
 *other* replica's own port. A card that appears crossed two JVMs and the broker between them;
 there is no path that does not. It is outside Cypress's default `specPattern` rather than skipped
@@ -1764,14 +1769,14 @@ here - the `SPRING-MAIL-*` Key Vault secrets outlived the code that read them by
 and `CAPTCHA_SECRET` reached a verifier that did not exist. The test reads four
 files and compares them: the `${VAR}` placeholders in `application.properties`, the
 `@ConfigurationProperties` records, `docker-compose.yml` and
-`terraform/modules/container_app/main.tf`.
+`terraform/modules/api_app/main.tf`.
 
 Two things about it are worth knowing before adding a variable:
 
 - **A variable can be read without appearing in `application.properties`.** Relaxed binding means
   `SECURITY_RATE_LIMIT_TRUSTED_PROXY_COUNT` reaches `AuthRateLimitProperties.trustedProxyCount`
   with nothing in between, which is how Terraform sets it. The test derives those names by
-  reflection over the four records in `BOUND_PROPERTIES`; a record that is added and not listed
+  reflection over the five records in `BOUND_PROPERTIES`; a record that is added and not listed
   there has its variables reported as dead configuration.
 - **The `env` blocks in the container-app module are the audited list, not the Key Vault secret
   names.** A secret may exist in the vault without being passed to the app - that is what a rename
@@ -2018,8 +2023,8 @@ once shipped here. `ConfigurationTest` audits which environments supply what; th
 
 
 **Application metrics reach Azure Monitor through the Application Insights Java agent.** The app registers its own meters under `kanban.*` - outbox dead letters and pending
-depth, undelivered mail, rate-limit refusals, edit conflicts, dropped board subscriptions and busy
-attachment transfers - and until this the numbers never left the container: `/actuator/metrics` on
+depth, undelivered mail, rate-limit refusals, edit conflicts, dropped board subscriptions, busy
+attachment transfers, swept orphan blobs and push notifications sent and failed - and until this the numbers never left the container: `/actuator/metrics` on
 one replica, reset on every restart. The backend image now carries the agent (pinned by version and
 SHA-256), a workspace-based `azurerm_application_insights` in the root module receives it, and the
 alerts in `modules/diagnostics` query the `AppMetrics` table. Five things carry it, and the first
@@ -2059,8 +2064,8 @@ and reasons in `local.refusal_alerts`.
 ## CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone), type-checks with `tsc --noEmit` and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. That stack comes up with **`--profile replicas`**, so the whole suite runs against two API replicas rather than one, and a further step runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. One leg then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
-  **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the 13 specs
-  run in sequence were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
+  **The job is a three-leg matrix, and each leg is the whole stack**, not a slice of it: the specs
+  run in sequence (13 of them then) were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   two-replica stack and runs a third of them. `frontend/cypress/shard.js` deals the specs out
   from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep in step and a
   new spec cannot land in no leg. It deals by measured seconds (`cypress/shardPlan.js`), longest
@@ -2095,7 +2100,7 @@ and reasons in `local.refusal_alerts`.
   It replaces the background `cypress verify`, which a run includes. A failed warm-up fails
   nothing; the real run just pays the wait itself.
   A fourth **`image-scan` job**, matrixed the same way `kanban-cd.yml`'s `build-and-push` is, builds
-  both Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
+  all three Dockerfiles locally (`load: true`, nothing pushed to GHCR) and runs the same Trivy gate
   `kanban-cd.yml` runs after merge — same severities, same `ignore-unfixed`, same exit code — so a
   base image that has picked up a fresh CRITICAL/HIGH between a PR opening and merging goes red on
   the PR itself rather than on `main` a day later, which is the shape #160 was.
@@ -2113,8 +2118,8 @@ and reasons in `local.refusal_alerts`.
   The sweep's `trunk-alarm` job is the half that tells somebody: it opens, comments on, or closes
   a `trunk-red` issue, and fires on the sweep triggers only, because a red pull request already has
   an author watching it. It reads `skipped` as red, deliberately — a job that did not run proved
-  nothing. The script itself lives in **`sweep-alarm.yml`**, a `workflow_call` workflow four sweeps
-  now share; see below.
+  nothing. The script itself lives in **`sweep-alarm.yml`**, a `workflow_call` workflow every sweep
+  shares; see below.
 - **`sweep-alarm.yml`** — the alarm, once, for every workflow that runs with nobody watching it.
   The caller passes the results it collected and a phrase for the title; `github.ref_name`,
   `github.workflow` and the run URL come from the context, which inside a reusable workflow is the
@@ -2130,8 +2135,8 @@ and reasons in `local.refusal_alerts`.
   new with the reusable workflow: the alarm no longer reads `needs` itself, it reads a string the
   caller builds out of it, so a job in `needs` and not in that string is the same defect one level
   further in. And it is only as wide as the triggers its `if` names, which is how the whole alarm
-  was once unreachable except by a red cron. `SweepAlarmCoverageTest` reads all five workflows and
-  fails the build when any of the three disagree — the same rule-in-two-files-checked-in-one shape
+  was once unreachable except by a red cron. `SweepAlarmCoverageTest` reads every workflow on its
+  list (eleven today) and fails the build when any of the three disagree — the same rule-in-two-files-checked-in-one shape
   as `MetricAlertsMatchTheMetersTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
@@ -2176,18 +2181,18 @@ and reasons in `local.refusal_alerts`.
   on the run. AWS carries only the official images (no Grafana, Prometheus or exporters) and has
   anonymous limits of its own, so it is the last resort rather than the mirror.
 - `kanban-cd.yml` — on pushes to `main` **and on a daily sweep at 05:47 UTC**: builds
-  `backend/Dockerfile` and `frontend/Dockerfile`, pushes them to
-  `ghcr.io/<owner>/kanbanproject-app` and `ghcr.io/<owner>/kanbanproject-web` tagged with the commit
+  `backend/Dockerfile`, `frontend/Dockerfile` and `observability/grafana/Dockerfile`, pushes them to
+  `ghcr.io/<owner>/kanbanproject-app`, `-web` and `-grafana` tagged with the commit
   SHA, and scans each with Trivy
-  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags both `latest` —
+  (CRITICAL/HIGH, SARIF to the Security tab) before a separate `promote` job re-tags all three `latest` —
   a scan failure, a ref that is not the default branch, or a commit that's no longer the tip of it
   blocks promotion, so `latest` is always a SHA on `main` that both built clean and passed the scan.
-  **The two images are one matrix job rather than two jobs, and that is load-bearing rather than
+  **The images are one matrix job rather than a job each, and that is load-bearing rather than
   tidy**: `cd-alarm` has to name every job in `needs` *and* in the `results` string it passes, and
   `SweepAlarmCoverageTest` fails the build when the two disagree — a matrix leg is not a job by that
   reckoning, `needs.build-and-push.result` aggregates every leg, so the matrix can grow without a
   third place to remember. The SARIF category and the SBOM artifact name carry the image name, or
-  the second leg silently replaces the first's findings. **`promote` moves both or neither**, and it
+  the second leg silently replaces the first's findings. **`promote` moves all three or none**, and it
   resolves the SHA tag rather than a digest — a matrix job's outputs are whichever leg wrote them
   last, and Terraform feeds one `app_image_tag` to both container apps, so a `latest` that is half
   one commit and half another is precisely the skew the split introduced, with nothing to say so.
@@ -2224,13 +2229,15 @@ and reasons in `local.refusal_alerts`.
   put into GitHub, so drift in those values is the one thing it cannot see. It logs in over
   OIDC as an identity `terraform/bootstrap` creates, and that root also manages the state account.
   See `terraform/README.md`, *Drift detection*.
-- `codeql.yml` — CodeQL analysis of the Java backend, on pushes, PRs and a weekly cron. The weekly
+- `codeql.yml` — CodeQL analysis of the Java, JavaScript/TypeScript, Python and GitHub Actions
+  code, on pushes, PRs and a weekly cron. The weekly
   cron is why it is not in `SweepAlarmCoverageTest`'s list: its findings go to the Security tab,
   which has its own notifications, and there is no job result an alarm could add anything to.
 - `migration-order.yml` — on PRs: fails a branch that adds a Flyway migration numbered at or below the highest version already on the base branch, forcing a stale branch to renumber before it merges (see the Flyway section). Its cheaper companion is the database-free `MigrationOrderTest`, which catches a duplicated or skipped `V<n>` after a sloppy merge.
-- `hadolint.yml` — Dockerfile lint, on push and PR, as a matrix over `backend/Dockerfile` and
-  `frontend/Dockerfile`. A matrix rather than two steps so a failure names the image it is about,
-  and so a third image is a line rather than a copied block.
+- `hadolint.yml` — Dockerfile lint, on push and PR, as a matrix over the three application
+  Dockerfiles (`backend/`, `frontend/`, `observability/grafana/`) and the three wrappers under
+  `images/`. A matrix rather than steps so a failure names the image it is about, and so a new
+  image is a line rather than a copied block (`BaseImagesCoverageTest` checks the wrappers are in it).
 - `dependency-review.yml` — flags vulnerable/newly-added dependencies on a PR, commenting the
   summary and **failing at `high` or above**. It is a gate, not a note. The action's default
   `fail-on-severity` is `low`, which it had been running on while this file called it comment
@@ -2451,7 +2458,7 @@ and reasons in `local.refusal_alerts`.
   reached `ActivationFailed` on exactly that. With the factory set, the original reasoning holds and
   is why no cert is bundled: the roots Azure presents ("DigiCert Global Root G2", "Microsoft RSA
   Root Certificate Authority 2017") are already in the JDK trust store.
-- [terraform/](../terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Log Analytics) split into `modules/{vnet,key_vault,postgres,storage,api_app,web_app}`. **Two Container Apps in one environment**: `kanban-web-<env>` (`modules/web_app`, nginx, the only external ingress) and `kanban-api-<env>` (`modules/api_app`, the jar, `external_enabled = false`). Both land in the same `snet-backend`, so the split adds no subnet, no NSG rule and no private endpoint; the blob and Key Vault grants stay with the API identity alone, and the edge gets a second identity granted `Key Vault Secrets User` on the **`GHCR-TOKEN` secret alone** rather than on the vault — a vault-scoped grant would let the nginx container read the Postgres password. The edge proxies to `https://kanban-api-<env>.internal.<env-domain>`: internal ingress still terminates TLS and answers plain HTTP with a 301, and the certificate it presents carries `*.internal.<env-domain>` and verifies against the stock CA bundle, so the hop is authenticated rather than merely allowed by `allow_insecure_connections`. The two modules compose that name independently so neither depends on the other's resources, and a root-level `check` block asserts they still agree — the failure otherwise is a green apply and a 502 on every API call. Renaming the module is a state move, not a rebuild: `terraform state mv module.container_app module.api_app` before the first apply, or the JWT secret is recreated with a fresh key and every signed-in user is signed out. The VNet is four subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, and one private-endpoint subnet each for Key Vault and blob — separate so each service's reachability is its own NSG rule rather than one rule covering both. The blob role assignment lives in `api_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](../terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
+- [terraform/](../terraform/) — Azure deployment (Container Apps behind a VNet, Postgres Flexible Server, Key Vault, a Storage account for attachments, Managed Redis, Log Analytics and Application Insights, a monitoring VM and a backup region) split into `modules/{vnet,key_vault,postgres,storage,redis,broker,api_app,web_app,grafana_app,mail,diagnostics,backup,db_roles,monitoring_vm}`. **The web/API split is two of the environment's four Container Apps** (the other two are `kanban-broker-<env>` and `kanban-grafana-<env>`): `kanban-web-<env>` (`modules/web_app`, nginx, the only external ingress for the application) and `kanban-api-<env>` (`modules/api_app`, the jar, `external_enabled = false`). Both land in the same `snet-backend`, so the split adds no subnet, no NSG rule and no private endpoint; the blob and Key Vault grants stay with the API identity alone, and the edge gets a second identity granted `Key Vault Secrets User` on the **`GHCR-TOKEN` secret alone** rather than on the vault — a vault-scoped grant would let the nginx container read the Postgres password. The edge proxies to `https://kanban-api-<env>.internal.<env-domain>`: internal ingress still terminates TLS and answers plain HTTP with a 301, and the certificate it presents carries `*.internal.<env-domain>` and verifies against the stock CA bundle, so the hop is authenticated rather than merely allowed by `allow_insecure_connections`. The two modules compose that name independently so neither depends on the other's resources, and a root-level `check` block asserts they still agree — the failure otherwise is a green apply and a 502 on every API call. Renaming a module that holds a generated secret is a state move, not a rebuild (the API module was once `module.container_app`): without `terraform state mv` the JWT secret is recreated with a fresh key and every signed-in user is signed out. The VNet is six subnets: the Container Apps infrastructure subnet, the delegated Postgres subnet, one private-endpoint subnet each for Key Vault, blob and Redis — separate so each service's reachability is its own NSG rule rather than one rule covering all three — and the monitoring VM's. The blob role assignment lives in `api_app` rather than `storage`, because the identity it is granted to is created there and the storage module would otherwise have to depend on the module that depends on it. Environments are separated by distinct backend state keys rather than workspaces: `terraform init -reconfigure -backend-config="key=env/dev/terraform.tfstate"`, then `terraform plan -var-file "dev.tfvars"`. See [terraform/README.md](../terraform/README.md) for the Azure RBAC prerequisites — it is the authoritative doc for infra work.
 
 ## i18n
 
@@ -2493,7 +2500,8 @@ the two moments mail is composed have no client to ask — a verification code i
 whose browser may never be seen again, and an overdue notice by a scheduler with no request at all —
 so the account carries a `locale` column and `MailTemplates` reads
 `backend/src/main/resources/mail/messages*.properties` through a `ResourceBundleMessageSource`.
-There are four messages: a verification code, a reset code, an overdue task and a board invitation.
+There are five messages: a verification code, a reset code, an email-change code, an overdue task
+and a board invitation.
 `messages.properties` **is** the English one, which is why there is no `messages_en`, and
 `fallbackToSystemLocale` is off so an unmatched language falls back to that file rather than to
 whatever locale the JVM was started in.
@@ -2512,6 +2520,6 @@ the screen without a second control to find.
 One trap in the bundles, and it is invisible to every compiler involved: Spring runs a message
 through `MessageFormat` only when it is given arguments, so a lone apostrophe is harmless in a
 message with no `{0}` and **swallows the rest of the pattern** in one that has them.
-`MailTemplatesTest` renders all four messages in all nine locales and fails on a surviving brace,
+`MailTemplatesTest` renders every message in all nine locales and fails on a surviving brace,
 which is what that mistake produces.
 

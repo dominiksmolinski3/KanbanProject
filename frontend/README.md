@@ -1,7 +1,9 @@
 # Frontend
 
-React 19 + Vite 8. Setup, scripts and the E2E prerequisites are in the
+React 19 + TypeScript + Vite 8. Setup, scripts and the E2E prerequisites are in the
 [root README](../README.md#frontend). This file covers how the board UI is built.
+[docs/architecture.md](../docs/architecture.md) explains the state, the query cache, the live
+socket and the messenger (*Frontend state*, *Live socket and earlier chat*, *Encrypted messaging*).
 
 ## Dependencies
 
@@ -15,7 +17,7 @@ styles, because they load with the lazily loaded board route, not with the sign-
 
 | Layer | Files | What it does |
 | --- | --- | --- |
-| State | `src/context/KanbanContext.tsx` | Fetching, mutations, drag-and-drop handlers, live sync. |
+| State | `src/context/KanbanContext.tsx`, `src/context/kanban/` | Board reads (TanStack Query, in `useBoardData`), mutations, drag-and-drop handlers, live sync. `cardActions.ts` hands each card actions with a stable identity, so a change redraws only the cards it touches. |
 | Derived model (pure) | `src/board/boardModel.ts`, `src/board/cardModel.ts` | Per-column/per-lane counts and WIP state, the tasks in each cell, priority read from labels, deadline state, initials and label hues. No React, so each is tested directly in `src/__tests__/board/`. |
 | View hooks | `src/board/useCollapsedLanes.ts`, `src/board/useUserAvatar.ts` | Which swimlanes are collapsed (per board, in `localStorage`), and a session-wide avatar cache with one request per account. |
 | Presentation | `Board.tsx`, `Task.tsx`, `TaskCardMeta.tsx`, `WipMeter.tsx`, `AvatarStack.tsx` | Rendering only. They read the model and call context actions. |
@@ -65,8 +67,12 @@ on `:root`:
 
 Dark values apply under `prefers-color-scheme: dark` unless the root carries
 `data-theme="light"`, and always under `data-theme="dark"`. This is the same convention
-`FlowMetrics.css` uses, so an explicit theme switch can be added later without touching the
-components. Headers use a translucent surface with `backdrop-filter`. Motion is turned off under
+`FlowMetrics.css` uses. The theme switch in the header (`ThemeSwitcher.tsx`, `src/theme/`) offers
+system, light and dark and keeps the choice in `localStorage` under `kanban-theme`.
+`public/theme-init.js`, a classic script in `<head>`, turns it into `data-theme` on the root before
+the first paint and follows the system setting while the choice is "system". CSS does the rest; the
+only component that reads the theme is the captcha (`useDocumentTheme`), which has to pass it to
+the reCAPTCHA widget. Headers use a translucent surface with `backdrop-filter`. Motion is turned off under
 `prefers-reduced-motion`, and hover-only controls stay visible on touch devices (`hover: none`).
 
 <table>
