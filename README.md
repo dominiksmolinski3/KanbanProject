@@ -421,6 +421,7 @@ Everything lives in [.github/workflows/](.github/workflows/):
 | `gradle-wrapper.yml` | Validates the Android project's committed Gradle wrapper |
 | `scorecard.yml` | OpenSSF Scorecard |
 | `dependency-submission.yml` | Submits the Maven and Gradle dependency graphs to GitHub |
+| `npm-lockfile-refresh.yml` | Weekly: moves the npm lockfile's transitive dependencies to the newest releases the declared ranges allow, through an auto-merged pull request |
 | `dependency-review.yml`, `dependabot-auto-merge.yml`, `dependency-scan.yml`, `external-scan.yml`, `dast.yml` | Dependency and attack-surface scanning |
 
 `deployed-contract.yml`, `terraform-drift.yml`, `monitoring-drift.yml`, `monitoring-converge.yml` and
