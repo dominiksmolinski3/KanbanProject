@@ -2221,7 +2221,7 @@ and reasons in `local.refusal_alerts`.
 - **`terraform-drift.yml`** — a nightly `plan -detailed-exitcode` of dev from `main`, through
   `sweep-alarm.yml`. It solves the retired PR plan job's problem the other way round: the
   gitignored values are read back out of Azure (`terraform/scripts/drift-inputs.sh`) rather than
-  put into GitHub, so drift in those six values is the one thing it cannot see. It logs in over
+  put into GitHub, so drift in those values is the one thing it cannot see. It logs in over
   OIDC as an identity `terraform/bootstrap` creates, and that root also manages the state account.
   See `terraform/README.md`, *Drift detection*.
 - `codeql.yml` — CodeQL analysis of the Java backend, on pushes, PRs and a weekly cron. The weekly
