@@ -37,7 +37,6 @@ jobs:
           - image: kanbanproject-postgres
             context: images/postgres
             upstream: postgres
-            skip-files: usr/local/bin/gosu
           - image: kanbanproject-rabbitmq
             context: images/rabbitmq
             upstream: rabbitmq
@@ -79,6 +78,7 @@ jobs:
         {
           echo "base=$base"
           echo "pinned=$pins"
+          echo "tree=$(git rev-parse "HEAD:$CONTEXT")"
           echo "tag=$REPOSITORY:$upstream_tag-$(date -u +%Y%m%d)"
           echo "today=$(date -u +%F)"
         } >> "$GITHUB_OUTPUT"
@@ -96,6 +96,7 @@ jobs:
           org.opencontainers.image.base.name=${{ steps.refs.outputs.base }}
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           org.opencontainers.image.revision=${{ github.sha }}
+          kanbanproject.context-tree=${{ steps.refs.outputs.tree }}
 
     - name: Pull the pinned image
       env:
@@ -110,7 +111,6 @@ jobs:
         output: candidate.json
         severity: CRITICAL,HIGH
         ignore-unfixed: true
-        skip-files: ${{ matrix.skip-files }}
 
     - name: Scan the pinned image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -120,7 +120,6 @@ jobs:
         output: pinned.json
         severity: CRITICAL,HIGH
         ignore-unfixed: true
-        skip-files: ${{ matrix.skip-files }}
         skip-setup-trivy: true
 
     - name: Decide whether the candidate replaces the pinned image
@@ -128,6 +127,7 @@ jobs:
       env:
         BASE: ${{ steps.refs.outputs.base }}
         PINNED: ${{ steps.refs.outputs.pinned }}
+        TREE: ${{ steps.refs.outputs.tree }}
       run: |
         set -euo pipefail
         export LC_ALL=C
@@ -137,6 +137,7 @@ jobs:
         resolved=$(comm -23 pinned.txt candidate.txt)
         introduced=$(comm -13 pinned.txt candidate.txt)
         pinned_base=$(docker image inspect "$PINNED" --format '{{ index .Config.Labels "org.opencontainers.image.base.name" }}')
+        pinned_tree=$(docker image inspect "$PINNED" --format '{{ index .Config.Labels "kanbanproject.context-tree" }}')
 
         echo "Pinned: $(wc -l < pinned.txt) findings, candidate: $(wc -l < candidate.txt)"
         if [ -n "$introduced" ]; then
@@ -151,12 +152,16 @@ jobs:
         elif [ "$pinned_base" != "$BASE" ]; then
           reasons+=("builds on $BASE (was $pinned_base)")
         fi
+        if [ "$pinned_tree" != "$TREE" ]; then
+          was=${pinned_tree:0:12}
+          reasons+=("builds $CONTEXT as of tree ${TREE:0:12} (was ${was:-unlabelled})")
+        fi
         if [ -n "$resolved" ]; then
           reasons+=("resolves $(cut -d' ' -f1 <<<"$resolved" | sort -u | paste -sd' ')")
         fi
         if [ ${#reasons[@]} -eq 0 ]; then
           echo "publish=false" >> "$GITHUB_OUTPUT"
-          echo "::notice::$IMAGE: the rebuild resolves nothing and the base has not moved; the pin stays"
+          echo "::notice::$IMAGE: the rebuild resolves nothing and neither the base nor the wrapper has moved; the pin stays"
           exit 0
         fi
         reason=$(printf '%s; ' "${reasons[@]}")
@@ -188,6 +193,7 @@ jobs:
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           org.opencontainers.image.revision=${{ github.sha }}
           org.opencontainers.image.licenses=MIT
+          kanbanproject.context-tree=${{ steps.refs.outputs.tree }}
 
     - name: Install cosign
       if: steps.push.outcome == 'success'

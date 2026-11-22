@@ -4,8 +4,9 @@ set -eu
 name=$(cat /backup/name)
 
 export PGDATA=/tmp/pgdata PGUSER=postgres
-gosu postgres initdb --auth=trust --no-sync >/dev/null
-gosu postgres pg_ctl --wait --options="-c listen_addresses=''" start >/dev/null
+as_postgres() { if [ "$(id -u)" = 0 ]; then gosu postgres "$@"; else "$@"; fi; }
+as_postgres initdb --auth=trust --no-sync >/dev/null
+as_postgres pg_ctl --wait --options="-c listen_addresses=''" start >/dev/null
 createdb kanban
 
 pg_restore --no-owner --no-acl --dbname=kanban /backup/kanban.dump

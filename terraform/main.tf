@@ -162,6 +162,31 @@ module "backup" {
   depends_on = [module.postgres]
 }
 
+resource "terraform_data" "backup_round_trip" {
+  triggers_replace = [module.backup.jobs_revision]
+
+  # After api_app, whose migrate job runs after db_roles: the dump logs in as kanban_reader and the drill reads flyway_schema_history.
+  depends_on = [module.api_app]
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = replace(file("${path.root}/scripts/run-container-app-job.sh"), "\r", "")
+    environment = {
+      JOB            = module.backup.job_name
+      RESOURCE_GROUP = azurerm_resource_group.main.name
+    }
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = replace(file("${path.root}/scripts/run-container-app-job.sh"), "\r", "")
+    environment = {
+      JOB            = module.backup.restore_drill_job_name
+      RESOURCE_GROUP = azurerm_resource_group.main.name
+    }
+  }
+}
+
 module "db_roles" {
   source                 = "./modules/db_roles"
   env                    = var.env
