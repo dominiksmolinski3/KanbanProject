@@ -24,12 +24,14 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         PR: ${{ github.event.pull_request.number }}
-        TITLE: ${{ github.event.pull_request.title }}
         AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
-        LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
-        ASSIGNEES: ${{ join(github.event.pull_request.assignees.*.login, ' ') }}
       run: |
         set -euo pipefail
+        # Read at run time: the payload is a snapshot, and `opened` can run after the labels and assignee landed.
+        pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")
+        TITLE=$(jq -r .title <<<"$pr")
+        LABELS=$(jq -r '[.labels[].name] | join(" ")' <<<"$pr")
+        ASSIGNEES=$(jq -r '[.assignees[].login] | join(" ")' <<<"$pr")
         conventional='^(feat|fix|refactor|perf|style|test|docs|build|ops|chore)(\([a-z0-9][a-z0-9._/-]*\))?!?: [^A-Z].*[^.]$'
         exempt='^(Revert ".*"|Merge .*)$'
         bad=0
