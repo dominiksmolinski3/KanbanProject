@@ -143,7 +143,7 @@ class BoardServiceTest {
     }
 
     @Nested
-    @DisplayName("who can write to a board (FEAT-08)")
+    @DisplayName("who can write to a board")
     class Writability {
 
         @Test
@@ -244,7 +244,7 @@ class BoardServiceTest {
         }
 
         @Test
-        @DisplayName("the stages it seeds come with a definition of start and done (FLOW-02)")
+        @DisplayName("the stages it seeds come with a definition of start and done")
         void seedsTheFlowDefinition() {
             when(boardRepository.findFirstByOwnerIsNullOrderByIdAsc()).thenReturn(Optional.empty());
 

@@ -537,7 +537,7 @@ describe('Board Component', () => {
     expect(mockDragAndDrop.handleDragOver).toHaveBeenCalled();
   });
 
-  describe('a viewer (FEAT-08)', () => {
+  describe('a viewer', () => {
     const readOnlyContext = { ...mockContextValue, readOnly: true };
 
     test('sees a read-only banner', () => {

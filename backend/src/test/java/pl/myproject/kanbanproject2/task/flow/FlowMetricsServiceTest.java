@@ -340,7 +340,7 @@ class FlowMetricsServiceTest {
         }
 
         @Test
-        @DisplayName("an unset board reads exactly as FEAT-07 did")
+        @DisplayName("an unset board reads to the last column, from arrival on the board")
         void unsetIsTheOldRule() {
             var flow = metrics(null, null);
 

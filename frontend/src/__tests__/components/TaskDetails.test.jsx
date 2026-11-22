@@ -877,7 +877,7 @@ describe('TaskDetails Component', () => {
     expect(screen.queryByText('Detailed description')).not.toBeInTheDocument();
   });
   
-  test('re-reads its subtasks and its files when another screen changes them (SYNC-01)', async () => {
+  test('re-reads its subtasks and its files when another screen changes them', async () => {
     renderTaskDetails();
 
     await waitFor(() => {

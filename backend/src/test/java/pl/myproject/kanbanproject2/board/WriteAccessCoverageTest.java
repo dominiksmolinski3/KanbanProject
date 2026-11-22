@@ -79,7 +79,7 @@ class WriteAccessCoverageTest {
 
         assertThat(method)
                 .as("MessageDeliveryService#post no longer checks requireWritable - a viewer could post to "
-                        + "a board's channel, which FEAT-08 says read-only means read-only for")
+                        + "a board's channel it may only read")
                 .contains("requireWritable(");
     }
 
