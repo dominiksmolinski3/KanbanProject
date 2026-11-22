@@ -2271,6 +2271,22 @@ and reasons in `local.refusal_alerts`.
   Dependabot **group** now — there is no pull request that moves one alone — and
   `frontend/src/__tests__/dependencyPairs.test.js` fails the build when the two declare different
   versions, on the branch proposing it rather than an hour later on somebody else's PR.
+- `stale-exceptions.yml` — weekly, **removes the exceptions nothing needs any more** and opens one
+  PR through the `BASE_IMAGES_PR_TOKEN` PAT, never auto-merged. An exception outlives its reason
+  without one: a Trivy ignore hides the next finding on the same path until it expires, and an
+  override pins a version long after the parent caught up. `.github/scripts/stale_exceptions.mjs`
+  checks three kinds. A `.trivyignore.yaml` entry or path is stale when the published image,
+  scanned without the file and with CI's severity and `ignore-unfixed`, has no finding it matches;
+  a tracked ignore file with no scan given fails the run. An npm override is stale when, with every
+  override removed and only the overridden packages cut out of the lock and resolved again,
+  nothing lands in its range. A fresh resolve is no baseline, because the committed lock carries a
+  peer conflict (`ts-mls` against `@noble/curves`) that one refuses, and `--force` accepts it
+  without moving anything else. The fix edits `package.json` alone: the lock does not record
+  overrides, and regenerating it after an edit let npm drop what the remaining `glob` and
+  `minimatch` overrides hold. A non-import `dependencyManagement` pin is stale when Maven,
+  without it, resolves the same or a newer version, or nothing at all.
+  On a PR that changes the workflow or the script it runs the same checks and prints the diff
+  without pushing.
 - `npm-lockfile-refresh.yml` — weekly, **moves the transitive npm dependencies Dependabot never
   touches**. Dependabot bumps what `package.json` names; a fixed release of something only
   depended on, inside a range the lock already satisfies, waited for an alert and a hand-written

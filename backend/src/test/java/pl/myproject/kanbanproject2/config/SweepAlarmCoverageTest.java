@@ -38,6 +38,7 @@ class SweepAlarmCoverageTest {
                 new String[] { "monitoring-drift.yml", "monitoring-alarm" },
                 new String[] { "dependency-submission.yml", "submission-alarm" },
                 new String[] { "base-images.yml", "base-images-alarm" },
+                new String[] { "stale-exceptions.yml", "stale-exceptions-alarm" },
                 new String[] { "npm-lockfile-refresh.yml", "npm-lockfile-alarm" });
     }
 
