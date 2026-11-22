@@ -2300,20 +2300,43 @@ and reasons in `local.refusal_alerts`.
   executable the role installs is missing from what it unpacked. A red result means moving a
   pin: to a new release, or to a newer revision of the package. Prometheus and
   `blackbox_exporter` also move with `docker-compose.yml`, through `PinnedImagesTest`.
-  **It checks the edge's nginx against nginx.org's own advisories, because Trivy cannot.** The web
-  image runs nginx.org's mainline package (`1.31.x`), and Trivy matches it against Alpine's secdb,
-  which records fixes for Alpine's own stable-branch build. On 18 Nov 2026 the secdb listed
-  CVE-2026-123007 and CVE-2026-123633 as fixed in `nginx 1.30.7-r0`; `1.31.7-r1` sorts above that,
-  so Trivy reported the image clean while it was in the range of ten advisories. Mainline always
-  sorts above stable, so this is a permanent blind spot, not a lag. The job runs `nginx -v` in the
-  last `FROM` of `frontend/Dockerfile` (the image's `apk upgrade` cannot move nginx, which comes
-  from a repository the image does not keep) and `.github/scripts/nginx_advisories.py` fails on any
-  advisory whose vulnerable range holds that version and whose fixed list does not, whatever its
-  severity, since nginx.org rated a CVSS 8.1 use-after-free "medium". It skips only the
-  `nginx/Windows` ranges and the one advisory rated "none", and fails rather than passes on a page
-  it reads fewer than fifty entries from or cannot parse. It is a sweep and not a PR gate because a
-  red result often has no remedy yet: three days after nginx.org released 1.31.9,
-  `nginx-unprivileged` still had no image of it.
+  **It checks the components Trivy cannot see against their vendors' own feeds.** Trivy reads
+  distro package databases and language manifests. A component built from source, or installed
+  from its vendor's repository, is invisible to it or matched against the wrong fixes:
+  - the edge's **nginx** is nginx.org's mainline package, and Trivy matches it against Alpine's
+    secdb, which records fixes for Alpine's own stable-branch build. On 18 Nov 2026 the secdb listed
+    CVE-2026-123007 and CVE-2026-123633 as fixed in `nginx 1.30.7-r0`; `1.31.7-r1` sorts above
+    that, so Trivy reported the image clean while it was in the range of ten advisories. Mainline
+    always sorts above stable, so the blind spot is permanent;
+  - the API's **Temurin JRE** is a tarball in `/opt/java/openjdk`; Trivy lists the jars and the
+    Ubuntu packages, and no Java runtime;
+  - the backup jobs' **curl**, the broker's **Erlang/OTP** and the jobs' **PostgreSQL** client are
+    compiled by their upstream images; Trivy sees only the shared libraries next to them.
+
+  `.github/scripts/component_advisories.py` reads the last `FROM` of each Dockerfile, asks the
+  image for the version (`nginx -v`, `$JAVA_VERSION`, `curl --version`, `OTP_VERSION`,
+  `pg_dump --version`) and fails on what the vendor says applies:
+
+  | Component | Feed | Fails when |
+  |---|---|---|
+  | nginx | nginx.org security advisories | an advisory's vulnerable range holds the version and its fixed list does not |
+  | curl | `curl.se/docs/vuln.json` (OSV) | a `SEMVER` range's introduced/fixed events leave the version affected |
+  | Erlang/OTP | GitHub security advisories of `erlang/otp` | the version is past an advisory's first affected release and no fix covers it |
+  | PostgreSQL | `postgresql.org/versions.json` | the major is unsupported, or a newer minor exists |
+  | Temurin JRE | Adoptium's latest-release API | a newer Temurin release of the same feature version exists |
+
+  A fixed list covers a version when it is past the newest fix, or past the fix on its own branch
+  (`major.minor` for nginx, `major` for OTP). OTP publishes one open-ended range per branch, with no
+  fix for the branches it no longer maintains, so only the union of an advisory's fixes means
+  anything: read one entry at a time, every current release would sit in an old branch's range.
+  Severity does not filter, since nginx.org rated a CVSS 8.1 use-after-free "medium". The nginx
+  `nginx/Windows` ranges and its one advisory rated "none" are skipped. A feed that cannot be read,
+  or that holds far fewer entries than it has for years, is an error and never a pass, and so is an
+  image that prints no version. The broker's OpenSSL in `/opt/openssl` is not covered: OpenSSL
+  publishes no machine-readable advisory feed. The image's `apk upgrade` cannot move any of these
+  components, so the base image's version is the shipped one.
+  It is a sweep and not a PR gate because a red result often has no remedy yet: three days after
+  nginx.org released 1.31.9, `nginx-unprivileged` still had no image of it.
 - `base-images.yml` ("Base images") — **every image Terraform pins is a thin wrapper under
   [images/](../images/)**: `FROM` the upstream image by digest, then `apk upgrade`. Upstream images
   lag their distro: `curlimages/curl:8.23.0` carried sixteen krb5 CVEs for weeks after Alpine had
