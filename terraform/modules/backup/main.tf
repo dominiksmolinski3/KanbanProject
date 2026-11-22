@@ -228,7 +228,7 @@ resource "azurerm_container_app_job" "pg_dump" {
   template {
     init_container {
       name    = "pg-dump"
-      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261121@sha256:1bc12e7fe2b89c28de78a541891107b3aee0b326fc0e37ec60e38fd2c277adaf"
+      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261122@sha256:4e9dafcd2e91f1c97217fb9cd22ee025ae106de2bef89a42c9d48638f5b7e4de"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/pg-dump.sh"), "\r", "")]
@@ -266,7 +266,7 @@ resource "azurerm_container_app_job" "pg_dump" {
 
     container {
       name   = "upload"
-      image  = "ghcr.io/dominiksmolinski3/kanbanproject-curl:8.23.0-20261116@sha256:6cfbdbab701c9e3eb3f06f9861c9749aa0a8d6417c6ccb7b430dfa4ec4e86270"
+      image  = "ghcr.io/dominiksmolinski3/kanbanproject-curl:8.23.0-20261122@sha256:af6520a4baaa2eecd420be0a708ec37de1989d9a458762003abec8cea0e45c61"
       cpu    = 0.25
       memory = "0.5Gi"
       # A Windows checkout gives the script CRLF endings, and sh reads each \r as part of the command.
@@ -379,7 +379,7 @@ resource "azurerm_container_app_job" "restore_drill" {
   template {
     init_container {
       name    = "download"
-      image   = "ghcr.io/dominiksmolinski3/kanbanproject-curl:8.23.0-20261116@sha256:6cfbdbab701c9e3eb3f06f9861c9749aa0a8d6417c6ccb7b430dfa4ec4e86270"
+      image   = "ghcr.io/dominiksmolinski3/kanbanproject-curl:8.23.0-20261122@sha256:af6520a4baaa2eecd420be0a708ec37de1989d9a458762003abec8cea0e45c61"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill-download.sh"), "\r", "")]
@@ -401,7 +401,7 @@ resource "azurerm_container_app_job" "restore_drill" {
 
     container {
       name    = "restore"
-      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261121@sha256:1bc12e7fe2b89c28de78a541891107b3aee0b326fc0e37ec60e38fd2c277adaf"
+      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261122@sha256:4e9dafcd2e91f1c97217fb9cd22ee025ae106de2bef89a42c9d48638f5b7e4de"
       cpu     = 0.5
       memory  = "1Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill.sh"), "\r", "")]
