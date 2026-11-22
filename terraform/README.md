@@ -229,10 +229,12 @@ from a branch that never merged, or a merge nobody applied.
 
 It solves the missing-local-file problem differently: instead of keeping copies in GitHub secrets,
 it reads the values back from where Terraform already put them. `scripts/drift-inputs.sh` rebuilds
-`dev.local.tfvars` as JSON: the two secrets from Key Vault, `app_image_tag` and `captcha_enabled`
+`dev.local.tfvars` as JSON: the four secrets from Key Vault (the VAPID private key and the FCM
+credentials among them), `app_image_tag`, `captcha_enabled` and the public VAPID key and subject
 from the running API, the alert address from the action group, and the vault's IP rules. Run
-locally, its output gives `No changes`. The catch is that **drift in those six values is invisible**,
-because they're read from the thing being compared.
+locally, its output gives `No changes`. The catch is that **drift in those values is invisible**,
+because they're read from the thing being compared. A variable added to `dev.local.tfvars.example`
+has to be read back there as well, or the nightly plan reports it as drift as soon as dev sets it.
 
 The run logs in as `id-kanban-terraform-drift`, a user-assigned identity with a federated
 credential for the `terraform-drift` GitHub environment, so there's no client secret. This repo
