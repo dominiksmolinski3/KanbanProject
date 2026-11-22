@@ -2287,6 +2287,18 @@ and reasons in `local.refusal_alerts`.
   without it, resolves the same or a newer version, or nothing at all.
   On a PR that changes the workflow or the script it runs the same checks and prints the diff
   without pushing.
+- `npm-lockfile-refresh.yml` — weekly, **moves the transitive npm dependencies Dependabot never
+  touches**. Dependabot bumps what `package.json` names; a fixed release of something only
+  depended on, inside a range the lock already satisfies, waited for an alert and a hand-written
+  override (`zod` in #591). The job runs `npm update --package-lock-only` and opens one
+  `build(deps)` PR through the `BASE_IMAGES_PR_TOKEN` PAT with auto-merge on, so the full CI suite
+  is its gate. `--before` holds back anything published inside Dependabot's npm cooldown, so a
+  refresh never takes a release Dependabot itself would wait on; a path can therefore come back
+  older, and the PR body lists every one. `--force` is there because the committed lock carries a
+  peer conflict (`ts-mls` against `@noble/curves`) that npm otherwise refuses to resolve. An edit
+  to the overrides block followed by a lock regeneration once let npm stop applying `glob` and
+  `minimatch`, so `.github/scripts/npm_lockfile_refresh.mjs` fails the run when any version in the
+  refreshed lock escapes an override, before anything is pushed.
 - `dependency-scan.yml`, `external-scan.yml`, `dast.yml` — scheduled (and `workflow_dispatch`)
   security sweeps: a dependency vulnerability sweep, an external attack-surface scan, and an OWASP
   ZAP DAST run. None gate a PR, and **all three now call `sweep-alarm.yml`**, because a weekly cron

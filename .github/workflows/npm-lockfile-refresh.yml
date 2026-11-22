@@ -1,0 +1,98 @@
+name: npm lockfile refresh
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/npm-lockfile-refresh.yml'
+      - '.github/scripts/npm_lockfile_refresh.mjs'
+  schedule:
+    - cron: '37 5 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BRANCH: build/npm-lockfile-refresh
+      PR_TOKEN: ${{ secrets.BASE_IMAGES_PR_TOKEN }}
+      # The npm cooldown in dependabot.yml: nothing published more recently is taken.
+      COOLDOWN_DAYS: 3
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 26
+
+    - name: Update the lock within the declared ranges
+      working-directory: frontend
+      run: |
+        set -euo pipefail
+        cp package-lock.json "$RUNNER_TEMP/lock-before.json"
+        before=$(date -u -d "$COOLDOWN_DAYS days ago" +%Y-%m-%dT%H:%M:%SZ)
+        # --force accepts the ts-mls peer conflict the committed lock already carries; npm refuses to resolve without it.
+        npm update --package-lock-only --ignore-scripts --no-audit --no-fund --force --before="$before"
+
+    - name: Check that every override still holds, and describe the change
+      id: describe
+      run: |
+        set -euo pipefail
+        node .github/scripts/npm_lockfile_refresh.mjs "$RUNNER_TEMP/lock-before.json" body.md
+        git diff --stat
+        echo "changed=$([ -s body.md ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+    - name: Push the branch and open or update the pull request
+      if: steps.describe.outputs.changed == 'true' && github.event_name != 'pull_request'
+      env:
+        GH_TOKEN: ${{ secrets.BASE_IMAGES_PR_TOKEN || secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+        OWNER: ${{ github.repository_owner }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        git config user.name 'github-actions[bot]'
+        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        git switch -C "$BRANCH"
+        git add frontend/package-lock.json
+        git commit -q -m 'build(deps): refresh the npm lockfile within the declared ranges'
+        git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/$GH_REPO.git"
+        git push --force origin "$BRANCH"
+
+        if [ -z "$PR_TOKEN" ]; then
+          echo "::error::the BASE_IMAGES_PR_TOKEN secret is not set, so the lock is pushed to $BRANCH but no pull request is open. A pull request opened with GITHUB_TOKEN runs no CI; open it from https://github.com/$GH_REPO/compare/main...$BRANCH"
+          exit 1
+        fi
+
+        { cat body.md; echo; echo "Opened by $RUN_URL."; } > pr-body.md
+        pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+        if [ -n "$pr" ]; then
+          gh pr edit "$pr" --body-file pr-body.md
+        else
+          pr=$(gh pr create --base main --head "$BRANCH" \
+            --title 'build(deps): refresh the npm lockfile within the declared ranges' --body-file pr-body.md \
+            --assignee "$OWNER" --label techdebt --label dependencies --label javascript)
+        fi
+        gh pr merge --auto --squash "$pr"
+
+  npm-lockfile-alarm:
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    needs: [ refresh ]
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/sweep-alarm.yml
+    with:
+      results: "${{ needs.refresh.result }}"
+      subject: the npm lockfile refresh failed
+      label: sweep-red
