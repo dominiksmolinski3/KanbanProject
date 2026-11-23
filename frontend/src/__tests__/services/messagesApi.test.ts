@@ -22,7 +22,7 @@ describe('messagesApi', () => {
     expect(sent(0)).toEqual({ path: '/api/conversations', method: 'GET', body: undefined });
     expect(sent(1).path).toBe('/api/conversations/5');
     expect(sent(2).path).toBe('/api/conversations/contacts');
-    expect(sent(3).path).toBe('/api/conversations/lookup?email=a%2Bb%40example.com');
+    expect(sent(3)).toEqual({ path: '/api/conversations/lookup', method: 'POST', body: { email: 'a+b@example.com' } });
     expect(sent(4).path).toBe('/api/blocks');
   });
 

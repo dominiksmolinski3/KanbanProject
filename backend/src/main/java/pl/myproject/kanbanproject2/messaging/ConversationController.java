@@ -45,9 +45,10 @@ public class ConversationController {
         return ResponseEntity.ok(conversations.contacts(currentUser));
     }
 
-    @GetMapping("/lookup")
-    public ResponseEntity<ContactDto> lookup(@RequestParam String email, @AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(conversations.lookup(currentUser, email));
+    @PostMapping("/lookup")
+    public ResponseEntity<ContactDto> lookup(@Valid @RequestBody LookupRequest request,
+                                             @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(conversations.lookup(currentUser, request.email()));
     }
 
     @GetMapping("/{id}")

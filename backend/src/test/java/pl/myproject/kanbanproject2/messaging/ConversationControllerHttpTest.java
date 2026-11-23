@@ -119,8 +119,11 @@ class ConversationControllerHttpTest {
 
         mvc.perform(get("/conversations")).andExpect(jsonPath("$[0].id").value(5));
         mvc.perform(get("/conversations/contacts")).andExpect(jsonPath("$[0].messaging").value(true));
-        mvc.perform(get("/conversations/lookup").param("email", "c@example.com"))
+        mvc.perform(post("/conversations/lookup").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("email", "c@example.com"))))
                 .andExpect(jsonPath("$.name").value("Celina"));
+        mvc.perform(post("/conversations/lookup").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
