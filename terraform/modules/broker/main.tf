@@ -24,7 +24,7 @@ resource "azurerm_container_app" "main" {
   template {
     container {
       name   = "rabbitmq"
-      image  = "ghcr.io/dominiksmolinski3/kanbanproject-rabbitmq:4-alpine-20261122@sha256:6a07ec5d3ce941c9a28f7b4b5d31cbb3fa565a675f07088deec403bf097116df"
+      image  = "ghcr.io/dominiksmolinski3/kanbanproject-rabbitmq:4-alpine-20261123@sha256:ee114f59d78875c3ebf57e81058e93a6c4208676fcf45e39dfa295629a38548d"
       cpu    = 0.5
       memory = "1Gi"
 
