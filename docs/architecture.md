@@ -1513,8 +1513,8 @@ board channels and the dock, which replace the old board chat.
   key was replaced (**Start over**) after joining counts as neither: nothing is re-sent, because the
   reset promises that old history stays unreadable. The server never holds
   history it could read.
-- **Strangers arrive as requests.** Anyone reachable by exact email (`/conversations/lookup`, rate
-  limited like sign-in) can be messaged; non-peers join as `REQUEST`, and a blocked person gets the
+- **Strangers arrive as requests.** Anyone reachable by exact email (`POST /conversations/lookup`, the
+  address in the body so it never reaches a URL; rate limited like sign-in) can be messaged; non-peers join as `REQUEST`, and a blocked person gets the
   answer an unknown account gets. Blocking removes the direct conversation.
 - **Trust.** `key_log` appends every identity and device change per account, each entry hashing the
   previous one. Clients pin the last hash they saw and turn changes into notices: a changed

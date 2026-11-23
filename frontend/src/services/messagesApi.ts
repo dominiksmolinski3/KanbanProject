@@ -124,7 +124,7 @@ export const messagesApi = {
 
   contacts: () => getJson<Contact[]>(`${CONVERSATIONS}/contacts`),
 
-  lookup: (email: string) => getJson<Contact>(`${CONVERSATIONS}/lookup?${queryString({ email })}`),
+  lookup: (email: string) => postJson<Contact>(`${CONVERSATIONS}/lookup`, { email }),
 
   update: (id: number, settings: ConversationSettings) => patchJson<Conversation>(conversation(id), settings),
 

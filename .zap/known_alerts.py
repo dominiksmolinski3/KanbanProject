@@ -5,10 +5,12 @@ from urllib.parse import urlsplit
 REPORT = '/zap/wrk/report_json.json'
 
 CLIENT_ERRORS = {'400', '401', '403', '404', '405', '409', '415'}
+LOOKUP_ROUTE = '/api/conversations/lookup'
 CREDENTIAL_ROUTES = re.compile(r'/api/auth/(login|verify|reset-password)|/api/users/[0-9]+/email-change')
 
 KNOWN = {
-    '100000-1': lambda path, instance: instance.get('evidence') in CLIENT_ERRORS,
+    '100000-1': lambda path, instance: instance.get('evidence') in CLIENT_ERRORS
+    or (path == LOOKUP_ROUTE and instance.get('evidence') == '429'),
     '100001': lambda path, instance: not path.startswith('/api/'),
     '10104': lambda path, instance: instance.get('method') != 'GET',
     '10111': lambda path, instance: CREDENTIAL_ROUTES.fullmatch(path) is not None,
