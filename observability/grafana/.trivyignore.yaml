@@ -4,9 +4,3 @@ vulnerabilities:
       - usr/share/grafana/data/plugins-bundled/prometheus/gpx_grafana-prometheus-datasource_linux_amd64
     statement: golang.org/x/net is compiled into the Prometheus plugin Grafana 13.3.1 bundles; it clears only with a plugin release.
     expired_at: 2026-12-12
-  - id: CVE-2026-97054
-    paths:
-      - usr/share/grafana/bin/grafana
-      - usr/share/grafana/data/plugins-bundled/prometheus/gpx_grafana-prometheus-datasource_linux_amd64
-    statement: Go stdlib 1.27.3 is compiled into Grafana 13.3.1 and its Prometheus plugin; it clears only with a release built on Go 1.27.4.
-    expired_at: 2026-12-12
