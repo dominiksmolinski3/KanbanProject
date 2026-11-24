@@ -23,7 +23,7 @@ monitoring_binaries:
   - name: prometheus
     version: 3.16.0
     deb: https://dhi.io/deb/debian/main/pool/trixie/main/p/pr/prometheus-3.16_3.16.0-3/prometheus-3.16_3.16.0-3_amd64.deb
-    sha256: 7d34670348b01caa3000cd5ad049ff1d92a368f83057c551b95594cc4a1ae725
+    sha256: 01abad3af1081349043dde6e03ec20ed0e5ee623c5978899405e8bb60697053c
     executables: [prometheus, promtool]
   - name: node_exporter
     version: 1.12.1
