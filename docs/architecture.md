@@ -2146,6 +2146,13 @@ and reasons in `local.refusal_alerts`.
   all rate-limit the runner's shared address, and none of them says anything a person can act on. A second
   failure stays red, and so does anything that is not a 429. The job checks out the default branch only, never
   the run it is reading. A new workflow has to be listed in it or named in `RateLimitRerunWorkflowTest`.
+- **`dhi-pins-refresh.yml`** ("DHI package pins refresh") — keeps the monitoring VM's `deb:` pins in
+  `ansible/group_vars/all.yml` matching what dhi.io's `Packages` index lists. dhi.io rebuilds these packages
+  and has replaced a revision in place twice in three days, which fails the sweep's checksum until somebody
+  re-pins by hand. Daily, it moves each pin to the newest revision of the *same upstream version* (it never
+  crosses to another version or architecture, and a pin the index no longer lists fails rather than passes)
+  and opens a `techdebt` PR through the `BASE_IMAGES_PR_TOKEN` PAT with auto-merge on, as the npm lockfile
+  refresh does. `.github/scripts/dhi_pins_refresh.py` holds the logic; its tests run in Workflow lint.
 - **Every job that pulls images goes through `mirror.gcr.io`, and none logs in to Docker Hub.**
   A personal Docker Hub account gets 200 pulls per 6 hours, and one PR's CI spends about 45 (three
   e2e legs of a dozen images each, the image scans, the backend job), so a handful of PRs at once

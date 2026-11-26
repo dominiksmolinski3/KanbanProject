@@ -39,7 +39,8 @@ class SweepAlarmCoverageTest {
                 new String[] { "dependency-submission.yml", "submission-alarm" },
                 new String[] { "base-images.yml", "base-images-alarm" },
                 new String[] { "stale-exceptions.yml", "stale-exceptions-alarm" },
-                new String[] { "npm-lockfile-refresh.yml", "npm-lockfile-alarm" });
+                new String[] { "npm-lockfile-refresh.yml", "npm-lockfile-alarm" },
+                new String[] { "dhi-pins-refresh.yml", "dhi-pins-alarm" });
     }
 
     private static final Set<String> NOT_A_SWEEP = Set.of("push", "pull_request");
