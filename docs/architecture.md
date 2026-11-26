@@ -2379,8 +2379,9 @@ and reasons in `local.refusal_alerts`.
   (`major.minor` for nginx, `major` for OTP). OTP publishes one open-ended range per branch, with no
   fix for the branches it no longer maintains, so only the union of an advisory's fixes means
   anything: read one entry at a time, every current release would sit in an old branch's range.
-  Severity does not filter, since nginx.org rated a CVSS 8.1 use-after-free "medium". The nginx
-  `nginx/Windows` ranges and its one advisory rated "none" are skipped. A feed that cannot be read,
+  Severity does not filter, since nginx.org rated a CVSS 8.1 use-after-free "medium", and it has
+  since dropped the field from every entry, so a missing one reads as "unrated". The nginx
+  `nginx/Windows` ranges and its one advisory rated "none" (CVE-2009-4487, by id now) are skipped. A feed that cannot be read,
   or that holds far fewer entries than it has for years, is an error and never a pass, and so is an
   image that prints no version. The broker's OpenSSL in `/opt/openssl` is not covered: OpenSSL
   publishes no machine-readable advisory feed. The image's `apk upgrade` cannot move any of these

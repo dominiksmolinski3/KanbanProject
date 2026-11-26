@@ -17,6 +17,7 @@ TIMEOUT = 30
 USER_AGENT = "component-advisory-check"
 
 NGINX_ADVISORIES = "https://nginx.org/en/security_advisories.html"
+NGINX_RATED_NONE = {"CVE-2009-4487"}
 CURL_ADVISORIES = "https://curl.se/docs/vuln.json"
 OTP_ADVISORIES = "https://api.github.com/repos/erlang/otp/security-advisories?per_page=100"
 POSTGRES_VERSIONS = "https://www.postgresql.org/versions.json"
@@ -63,11 +64,13 @@ def nginx_findings(version_text: str) -> list[str]:
     for item in entries:
         lines = [html.unescape(re.sub(r"<[^>]+>", "", line)).strip() for line in re.split(r"<br\s*/?>", item)]
         fields = dict(line.split(": ", 1) for line in lines if ": " in line)
-        missing = {"Severity", "Vulnerable", "Not vulnerable"} - fields.keys()
+        missing = {"Vulnerable", "Not vulnerable"} - fields.keys()
         if missing:
             raise ValueError(f"nginx advisory {lines[0]!r} has no {', '.join(sorted(missing))}")
         vulnerable, not_vulnerable = fields["Vulnerable"], fields["Not vulnerable"]
-        if fields["Severity"].lower() == "none" or vulnerable.startswith("nginx/Windows"):
+        severity = fields.get("Severity", "unrated").lower()
+        cves = ", ".join(dict.fromkeys(re.findall(r"CVE-\d{4}-\d+", item))) or "no CVE"
+        if severity == "none" or cves in NGINX_RATED_NONE or vulnerable.startswith("nginx/Windows"):
             continue
         if vulnerable != "all" and not any(
                 parse_version(low) <= version <= parse_version(high or low)
@@ -80,8 +83,7 @@ def nginx_findings(version_text: str) -> list[str]:
                     raise ValueError(f"unknown nginx 'Not vulnerable' entry: {part!r}")
                 fixes.append(parse_version(part[:-1]))
         if not is_fixed(version, fixes, branch=2):
-            cves = ", ".join(dict.fromkeys(re.findall(r"CVE-\d{4}-\d+", item))) or "no CVE"
-            findings.append(f"{cves}: {lines[0]} (severity {fields['Severity'].lower()}); "
+            findings.append(f"{cves}: {lines[0]} (severity {severity}); "
                             f"vulnerable {vulnerable}, fixed in {not_vulnerable}")
     return findings
 
