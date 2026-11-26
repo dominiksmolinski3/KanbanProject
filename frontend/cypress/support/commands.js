@@ -201,3 +201,21 @@ Cypress.Commands.add('expectNoAxeViolations', () => {
       });
   });
 });
+
+Cypress.Commands.add('prepareAxe', () => {
+  cy.intercept({ resourceType: 'document' }, (req) => {
+    req.on('response', (res) => {
+      delete res.headers['content-security-policy'];
+    });
+  });
+});
+
+Cypress.Commands.add('visitThemed', (path, theme, ready) => {
+  cy.visit(path, {
+    onBeforeLoad(win) {
+      win.localStorage.setItem('kanban-theme', theme);
+    },
+  });
+  cy.get('html').should('have.attr', 'data-theme', theme);
+  cy.get(ready, { timeout: 10000 }).should('be.visible');
+});

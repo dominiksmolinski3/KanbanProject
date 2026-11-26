@@ -921,7 +921,12 @@ signed in, in both themes, and the board with its add form open, and fails on an
 page's CSP forbids the `eval` that injects axe, so the spec strips that header from the documents it
 loads; `csp.cy.js` reads the server's own headers and does not see it. The first run found that no
 signed-in page had a `<main>`, that the board had no `<h1>`, and that the flow cards and the bench
-skipped a heading level. It found no contrast failure in either theme.
+skipped a heading level. It found no contrast failure in either theme. `states.cy.js` scans what
+opens on the board (the board switcher, the settings and language menus, the add forms, task search,
+the message dock) and the board with a column, a row and a card on it, with the task panel open, in
+both themes; `locales.cy.js` scans the sign-in page and the board in the other eight languages and
+checks that `lang` follows. None of them found anything. The messenger's conversation view is not
+scanned: it needs keys set up first.
 
 The task panel is a `Modal` too, and the label picker and custom-label form are the reason it took a
 second step. Radix sets `pointer-events: none` on `body` while a modal is open and treats anything
