@@ -11,6 +11,7 @@ on:
       - Dependency submission
       - Dependency vulnerability sweep
       - Deployed contract sweep
+      - DHI package pins refresh
       - External attack-surface scan
       - Gradle wrapper
       - Hadolint
