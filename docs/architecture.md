@@ -2140,13 +2140,13 @@ and reasons in `local.refusal_alerts`.
   as `MetricAlertsMatchTheMetersTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
-- **`rerun-on-rate-limit.yml`** ("Rerun on rate limit") — a `workflow_run` job that, when a listed workflow's
+- **`rerun-on-rate-limit.yml`** ("Rerun on rate limit") â€” a `workflow_run` job that, when a listed workflow's
   first attempt fails, reads each failed job's log and reruns the failed jobs once if a registry or API
   refused it with a 429 (`.github/scripts/rate_limit_rerun.py`). Registries, Maven Central and the GitHub API
   all rate-limit the runner's shared address, and none of them says anything a person can act on. A second
   failure stays red, and so does anything that is not a 429. The job checks out the default branch only, never
   the run it is reading. A new workflow has to be listed in it or named in `RateLimitRerunWorkflowTest`.
-- **`dhi-pins-refresh.yml`** ("DHI package pins refresh") — keeps the monitoring VM's `deb:` pins in
+- **`dhi-pins-refresh.yml`** ("DHI package pins refresh") â€” keeps the monitoring VM's `deb:` pins in
   `ansible/group_vars/all.yml` matching what dhi.io's `Packages` index lists. dhi.io rebuilds these packages
   and has replaced a revision in place twice in three days, which fails the sweep's checksum until somebody
   re-pins by hand. Daily, it moves each pin to the newest revision of the *same upstream version* (it never
@@ -2288,7 +2288,7 @@ and reasons in `local.refusal_alerts`.
   PR through the `BASE_IMAGES_PR_TOKEN` PAT, never auto-merged. An exception outlives its reason
   without one: a Trivy ignore hides the next finding on the same path until it expires, and an
   override pins a version long after the parent caught up. `.github/scripts/stale_exceptions.mjs`
-  checks three kinds. A `.trivyignore.yaml` entry or path is stale when the published image,
+  checks four kinds. A `.trivyignore.yaml` entry or path is stale when the published image,
   scanned without the file and with CI's severity and `ignore-unfixed`, has no finding it matches;
   a tracked ignore file with no scan given fails the run. An npm override is stale when, with every
   override removed and only the overridden packages cut out of the lock and resolved again,
@@ -2297,7 +2297,10 @@ and reasons in `local.refusal_alerts`.
   without moving anything else. The fix edits `package.json` alone: the lock does not record
   overrides, and regenerating it after an edit let npm drop what the remaining `glob` and
   `minimatch` overrides hold. A non-import `dependencyManagement` pin is stale when Maven,
-  without it, resolves the same or a newer version, or nothing at all.
+  without it, resolves the same or a newer version, or nothing at all. A `<properties>` entry that
+  overrides one Spring Boot manages (`tomcat.version`, `jackson-bom.version`) is stale when Boot's own
+  value is the same or newer, read from the `spring-boot-dependencies` pom of the parent version; it
+  was the one kind of pin the check could not see, and `tomcat.version` sat a patch behind Boot's.
   On a PR that changes the workflow or the script it runs the same checks and prints the diff
   without pushing.
 - `npm-lockfile-refresh.yml` â€” weekly, **moves the transitive npm dependencies Dependabot never
