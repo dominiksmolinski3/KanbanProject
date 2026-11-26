@@ -44,7 +44,7 @@ USER 10001:10001
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --start-interval=2s --retries=3 CMD ["/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=60.0"
 ENTRYPOINT ["sh", "-c", "if [ -n \"$APPLICATIONINSIGHTS_CONNECTION_STRING\" ]; then AGENT=-javaagent:/app/applicationinsights-agent.jar; fi; exec java $AGENT $JAVA_OPTS -jar app.jar"]
