@@ -24,7 +24,7 @@ export default function CycleTimes({ data, duration }: { data: FlowMetrics; dura
 
   return (
     <section className="flow-card">
-      <h3>{t('flow.cycleTime')}</h3>
+      <h2>{t('flow.cycleTime')}</h2>
       <p className="flow-caption">{t('flow.cycleTimeCaption')}</p>
       {samples.length === 0 ? (
         <p className="flow-empty">{t('flow.nothingFinished')}</p>

@@ -915,6 +915,14 @@ see. They could be renamed only by double-clicking a span, so each header now ha
 Focus goes back to that button when the edit ends, but only when the edit would otherwise drop it
 on `body`. A user who moves on to another control keeps the focus they chose.
 
+A second pass runs in a real browser, because jsdom judges neither contrast nor landmarks nor the
+headings of a whole page. `cypress/e2e/accessibility/pages.cy.js` loads every route, signed out and
+signed in, in both themes, and the board with its add form open, and fails on any axe violation. The
+page's CSP forbids the `eval` that injects axe, so the spec strips that header from the documents it
+loads; `csp.cy.js` reads the server's own headers and does not see it. The first run found that no
+signed-in page had a `<main>`, that the board had no `<h1>`, and that the flow cards and the bench
+skipped a heading level. It found no contrast failure in either theme.
+
 The task panel is a `Modal` too, and the label picker and custom-label form are the reason it took a
 second step. Radix sets `pointer-events: none` on `body` while a modal is open and treats anything
 outside the dialog's own content as an outside click, so a layer portalled into `body` would be dead

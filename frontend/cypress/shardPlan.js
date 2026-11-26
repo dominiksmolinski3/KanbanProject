@@ -1,4 +1,5 @@
 export const SECONDS = {
+  'cypress/e2e/accessibility/pages.cy.js': 34,
   'cypress/e2e/auth/login.cy.js': 4,
   'cypress/e2e/auth/logout.cy.js': 4,
   'cypress/e2e/auth/messaging-keys.cy.js': 22,

@@ -19,7 +19,7 @@ export default function Throughput({ data }: { data: FlowMetrics }) {
 
   return (
     <section className="flow-card">
-      <h3>{t('flow.throughput')}</h3>
+      <h2>{t('flow.throughput')}</h2>
       <p className="flow-caption">{t('flow.throughputCaption')}</p>
       <div className="flow-chart">
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={t('flow.throughput')}>
