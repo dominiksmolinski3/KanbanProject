@@ -59,7 +59,7 @@
   box-shadow: var(--kb-shadow-pop);
 }
 
-.bench h3 {
+.bench h2 {
   margin: 0;
   padding-bottom: var(--space-12);
   border-bottom: 1px solid var(--kb-line);

@@ -182,3 +182,22 @@ Cypress.Commands.add('ensureRowExists', () => {
     }
   });
 });
+
+Cypress.Commands.add('expectNoAxeViolations', () => {
+  cy.readFile('node_modules/axe-core/axe.min.js', 'utf8', { log: false }).then((source) => {
+    cy.window({ log: false })
+      .then((win) => {
+        win.eval(source);
+        return win.axe.run(win.document);
+      })
+      .then(({ violations }) => {
+        const report = violations
+          .map((violation) => [
+            `${violation.id} (${violation.impact}): ${violation.help}`,
+            ...violation.nodes.map((node) => `    ${node.target.join(' ')}`),
+          ].join('\n'))
+          .join('\n');
+        expect(violations, `\n${report}\n`).to.have.length(0);
+      });
+  });
+});

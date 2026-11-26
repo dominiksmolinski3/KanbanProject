@@ -91,7 +91,7 @@
   color: var(--viz-text);
 }
 
-.flow-card h3 {
+.flow-card h2 {
   margin: 0;
   font-size: 15px;
   line-height: 20px;

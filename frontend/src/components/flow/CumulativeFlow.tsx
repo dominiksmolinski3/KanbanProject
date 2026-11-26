@@ -66,7 +66,7 @@ export default function CumulativeFlow({ data }: { data: FlowMetrics }) {
 
   return (
     <section className="flow-card">
-      <h3>{t('flow.cumulativeFlow')}</h3>
+      <h2>{t('flow.cumulativeFlow')}</h2>
       <p className="flow-caption">{t('flow.cumulativeFlowCaption')}</p>
       <ul className="flow-legend">
         {series.map(s => (

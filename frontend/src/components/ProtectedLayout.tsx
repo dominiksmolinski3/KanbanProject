@@ -38,9 +38,9 @@ function ProtectedLayout() {
         <MessagingLayer>
           <div className="app-container">
             <Header />
-            <div className="content-container">
+            <main className="content-container">
               <Outlet />
-            </div>
+            </main>
             <Footer />
             <MessageDock />
           </div>

@@ -24,7 +24,7 @@ export default function BenchShell({ isOpen, onToggle, children }: BenchShellPro
         <Icon name={isOpen ? 'chevron-left' : 'people'} />
       </button>
       <div className="bench">
-        <h3>{t('bench.title')}</h3>
+        <h2>{t('bench.title')}</h2>
         {children}
       </div>
     </div>

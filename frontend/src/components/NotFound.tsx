@@ -5,11 +5,11 @@ function NotFound() {
   const { t } = useTranslation();
 
   return (
-    <div className="not-found-page">
+    <main className="not-found-page">
       <h1>{t('notFound.title')}</h1>
       <p>{t('notFound.message')}</p>
       <Link to="/">{t('notFound.backHome')}</Link>
-    </div>
+    </main>
   );
 }
 
