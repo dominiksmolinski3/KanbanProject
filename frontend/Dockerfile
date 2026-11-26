@@ -7,7 +7,7 @@ ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
 RUN npm run build
 
-FROM nginx:1.31-alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7
+FROM nginx:1.31-alpine@sha256:7fc0fb4af7bf006aeb31aea88069976060f8f0a0a86b667126742cc17f4e31ae
 
 # CD passes the date, or the registry cache replays yesterday's upgrade and the sweep fixes nothing.
 ARG APK_UPGRADE_DATE
