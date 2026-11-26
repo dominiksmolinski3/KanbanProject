@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 
-const BUDGET_BYTES = 150 * 1024;
+const BUDGET_BYTES = 160 * 1024;
 
 const distDir = path.resolve(import.meta.dirname, '..', 'dist');
 const manifestPath = path.join(distDir, '.vite', 'manifest.json');

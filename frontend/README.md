@@ -9,7 +9,7 @@ socket and the messenger (*Frontend state*, *Live socket and earlier chat*, *Enc
 
 The board's design system is plain CSS custom properties, the icons are CSS shapes, and the
 micro-interactions are CSS transitions. The drag-and-drop is the HTML5 API. The bundle budget
-(`npm run check:bundle-size`, 150 kB gzipped for the initial load) is not touched by the board
+(`npm run check:bundle-size`, 160 kB gzipped for the initial load) is not touched by the board
 styles, because they load with the lazily loaded board route, not with the sign-in screen
 (`signInStylesLoadEagerly.test.js`).
 
