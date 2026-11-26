@@ -184,6 +184,13 @@ Cypress.Commands.add('ensureRowExists', () => {
 });
 
 Cypress.Commands.add('expectNoAxeViolations', () => {
+  cy.window({ log: false }).should((win) => {
+    const running = win.document.getAnimations()
+      .filter((animation) => animation.playState === 'running'
+        && animation.effect.getComputedTiming().endTime <= 1000)
+      .map((animation) => animation.animationName || animation.transitionProperty);
+    expect(running, 'fades and transitions still running').to.have.length(0);
+  });
   cy.readFile('node_modules/axe-core/axe.min.js', 'utf8', { log: false }).then((source) => {
     cy.window({ log: false })
       .then((win) => {
