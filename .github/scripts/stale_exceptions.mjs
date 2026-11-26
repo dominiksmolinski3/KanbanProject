@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -310,9 +310,44 @@ function staleMavenPins() {
   }];
 }
 
+function bootManagedProperties(pom, backend) {
+  const version = pom.match(/<artifactId>spring-boot-starter-parent<\/artifactId>\s*<version>([^<]+)<\/version>/)?.[1];
+  if (!version) throw new Error('backend/pom.xml has no spring-boot-starter-parent version to compare its properties with');
+  const path = join(homedir(), '.m2', 'repository', 'org', 'springframework', 'boot', 'spring-boot-dependencies',
+    version, `spring-boot-dependencies-${version}.pom`);
+  if (!existsSync(path)) run(join(backend, WINDOWS ? 'mvnw.cmd' : 'mvnw'), ['-q', '-B', 'validate'], { cwd: backend, stdio: ['ignore', 'pipe', 'inherit'] });
+  if (!existsSync(path)) throw new Error(`${path} is missing, so the properties cannot be compared with Spring Boot ${version}`);
+  const { text } = readText(path);
+  return { version, managed: Object.fromEntries([...text.matchAll(/<([\w.-]+)>([^<]*)<\/\1>/g)].map(m => [m[1], m[2]])) };
+}
+
+function staleBootProperties() {
+  const backend = join(REPO, 'backend');
+  const pomPath = join(backend, 'pom.xml');
+  const { text: pom, eol } = readText(pomPath);
+  const block = pom.match(/<properties>[\s\S]*?<\/properties>/)?.[0] ?? '';
+  const { version, managed } = bootManagedProperties(pom, backend);
+  const stale = [...block.matchAll(/<([\w.-]+)>([^<]*)<\/\1>/g)]
+    .map(m => ({ name: m[1], pin: m[2].trim(), boot: managed[m[1]]?.trim() }))
+    .filter(p => p.boot && !pom.includes(`\${${p.name}}`) && compareVersions(p.boot, p.pin) >= 0);
+  if (stale.length === 0) return [];
+  return [{
+    file: 'backend/pom.xml',
+    notes: stale.map(p => `\`${p.name}\` ${p.pin}: Spring Boot ${version} manages ${p.boot}`),
+    apply: () => {
+      let text = pom;
+      for (const { name } of stale) {
+        const tag = name.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+        text = text.replace(new RegExp(`[ \\t]*<${tag}>[^<]*</${tag}>\\n`), '');
+      }
+      writeText(pomPath, text, eol);
+    },
+  }];
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const changes = [...staleIgnores(args.trivy), ...staleOverrides(), ...staleMavenPins()];
+  const changes = [...staleIgnores(args.trivy), ...staleOverrides(), ...staleMavenPins(), ...staleBootProperties()];
   const summary = changes.flatMap(change => [`- \`${change.file}\``, ...change.notes.map(note => `  - ${note}`)]).join('\n');
   console.log(changes.length === 0 ? 'Every exception still catches something.' : summary);
   if (args.summary) writeFileSync(args.summary, summary ? `${summary}\n` : '');
