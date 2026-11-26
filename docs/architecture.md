@@ -1003,7 +1003,7 @@ submit button tied to the visible form by `form="auth-form"`, and the browser va
 `handleSubmit` runs. React Hook Form's `handleSubmit` is asynchronous, which is why a test that
 asserts a server call did *not* happen has to let the event loop turn first or it passes on a
 mutant. It also makes the sign-in page the heaviest part of the entry bundle: the library is about
-12 kB gzipped of the 150 kB budget.
+12 kB gzipped of the 160 kB budget.
 
 **Every drag has a keyboard equivalent, and it is not a second implementation.** HTML5 drag-and-drop
 cannot be driven from a keyboard at all — there is no key that begins a drag — so a card that could
