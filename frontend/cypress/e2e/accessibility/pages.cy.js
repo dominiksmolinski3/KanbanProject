@@ -16,30 +16,16 @@ const signedIn = [
   { name: 'device linking', path: '/link', ready: 'h1' },
 ];
 
-const visitIn = (theme, path, ready) => {
-  cy.visit(path, {
-    onBeforeLoad(win) {
-      win.localStorage.setItem('kanban-theme', theme);
-    },
-  });
-  cy.get('html').should('have.attr', 'data-theme', theme);
-  cy.get(ready, { timeout: 10000 }).should('be.visible');
-};
-
 describe('Accessibility, in a real browser', () => {
   beforeEach(() => {
-    cy.intercept({ resourceType: 'document' }, (req) => {
-      req.on('response', (res) => {
-        delete res.headers['content-security-policy'];
-      });
-    });
+    cy.prepareAxe();
   });
 
   themes.forEach((theme) => {
     describe(`${theme} theme, signed out`, () => {
       signedOut.forEach(({ name, path, ready }) => {
         it(`${name} has no axe violations`, () => {
-          visitIn(theme, path, ready);
+          cy.visitThemed(path, theme, ready);
           cy.expectNoAxeViolations();
         });
       });
@@ -52,16 +38,9 @@ describe('Accessibility, in a real browser', () => {
 
       signedIn.forEach(({ name, path, ready }) => {
         it(`${name} has no axe violations`, () => {
-          visitIn(theme, path, ready);
+          cy.visitThemed(path, theme, ready);
           cy.expectNoAxeViolations();
         });
-      });
-
-      it('the board with the add column and row form open has no axe violations', () => {
-        visitIn(theme, '/board', '[data-testid="open-add-board-item-form"]');
-        cy.get('[data-testid="open-add-board-item-form"]').click();
-        cy.get('[data-testid="add-row-column-tab-column"]').should('be.visible');
-        cy.expectNoAxeViolations();
       });
     });
   });

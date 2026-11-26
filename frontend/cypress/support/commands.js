@@ -184,6 +184,13 @@ Cypress.Commands.add('ensureRowExists', () => {
 });
 
 Cypress.Commands.add('expectNoAxeViolations', () => {
+  cy.window({ log: false }).should((win) => {
+    const running = win.document.getAnimations()
+      .filter((animation) => animation.playState === 'running'
+        && animation.effect.getComputedTiming().endTime <= 1000)
+      .map((animation) => animation.animationName || animation.transitionProperty);
+    expect(running, 'fades and transitions still running').to.have.length(0);
+  });
   cy.readFile('node_modules/axe-core/axe.min.js', 'utf8', { log: false }).then((source) => {
     cy.window({ log: false })
       .then((win) => {
@@ -200,4 +207,22 @@ Cypress.Commands.add('expectNoAxeViolations', () => {
         expect(violations, `\n${report}\n`).to.have.length(0);
       });
   });
+});
+
+Cypress.Commands.add('prepareAxe', () => {
+  cy.intercept({ resourceType: 'document' }, (req) => {
+    req.on('response', (res) => {
+      delete res.headers['content-security-policy'];
+    });
+  });
+});
+
+Cypress.Commands.add('visitThemed', (path, theme, ready) => {
+  cy.visit(path, {
+    onBeforeLoad(win) {
+      win.localStorage.setItem('kanban-theme', theme);
+    },
+  });
+  cy.get('html').should('have.attr', 'data-theme', theme);
+  cy.get(ready, { timeout: 10000 }).should('be.visible');
 });
