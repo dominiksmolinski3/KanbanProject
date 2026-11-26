@@ -2,3 +2,6 @@ rules:
   # The `$/` form it asks for postdates actionlint 1.7.12, and the coverage tests match `./.github/...`.
   self-repository:
     disable: true
+  dangerous-triggers:
+    ignore:
+      - rerun-on-rate-limit.yml

@@ -2140,6 +2140,12 @@ and reasons in `local.refusal_alerts`.
   as `MetricAlertsMatchTheMetersTest`. **Its list of sweeps is maintained by hand**, so a new scheduled
   workflow added and not listed there is not covered; that is stated rather than solved, because
   guessing from the trigger block would silently cover workflows that were never meant to alarm.
+- **`rerun-on-rate-limit.yml`** ("Rerun on rate limit") — a `workflow_run` job that, when a listed workflow's
+  first attempt fails, reads each failed job's log and reruns the failed jobs once if a registry or API
+  refused it with a 429 (`.github/scripts/rate_limit_rerun.py`). Registries, Maven Central and the GitHub API
+  all rate-limit the runner's shared address, and none of them says anything a person can act on. A second
+  failure stays red, and so does anything that is not a 429. The job checks out the default branch only, never
+  the run it is reading. A new workflow has to be listed in it or named in `RateLimitRerunWorkflowTest`.
 - **Every job that pulls images goes through `mirror.gcr.io`, and none logs in to Docker Hub.**
   A personal Docker Hub account gets 200 pulls per 6 hours, and one PR's CI spends about 45 (three
   e2e legs of a dozen images each, the image scans, the backend job), so a handful of PRs at once
