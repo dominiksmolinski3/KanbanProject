@@ -160,6 +160,13 @@ docker-compose up -d
 docker-compose down
 ```
 
+   Postgres 18 keeps its data under `/var/lib/postgresql/18/`, so a `postgres_data` volume from the
+   Postgres 17 stack is not read and the stack starts empty. To keep that data, dump it before you
+   update (`docker compose exec -T postgres pg_dump -U "$SPRING_DATASOURCE_USERNAME" -Fc
+   "$SPRING_DATASOURCE_DB" > kanban.dump`), then restore it into the new stack (`docker compose
+   exec -T postgres pg_restore -U "$SPRING_DATASOURCE_USERNAME" -d "$SPRING_DATASOURCE_DB"
+   --no-owner < kanban.dump`) or reseed.
+
 ### Running Locally
 
 #### Backend
@@ -458,7 +465,7 @@ database:
 
 ```bash
 docker run -d --name kanban-verify-postgres -p 15433:5432 -e POSTGRES_DB=kanban_ci \
-  -e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:17
+  -e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:18
 TEST_DATABASE_URL=jdbc:postgresql://localhost:15433/kanban_ci TEST_DATABASE_USERNAME=kanban_ci \
   TEST_DATABASE_PASSWORD=kanban_ci ./mvnw verify
 ```

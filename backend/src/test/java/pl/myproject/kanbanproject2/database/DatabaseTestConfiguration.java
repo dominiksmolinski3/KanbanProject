@@ -37,7 +37,7 @@ public class DatabaseTestConfiguration {
     private static final String HOW_TO_RUN = "These tests run against a real Postgres. Point TEST_DATABASE_URL, "
             + "TEST_DATABASE_USERNAME and TEST_DATABASE_PASSWORD at one (CI's backend/.env is read as a fallback), "
             + "for example: docker run -d --name kanban-verify-postgres -p 15433:5432 -e POSTGRES_DB=kanban_ci "
-            + "-e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:17 and "
+            + "-e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:18 and "
             + "TEST_DATABASE_URL=jdbc:postgresql://localhost:15433/kanban_ci. Each run migrates a schema of its own "
             + "and drops it afterwards.";
 

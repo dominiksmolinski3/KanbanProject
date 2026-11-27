@@ -156,7 +156,7 @@ Bytecode targets Java 21; CI, CodeQL and `backend/Dockerfile` all build and run 
 
 `verify` needs a Postgres (the tests under `database/` migrate a throwaway schema in it) as well as
 Redis. Locally: `docker run -d --name kanban-verify-postgres -p 15433:5432 -e POSTGRES_DB=kanban_ci
--e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:17` and
+-e POSTGRES_USER=kanban_ci -e POSTGRES_PASSWORD=kanban_ci postgres:18` and
 `TEST_DATABASE_URL=jdbc:postgresql://localhost:15433/kanban_ci` with `TEST_DATABASE_USERNAME` and
 `TEST_DATABASE_PASSWORD` set to `kanban_ci`. A test that has to see what the database answers (a
 foreign key, a lock, a transaction boundary) belongs there, not in a mocked suite.
