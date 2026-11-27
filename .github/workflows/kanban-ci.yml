@@ -44,10 +44,10 @@ jobs:
           echo "::warning::Docker Hub and mirror.gcr.io refused $1; pulling it from AWS's mirror of the official images"
           docker pull -q "public.ecr.aws/docker/library/$1" && docker tag "public.ecr.aws/docker/library/$1" "$1"
         }
-        pull postgres:17
+        pull postgres:18
         pull redis:7-alpine
         docker run -d --name postgres -p 5432:5432 -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
-          --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 30 postgres:17
+          --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 30 postgres:18
         docker run -d --name redis -p 6379:6379 \
           --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30 redis:7-alpine
         for container in postgres redis; do
