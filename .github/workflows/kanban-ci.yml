@@ -348,12 +348,12 @@ jobs:
         since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         if [ "$FULL_STACK" = true ]; then
           docker compose --profile loadtest run --rm --no-deps k6
-          services="app app2"
+          services=(app app2)
         else
           docker compose --profile loadtest run --rm --no-deps k6 run /loadtest/kanban.js
-          services=app
+          services=(app)
         fi
-        errors=$(docker compose logs --no-color --since "$since" $services | grep '"level":"ERROR"' || true)
+        errors=$(docker compose logs --no-color --since "$since" "${services[@]}" | grep '"level":"ERROR"' || true)
         if [ -n "$errors" ]; then
           echo "$errors" | head -20
           echo "::error::the API logged ERROR lines during the load smoke"
