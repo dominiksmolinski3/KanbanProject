@@ -35,8 +35,8 @@ describe('dealing the e2e suite out to the CI shards', () => {
     expect(shards.flatMap(shard => shard.specs)).toEqual(['cypress/e2e/new/brand-new.cy.js']);
   });
 
-  test('the three shards CI runs finish within half a minute of each other', () => {
-    const seconds = planShards(specs, 3).map(shard => shard.seconds);
+  test('the four shards CI runs finish within half a minute of each other', () => {
+    const seconds = planShards(specs, 4).map(shard => shard.seconds);
 
     expect(Math.max(...seconds) - Math.min(...seconds)).toBeLessThanOrEqual(30);
   });

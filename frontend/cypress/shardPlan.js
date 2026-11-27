@@ -31,8 +31,6 @@ export const EXTRA_JOBS = {
   load: 66,
 };
 
-export const FULL_STACK_SECONDS = 25;
-
 const cost = (shard, item) =>
   item.seconds + (item.spec && shard.specs.length === 0 ? CYPRESS_LAUNCH_SECONDS : 0);
 
@@ -43,7 +41,7 @@ export function planShards(specs, total) {
 
   const shards = Array.from({ length: total }, (_, index) => ({
     full: index === 0,
-    seconds: index === 0 ? FULL_STACK_SECONDS + Object.values(EXTRA_JOBS).reduce((sum, seconds) => sum + seconds, 0) : 0,
+    seconds: index === 0 ? Object.values(EXTRA_JOBS).reduce((sum, seconds) => sum + seconds, 0) : 0,
     specs: [],
     jobs: index === 0 ? Object.keys(EXTRA_JOBS) : [],
   }));

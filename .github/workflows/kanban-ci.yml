@@ -145,7 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [ 1, 2, 3 ]
+        shard: [ 1, 2, 3, 4 ]
     env:
       POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'kanban_ci' }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'kanban_ci' }}
