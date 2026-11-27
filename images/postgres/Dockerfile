@@ -1,5 +1,5 @@
 # checkov:skip=CKV_DOCKER_2: a one-shot job container; Container Apps jobs never read HEALTHCHECK
-FROM postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065
+FROM postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
 
 # The workflow passes the date, or the registry cache replays an older upgrade and the rebuild fixes nothing.
 ARG APK_UPGRADE_DATE
