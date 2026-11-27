@@ -17,4 +17,5 @@ const mine = planShards(specs, total)[shard - 1];
 console.error(`shard ${shard} of ${total} (~${mine.seconds}s): ${[...mine.specs, ...mine.jobs].join(', ')}`);
 // An empty --spec means every spec to Cypress, so the workflow skips the run when this is empty.
 console.log(`specs=${mine.specs.join(',')}`);
+console.log(`full=${mine.full}`);
 for (const job of Object.keys(EXTRA_JOBS)) console.log(`${job}=${mine.jobs.includes(job)}`);

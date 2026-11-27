@@ -21,6 +21,14 @@ describe('dealing the e2e suite out to the CI shards', () => {
     expect(shards.flatMap(shard => shard.jobs).sort()).toEqual(Object.keys(EXTRA_JOBS).sort());
   });
 
+  test.each([1, 2, 3, 4, 5])('with %i shards only the first runs the full stack and its extra jobs', total => {
+    const shards = planShards(specs, total);
+
+    expect(shards.map(shard => shard.full)).toEqual(shards.map((_, index) => index === 0));
+    expect(shards[0].jobs.sort()).toEqual(Object.keys(EXTRA_JOBS).sort());
+    expect(shards.slice(1).flatMap(shard => shard.jobs)).toEqual([]);
+  });
+
   test('a spec with no timing is still dealt out', () => {
     const shards = planShards(['cypress/e2e/new/brand-new.cy.js'], 2);
 

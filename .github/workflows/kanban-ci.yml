@@ -183,7 +183,29 @@ jobs:
         cache: npm
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Cache the Cypress binary
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/Cypress
+        key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: |
+        npm ci
+        nohup npx cypress run --browser chromium --config-file cypress/warmup.config.js > "$RUNNER_TEMP/cypress-warmup.log" 2>&1 &
+
+    - name: Plan this shard
+      id: plan
+      working-directory: frontend
+      env:
+        SHARD: ${{ matrix.shard }}
+        SHARDS: ${{ strategy.job-total }}
+      run: node cypress/shard.js "$SHARD" "$SHARDS" >> "$GITHUB_OUTPUT"
+
     - name: Create .env file for docker-compose
+      env:
+        FULL_STACK: ${{ steps.plan.outputs.full }}
       run: |
         cat > .env <<EOF
         SPRING_DATASOURCE_DB=${POSTGRES_DB}
@@ -198,27 +220,21 @@ jobs:
         CAPTCHA_ENABLED=false
         CAPTCHA_SECRET=
         VITE_RECAPTCHA_SITE_KEY=
-        OTLP_METRICS_ENABLED=true
+        OTLP_METRICS_ENABLED=${FULL_STACK}
         SECURITY_RATE_LIMIT_CREDENTIAL_ATTEMPTS_PER_ACCOUNT=100
         SECURITY_RATE_LIMIT_CREDENTIAL_ATTEMPTS_PER_IP=300
         EOF
 
-    - name: Cache the Cypress binary
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/.cache/Cypress
-        key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-    - name: Install frontend dependencies
-      working-directory: frontend
-      run: |
-        npm ci
-        nohup npx cypress run --browser chromium --config-file cypress/warmup.config.js > "$RUNNER_TEMP/cypress-warmup.log" 2>&1 &
-
     - name: Build and start the stack
+      env:
+        FULL_STACK: ${{ steps.plan.outputs.full }}
       run: |
         for i in 1 2 3; do
-          docker compose --profile replicas --profile monitoring up -d --build && exit 0
+          if [ "$FULL_STACK" = true ]; then
+            docker compose --profile replicas --profile monitoring up -d --build && exit 0
+          else
+            docker compose up -d --build && exit 0
+          fi
           echo "docker compose up failed (attempt $i/3)" >&2
           docker compose --profile replicas --profile monitoring down -v
           docker builder prune -af
@@ -240,6 +256,7 @@ jobs:
         exit 1
 
     - name: Wait for the second replica, and confirm it is a second one
+      if: steps.plan.outputs.full == 'true'
       run: |
         for _ in $(seq 1 60); do
           if curl -fs http://localhost:8082/actuator/health/readiness | grep -q '"status":"UP"'; then
@@ -298,14 +315,6 @@ jobs:
         pkill -f warmup.config.js && echo "::warning::the Chromium warm-up was still running after 120 s"
         tail -n 15 "$RUNNER_TEMP/cypress-warmup.log"
 
-    - name: Plan this shard
-      id: plan
-      working-directory: frontend
-      env:
-        SHARD: ${{ matrix.shard }}
-        SHARDS: ${{ strategy.job-total }}
-      run: node cypress/shard.js "$SHARD" "$SHARDS" >> "$GITHUB_OUTPUT"
-
     - name: Run this shard's Cypress specs
       if: steps.plan.outputs.specs != ''
       working-directory: frontend
@@ -344,9 +353,11 @@ jobs:
         fi
 
     - name: Check what the Application Insights agent exported
+      if: steps.plan.outputs.full == 'true'
       run: node observability/appinsights-sink/assert-exported.mjs http://127.0.0.1:8099 2
 
     - name: Check what Prometheus received
+      if: steps.plan.outputs.full == 'true'
       run: node observability/assert-prometheus.mjs http://127.0.0.1:9090 2 http://127.0.0.1:3000
 
     - name: Upload Cypress artifacts
