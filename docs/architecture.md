@@ -72,6 +72,12 @@ which Cypress reads last-wins: `npm run cypress:run -- --browser chrome`.
 
 The README documents these same commands; keep the two in sync when a script is renamed.
 
+**A spec builds the board it needs over the API, not through the UI.** `cy.openBoard({ columns, rows, tasks })`
+empties the test user's board, creates exactly that layout, then opens `/board`; `cy.resetBoard()` in
+`afterEach` leaves it empty for whichever spec the shard planner deals next. Clicking only belongs in
+a test when the click is what it tests. The UI cannot delete the last row, so a test that deletes
+one needs two.
+
 ### Full stack via Docker
 
 The stack is the deployment's shape: a `web` service (nginx, the bundle, the proxy) in front of an
@@ -2077,12 +2083,12 @@ and reasons in `local.refusal_alerts`.
 ## CI/CD and infrastructure
 
 - `kanban-ci.yml` — on PRs and pushes to `main`: backend job runs `mvnw clean verify` against Postgres and Redis containers (writing a `.env` from secrets first), which is the phase the JaCoCo `check` gate is bound to; frontend job builds, lints (**blocking** — the `continue-on-error` escape is gone), type-checks with `tsc --noEmit` and runs Jest with coverage; and a third **`e2e` job** brings the `docker-compose` stack up (mail and captcha off, `AZURE_STORAGE_CONNECTION_STRING` empty), seeds a test account via `npm run cypress:seed`, and runs Cypress headless against the built bundle on `:8080`. Cypress *is* run in CI now. Leg 1's stack comes up with **`--profile replicas`** and `--profile monitoring`; the other legs run the lean stack (one API replica, no Prometheus or Grafana). A further step on leg 1 runs `npm run cypress:run:replicas` — the cross-replica board-sync spec, which needs the second one. The step between them asserts `app` and `app2` really are two containers, because one container answering both ports would make that spec a slower copy of `live-sync.cy.js`, passing and proving nothing. One leg then seeds load-test accounts and runs the **k6 smoke** (`docker compose --profile loadtest run --rm --no-deps k6`, 60 s), failing on a k6 threshold or on any API `ERROR` line logged during it. Run against `main` before #388 it failed every time on the column-delete race. The reorder deadlock is a narrower timing race that did not reproduce at smoke rates; `RowLockConflictTest` is its guard.
-  **The job is a four-leg matrix, and each leg brings up its own stack**, not a slice of one; leg 1 is the full stack and the others are lean (no second replica, no monitoring, so fewer images to pull and one JVM to start). Leg 1 carries the cross-replica spec, the load smoke and the Application Insights and Prometheus assertions (`full=true` from `shard.js`), and the planner counts those jobs against it, so it gets fewer specs. The specs
+  **The job is a four-leg matrix, and each leg brings up its own stack**, not a slice of one; leg 1 is the full stack and the others are lean (no second replica, no monitoring, so fewer images to pull and one JVM to start). Leg 1 carries the cross-replica spec and the Application Insights and Prometheus assertions (`full=true` from `shard.js`), and the planner charges it those plus ~30 s for the full stack itself (median 131 s against 102 s for a lean one over the four attempts of run 45926970435), so it gets fewer specs. The load smoke goes to whichever leg is lightest, usually a lean one: there k6 runs without its Prometheus output and only `app`'s log is checked, since nothing asserts on k6's metrics and `web` proxies only to `app`. The specs
   run in sequence (13 of them then) were 3½ minutes of a ~7-minute job, so each leg builds and seeds its own
   stack and runs a quarter of them. `frontend/cypress/shard.js` deals the specs out
   from `cypress.config.js`'s own `specPattern`, so there is no per-leg list to keep in step and a
   new spec cannot land in no leg. It deals by measured seconds (`cypress/shardPlan.js`), longest
-  first onto the lightest leg, and the cross-replica spec and the load smoke are dealt as items
+  first onto the lightest leg, and the load smoke is dealt as an item
   too: dealt round-robin, with both on leg 1, that leg ran ~90 s longer than the others and set
   the length of every CI run. Each leg's first spec also carries the ~25 s Cypress spends
   connecting to Chromium, which is what a three-short-spec leg was planned without and ran 37 s

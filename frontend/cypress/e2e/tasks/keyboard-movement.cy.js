@@ -1,25 +1,16 @@
-beforeEach(() => {
-  cy.loginAsTestUser();
-  cy.ensureRowExists();
-});
-
 afterEach(() => {
-  cy.on('window:alert', () => true);
-  cy.on('window:confirm', () => true);
-  cy.get('body').type('{esc}');
-
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.deleteRows();
+  cy.resetBoard();
 });
 
 describe('Moving a task with the keyboard', () => {
   const columnOf = (title) => cy.contains('.task', title).invoke('attr', 'data-column-id');
 
   it('carries a task into another column', () => {
-    cy.createColumn('Keyboard Source', 0);
-    cy.createColumn('Keyboard Target', 0);
-    cy.createTask('Keyboard Movable Task');
+    cy.openBoard({
+      columns: ['Keyboard Source', 'Keyboard Target'],
+      rows: ['Default Row'],
+      tasks: ['Keyboard Movable Task'],
+    });
 
     cy.contains('.task', 'Keyboard Movable Task').should('be.visible');
 
@@ -35,7 +26,6 @@ describe('Moving a task with the keyboard', () => {
       cy.get('.grid-cell.keyboard-move-target').should('have.length', 1);
 
       cy.focused().type(' ');
-      cy.wait(500);
 
       cy.get('.task.keyboard-held').should('not.exist');
       columnOf('Keyboard Movable Task').should('not.equal', before);
@@ -43,9 +33,11 @@ describe('Moving a task with the keyboard', () => {
   });
 
   it('leaves the task where it was when the move is cancelled', () => {
-    cy.createColumn('Keyboard Stay', 0);
-    cy.createColumn('Keyboard Elsewhere', 0);
-    cy.createTask('Unmoved Task');
+    cy.openBoard({
+      columns: ['Keyboard Stay', 'Keyboard Elsewhere'],
+      rows: ['Default Row'],
+      tasks: ['Unmoved Task'],
+    });
 
     cy.contains('.task', 'Unmoved Task').should('be.visible');
 

@@ -1,26 +1,10 @@
-beforeEach(() => {
-  cy.loginAsTestUser();
-  cy.get('th', { timeout: 30000 }).should('exist');
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.ensureRowExists();
-
-  cy.createColumn('Backlog', 0);
-});
-
 afterEach(() => {
-  cy.on('window:alert', () => true);
-  cy.on('window:confirm', () => true);
-  cy.get('body').type('{esc}');
-
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.deleteRows();
+  cy.resetBoard();
 });
 
 describe('User Assignment', () => {
   it('allows assigning a user to a task', () => {
-    cy.createTask('Assignment Test Task');
+    cy.openBoard({ columns: ['Backlog'], rows: ['Default Row'], tasks: ['Assignment Test Task'] });
 
     cy.contains('.task', 'Assignment Test Task').click();
 
@@ -34,7 +18,7 @@ describe('User Assignment', () => {
   });
 
   it('allows removing user assignment', () => {
-    cy.createTask('Remove Assignment Task');
+    cy.openBoard({ columns: ['Backlog'], rows: ['Default Row'], tasks: ['Remove Assignment Task'] });
     cy.contains('.task', 'Remove Assignment Task').click();
 
     cy.get('.user-select').select('User One');
@@ -47,5 +31,4 @@ describe('User Assignment', () => {
     cy.get('.assigned-user-card').should('not.exist');
     cy.get('.close-panel-btn').click();
   });
-
 });

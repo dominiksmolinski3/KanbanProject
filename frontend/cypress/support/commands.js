@@ -1,4 +1,4 @@
-Cypress.Commands.add('login', (email, password) => {
+Cypress.Commands.add('signIn', (email, password) => {
   cy.session(
     [email, password],
     () => {
@@ -17,8 +17,17 @@ Cypress.Commands.add('login', (email, password) => {
       },
     }
   );
+});
+
+Cypress.Commands.add('login', (email, password) => {
+  cy.signIn(email, password);
   cy.visit('/board');
-  cy.wait(300);
+});
+
+Cypress.Commands.add('signInAsTestUser', () => {
+  cy.fixture('test-account').then((account) => {
+    cy.signIn(account.email, account.password);
+  });
 });
 
 Cypress.Commands.add('loginAsTestUser', () => {
@@ -27,9 +36,76 @@ Cypress.Commands.add('loginAsTestUser', () => {
   });
 });
 
+const signedInStorage = () =>
+  cy.getAllLocalStorage({ log: false }).then((all) => {
+    const stored = all[new URL(Cypress.config('baseUrl')).origin] || {};
+    expect(stored.token, 'a signed-in session to call the API with').to.be.a('string');
+    return stored;
+  });
+
+const onActiveBoard = (path, stored) =>
+  (stored.activeBoardId ? `${path}?boardId=${stored.activeBoardId}` : path);
+
+const api = (stored, options) =>
+  cy.request({
+    log: false,
+    ...options,
+    headers: { Authorization: `Bearer ${stored.token}`, ...(options.headers || {}) },
+  });
+
+const named = (item) => (typeof item === 'string' ? { name: item } : item);
+
+Cypress.Commands.add('resetBoard', () => {
+  signedInStorage().then((stored) => {
+    ['tasks', 'columns', 'rows'].forEach((kind) => {
+      api(stored, { url: onActiveBoard(`/api/${kind}`, stored) }).then(({ body }) => {
+        body.forEach(({ id }) => {
+          api(stored, { method: 'DELETE', url: `/api/${kind}/${id}`, failOnStatusCode: false })
+            .its('status').should('be.oneOf', [204, 404]);
+        });
+      });
+    });
+  });
+});
+
+Cypress.Commands.add('seedBoard', ({ columns = [], rows = [], tasks = [] } = {}) => {
+  cy.resetBoard();
+  signedInStorage().then((stored) => {
+    const ids = { columns: {}, rows: {} };
+    const create = (kind, items) => items.map(named).forEach(({ name, wipLimit = 0 }) => {
+      api(stored, { method: 'POST', url: onActiveBoard(`/api/${kind}`, stored), body: { name, wipLimit } })
+        .then(({ body }) => { ids[kind][name] = body.id; });
+    });
+    create('columns', columns);
+    create('rows', rows);
+    cy.then(() => {
+      tasks.map((task) => (typeof task === 'string' ? { title: task } : task)).forEach(({ title, column, row }) => {
+        api(stored, {
+          method: 'POST',
+          url: onActiveBoard('/api/tasks', stored),
+          body: {
+            title,
+            column: { id: ids.columns[column ?? named(columns[0]).name] },
+            row: { id: ids.rows[row ?? named(rows[0]).name] },
+          },
+        });
+      });
+    });
+  });
+});
+
+Cypress.Commands.add('openBoard', (layout = {}) => {
+  cy.signInAsTestUser();
+  cy.seedBoard(layout);
+  cy.visit('/board');
+  cy.get('[data-testid="open-add-board-item-form"]').should('be.visible');
+  (layout.columns || []).map(named).forEach(({ name }) => cy.contains('th', name).should('exist'));
+  (layout.rows || []).map(named).forEach(({ name }) => cy.contains('.grid-row-header', name).should('exist'));
+  (layout.tasks || []).forEach((task) => cy.contains('.task', task.title ?? task).should('exist'));
+});
+
 Cypress.Commands.add('createColumn', (name, wipLimit) => {
   cy.get('[data-testid="open-add-board-item-form"]').click();
-  cy.wait(500);
   cy.get('[data-testid="add-row-column-tab-column"]').click();
   cy.get('#item-name').type(name);
   if (wipLimit > 0) {
@@ -37,36 +113,29 @@ Cypress.Commands.add('createColumn', (name, wipLimit) => {
   }
   cy.get('[type="submit"]').click();
   cy.contains('th', name).should('exist');
-  cy.wait(300);
+  cy.get('#item-name').should('not.exist');
 });
 
 Cypress.Commands.add('createRow', (name, wipLimit) => {
   cy.get('[data-testid="open-add-board-item-form"]').click();
-  cy.wait(500);
-
   cy.get('[data-testid="add-row-column-tab-row"]').click();
-  cy.wait(500);
-
   cy.get('#item-name').clear().type(name);
   if (wipLimit > 0) {
     cy.get('#wip-limit').clear().type(wipLimit);
   }
-
   cy.get('[type="submit"]').click();
-
   cy.contains('tr', name).should('exist');
-  cy.wait(300);
+  cy.get('#item-name').should('not.exist');
 });
 
 Cypress.Commands.add('createTask', (title) => {
-    cy.wait(100);
-    cy.get('[data-testid="open-add-task-form"]').click();
-    cy.get('#task-title').type(title);
-    cy.get('[type="submit"]').click();
-    cy.contains('.task', title).should('exist');
-    cy.wait(300);
-  });
-  
+  cy.get('[data-testid="open-add-task-form"]').click();
+  cy.get('#task-title').type(title);
+  cy.get('[type="submit"]').click();
+  cy.contains('.task', title).should('exist');
+  cy.get('#task-title').should('not.exist');
+});
+
 Cypress.Commands.add('drag', { prevSubject: 'element' }, (subject, targetSelector) => {
   const target = cy.get(targetSelector);
     
@@ -100,87 +169,15 @@ Cypress.Commands.add('drag', { prevSubject: 'element' }, (subject, targetSelecto
   cy.wait(300);
 });
 
-Cypress.Commands.add('createTestBoard', () => {
-  cy.createColumn('To Do', 3);
-  cy.wait(100);
-  cy.createColumn('In Progress', 2);
-  cy.wait(100);
-  cy.createColumn('Done', 0);
-  cy.wait(100);
-  cy.createRow('Features', 3);
-  cy.wait(100);
-  cy.createRow('Bugs', 3);
-  cy.wait(300);
-});
-  
-Cypress.Commands.add('setupTaskWithSubtasks', (title, subtasks = []) => {
-  cy.createTask(title);
+Cypress.Commands.add('addSubtasks', (title, subtasks) => {
   cy.contains('.task', title).click();
-    
-  subtasks.forEach(subtask => {
-    cy.get('.subtask-input').should('have.value', '').type(`${subtask}`);
+  subtasks.forEach((subtask) => {
+    cy.get('.subtask-input').should('have.value', '').type(subtask);
     cy.get('.add-subtask-btn').click();
     cy.contains('.subtask-item', subtask).should('exist');
   });
-    
   cy.get('.close-panel-btn').click();
-  cy.wait(300);
-});
-
-Cypress.Commands.add('closePanelIfOpen', () => {
-  cy.get('body').then($body => {
-    if ($body.find('.close-panel-btn').length > 0) {
-      cy.get('.close-panel-btn').click();
-    }
-  });
-});
-
-Cypress.Commands.add('deleteTasks', () => {
-  cy.closePanelIfOpen();
-  cy.get('body').then($body => {
-    const remaining = $body.find('.delete-btn').length;
-    if (remaining === 0) {
-      return;
-    }
-    cy.get('.delete-btn').first().focus().click();
-    cy.get('.confirm-delete-btn').first().click({ force: true });
-    cy.get('.delete-btn', { timeout: 10000 }).should('have.length', remaining - 1);
-    cy.deleteTasks();
-  });
-});
-
-Cypress.Commands.add('deleteColumns', () => {
-  cy.get('th').then($columns => {
-    if ($columns.length > 2) {
-      cy.get('th').eq(1).find('.delete-column-btn').click({ force: true });
-      cy.get('.confirm-button').first().click({ force: true });
-      cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
-      cy.get('th', { timeout: 10000 }).should('have.length', $columns.length - 1);
-      cy.deleteColumns();
-    }
-  });
-  cy.wait(300);
-});
-
-Cypress.Commands.add('deleteRows', () => {
-  cy.get('.grid-row-header').then($rowHeaders => {
-    if ($rowHeaders.length > 2) {
-      cy.get('.grid-row-header').eq(0).find('.delete-row-btn').click({ force: true });
-      cy.get('.confirm-button').first().click({ force: true });
-      cy.get('.confirm-button', { timeout: 10000 }).should('not.exist');
-      cy.get('.grid-row-header', { timeout: 10000 }).should('have.length', $rowHeaders.length - 1);
-      cy.deleteRows();
-    }
-  });
-  cy.wait(300);
-});
-
-Cypress.Commands.add('ensureRowExists', () => {
-  cy.get('.grid-row-header').then($rowHeaders => {
-    if ($rowHeaders.length <= 1) {
-      cy.createRow('Cypress-Default-Row', 0);
-    }
-  });
+  cy.get('.close-panel-btn').should('not.exist');
 });
 
 Cypress.Commands.add('expectNoAxeViolations', () => {
