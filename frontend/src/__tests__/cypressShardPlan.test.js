@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { globSync } from 'node:fs';
-import { EXTRA_JOBS, SECONDS, planShards } from '../../cypress/shardPlan.js';
+import { DEALT_JOBS, EXTRA_JOBS, FULL_STACK_JOBS, SECONDS, planShards } from '../../cypress/shardPlan.js';
 
 const specs = globSync('cypress/e2e/**/*.cy.{js,jsx,ts,tsx}')
   .map(path => path.replaceAll('\\', '/'))
@@ -21,12 +21,19 @@ describe('dealing the e2e suite out to the CI shards', () => {
     expect(shards.flatMap(shard => shard.jobs).sort()).toEqual(Object.keys(EXTRA_JOBS).sort());
   });
 
-  test.each([1, 2, 3, 4, 5])('with %i shards only the first runs the full stack and its extra jobs', total => {
+  test.each([1, 2, 3, 4, 5])('with %i shards only the first runs the full stack and the jobs that need it', total => {
     const shards = planShards(specs, total);
+    const needsFullStack = job => Object.keys(FULL_STACK_JOBS).includes(job);
 
     expect(shards.map(shard => shard.full)).toEqual(shards.map((_, index) => index === 0));
-    expect(shards[0].jobs.sort()).toEqual(Object.keys(EXTRA_JOBS).sort());
-    expect(shards.slice(1).flatMap(shard => shard.jobs)).toEqual([]);
+    expect(shards[0].jobs.filter(needsFullStack)).toEqual(Object.keys(FULL_STACK_JOBS).sort());
+    expect(shards.slice(1).flatMap(shard => shard.jobs).filter(needsFullStack)).toEqual([]);
+  });
+
+  test('the load smoke goes to a lean shard when there is one', () => {
+    const shards = planShards(specs, 4);
+
+    expect(shards[0].jobs).not.toEqual(expect.arrayContaining(Object.keys(DEALT_JOBS)));
   });
 
   test('a spec with no timing is still dealt out', () => {

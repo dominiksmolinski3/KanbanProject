@@ -26,31 +26,45 @@ export const UNMEASURED_SPEC_SECONDS = 20;
 
 export const CYPRESS_LAUNCH_SECONDS = 25;
 
-export const EXTRA_JOBS = {
+export const FULL_STACK_SECONDS = 30;
+
+export const FULL_STACK_JOBS = {
   replicas: 20,
+};
+
+export const DEALT_JOBS = {
   load: 66,
 };
+
+export const EXTRA_JOBS = { ...FULL_STACK_JOBS, ...DEALT_JOBS };
 
 const cost = (shard, item) =>
   item.seconds + (item.spec && shard.specs.length === 0 ? CYPRESS_LAUNCH_SECONDS : 0);
 
 export function planShards(specs, total) {
-  const items = specs
-    .map(spec => ({ spec, seconds: SECONDS[spec] ?? UNMEASURED_SPEC_SECONDS }))
-    .sort((a, b) => b.seconds - a.seconds || a.spec.localeCompare(b.spec));
+  const items = [
+    ...specs.map(spec => ({ spec, name: spec, seconds: SECONDS[spec] ?? UNMEASURED_SPEC_SECONDS })),
+    ...Object.entries(DEALT_JOBS).map(([job, seconds]) => ({ job, name: job, seconds })),
+  ].sort((a, b) => b.seconds - a.seconds || a.name.localeCompare(b.name));
 
   const shards = Array.from({ length: total }, (_, index) => ({
     full: index === 0,
-    seconds: index === 0 ? Object.values(EXTRA_JOBS).reduce((sum, seconds) => sum + seconds, 0) : 0,
+    seconds: index === 0
+      ? FULL_STACK_SECONDS + Object.values(FULL_STACK_JOBS).reduce((sum, seconds) => sum + seconds, 0)
+      : 0,
     specs: [],
-    jobs: index === 0 ? Object.keys(EXTRA_JOBS) : [],
+    jobs: index === 0 ? Object.keys(FULL_STACK_JOBS) : [],
   }));
   for (const item of items) {
     const lightest = shards.reduce((min, shard) =>
       (shard.seconds + cost(shard, item) < min.seconds + cost(min, item) ? shard : min));
     lightest.seconds += cost(lightest, item);
-    lightest.specs.push(item.spec);
+    if (item.spec) lightest.specs.push(item.spec);
+    else lightest.jobs.push(item.job);
   }
-  for (const shard of shards) shard.specs.sort();
+  for (const shard of shards) {
+    shard.specs.sort();
+    shard.jobs.sort();
+  }
   return shards;
 }

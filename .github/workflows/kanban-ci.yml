@@ -342,10 +342,18 @@ jobs:
 
     - name: Run the load smoke
       if: steps.plan.outputs.load == 'true'
+      env:
+        FULL_STACK: ${{ steps.plan.outputs.full }}
       run: |
         since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        docker compose --profile loadtest run --rm --no-deps k6
-        errors=$(docker compose logs --no-color --since "$since" app app2 | grep '"level":"ERROR"' || true)
+        if [ "$FULL_STACK" = true ]; then
+          docker compose --profile loadtest run --rm --no-deps k6
+          services="app app2"
+        else
+          docker compose --profile loadtest run --rm --no-deps k6 run /loadtest/kanban.js
+          services=app
+        fi
+        errors=$(docker compose logs --no-color --since "$since" $services | grep '"level":"ERROR"' || true)
         if [ -n "$errors" ]; then
           echo "$errors" | head -20
           echo "::error::the API logged ERROR lines during the load smoke"
