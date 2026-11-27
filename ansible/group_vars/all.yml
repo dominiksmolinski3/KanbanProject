@@ -27,11 +27,11 @@ monitoring_binaries:
     executables: [prometheus, promtool]
   - name: node_exporter
     version: 1.12.1
-    deb: https://dhi.io/deb/debian/main/pool/trixie/main/n/no/node-exporter_1.12.1-9/node-exporter_1.12.1-9_amd64.deb
-    sha256: 35879d23d7dd1275d3481aa7d2092265b46ebf75697aa80ec38d98cfd2fb69d5
+    deb: https://dhi.io/deb/debian/main/pool/trixie/main/n/no/node-exporter_1.12.1-11/node-exporter_1.12.1-11_amd64.deb
+    sha256: b986be095dedd642b726ee3c53b27ee00dc99fd93a523c99387b44a5618ff92f
     executables: [node_exporter]
   - name: blackbox_exporter
     version: 0.29.1
-    deb: https://dhi.io/deb/debian/main/pool/trixie/main/b/bl/blackbox-exporter_0.29.1-4/blackbox-exporter_0.29.1-4_amd64.deb
-    sha256: 3312bc1014efcbe3ebf26138d3c82ad48260ae541f6856f71c7dba6840de5d27
+    deb: https://dhi.io/deb/debian/main/pool/trixie/main/b/bl/blackbox-exporter_0.29.1-5/blackbox-exporter_0.29.1-5_amd64.deb
+    sha256: 0ccf5963ee14a95dfd5cddbcddd57148d1bd744721b4ec456dfee9f10a8ebf04
     executables: [blackbox_exporter]
