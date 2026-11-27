@@ -47,8 +47,8 @@ describe('Encrypted direct messages', () => {
       setUpMessaging({ account: owner, pin: PIN });
       cy.origin(memberOrigin(), { args: { account: member, pin: PIN } }, ({ account, pin }) => {
         const dialog = () => cy.get('[role="dialog"]');
-        cy.clearCookies();
         cy.visit('/', { onBeforeLoad: (win) => win.localStorage.clear() });
+        cy.clearCookies();
         cy.get('input[type="email"]').first().should('be.visible').and('not.be.disabled').type(account.email);
         cy.get('input[type="password"]').first().type(account.password);
         cy.contains('button', 'Sign In').click();
