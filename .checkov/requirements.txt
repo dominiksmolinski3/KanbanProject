@@ -208,9 +208,9 @@ bc-jsonpath-ng==1.6.1 \
     --hash=sha256:2c85bb1d194376808fe1fc49558dd484e39024b15c719995e22de811e6ba4dc8 \
     --hash=sha256:6ea4e379c4400a511d07605b8d981950292dd098a5619d143328af4e841a2320
     # via checkov
-bc-python-hcl2==0.4.3 \
-    --hash=sha256:b0cce4cea16823f7da7fefa0f8177dfb91f51a1befe64ef59d8fe4d5ac616eec \
-    --hash=sha256:fae62b2a41a675ad330d134d82576526db755f72bbd0e5a850de3d85fc24c40e
+bc-python-hcl2==0.4.5 \
+    --hash=sha256:62a2cab872757c0183fd92270c5ea013820c197de889a195ab107148406c8e27 \
+    --hash=sha256:b5df1c92ec504f8964e7123fa79eda23f6f1a4d025ea1b964d304f162a3154cb
     # via checkov
 beartype==0.23.1 \
     --hash=sha256:4461b4dc57e3fdd6c8a8464b22cf118002eea107c33e9fef651c69068ab3cce3 \
@@ -527,9 +527,9 @@ charset-normalizer==3.5.2 \
     # via
     #   checkov
     #   requests
-checkov==3.4.6 \
-    --hash=sha256:22c5a5bb41477e251f4ba19a2a7a412f472e6d86e76ecb1cdec94eea267259e1 \
-    --hash=sha256:bbc2a90f803ec38ecfd8ed41a12388a5ec4a9ca992e925b7bddfcbc5a0530a5e
+checkov==3.4.9 \
+    --hash=sha256:269a7129343bb72b93eb963fd16be71ed84048483e0fdcf85f6beee81f28d07a \
+    --hash=sha256:4802478a7d6e2f0f82b5030044484b6adeb8c85d2bcab599838a3d6e134410a3
     # via -r requirements.in
 click==8.5.0 \
     --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360 \
@@ -562,9 +562,9 @@ contextlib2==21.6.0 \
     --hash=sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f \
     --hash=sha256:ab1e2bfe1d01d968e1b7e8d9023bc51ef3509bba217bb730cee3827e1ee82869
     # via schema
-cyclonedx-python-lib==7.6.2 \
-    --hash=sha256:31186c5725ac0cfcca433759a407b1424686cdc867b47cc86e6cf83691310903 \
-    --hash=sha256:c42fab352cc0f7418d1b30def6751d9067ebcf0e8e4be210fc14d6e742a9edcc
+cyclonedx-python-lib==8.9.0 \
+    --hash=sha256:017b95b334aa83b2d0db8af9764e13a46f0e903bd30a57d93d08dcd302c84032 \
+    --hash=sha256:112c6e6e5290420e32026c49b8391645bf3e646c7602f7bdb5d02c6febbaa073
     # via checkov
 decorator==5.3.1 \
     --hash=sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82 \
