@@ -72,6 +72,12 @@ which Cypress reads last-wins: `npm run cypress:run -- --browser chrome`.
 
 The README documents these same commands; keep the two in sync when a script is renamed.
 
+**A spec builds the board it needs over the API, not through the UI.** `cy.openBoard({ columns, rows, tasks })`
+empties the test user's board, creates exactly that layout, then opens `/board`; `cy.resetBoard()` in
+`afterEach` leaves it empty for whichever spec the shard planner deals next. Clicking only belongs in
+a test when the click is what it tests. The UI cannot delete the last row, so a test that deletes
+one needs two.
+
 ### Full stack via Docker
 
 The stack is the deployment's shape: a `web` service (nginx, the bundle, the proxy) in front of an

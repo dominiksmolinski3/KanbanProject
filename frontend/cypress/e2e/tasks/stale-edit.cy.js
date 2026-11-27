@@ -1,22 +1,5 @@
-beforeEach(() => {
-  cy.loginAsTestUser();
-  cy.wait(300);
-  cy.get('th', { timeout: 30000 }).should('exist');
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.ensureRowExists();
-
-  cy.createColumn('Backlog', 0);
-});
-
 afterEach(() => {
-  cy.on('window:alert', () => true);
-  cy.on('window:confirm', () => true);
-  cy.get('body').type('{esc}');
-
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.deleteRows();
+  cy.resetBoard();
 });
 
 describe('Editing a task that changed underneath you', () => {
@@ -38,10 +21,9 @@ describe('Editing a task that changed underneath you', () => {
     );
 
   it('reloads with the latest version instead of overwriting it', () => {
-    cy.createTask('Race Me');
+    cy.openBoard({ columns: ['Backlog'], rows: ['Default Row'], tasks: ['Race Me'] });
 
     cy.contains('.task', 'Race Me').click();
-    cy.wait(200);
     cy.get('.edit-description-btn').first().click();
     cy.get('.description-textarea').type('my slow edit');
 

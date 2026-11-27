@@ -1,22 +1,10 @@
-beforeEach(() => {
-  cy.wait(500);
-  cy.loginAsTestUser();
-});
-
 afterEach(() => {
-  cy.on('window:alert', () => true);
-  cy.on('window:confirm', () => true);
-
-  cy.deleteTasks();
-  cy.wait(500);
-  cy.deleteColumns();
-  cy.wait(500);
-  cy.deleteRows();
-  cy.wait(500);
+  cy.resetBoard();
 });
 
 describe('Column Management', () => {
   it('allows creating a new column', () => {
+    cy.openBoard();
     cy.get('[data-testid="open-add-board-item-form"]').click();
     cy.get('[data-testid="add-row-column-tab-column"]').should('be.visible');
     cy.get('#item-name').type('New Test Column');
@@ -24,18 +12,18 @@ describe('Column Management', () => {
     cy.get('[type="submit"]').click();
     cy.contains('th', 'New Test Column').should('exist');
   });
-  
+
   it('allows editing column name', () => {
-    cy.createColumn('Edit Test', 3);
+    cy.openBoard({ columns: [{ name: 'Edit Test', wipLimit: 3 }] });
     cy.contains('th', 'Edit Test')
-    .find('.editable-text')
-    .dblclick({force: true});
-  cy.get('input').clear().type('Updated Column{enter}');
-  cy.contains('th', 'Updated Column').should('exist');
+      .find('.editable-text')
+      .dblclick({ force: true });
+    cy.get('input').clear().type('Updated Column{enter}');
+    cy.contains('th', 'Updated Column').should('exist');
   });
 
   it('keeps the board on screen when a rename is refused', () => {
-    cy.createColumn('Refused Rename', 3);
+    cy.openBoard({ columns: [{ name: 'Refused Rename', wipLimit: 3 }] });
     cy.intercept('PATCH', '/api/columns/*', {
       statusCode: 400,
       body: { code: 'VALIDATION_ERROR', message: 'name: size must be between 1 and 255' },
@@ -51,18 +39,19 @@ describe('Column Management', () => {
   });
 
   it('enforces WIP limits on columns', () => {
-    cy.createColumn('Limited', 2);
-    cy.createRow('Test Row', 0);
-    cy.createTask('Task 1');
-    cy.createTask('Task 2');
-    
+    cy.openBoard({
+      columns: ['Start', { name: 'Limited', wipLimit: 2 }],
+      rows: ['Test Row'],
+      tasks: ['Task 1', 'Task 2', 'Task 3'],
+    });
+
+    cy.get('th:contains("Limited")').find('.wip-limit.exceeded').should('not.exist');
+
     cy.contains('.task', 'Task 1').drag('th:contains("Limited")');
     cy.contains('.task', 'Task 2').drag('th:contains("Limited")');
-    
-    cy.createTask('Task 3');
+    cy.get('th:contains("Limited")').find('.wip-limit.exceeded').should('not.exist');
+
     cy.contains('.task', 'Task 3').drag('th:contains("Limited")');
-    
     cy.get('th:contains("Limited")').find('.wip-limit.exceeded').should('exist');
   });
-    
 });

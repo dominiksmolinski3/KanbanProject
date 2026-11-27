@@ -1,25 +1,10 @@
 afterEach(() => {
-  cy.on('window:alert', () => true);
-  cy.on('window:confirm', () => true);
-  cy.get('body').type('{esc}');
-
-  cy.deleteTasks();
-  cy.deleteColumns();
-  cy.deleteRows();
+  cy.resetBoard();
 });
 
 describe('Complete User Journey', () => {
   it('allows a user to set up and use a kanban board', () => {
-    cy.visit('/');
-    cy.wait(1000);
-    cy.loginAsTestUser();
-    cy.wait(1000);
-
-    cy.get('th', { timeout: 30000 }).should('exist');
-
-    cy.deleteTasks();
-    cy.deleteColumns();
-    cy.deleteRows();
+    cy.openBoard();
 
     cy.createColumn('Backlog', 0);
     cy.createColumn('In Progress', 3);
@@ -27,14 +12,15 @@ describe('Complete User Journey', () => {
 
     cy.createRow('Features', 4);
     cy.createRow('Bugs', 2);
-      
-    cy.wait(1000);
+
     cy.get('[data-testid="open-add-task-form"]').click();
     cy.get('#task-title').type('Implement login');
     cy.get('[type="submit"]').click();
       
     cy.contains('.task', 'Implement login').drag('th:contains("In Progress")');
-    cy.wait(300);
+    cy.contains('th', 'In Progress').invoke('attr', 'data-column-id').then((columnId) => {
+      cy.contains('.task', 'Implement login').closest('.grid-cell').should('have.attr', 'data-column-id', columnId);
+    });
     cy.contains('.task', 'Implement login').click();
     cy.get('.subtask-input').type('Create UI{enter}');
     cy.get('.add-subtask-btn').click();

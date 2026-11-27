@@ -51,14 +51,20 @@ const opened = [
 describe('Accessibility of what opens on the board, in a real browser', () => {
   beforeEach(() => {
     cy.prepareAxe();
-    cy.loginAsTestUser();
+    cy.signInAsTestUser();
+  });
+
+  afterEach(() => {
+    cy.resetBoard();
   });
 
   themes.forEach((theme) => {
     describe(`${theme} theme`, () => {
       opened.forEach(({ name, open, shows }) => {
         it(`${name} has no axe violations`, () => {
+          cy.seedBoard({ columns: ['Accessibility column'], rows: ['Accessibility row'] });
           cy.visitThemed('/board', theme, BOARD_READY);
+          cy.contains('th', 'Accessibility column').should('exist');
           open();
           cy.get(shows).should('be.visible');
           cy.expectNoAxeViolations();
@@ -66,21 +72,14 @@ describe('Accessibility of what opens on the board, in a real browser', () => {
       });
 
       describe('with a card on the board', () => {
-        afterEach(() => {
-          cy.on('window:alert', () => true);
-          cy.on('window:confirm', () => true);
-          cy.deleteTasks();
-          cy.wait(500);
-          cy.deleteColumns();
-          cy.wait(500);
-          cy.deleteRows();
-        });
-
         beforeEach(() => {
+          cy.seedBoard({
+            columns: ['Accessibility column'],
+            rows: ['Accessibility row'],
+            tasks: ['Accessibility card'],
+          });
           cy.visitThemed('/board', theme, BOARD_READY);
-          cy.createColumn('Accessibility column', 0);
-          cy.createRow('Accessibility row', 0);
-          cy.createTask('Accessibility card');
+          cy.contains('.task', 'Accessibility card').should('be.visible');
         });
 
         it('the board has no axe violations', () => {
