@@ -4,8 +4,19 @@ WORKDIR /build
 # mvnw checks distributionSha256Sum against the .zip, and without unzip it fetches the .tar.gz instead.
 # hadolint ignore=DL3008
 RUN apt-get update \
- && apt-get install -y --no-install-recommends unzip \
+ && apt-get install -y --no-install-recommends unzip curl \
  && rm -rf /var/lib/apt/lists/*
+
+ARG AGENT_VERSION=3.7.10
+ARG AGENT_SHA256=93a70c8f5d364c7e777f6c4d1b235dba91aef8448bd3fa94359f1d7f3e2eb0ec
+RUN set -eu; \
+    path=com/microsoft/azure/applicationinsights-agent/$AGENT_VERSION/applicationinsights-agent-$AGENT_VERSION.jar; \
+    for repo in https://repo1.maven.org/maven2 https://maven-central.storage-download.googleapis.com/maven2; do \
+      if curl -fsSL --retry 3 --retry-all-errors -o applicationinsights-agent.jar "$repo/$path" \
+        && printf '%s  %s\n' "$AGENT_SHA256" applicationinsights-agent.jar > agent.sha256 \
+        && sha256sum -c agent.sha256; then exit 0; fi; \
+    done; \
+    echo "no repository served the agent jar with the pinned checksum" >&2; exit 1
 
 COPY pom.xml ./
 COPY mvnw ./
@@ -37,7 +48,7 @@ COPY --from=backend-build --chown=10001:10001 /build/extracted/spring-boot-loade
 COPY --from=backend-build --chown=10001:10001 /build/extracted/snapshot-dependencies/ ./
 COPY --from=backend-build --chown=10001:10001 /build/extracted/application/ ./
 
-ADD --checksum=sha256:93a70c8f5d364c7e777f6c4d1b235dba91aef8448bd3fa94359f1d7f3e2eb0ec --chown=10001:10001     https://repo1.maven.org/maven2/com/microsoft/azure/applicationinsights-agent/3.7.10/applicationinsights-agent-3.7.10.jar     applicationinsights-agent.jar
+COPY --from=backend-build --chown=10001:10001 /build/applicationinsights-agent.jar ./
 COPY --chown=10001:10001 applicationinsights.json ./
 
 USER 10001:10001
