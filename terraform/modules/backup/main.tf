@@ -228,7 +228,7 @@ resource "azurerm_container_app_job" "pg_dump" {
   template {
     init_container {
       name    = "pg-dump"
-      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261127@sha256:510c3c6d1583e5b71b71dba452e0883bd1a00a3e05ab4e3decf3615e2247e4e1"
+      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:18-alpine-20261127@sha256:31ba0b29922425e87bdbdd85e3988528b78459c67ae58f636ef411cb2575ffa7"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/pg-dump.sh"), "\r", "")]
@@ -401,7 +401,7 @@ resource "azurerm_container_app_job" "restore_drill" {
 
     container {
       name    = "restore"
-      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:17-alpine-20261127@sha256:510c3c6d1583e5b71b71dba452e0883bd1a00a3e05ab4e3decf3615e2247e4e1"
+      image   = "ghcr.io/dominiksmolinski3/kanbanproject-postgres:18-alpine-20261127@sha256:31ba0b29922425e87bdbdd85e3988528b78459c67ae58f636ef411cb2575ffa7"
       cpu     = 0.5
       memory  = "1Gi"
       command = ["/bin/sh", "-c", replace(file("${path.module}/restore-drill.sh"), "\r", "")]
